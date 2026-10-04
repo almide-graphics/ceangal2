@@ -93,11 +93,27 @@ async function untilGui(pred, what, ms = 20000) {
 }
 
 /** Tap a node of the user program: its rect is relative to the program window. */
+// A slow device lays out over several frames (insets, the soft keyboard):
+// read the box until it stops moving before tapping it.
+async function settled(read, what) {
+  let last = "";
+  for (let i = 0; i < 20; i++) {
+    const r = read();
+    const k = JSON.stringify(r);
+    if (r && k === last) return r;
+    last = k;
+    await sleep(400);
+  }
+  throw new Error(`${what} kept moving`);
+}
+
 async function tapGui(label) {
-  const t = tree();
-  const win = node(t, "Program window");
-  const n = guiTree().find((g) => g.label === label);
-  assert(win && n, `no program node "${label}"`);
+  const { t, win, n } = await settled(() => {
+    const t = tree();
+    const win = t && node(t, "Program window");
+    const n = guiTree().find((g) => g.label === label);
+    return win && n ? { t, win, n } : null;
+  }, `program node "${label}"`);
   adb("shell", "input", "tap", String(Math.round((win.x + n.x + n.w / 2) * t.scale)), String(Math.round((win.y + n.y + n.h / 2) * t.scale)));
   await sleep(500);
 }
@@ -105,9 +121,10 @@ async function tapGui(label) {
 const has = (label) => (t) => t.nodes.some((n) => n.label === label);
 const node = (t, label) => t.nodes.find((n) => n.label === label);
 
-async function tap(t, label) {
-  const n = node(t, label);
-  assert(n, `no "${label}"`);
+async function tap(t0, label) {
+  assert(node(t0, label), `no "${label}"`);
+  const t = await settled(() => { const t = tree(); const n = t && node(t, label); return n ? { scale: t.scale, n } : null; }, `"${label}"`);
+  const n = t.n;
   const s = t.scale;
   adb("shell", "input", "tap", String(Math.round((n.x + n.w / 2) * s)), String(Math.round((n.y + n.h / 2) * s)));
   await sleep(500);
