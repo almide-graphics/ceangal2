@@ -264,12 +264,11 @@ jobs:
           key: flatpak-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
       - name: flatpak tooling
         run: |
-          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder ostree desktop-file-utils python3-aiohttp python3-tomlkit
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder desktop-file-utils python3-aiohttp python3-tomlkit
           flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak --user install -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08 org.flatpak.Builder
       - name: build + lint
         run: |
-          sed -i 's/^flatpak-builder /flatpak-builder --user /' tools/build_flatpak.sh
           tools/build_flatpak.sh
       - uses: actions/upload-artifact@v4
         with:

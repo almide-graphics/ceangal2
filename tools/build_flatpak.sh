@@ -6,7 +6,7 @@
 #   tools/build_flatpak.sh            → out/flatpak/io.github.almide.playground.flatpak
 #
 # Needs flatpak, flatpak-builder, org.freedesktop.{Platform,Sdk}//26.08, the
-# rust-stable extension, org.flatpak.Builder (the linter), ostree, python3 with
+# rust-stable extension, org.flatpak.Builder (flathub-build and the linter), python3 with
 # aiohttp + tomlkit (flatpak-cargo-generator), and network for the staging.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,11 +31,11 @@ python3 "$gen" "$stage/src/app/Cargo.lock" -o "$out/cargo-sources.json"
 desktop-file-validate "$stage/linux/$id.desktop"
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream "$stage/linux/$id.metainfo.xml" || true
 
-# As Flathub builds it: the metainfo's screenshots are fetched and mirrored
-# (the linter wants them in the repo, under dl.flathub.org/media).
-flatpak-builder --force-clean --mirror-screenshots-url=https://dl.flathub.org/media/ \
-  --repo="$out/repo" "$out/build" "$out/$id.yml"
-ostree commit --repo="$out/repo" --canonical-permissions --branch="screenshots/$(uname -m)" "$out/build/files/share/app-info/media"
+# Built the way Flathub builds it: flathub-build (in org.flatpak.Builder)
+# runs flatpak-builder with Flathub's options, mirrors the metainfo's
+# screenshots and remote icons and commits them, so the linter sees what
+# Flathub's infrastructure would publish.
+(cd "$out" && rm -rf repo builddir && flatpak run --command=flathub-build org.flatpak.Builder "$id.yml")
 flatpak build-bundle "$out/repo" "$out/$id.flatpak" "$id"
 
 # Flathub's linter on the manifest and the built repository
