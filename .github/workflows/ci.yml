@@ -137,6 +137,59 @@ jobs:
 
   # The web playground: compiler wasm, app wasm, real-browser E2E, the old
   # playground's fixtures, and (on main) the GitHub Pages deploy.
+  # Mac App Store: universal (arm64 + x86_64) app with App Sandbox, signed
+  # with the distribution identity from secrets when present (ad hoc
+  # otherwise), installer pkg; the sandboxed app is launched once.
+  macos-store:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: macos-store-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
+      - name: signing identities (when the secrets exist)
+        env:
+          CERTS_P12_B64: ${{ secrets.MAC_CERTS_P12_B64 }}
+          CERTS_PASS: ${{ secrets.MAC_CERTS_PASS }}
+          PROFILE_B64: ${{ secrets.MAC_PROVISIONING_PROFILE_B64 }}
+        run: |
+          if [ -n "$CERTS_P12_B64" ]; then
+            kc="$RUNNER_TEMP/sign.keychain-db"
+            security create-keychain -p ci "$kc" && security unlock-keychain -p ci "$kc"
+            echo "$CERTS_P12_B64" | base64 -d > "$RUNNER_TEMP/certs.p12"
+            security import "$RUNNER_TEMP/certs.p12" -k "$kc" -P "$CERTS_PASS" -T /usr/bin/codesign -T /usr/bin/productbuild
+            security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc"
+            security list-keychains -d user -s "$kc"
+            echo "$PROFILE_B64" | base64 -d > "$RUNNER_TEMP/app.provisionprofile"
+            echo "MAC_PROVISIONING_PROFILE=$RUNNER_TEMP/app.provisionprofile" >> "$GITHUB_ENV"
+            echo "MAC_APP_IDENTITY=${{ secrets.MAC_APP_IDENTITY }}" >> "$GITHUB_ENV"
+            echo "MAC_INSTALLER_IDENTITY=${{ secrets.MAC_INSTALLER_IDENTITY }}" >> "$GITHUB_ENV"
+          fi
+      - run: tools/package_macos.sh
+      - name: the sandboxed app starts
+        run: CEANGAL_EXIT_AFTER_MS=3000 "out/macos/Almide Playground.app/Contents/MacOS/playground"
+      - name: validate for the App Store (needs App Store Connect API key)
+        if: env.ASC_KEY_ID != ''
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          xcrun altool --validate-app -f out/macos/playground.pkg -t macos --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-store
+          path: out/macos/playground.pkg
+
   # Android: both apps as signed AABs (upload key from secrets, else a debug
   # key) + universal APKs, 16 KB-aligned; E2E on an x86_64 emulator (KVM):
   # Todo app, and the playground compiling, running and hosting the Todo
@@ -200,7 +253,9 @@ jobs:
         if: always()
         with:
           name: e2e-android
-          path: out/e2e/android-*.png
+          path: |
+            out/e2e/android-*.png
+            out/e2e/android-*.log
 
   web:
     runs-on: macos-15

@@ -81,6 +81,9 @@ type View = {
   pointer: Bool,
   on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
   wheel: Bool,
+  // A vertical scroll view (see scroll_y): children move up by the offset
+  // ceangal keeps for `key`; wheel and touch drag scroll it.
+  scroller: Bool,
   // Keyboard focus: a focusable node (it needs a key) receives key and text
   // events while focused; `text_input` asks the host for IME / soft keyboard.
   focusable: Bool,
@@ -101,7 +104,7 @@ type View = {
 fn node(kind: Int, children: List[View], content: String) -> View = {
   kind: kind, children: children, content: content, style: default_style, key: "",
   on_click: () => (), clickable: false, on_pointer: (p) => false, pointer: false,
-  on_wheel: (x, y, dx, dy) => false, wheel: false,
+  on_wheel: (x, y, dx, dy) => false, wheel: false, scroller: false,
   focusable: false, text_input: false,
   on_key: (phase, key, mods) => false, on_text: (kind, t, c) => false, on_focus: (f) => (),
   paint: (x, y, w, h) => (), label: "", role: 0, value: () => "",
@@ -192,6 +195,10 @@ pub fn bold(v: View) -> View = { ...v, style: { ...v.style, bold: true } }
 pub fn on_click(v: View, f: () -> Unit) -> View = { ...v, on_click: f, clickable: true, style: { ...v.style, cursor: 2 } }
 pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View = { ...v, on_pointer: f, pointer: true }
 pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View = { ...v, on_wheel: f, wheel: true }
+
+// Make a view scroll its content vertically when it is taller than the view
+// (give it a height or max height). `key` keeps the offset across frames.
+pub fn scroll_y(v: View, key: String) -> View = { ...v, key: key, scroller: true, style: { ...v.style, clip: true } }
 pub fn focusable(v: View, k: String) -> View = { ...v, key: k, focusable: true }
 pub fn text_input(v: View, k: String) -> View = { ...v, key: k, focusable: true, text_input: true }
 pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }

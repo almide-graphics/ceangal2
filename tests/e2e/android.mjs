@@ -23,7 +23,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failed = 0;
 async function step(name, f) {
   try { await f(); console.log(`ok   ${name}`); }
-  catch (e) { failed++; console.log(`FAIL ${name}\n     ${e.message}`); }
+  catch (e) {
+    failed++;
+    console.log(`FAIL ${name}\n     ${e.message}`);
+    // evidence for CI: the screen and the app's log
+    const slug = name.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
+    try { shot(`fail-${slug}`); } catch {}
+    try { writeFileSync(join(shots, `android-fail-${slug}.log`), adb("logcat", "-d", "-t", "400")); } catch {}
+  }
 }
 function assert(c, msg) { if (!c) throw new Error(msg); }
 
@@ -182,6 +189,24 @@ for (const app of apps) {
       await until((t) => t.nodes.some((n) => n.label === "Features"), "the program's output", 60000);
       shot("playground-run");
     });
+    await step("playground: the Examples menu scrolls with a finger", async () => {
+      await tap(tree(), "Examples");
+      const t = await until(has("Examples menu"), "the Examples menu");
+      const m = node(t, "Examples menu");
+      const s = t.scale;
+      const cx = Math.round((m.x + m.w / 2) * s);
+      // swipe up inside the menu until "Todo app" is fully in it
+      for (let i = 0; i < 6; i++) {
+        const now = tree(), item = node(now, "Todo app"), box = node(now, "Examples menu");
+        if (item && box && item.y + item.h <= box.y + box.h && item.y >= box.y) break;
+        adb("shell", "input", "swipe", String(cx), String(Math.round((m.y + m.h * 0.8) * s)), String(cx), String(Math.round((m.y + m.h * 0.2) * s)), "250");
+        await sleep(900);
+      }
+      shot("playground-examples");
+      await tap(tree(), "Todo app");
+      await until((t) => (node(t, "Code editor")?.value || "").includes("ceangal"), "the Todo example in the editor");
+    });
+
     await step("playground: the Todo example runs as a window and takes taps", async () => {
       await launch(pkg, { clear: false, data: "https://play.almide.dev/?example=todo" });
       await until(has("Run"), "the playground", 30000);

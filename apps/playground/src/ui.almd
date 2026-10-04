@@ -27,7 +27,7 @@ fn dark_pal() -> Pal = {
   text: 0xF4F7F8, muted: 0xA3B3C2, faint: 0x6B7F93,
   accent: 0x0E7E86, accent_light: 0x14A2A2, on_accent: 0xFFFFFF, stop: 0xD94F5E, warn: 0xE0B060,
   button: 0x1F3A5F, button_border: 0x2B4F7A, button_text: 0xE8EEF3,
-  header: 0xF7FAFA, header_text: 0x2B2B2B, header_sub: 0x5A6B7D, header_line: 0x22344A,
+  header: 0x13202F, header_text: 0xF4F7F8, header_sub: 0xA3B3C2, header_line: 0x22344A,
 }
 
 fn light_pal() -> Pal = {
@@ -198,7 +198,7 @@ fn mobile_bar() -> v.View = {
 fn logo() -> v.View =
   v.custom("logo", (x, y, w, h) => {
     let k = ceangal.pixel_scale()
-    let tex = st.logo_texture()
+    let tex = st.logo_texture(not st.is_light())
     if tex != 0 then snaidhm.image(tex, x * k, y * k, w * k, h * k, 0.0, 1.0) else ()
   }) |> v.size(28.0, 28.0) |> v.role(13) |> v.label("Almide")
 
@@ -404,7 +404,9 @@ fn examples_menu(narrow: Bool) -> v.View = {
         |> v.on_click(() => { let _ = st.load_example(id) }) |> v.role(11) |> v.label(e.title))
     }
   }
-  v.col(rows) |> v.w(260.0) |> v.py(6.0) |> v.bg(c(pal.raised)) |> v.rounded(8.0)
+  // at most 70% of the screen tall, scrolling (wheel / finger) beyond that
+  v.col(rows) |> v.scroll_y("examples-menu") |> v.max_h(ceangal.viewport_height() * 0.7)
+    |> v.w(260.0) |> v.py(6.0) |> v.bg(c(pal.raised)) |> v.rounded(8.0) |> v.role(6) |> v.label("Examples menu")
     |> v.border(1.0, c(pal.border)) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
     |> v.absolute() |> v.top(if narrow then 52.0 else 58.0) |> v.right(if narrow then 10.0 else 260.0) |> v.clip()
 }

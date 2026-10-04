@@ -465,6 +465,7 @@ export class Host {
   }
   text(s, kind = 0) { return this.withEvent(enc.encode(s), () => this.dispatch(EV.TEXT, kind, 0)); }
   key(code, mods = 0, phase = 0) { return this.dispatch(EV.KEY, phase, code, mods); }
+  wheel(x, y, dy, dx = 0) { return this.dispatch(EV.WHEEL, 0, 1, x, y, dx, dy); }
 
   deliver(id, status, body) {
     this.withEvent(body, () => this.dispatch(EV.RESULT, id, status));

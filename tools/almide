@@ -18,7 +18,9 @@ if [[ ! -x "$bin" ]]; then
   mkdir -p "$root/.tools/$ver"
   url="https://github.com/almide/almide/releases/download/v$ver/$asset"
   if [[ $asset == almide-windows-* ]]; then
-    curl -fsSL "$url.zip" -o "$root/.tools/$ver/a.zip" && (cd "$root/.tools/$ver" && unzip -qo a.zip)
+    # The Windows zip has no top-level folder (the tarballs do): almide/almide#3359.
+    mkdir -p "$dir"
+    curl -fsSL "$url.zip" -o "$root/.tools/$ver/a.zip" && (cd "$dir" && unzip -qo ../a.zip)
   else
     curl -fsSL "$url.tar.gz" | tar xz -C "$root/.tools/$ver"
   fi

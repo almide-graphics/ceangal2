@@ -31,6 +31,21 @@ window.pg = {
     host.click(n.x + n.w / 2, n.y + n.h / 2);
     await host.settle();
   },
+  // Click a node, first scrolling the scroll view it is in (wheel over the
+  // view `within`) until the node is fully on screen.
+  async clickIn(within, label) {
+    for (let i = 0; i < 40; i++) {
+      const box = this.find(within), n = this.find(label);
+      if (!box || !n) break;
+      if (n.y >= box.y && n.y + n.h <= box.y + box.h) break;
+      host.wheel(box.x + box.w / 2, box.y + box.h / 2, n.y < box.y ? -60 : 60);
+      await host.settle();
+    }
+    const box = this.find(within), n = this.find(label);
+    if (!box || !n || n.y < box.y || n.y + n.h > box.y + box.h)
+      throw new Error(`${label} not scrolled into ${within}: ${JSON.stringify({ box, n })}`);
+    await this.click(label);
+  },
   async key(code, mods = 0) { host.key(code, mods); await host.settle(); },
   async type(s) { host.text(s, 0); await host.settle(); },
   // Polls `pred` (a function source) between frames until it is truthy.

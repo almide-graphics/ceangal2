@@ -258,7 +258,7 @@ try {
     await page.goto(`${url}/tests/e2e/web.html`);
     await ev(`pg.boot({ width: 1200, height: 760 })`, 120000);
     await ev(`pg.click("Examples")`);
-    await ev(`pg.click("Todo app")`);
+    await ev(`pg.clickIn("Examples menu", "Todo app")`);
     await ev(`pg.click("Run")`);
     await until(`(pg) => pg.texts().includes("Running (window)") || pg.texts().includes("Runtime error")`, 120000);
     if (await ev(`pg.texts().includes("Runtime error")`)) throw new Error(await ev(`pg.value("Program output")`));

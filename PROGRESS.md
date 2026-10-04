@@ -119,6 +119,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
     KVM).
 - iOS: not started (needs Xcode locally; see Human TODO).
 
+### M6 — packaging (started)
+- macOS: `tools/package_macos.sh` → universal (arm64 + x86_64) `.app` with
+  App Sandbox (network client + user-selected files only), Info.plist, the
+  .icns, signed (secrets identity or ad hoc) and an installer pkg; the
+  sandboxed app runs (data lands in its container). CI job `macos-store`
+  (validates with altool once the App Store Connect key is in secrets).
+
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
   `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
@@ -138,6 +145,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   Soft wrap breaks at spaces, with row-based hit testing, caret movement
   and line numbers.
 - Web passes the safe-area insets (env()) to the app.
+- The header follows the theme too (dark ground + the light-tailed mark in
+  dark mode, white + the colour mark in light mode).
+- ceangal scroll views (`v.scroll_y(key)`): wheel, finger drag with momentum
+  (cancels the press under the finger), clipped and hit-tested correctly;
+  the Examples menu uses one (70% of the screen at most).
 
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
@@ -155,6 +167,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
   name: build with `-o <name>` and move `lib<name>.so`.
 - almide/almide#3350 — `[native-deps]` cannot be target-specific: the
   `ceangal_platform` facade crate (ADR 0004).
+- almide/almide#3359 — the Windows release zip has no top-level folder:
+  tools/almide unzips into the asset-named folder.
 - almide/almide#3358 — `[]` in a record spread update fails E018: a typed
   helper (`no_rows()` in editor.almd).
 - almide/almide#3346 — cdylib builds omit `flate2` for zlib users: the
@@ -207,6 +221,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
       `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASS`; enroll in Play App Signing.
 - [ ] Android: try the APK on a real phone (soft keyboard with a Japanese
       IME, notch / gesture bar insets, Vulkan driver).
+- [ ] Mac App Store: GitHub secrets MAC_CERTS_P12_B64 (Apple Distribution +
+      Mac Installer certs), MAC_CERTS_PASS, MAC_APP_IDENTITY,
+      MAC_INSTALLER_IDENTITY, MAC_PROVISIONING_PROFILE_B64, and ASC_KEY_ID /
+      ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
+- [ ] GitHub Pages: Settings → Pages → Source "GitHub Actions".
 - [ ] Microsoft Partner Center account; reserve the app name.
 - [ ] Flathub: app ID decision (e.g. `dev.almide.Playground`) and submission PR.
 - [ ] Install Xcode locally from the App Store and open it once (license,

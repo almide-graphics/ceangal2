@@ -24,7 +24,7 @@ Writes (all committed):
   store/playground/windows/*.png          MSIX tile and logo assets
   store/playground/linux/<n>x<n>.png      hicolor icons
   store/playground/web/*                  favicon, PWA icons, apple-touch-icon
-  apps/playground/assets/brand/logo.rgba  the header mark (u16 w, u16 h, RGBA)
+  apps/playground/assets/brand/logo(-dark).rgba  header marks (u16 w, u16 h, RGBA)
 Needs Pillow; the .icns step needs macOS `iconutil` (skipped elsewhere).
 """
 import os
@@ -144,13 +144,15 @@ def main():
     save(place(Image.new("RGBA", (64, 64), (0, 0, 0, 0)), symbol(), 1.0), "web", "favicon.png")
     shutil.copy(os.path.join(BRAND, "favicon.svg"), os.path.join(OUT, "web", "favicon.svg"))
 
-    # The header mark: shown as delivered, 3x of 28 px.
-    logo = symbol()
-    logo.thumbnail((84, 84), Image.LANCZOS)
-    dst = os.path.join(ROOT, "apps/playground/assets/brand/logo.rgba")
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    with open(dst, "wb") as f:
-        f.write(struct.pack(">HH", logo.width, logo.height) + logo.tobytes())
+    # The header marks, shown as delivered, 3x of 28 px: the colour mark on
+    # the light header, the dark-ground variant (light tail) on the dark one.
+    for variant, name in (("", "logo.rgba"), ("-dark", "logo-dark.rgba")):
+        logo = symbol(variant)
+        logo.thumbnail((84, 84), Image.LANCZOS)
+        dst = os.path.join(ROOT, "apps/playground/assets/brand", name)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, "wb") as f:
+            f.write(struct.pack(">HH", logo.width, logo.height) + logo.tobytes())
     print("brand assets written")
 
 

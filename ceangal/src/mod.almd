@@ -6,6 +6,7 @@
 // tree, lays it out and paints it through snaidhm.
 
 import snaidhm
+import math
 import self.view as v
 import self.layout as lay
 import self.text as tx
@@ -65,6 +66,21 @@ var pressed = -1
 var hover_cursor = 0
 var last_x = 0.0
 var last_y = 0.0
+// Scroll views: offset, its maximum (from the last layout) and momentum, by key.
+var scroll_keys: List[String] = []
+var scroll_offs: List[Float] = []
+var scroll_max: List[Float] = []
+var scroll_vel: List[Float] = []
+var scroll_t = 0.0
+// The scroll view a touch is dragging (index into scroll_keys, -1 none).
+var drag_scroll = -1
+var drag_active = false
+var drag_y0 = 0.0
+var drag_off0 = 0.0
+var drag_ly = 0.0
+var drag_lt = 0.0
+var drag_v = 0.0
+
 // Where the current touch went down: a touch moves focus only when it ends
 // near there (a tap), so scrolling does not raise the soft keyboard.
 var press_x = 0.0
@@ -246,10 +262,16 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
   var target = -1
   let n = int.min(list.len(frame_views), list.len(frame_rects))
   for i in 0..<n {
-    if frame_views[i].wheel and inside(frame_rects[i], x, y) then target = i else ()
+    if (frame_views[i].wheel or frame_views[i].scroller) and inside(frame_rects[i], x, y) then target = i else ()
   }
   if target < 0 then false
-  else {
+  else if frame_views[target].scroller and not frame_views[target].wheel then {
+    let j = scroll_index(frame_views[target].key)
+    scroll_vel[j] = 0.0
+    scroll_by(j, dy * k)
+    invalidate()
+    true
+  } else {
     let r = frame_rects[target]
     let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)
     if handled then invalidate() else ()
@@ -275,7 +297,9 @@ fn event_string() -> String = bytes.to_string_lossy(event_bytes())
 
 fn frame(t: Float) -> Int = {
   frame_time = t
-  let animating = current.on_frame(t)
+  let flinging = advance_flings(t)
+  if flinging then dirty = true else ()
+  let animating = current.on_frame(t) or flinging
   if dirty or animating then {
     dirty = false
     render()
@@ -288,8 +312,9 @@ fn render() -> Unit = {
   let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
   let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
   let node = to_node(root)
-  let rects = lay.layout(node, width, height)
+  let laid = lay.layout(node, width, height)
   frame_views = flatten(root)
+  let rects = apply_scrolls(frame_views, laid)
   frame_rects = rects
   tx.begin_frame()
   caret_w = -1.0
@@ -401,6 +426,150 @@ fn to_node(view: v.View) -> lay.Node = {
 
 // The views in the order lay.layout emits rects: self, in-flow children
 // (recursively), then absolutely positioned children.
+// ── Scroll views ──
+
+fn scroll_index(key: String) -> Int = {
+  var at = -1
+  for i in 0..<list.len(scroll_keys) { if scroll_keys[i] == key then at = i else () }
+  if at < 0 then {
+    list.push(scroll_keys, key)
+    list.push(scroll_offs, 0.0)
+    list.push(scroll_max, 0.0)
+    list.push(scroll_vel, 0.0)
+    list.len(scroll_keys) - 1
+  } else at
+}
+
+fn subtree_len(view: v.View) -> Int = {
+  var n = 1
+  for c in view.children { n = n + subtree_len(c) }
+  n
+}
+
+// Shift each scroll view's descendants up by its offset (clamped to the
+// content) and clip them to it. Rects are in flatten / paint order, where a
+// view's subtree is the contiguous run after it.
+fn apply_scrolls(views: List[v.View], laid: List[lay.LayoutRect]) -> List[lay.LayoutRect] = {
+  var rs = laid
+  let n = int.min(list.len(views), list.len(rs))
+  for i in 0..<n {
+    if views[i].scroller then {
+      let j = scroll_index(views[i].key)
+      let r = rs[i]
+      let end = int.min(n, i + subtree_len(views[i]))
+      var bottom = r.y + r.h
+      for d in (i + 1)..<end { bottom = float.max(bottom, rs[d].y + rs[d].h) }
+      let mx = float.max(0.0, bottom + views[i].style.pb - (r.y + r.h))
+      scroll_max[j] = mx
+      let off = float.max(0.0, float.min(scroll_offs[j], mx))
+      scroll_offs[j] = off
+      if off > 0.0 then {
+        // the scroll view's own visible area
+        let has = r.clip_w >= 0.0
+        let x0 = if has then float.max(r.x, r.clip_x) else r.x
+        let y0 = if has then float.max(r.y, r.clip_y) else r.y
+        let x1 = if has then float.min(r.x + r.w, r.clip_x + r.clip_w) else r.x + r.w
+        let y1 = if has then float.min(r.y + r.h, r.clip_y + r.clip_h) else r.y + r.h
+        for d in (i + 1)..<end {
+          let q = rs[d]
+          // A clip that is the scroll view's own area stays put; a clip from
+          // a view inside it moves with the content.
+          let own = float.abs(q.clip_y - y0) < 0.5 and float.abs(q.clip_h - (y1 - y0)) < 0.5
+          let inner = q.clip_w >= 0.0 and not own
+          let qx0 = if inner then float.max(x0, q.clip_x) else x0
+          let qy0 = if inner then float.max(y0, q.clip_y - off) else y0
+          let qx1 = if inner then float.min(x1, q.clip_x + q.clip_w) else x1
+          let qy1 = if inner then float.min(y1, q.clip_y - off + q.clip_h) else y1
+          rs[d] = { ...q, y: q.y - off, clip_x: qx0, clip_y: qy0, clip_w: float.max(0.0, qx1 - qx0), clip_h: float.max(0.0, qy1 - qy0) }
+        }
+      } else ()
+    } else ()
+  }
+  rs
+}
+
+fn scroll_by(j: Int, dy: Float) -> Unit = {
+  scroll_offs[j] = float.max(0.0, float.min(scroll_offs[j] + dy, scroll_max[j]))
+}
+
+// Momentum after a flick; true while any scroll view is still moving.
+fn advance_flings(t: Float) -> Bool = {
+  let dt = float.min(64.0, float.max(0.0, t - scroll_t))
+  scroll_t = t
+  var moving = false
+  for j in 0..<list.len(scroll_vel) {
+    if scroll_vel[j] != 0.0 then {
+      let before = scroll_offs[j]
+      scroll_by(j, scroll_vel[j] * dt)
+      let v2 = scroll_vel[j] * math.exp(0.0 - dt / 325.0)
+      let stuck = scroll_offs[j] == before and dt > 0.0
+      scroll_vel[j] = if float.abs(v2) < 0.02 or stuck then 0.0 else v2
+      if scroll_vel[j] != 0.0 then moving = true else ()
+    } else ()
+  }
+  moving
+}
+
+// The innermost scroll view under a point (index into frame_views), or -1.
+fn scroller_at(x: Float, y: Float) -> Int = {
+  var found = -1
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    if frame_views[i].scroller and inside(frame_rects[i], x, y) then found = i else ()
+  }
+  found
+}
+
+// A finger on a scroll view: once it moves past the slop it scrolls the view
+// (the press on whatever is under it is cancelled, so no click fires).
+// Returns true when the event was consumed.
+fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
+  if phase == 0 then {
+    let i = scroller_at(x, y)
+    drag_scroll = if i >= 0 then scroll_index(frame_views[i].key) else -1
+    drag_active = false
+    if drag_scroll >= 0 then {
+      scroll_vel[drag_scroll] = 0.0
+      drag_y0 = y
+      drag_off0 = scroll_offs[drag_scroll]
+      drag_ly = y
+      drag_lt = sys.now_ms()
+      drag_v = 0.0
+    } else ()
+    false
+  } else if drag_scroll < 0 then false
+  else if phase == 1 then {
+    if not drag_active and float.abs(y - drag_y0) > 8.0 then {
+      drag_active = true
+      if pressed >= 0 then {
+        let fv = frame_views[pressed]
+        let r = frame_rects[pressed]
+        if fv.pointer then { let _ = fv.on_pointer({ phase: 3, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: 0, mods: 0, id: 1 }) } else ()
+        pressed = -1
+      } else ()
+    } else ()
+    if drag_active then {
+      let now = sys.now_ms()
+      let v_now = (drag_ly - y) / float.max(1.0, now - drag_lt)
+      drag_v = v_now * 0.8 + drag_v * 0.2
+      drag_ly = y
+      drag_lt = now
+      scroll_offs[drag_scroll] = float.max(0.0, float.min(drag_off0 - (y - drag_y0), scroll_max[drag_scroll]))
+      invalidate()
+      true
+    } else false
+  } else {
+    let was = drag_active
+    if was and phase == 2 and sys.now_ms() - drag_lt < 80.0 and float.abs(drag_v) > 0.25 then {
+      scroll_vel[drag_scroll] = drag_v
+      scroll_t = sys.now_ms()
+      invalidate()
+    } else ()
+    drag_scroll = -1
+    drag_active = false
+    was
+  }
+
 fn flatten(view: v.View) -> List[v.View] = {
   var out: List[v.View] = [view]
   for c in view.children {
@@ -485,7 +654,11 @@ fn cursor_at(x: Float, y: Float) -> Int = {
   c
 }
 
-fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
+fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
+  if id >= 1 and touch_scroll(phase, x, y) then true
+  else pointer_target(phase, id, x, y, buttons, mods)
+
+fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
   if phase == 1 then {
     let c = cursor_at(x, y)
     if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()

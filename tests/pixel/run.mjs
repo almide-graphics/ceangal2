@@ -120,8 +120,12 @@ try {
         if (!img.bench) continue;
         const b = img.bench;
         const fast = b.p95_ms < 16.7;
-        if (!fast) failed++;
-        console.log(`${fast ? "ok  " : "FAIL"} ${c.name} ${host} bench: ${b.frames} frames, avg ${b.avg_ms.toFixed(2)} ms, p95 ${b.p95_ms.toFixed(2)} ms, max ${b.max_ms.toFixed(2)} ms`);
+        // Hosted CI runners give the native host a paravirtual GPU (several
+        // times slower than a real one): there the native number is reported,
+        // not enforced. Local runs enforce both.
+        const enforced = !(process.env.CI && host === "native");
+        if (!fast && enforced) failed++;
+        console.log(`${fast ? "ok  " : enforced ? "FAIL" : "warn"} ${c.name} ${host} bench: ${b.frames} frames, avg ${b.avg_ms.toFixed(2)} ms, p95 ${b.p95_ms.toFixed(2)} ms, max ${b.max_ms.toFixed(2)} ms`);
       }
     }
   }
