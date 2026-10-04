@@ -77,7 +77,19 @@ export class DomUi {
     const mq = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
     this.on(mq, "change", resized);
     const dark = matchMedia("(prefers-color-scheme: dark)");
-    const appearance = () => { t.dispatch(EV.APPEARANCE, dark.matches ? 1 : 0); t.schedule(); };
+    // Safe-area insets (notch, home indicator) come from CSS env(): a probe
+    // element padded by them reports the current values.
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+    document.body.appendChild(probe);
+    this.cleanups.push(() => probe.remove());
+    const appearance = () => {
+      const cs = getComputedStyle(probe);
+      const px = (v) => parseFloat(v) || 0;
+      t.dispatch(EV.APPEARANCE, dark.matches ? 1 : 0, 0, px(cs.paddingTop), px(cs.paddingRight), px(cs.paddingBottom), px(cs.paddingLeft));
+      t.schedule();
+    };
+    this.on(window, "resize", appearance);
     this.on(dark, "change", appearance);
     appearance();
     this.on(document, "visibilitychange", () => { t.dispatch(EV.LIFECYCLE, document.hidden ? 0 : 1); t.schedule(); });

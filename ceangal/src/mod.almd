@@ -38,6 +38,10 @@ pub fn on_text(a: App, f: (Int, String) -> Bool) -> App = { ...a, on_text: f }
 pub fn on_frame(a: App, f: (Float) -> Bool) -> App = { ...a, on_frame: f }
 pub fn on_result(a: App, f: (Int, Int, Bytes) -> Unit) -> App = { ...a, on_result: f }
 
+// Change the running app's background (the colour around the views, e.g.
+// under the safe-area insets) — for apps that switch themes.
+pub fn set_background(c: snaidhm.Color) -> Unit = { current = { ...current, background: c } }
+
 // ── Runtime state ──
 
 var current: App = app(() => v.empty())

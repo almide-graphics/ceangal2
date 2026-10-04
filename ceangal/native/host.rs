@@ -417,6 +417,15 @@ impl Windowed {
     fn send_appearance(&mut self, force: bool) {
         let Some(w) = self.window.clone() else { return };
         let insets = safe_insets(&w, self.scale);
+        // Android: winit reports no theme; the configuration's night mode is it.
+        #[cfg(target_os = "android")]
+        let force = {
+            use winit::platform::android::activity::ndk::configuration::UiModeNight;
+            let dark = android_app().is_some_and(|a| a.config().ui_mode_night() == UiModeNight::Yes);
+            let changed = dark != self.dark;
+            self.dark = dark;
+            force || changed
+        };
         if insets != self.insets || force {
             self.insets = insets;
             let (t, r, b, l) = insets;

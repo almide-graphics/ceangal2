@@ -98,6 +98,17 @@ try {
     await shot("visual");
   });
 
+  await step("light / dark mode toggles and is remembered", async () => {
+    const first = (await ev(`!!pg.find("Dark mode")`)) ? "Dark mode" : "Light mode";
+    const second = first === "Dark mode" ? "Light mode" : "Dark mode";
+    await shot(first === "Dark mode" ? "theme-light" : "theme-dark");
+    await ev(`pg.click(${JSON.stringify(first)})`);
+    await until(`(pg) => !!pg.find(${JSON.stringify(second)})`, 5000);
+    await shot(first === "Dark mode" ? "theme-dark" : "theme-light");
+    await ev(`pg.click(${JSON.stringify(second)})`);
+    await until(`(pg) => !!pg.find(${JSON.stringify(first)})`, 5000);
+  });
+
   await step("a run without a picture goes back to Output", async () => {
     await setCode('effect fn main() -> Unit = println("plain text")\n');
     await ev(`pg.click("Run")`);

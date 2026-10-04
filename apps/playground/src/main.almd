@@ -24,7 +24,7 @@ fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Flo
 effect fn main() -> Unit = {
   st.boot()!
   ceangal.run(ceangal.app(ui.root)
-    |> ceangal.background(snaidhm.hex(ui.BG))
+    |> ceangal.background(snaidhm.hex(0x0B1420))
     |> ceangal.on_key(on_key)
     |> ceangal.on_frame((t) => { let more = st.tick(t); ai.tick(); more })
     |> ceangal.on_result((id, code, body) => if ai.on_result(id, code, body) then () else st.on_result(id, code, body)))

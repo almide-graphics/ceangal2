@@ -173,9 +173,9 @@ for (const app of apps) {
     });
     await step("playground: Run compiles and runs on the device", async () => {
       await tap(tree(), "Run");
-      await until(has("Exited 0"), "the program to finish", 60000);
-      const t = tree();
-      assert(t.nodes.some((n) => n.label === "Features"), "no program output in the Output pane");
+      // the phone layout has no status line (the action bar replaces it):
+      // the program's output in the Output pane is the signal
+      await until((t) => t.nodes.some((n) => n.label === "Features"), "the program's output", 60000);
       shot("playground-run");
     });
     await step("playground: the Todo example runs as a window and takes taps", async () => {

@@ -5,32 +5,41 @@ import ceangal
 import ceangal.view as v
 import ceangal.editor as ed
 import snaidhm
+import math
 import self.state as st
 import self.visual as visual
 import self.html as html
 import self.ai as ai
 
-// ── Theme ── the Almide v2 palette (almide/playground's CSS variables).
+// ── Theme ── the Almide v2 palettes: dark from almide/playground's CSS
+// variables, light from almide/docs' light theme (Shell 05 on white).
 
-let BG = 0x0B1420          // --bg-deep: editor, active tab
-let PANEL = 0x101B29       // --bg-surface: bars
-let RAISED = 0x152233      // --bg-elevated: menus, chips
-let SUBTLE = 0x1A2A3D      // --bg-subtle: pressed bar buttons
-let BORDER = 0x22344A      // --border
-let TEXT = 0xF4F7F8        // --text
-let MUTED = 0xA3B3C2       // --text-secondary
-let FAINT = 0x6B7F93       // --text-muted
-let ACCENT = 0x0E7E86      // --accent (teal)
-let ACCENT_LIGHT = 0x14A2A2 // --accent-light
-let ON_ACCENT = 0xFFFFFF
-let STOP = 0xD94F5E        // --error
-let WARN = 0xE0B060        // --warn-text
-let BUTTON = 0x1F3A5F      // --navy
-let BUTTON_BORDER = 0x2B4F7A
-let BUTTON_TEXT = 0xE8EEF3
-let HEADER = 0xF7FAFA      // the light header bar
-let HEADER_TEXT = 0x2B2B2B
-let HEADER_SUB = 0x5A6B7D
+type Pal = {
+  bg: Int, panel: Int, raised: Int, subtle: Int, border: Int,
+  text: Int, muted: Int, faint: Int,
+  accent: Int, accent_light: Int, on_accent: Int, stop: Int, warn: Int,
+  button: Int, button_border: Int, button_text: Int,
+  header: Int, header_text: Int, header_sub: Int, header_line: Int,
+}
+
+fn dark_pal() -> Pal = {
+  bg: 0x0B1420, panel: 0x101B29, raised: 0x152233, subtle: 0x1A2A3D, border: 0x22344A,
+  text: 0xF4F7F8, muted: 0xA3B3C2, faint: 0x6B7F93,
+  accent: 0x0E7E86, accent_light: 0x14A2A2, on_accent: 0xFFFFFF, stop: 0xD94F5E, warn: 0xE0B060,
+  button: 0x1F3A5F, button_border: 0x2B4F7A, button_text: 0xE8EEF3,
+  header: 0xF7FAFA, header_text: 0x2B2B2B, header_sub: 0x5A6B7D, header_line: 0x22344A,
+}
+
+fn light_pal() -> Pal = {
+  bg: 0xFFFFFF, panel: 0xF7FAFA, raised: 0xEEF3F4, subtle: 0xD8E4E6, border: 0xD8E4E6,
+  text: 0x2B2B2B, muted: 0x3A4B5E, faint: 0x5A6B7D,
+  accent: 0x096578, accent_light: 0x0E7E86, on_accent: 0xFFFFFF, stop: 0xC43C4B, warn: 0x9A6A00,
+  button: 0x1F3A5F, button_border: 0x2B4F7A, button_text: 0xE8EEF3,
+  header: 0xFFFFFF, header_text: 0x2B2B2B, header_sub: 0x5A6B7D, header_line: 0xD8E4E6,
+}
+
+// The palette of the frame being built (root picks it).
+var pal = dark_pal()
 
 // Functions reached only from closures below; without a top-level reference
 // the wasm leg replaces the closure bodies with an exit(1) stub
@@ -56,6 +65,7 @@ let keep_show_ast = st.show_ast
 let keep_toggle_examples = st.toggle_examples
 let keep_toggle_mobile_output = st.toggle_mobile_output
 let keep_show_code = st.show_code
+let keep_toggle_theme = st.toggle_theme
 let keep_pixel_scale = ceangal.pixel_scale
 let keep_export_zip = st.export_zip
 let keep_gui_place = st.gui_place
@@ -76,20 +86,27 @@ fn c(n: Int) -> snaidhm.Color = snaidhm.hex(n)
 fn label(s: String, size: Float, col: Int) -> v.View = v.text(s) |> v.font(size) |> v.color(c(col))
 
 // The code views' theme: Almide's syntax colours on the playground surface.
-pub fn code_theme() -> ed.Theme = {
+pub fn code_theme() -> ed.Theme = if st.is_light() then {
+  ...ed.light_theme(),
+  bg: c(pal.bg), gutter_bg: c(pal.bg), gutter_fg: c(0x9AABBA), gutter_active: c(pal.faint),
+  caret: c(pal.accent),
+  selection: snaidhm.rgba(0.035, 0.396, 0.471, 0.18),
+  active_line: snaidhm.rgba(0.035, 0.396, 0.471, 0.05),
+  error: c(pal.stop), warning: c(pal.warn), placeholder: c(pal.faint),
+} else {
   ...ed.dark_theme(),
-  bg: c(BG), gutter_bg: c(BG), gutter_fg: c(FAINT), gutter_active: c(MUTED),
-  caret: c(ACCENT_LIGHT),
+  bg: c(pal.bg), gutter_bg: c(pal.bg), gutter_fg: c(pal.faint), gutter_active: c(pal.muted),
+  caret: c(pal.accent_light),
   selection: snaidhm.rgba(0.078, 0.635, 0.635, 0.3),
   active_line: snaidhm.rgba(0.078, 0.635, 0.635, 0.07),
-  error: c(STOP), warning: c(WARN), placeholder: c(FAINT),
+  error: c(pal.stop), warning: c(pal.warn), placeholder: c(pal.faint),
 }
 
 fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
-  label(s, 12.5, if on then ON_ACCENT else BUTTON_TEXT)
+  label(s, 12.5, if on then pal.on_accent else pal.button_text)
     |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
-    |> v.bg(if on then c(ACCENT) else c(BUTTON))
-    |> v.border(1.0, c(if on then ACCENT_LIGHT else BUTTON_BORDER))
+    |> v.bg(if on then c(pal.accent) else c(pal.button))
+    |> v.border(1.0, c(if on then pal.accent_light else pal.button_border))
     |> v.on_click(f) |> v.role(3) |> v.label(s)
 
 // ── Header ──
@@ -97,8 +114,8 @@ fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
 fn header(narrow: Bool) -> v.View = {
   let run_label = if st.running then "■ Stop" else "▶ Run"
   var items: List[v.View] = [logo()]
-  list.push(items, label("Almide", if narrow then 15.0 else 17.0, HEADER_TEXT) |> v.bold())
-  if not narrow then list.push(items, label("Playground", 12.0, HEADER_SUB)) else ()
+  list.push(items, label("Almide", if narrow then 15.0 else 17.0, pal.header_text) |> v.bold())
+  if not narrow then list.push(items, label("Playground", 12.0, pal.header_sub)) else ()
   list.push(items, v.spacer())
   if not st.embed then {
     list.push(items, button("Examples", st.examples_open, () => st.toggle_examples()))
@@ -110,31 +127,62 @@ fn header(narrow: Bool) -> v.View = {
       list.push(items, ai_button(ai.open))
     } else ()
   } else ()
+  list.push(items, theme_button())
   if not narrow then list.push(items, run_button(run_label, false)) else ()
   v.row(items) |> v.gap(if narrow then 8.0 else 10.0) |> v.align(v.Middle)
-    |> v.h(if narrow then 48.0 else 54.0) |> v.px(if narrow then 12.0 else 22.0) |> v.bg(c(HEADER))
+    |> v.h(if narrow then 48.0 else 54.0) |> v.px(if narrow then 12.0 else 22.0) |> v.bg(c(pal.header))
 }
 
 fn run_button(text: String, big: Bool) -> v.View =
-  label(text, if big then 15.0 else 12.5, ON_ACCENT) |> v.bold()
+  label(text, if big then 15.0 else 12.5, pal.on_accent) |> v.bold()
     |> v.px(if big then 16.0 else 18.0) |> v.py(if big then 12.0 else 7.0) |> v.rounded(if big then 8.0 else 6.0)
-    |> v.bg(c(if st.running then STOP else ACCENT))
-    |> v.border(1.0, c(if st.running then STOP else ACCENT_LIGHT))
+    |> v.bg(c(if st.running then pal.stop else pal.accent))
+    |> v.border(1.0, c(if st.running then pal.stop else pal.accent_light))
     |> v.on_click(() => st.run()) |> v.role(3) |> v.label(if st.running then "Stop" else "Run")
+
+// Light / dark: a moon in light mode (go dark), a sun in dark mode (go light),
+// drawn from circles (no glyph needed in the fonts).
+fn theme_button() -> v.View = {
+  let light = st.is_light()
+  v.custom("theme", (x, y, w, h) => {
+    let k = ceangal.pixel_scale()
+    let cx = (x + w / 2.0) * k
+    let cy = (y + h / 2.0) * k
+    let fg = c(pal.button_text)
+    let bgc = c(pal.button)
+    if light then {
+      // crescent: a disc with a disc of the button colour cut out of it
+      let r = 7.0 * k
+      snaidhm.fill(cx - r, cy - r, r * 2.0, r * 2.0, r, fg)
+      snaidhm.fill(cx - r + 4.5 * k, cy - r - 2.5 * k, r * 2.0, r * 2.0, r, bgc)
+    } else {
+      let r = 4.0 * k
+      snaidhm.fill(cx - r, cy - r, r * 2.0, r * 2.0, r, fg)
+      for i in 0..<8 {
+        let a = int.to_float(i) * 0.7854
+        let px = cx + math.cos(a) * 7.5 * k
+        let py = cy + math.sin(a) * 7.5 * k
+        let d = 1.4 * k
+        snaidhm.fill(px - d, py - d, d * 2.0, d * 2.0, d, fg)
+      }
+    }
+  }) |> v.size(32.0, 28.0) |> v.rounded(6.0) |> v.bg(c(pal.button)) |> v.border(1.0, c(pal.button_border))
+    |> v.on_click(() => st.toggle_theme()) |> v.role(3) |> v.label(if light then "Dark mode" else "Light mode")
+}
 
 // The AI button: outlined in the accent colour, filled while open.
 fn ai_button(on: Bool) -> v.View =
-  label("AI", 12.5, if on then ON_ACCENT else ACCENT_LIGHT)
+  label("AI", 12.5, if on then pal.on_accent else pal.accent_light)
     |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
-    |> v.bg(c(if on then ACCENT else RAISED)) |> v.border(1.0, c(ACCENT))
+    |> v.bg(c(if on then pal.accent else pal.raised)) |> v.border(1.0, c(pal.accent))
     |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("AI assistant")
 
 // Phones: one pane at a time; this bar flips between them and runs (Run
 // flips to the output by itself, loading an example flips back to the code).
 fn mobile_bar() -> v.View = {
   let bar_button = (text: String, name: String, f: () -> Unit) =>
-    label(text, 14.0, MUTED) |> v.px(16.0) |> v.py(12.0) |> v.rounded(8.0)
-      |> v.bg(c(RAISED)) |> v.border(1.0, c(BORDER)) |> v.center()
+    label(text, 14.0, pal.muted) |> v.px(16.0) |> v.py(12.0) |> v.rounded(8.0)
+      |> v.bg(c(pal.raised)) |> v.border(1.0, c(pal.border)) |> v.center()
       |> v.on_click(f) |> v.role(3) |> v.label(name)
   var items: List[v.View] = []
   if not st.embed then list.push(items, bar_button("AI", "AI assistant", () => ai.toggle())) else ()
@@ -142,7 +190,7 @@ fn mobile_bar() -> v.View = {
   if not st.embed then list.push(items, bar_button("Share", "Share", () => st.share())) else ()
   list.push(items, run_button(if st.running then "■ Stop" else "▶ Run", true) |> v.grow(1.0) |> v.center())
   v.row(items) |> v.gap(8.0) |> v.align(v.Middle) |> v.px(12.0) |> v.py(10.0)
-    |> v.bg(c(PANEL)) |> v.border(1.0, c(BORDER))
+    |> v.bg(c(pal.panel)) |> v.border(1.0, c(pal.border))
 }
 
 // The Almide mark (assets/brand/logo.rgba, made by tools/build_brand.py),
@@ -158,9 +206,9 @@ fn logo() -> v.View =
 // ── AI bar ──
 
 fn chip(s: String, on: Bool, f: () -> Unit) -> v.View =
-  label(s, 12.0, if on then ON_ACCENT else MUTED)
+  label(s, 12.0, if on then pal.on_accent else pal.muted)
     |> v.px(9.0) |> v.py(4.0) |> v.rounded(5.0)
-    |> v.bg(if on then c(ACCENT) else c(RAISED))
+    |> v.bg(if on then c(pal.accent) else c(pal.raised))
     |> v.on_click(f) |> v.role(3) |> v.label(s)
 
 fn provider_chip(i: Int) -> v.View = chip(ai.PROVIDERS[i], ai.provider == i, () => ai.select_provider(i))
@@ -170,7 +218,7 @@ fn model_chip(i: Int, m: ai.Model) -> v.View = chip(m.label, ai.model_ix == i, (
 fn ai_bar(narrow: Bool) -> v.View = {
   var chips: List[v.View] = []
   for i in 0..<3 { list.push(chips, provider_chip(i)) }
-  list.push(chips, v.empty() |> v.w(1.0) |> v.h(18.0) |> v.bg(c(BORDER)))
+  list.push(chips, v.empty() |> v.w(1.0) |> v.h(18.0) |> v.bg(c(pal.border)))
   let ms = ai.models(ai.provider)
   for i in 0..<list.len(ms) { list.push(chips, model_chip(i, ms[i])) }
   let key = ed.field("ai-key", () => ai.key_field, (e) => ai.set_key_field(e), code_theme())
@@ -181,21 +229,21 @@ fn ai_bar(narrow: Bool) -> v.View = {
   let go = button(if ai.busy() then "■ Stop" else "Generate", ai.busy(), () => ai.generate())
   if narrow then
     v.col([
-      v.row([label("Generate with AI", 14.0, TEXT) |> v.bold(), v.spacer(),
-             label("×", 18.0, FAINT) |> v.px(8.0) |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("Close AI")]) |> v.align(v.Middle),
+      v.row([label("Generate with AI", 14.0, pal.text) |> v.bold(), v.spacer(),
+             label("×", 18.0, pal.faint) |> v.px(8.0) |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("Close AI")]) |> v.align(v.Middle),
       v.wrap_row(chips) |> v.gap(6.0),
       key |> v.w(ceangal.viewport_width() - 52.0),
       prompt |> v.w(ceangal.viewport_width() - 52.0),
       go |> v.center(),
-    ]) |> v.gap(10.0) |> v.padding(16.0) |> v.bg(c(RAISED)) |> v.rounded(14.0)
-      |> v.border(1.0, c(BORDER)) |> v.shadow(50.0, 18.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.55))
+    ]) |> v.gap(10.0) |> v.padding(16.0) |> v.bg(c(pal.raised)) |> v.rounded(14.0)
+      |> v.border(1.0, c(pal.border)) |> v.shadow(50.0, 18.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.55))
       |> v.absolute() |> v.left(10.0) |> v.right(10.0) |> v.bottom(10.0)
       |> v.role(2) |> v.label("AI panel")
   else
     v.col([
       v.wrap_row(chips) |> v.gap(6.0),
       v.wrap_row([key, prompt, go]) |> v.gap(8.0),
-    ]) |> v.gap(8.0) |> v.px(14.0) |> v.py(10.0) |> v.bg(c(PANEL)) |> v.role(2) |> v.label("AI panel")
+    ]) |> v.gap(8.0) |> v.px(14.0) |> v.py(10.0) |> v.bg(c(pal.panel)) |> v.role(2) |> v.label("AI panel")
 }
 
 // Dims the playground behind the phone AI sheet; a tap closes the sheet.
@@ -218,13 +266,13 @@ fn tab_view(i: Int) -> v.View = {
         else false
       })
   else {
-    var parts: List[v.View] = [label(t.name, 13.0, if on then TEXT else MUTED)]
-    if errs > 0 then list.push(parts, v.empty() |> v.size(6.0, 6.0) |> v.rounded(3.0) |> v.bg(c(STOP))) else ()
+    var parts: List[v.View] = [label(t.name, 13.0, if on then pal.text else pal.muted)]
+    if errs > 0 then list.push(parts, v.empty() |> v.size(6.0, 6.0) |> v.rounded(3.0) |> v.bg(c(pal.stop))) else ()
     if list.len(st.tabs) > 1 and t.name != st.ENTRY then
-      list.push(parts, label("×", 13.0, FAINT) |> v.px(3.0) |> v.on_click(() => st.close_tab(i)) |> v.label("Close " + t.name))
+      list.push(parts, label("×", 13.0, pal.faint) |> v.px(3.0) |> v.on_click(() => st.close_tab(i)) |> v.label("Close " + t.name))
     else ()
     v.row(parts) |> v.gap(6.0) |> v.align(v.Middle) |> v.px(12.0) |> v.h(34.0)
-      |> v.bg(if on then c(BG) else c(PANEL))
+      |> v.bg(if on then c(pal.bg) else c(pal.panel))
       |> v.on_click(() => st.select_tab(i)) |> v.role(8) |> v.label(t.name)
   }
 }
@@ -232,8 +280,8 @@ fn tab_view(i: Int) -> v.View = {
 fn tab_bar() -> v.View = {
   var items: List[v.View] = []
   for i in 0..<list.len(st.tabs) { list.push(items, tab_view(i)) }
-  list.push(items, label("+", 16.0, MUTED) |> v.px(12.0) |> v.h(34.0) |> v.center() |> v.on_click(() => st.add_tab()) |> v.label("New file"))
-  v.row(items) |> v.h(34.0) |> v.bg(c(PANEL)) |> v.clip() |> v.role(9)
+  list.push(items, label("+", 16.0, pal.muted) |> v.px(12.0) |> v.h(34.0) |> v.center() |> v.on_click(() => st.add_tab()) |> v.label("New file"))
+  v.row(items) |> v.h(34.0) |> v.bg(c(pal.panel)) |> v.clip() |> v.role(9)
 }
 
 // ── Editor + problems ──
@@ -244,11 +292,11 @@ fn editor_pane() -> v.View = {
   ]
   if st.problems > 0 then
     list.push(parts, v.row([
-      label("●", 11.0, STOP),
-      label(st.problem_text, 12.0, TEXT) |> v.shrink(1.0),
+      label("●", 11.0, pal.stop),
+      label(st.problem_text, 12.0, pal.text) |> v.shrink(1.0),
       v.spacer(),
-      label(if st.problems == 1 then "1 problem" else int.to_string(st.problems) + " problems", 12.0, MUTED),
-    ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(28.0) |> v.px(12.0) |> v.bg(c(PANEL)) |> v.clip())
+      label(if st.problems == 1 then "1 problem" else int.to_string(st.problems) + " problems", 12.0, pal.muted),
+    ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(28.0) |> v.px(12.0) |> v.bg(c(pal.panel)) |> v.clip())
   else ()
   v.col(parts) |> v.grow(1.0) |> v.clip()
 }
@@ -257,9 +305,9 @@ fn editor_pane() -> v.View = {
 
 fn out_tab(i: Int, name: String) -> v.View = {
   let on = st.out_tab == i
-  label(name, 12.0, if on then TEXT else MUTED)
+  label(name, 12.0, if on then pal.text else pal.muted)
     |> v.px(12.0) |> v.h(32.0) |> v.center()
-    |> v.bg(if on then c(BG) else c(PANEL))
+    |> v.bg(if on then c(pal.bg) else c(pal.panel))
     |> v.on_click(() => {
       if i == 2 then st.show_rust() else if i == 3 then st.show_ast() else st.set_out_tab(i)
     }) |> v.role(8) |> v.label(name)
@@ -274,7 +322,7 @@ fn out_tab(i: Int, name: String) -> v.View = {
 fn gui_view() -> v.View =
   v.custom("gui", (x, y, w, h) => {
     let k = ceangal.pixel_scale()
-    snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, c(PANEL))
+    snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, c(pal.panel))
     let tex = st.gui_place(x, y, w, h)
     if tex != 0 then snaidhm.image(tex, x * k, y * k, w * k, h * k, 0.0, 1.0) else ()
     let cx = st.gui_ime(0)
@@ -290,9 +338,9 @@ fn gui_view() -> v.View =
 fn picture_view() -> v.View = {
   let p = st.picture
   if st.gui_running then gui_view()
-  else if p.kind == visual.Html then v.col([html.render(p.text, c(TEXT))]) |> v.grow(1.0) |> v.clip()
+  else if p.kind == visual.Html then v.col([html.render(p.text, c(pal.text))]) |> v.grow(1.0) |> v.clip()
   else if p.kind == visual.NoVisual then
-    label("Print an SVG document, a PPM image or simple HTML to see it here.", 13.0, FAINT) |> v.padding(16.0)
+    label("Print an SVG document, a PPM image or simple HTML to see it here.", 13.0, pal.faint) |> v.padding(16.0)
   else v.custom("picture", (x, y, w, h) => {
     let tex = st.picture_texture()
     let k = ceangal.pixel_scale()
@@ -319,9 +367,9 @@ fn output_pane() -> v.View = {
   if not list.contains(st.hidden, "ast") then list.push(tabs, out_tab(3, "AST")) else ()
   if ai.open or st.out_tab == 4 then list.push(tabs, out_tab(4, "AI")) else ()
   v.col([
-    v.row(tabs) |> v.h(32.0) |> v.bg(c(PANEL)),
+    v.row(tabs) |> v.h(32.0) |> v.bg(c(pal.panel)),
     body,
-  ]) |> v.grow(1.0) |> v.clip() |> v.bg(c(BG))
+  ]) |> v.grow(1.0) |> v.clip() |> v.bg(c(pal.bg))
 }
 
 // ── Status bar ──
@@ -331,17 +379,17 @@ fn status_bar(narrow: Bool) -> v.View = {
   var right = if narrow then "" else st.version_text
   if st.compile_ms >= 0 then right = "compiled in " + int.to_string(st.compile_ms) + " ms" + (if right == "" then "" else " · " + right) else ()
   v.row([
-    label(st.status, 12.0, MUTED) |> v.shrink(1.0),
+    label(st.status, 12.0, pal.muted) |> v.shrink(1.0),
     fix_button(),
     v.spacer(),
-    label(right, 12.0, FAINT),
-  ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(26.0) |> v.px(12.0) |> v.bg(c(PANEL)) |> v.clip()
+    label(right, 12.0, pal.faint),
+  ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(26.0) |> v.px(12.0) |> v.bg(c(pal.panel)) |> v.clip()
 }
 
 // After a failed run, offer the AI repair loop (when a key is set).
 fn fix_button() -> v.View =
   if not st.running and not st.last_run_ok and st.last_run_error != "" and not ai.busy() and ai.has_key() then
-    label("Fix with AI", 12.0, ACCENT_LIGHT) |> v.px(6.0) |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
+    label("Fix with AI", 12.0, pal.accent_light) |> v.px(6.0) |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
   else v.empty()
 
 // ── Examples menu ──
@@ -349,21 +397,24 @@ fn fix_button() -> v.View =
 fn examples_menu(narrow: Bool) -> v.View = {
   var rows: List[v.View] = []
   for cat in st.categories {
-    list.push(rows, label(cat.title, 11.0, FAINT) |> v.bold() |> v.pad(10.0, 12.0, 4.0, 12.0))
+    list.push(rows, label(cat.title, 11.0, pal.faint) |> v.bold() |> v.pad(10.0, 12.0, 4.0, 12.0))
     for e in cat.examples {
       let id = e.id
-      list.push(rows, label(e.title, 13.0, TEXT) |> v.px(if narrow then 16.0 else 12.0) |> v.py(if narrow then 12.0 else 6.0) |> v.rounded(4.0)
+      list.push(rows, label(e.title, 13.0, pal.text) |> v.px(if narrow then 16.0 else 12.0) |> v.py(if narrow then 12.0 else 6.0) |> v.rounded(4.0)
         |> v.on_click(() => { let _ = st.load_example(id) }) |> v.role(11) |> v.label(e.title))
     }
   }
-  v.col(rows) |> v.w(260.0) |> v.py(6.0) |> v.bg(c(RAISED)) |> v.rounded(8.0)
-    |> v.border(1.0, c(BORDER)) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
+  v.col(rows) |> v.w(260.0) |> v.py(6.0) |> v.bg(c(pal.raised)) |> v.rounded(8.0)
+    |> v.border(1.0, c(pal.border)) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
     |> v.absolute() |> v.top(if narrow then 52.0 else 58.0) |> v.right(if narrow then 10.0 else 260.0) |> v.clip()
 }
 
 // ── Root ──
 
 pub fn root() -> v.View = {
+  let light = st.is_light()
+  pal = if light then light_pal() else dark_pal()
+  ceangal.set_background(c(pal.bg))
   let narrow = ceangal.viewport_width() < 760.0
   st.set_code_font(if narrow then 15.0 else 13.0)
   // Hide the program window unless the Visual pane is on screen (it is
@@ -374,11 +425,14 @@ pub fn root() -> v.View = {
     if narrow then (if st.mobile_output then output_pane() else editor_pane())
     else v.row([
       editor_pane(),
-      v.empty() |> v.w(1.0) |> v.bg(c(BORDER)),
+      v.empty() |> v.w(1.0) |> v.bg(c(pal.border)),
       output_pane() |> v.w(float.max(320.0, ceangal.viewport_width() * 0.42)) |> v.grow(0.0),
     ]) |> v.grow(1.0)
   var parts: List[v.View] = []
-  if not (st.embed and list.contains(st.hidden, "header")) then list.push(parts, header(narrow)) else ()
+  if not (st.embed and list.contains(st.hidden, "header")) then {
+    list.push(parts, header(narrow))
+    list.push(parts, v.empty() |> v.h(1.0) |> v.bg(c(pal.header_line)))
+  } else ()
   if ai.open and not st.embed and not narrow then list.push(parts, ai_bar(narrow)) else ()
   list.push(parts, tab_bar())
   list.push(parts, body |> v.grow(1.0))
@@ -389,5 +443,5 @@ pub fn root() -> v.View = {
     list.push(parts, backdrop())
     list.push(parts, ai_bar(narrow))
   } else ()
-  v.col(parts) |> v.bg(c(BG))
+  v.col(parts) |> v.bg(c(pal.bg))
 }
