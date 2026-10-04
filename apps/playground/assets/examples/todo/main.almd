@@ -1,0 +1,90 @@
+// Todo — the ceangal demo app. Type a task and press Enter; click a task to
+// toggle it, × to remove it. Runs as an app and inside the playground.
+
+import ceangal
+import ceangal.view as v
+import ceangal.editor as ed
+import snaidhm
+
+type Todo = { id: Int, title: String, done: Bool }
+
+var todos: List[Todo] = [
+  { id: 1, title: "Try the playground", done: true },
+  { id: 2, title: "Write a ceangal app", done: false },
+]
+var next_id = 3
+var field = ed.text_field("", "What needs doing?")
+
+fn add() -> Unit = {
+  let title = string.trim(ed.to_string(field))
+  if title != "" then {
+    todos = todos + [{ id: next_id, title: title, done: false }]
+    next_id = next_id + 1
+    field = ed.set_text(field, "")
+  } else ()
+}
+
+fn toggle(id: Int) -> Unit = {
+  todos = list.map(todos, (t) => if t.id == id then { ...t, done: not t.done } else t)
+}
+
+fn remove(id: Int) -> Unit = {
+  todos = list.filter(todos, (t) => t.id != id)
+}
+
+fn clear_done() -> Unit = {
+  todos = list.filter(todos, (t) => not t.done)
+}
+
+fn set_field(e: ed.Editor) -> Unit = { field = e }
+
+// Functions reached only from closures (almide/almide#3296).
+let keep_add = add
+let keep_toggle = toggle
+let keep_remove = remove
+let keep_clear_done = clear_done
+let keep_set_field = set_field
+
+let INK = snaidhm.hex(0xE6E8F0)
+let DIM = snaidhm.hex(0x8A90A8)
+let CARD = snaidhm.hex(0x242838)
+let ACCENT = snaidhm.hex(0x7AA2F7)
+
+fn item(t: Todo) -> v.View = {
+  let id = t.id
+  v.row([
+    v.empty() |> v.size(18.0, 18.0) |> v.rounded(9.0)
+      |> v.border(2.0, if t.done then ACCENT else DIM)
+      |> v.bg(if t.done then ACCENT else snaidhm.rgba(0.0, 0.0, 0.0, 0.0)),
+    v.text(t.title) |> v.font(15.0) |> v.color(if t.done then DIM else INK) |> v.grow(1.0) |> v.shrink(1.0),
+    v.text("×") |> v.font(18.0) |> v.color(DIM) |> v.px(6.0)
+      |> v.on_click(() => remove(id)) |> v.role(3) |> v.label("Remove " + t.title),
+  ]) |> v.gap(12.0) |> v.align(v.Middle) |> v.px(14.0) |> v.h(48.0) |> v.rounded(10.0) |> v.bg(CARD)
+    |> v.on_click(() => toggle(id)) |> v.role(12) |> v.label(t.title)
+}
+
+fn view() -> v.View = {
+  var rows: List[v.View] = [
+    v.text("Todo") |> v.font(28.0) |> v.bold() |> v.color(INK),
+    ed.field("new", () => field, (e) => set_field(e), ed.dark_theme())
+      |> v.h(40.0) |> v.rounded(8.0) |> v.bg(CARD) |> v.clip() |> v.label("New task")
+      |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { add(); true } else false),
+  ]
+  for t in todos { list.push(rows, item(t)) }
+  let left = list.len(list.filter(todos, (t) => not t.done))
+  list.push(rows, v.row([
+    v.text(int.to_string(left) + (if left == 1 then " task left" else " tasks left")) |> v.font(13.0) |> v.color(DIM),
+    v.spacer(),
+    v.text("Clear completed") |> v.font(13.0) |> v.color(ACCENT) |> v.on_click(() => clear_done()) |> v.role(3) |> v.label("Clear completed"),
+  ]) |> v.align(v.Middle) |> v.px(4.0))
+  v.col(rows) |> v.gap(10.0) |> v.padding(24.0) |> v.fill()
+}
+
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit = {
+  ceangal.focus("new")
+  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)))
+}

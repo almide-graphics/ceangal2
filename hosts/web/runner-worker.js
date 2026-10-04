@@ -9,6 +9,7 @@
 //   → { id, op: 'rust',  files, entry }      ← { id, done, ok, code }
 //   → { id, op: 'ast',   source }            ← { id, done, ok, ast }
 //   → { id, op: 'run',   files, entry }      ← { id, event: 'compiled', ms }
+//                                            ← { id, event: 'gui', wasm, compileMs }  (GUI program: the page runs it)
 //                                            ← { id, event: 'stdout'|'stderr', line }
 //                                            ← { id, done, ok, exitCode, compileMs, runMs }
 //   any failure                              ← { id, done, ok: false, phase, error }
@@ -67,6 +68,13 @@ self.onmessage = async (e) => {
       catch (err) { post({ id, done: true, ok: false, phase: "compile", error: String(err) }); return; }
       const compileMs = performance.now() - t0;
       post({ id, event: "compiled", ms: compileMs });
+      // A GUI program (it exports the ceangal event entry) runs on the page's
+      // GuiSession, not under WASI here.
+      const exports = WebAssembly.Module.exports(await WebAssembly.compile(bytes)).map((e) => e.name);
+      if (exports.includes("ceangal_event")) {
+        post({ id, event: "gui", wasm: bytes, compileMs }, [bytes.buffer]);
+        return;
+      }
       const t1 = performance.now();
       try {
         const exitCode = await runWasm(id, bytes, msg.files);

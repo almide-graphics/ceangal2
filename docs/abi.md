@@ -206,17 +206,24 @@ the compiler wasm in a Worker, the native host with the compiler crate.
 
 ## 5. User GUI programs inside the playground
 
-A user GUI program is a second context running the same ABI. Its
-`frame_begin` target is an offscreen texture the host allocates at the size of
-the playground's Visual panel. The playground draws that texture with
-`gpu.external_texture(context_id)` (native: same `wgpu::Device`, zero-copy).
-On the web the user context lives in a Worker with its own `GPUDevice` and an
-`OffscreenCanvas` overlaid on the panel rectangle, so `external_texture`
-returns `0` there and the playground leaves the rectangle transparent.
-Pointer/key/text events inside the panel are forwarded to the user context
-translated to panel coordinates. Limits: GPU objects per context, a frame-time
-watchdog, and fuel per dispatched event; exceeding any ends the context like
-Stop.
+A user GUI program is a ceangal app the playground compiled: it imports the
+bundled `ceangal` / `snaidhm` packages (embedded in the compiler service at the
+playground's own commit) and exports `ceangal_event`, which is how the runner
+tells it from a console program. It is a second context running this same ABI.
+
+* The playground reserves a rectangle (its Visual pane) and reports it every
+  frame with `runner_gui_place(x, y, w, h)` (logical px; a zero size hides the
+  window). `run` reports status `103` when the program window starts.
+* Web: the program runs in a Worker (`hosts/web/gui-worker.js`) with its own
+  `GPUDevice` and an `OffscreenCanvas` whose `<canvas>` sits over the
+  rectangle (`hosts/web/gui.js`). The page keeps the DOM side — input, IME
+  textarea, ARIA overlay — and forwards events into the Worker; the program's
+  storage is an in-memory sandbox (it never sees the playground's keys).
+* Native (M4): the same `wgpu::Device`, an offscreen texture of the rectangle's
+  size, composited by the playground with `gpu.external_texture(context_id)`.
+* Limits: GPU objects per context and texture size; a watchdog reports a
+  program that stops answering (an endless loop) and Stop always works —
+  it ends the Worker / context, and with it every GPU resource.
 
 ## 6. Versioning
 

@@ -4,36 +4,170 @@
       "id": "language",
       "title": "Language",
       "examples": [
-        { "id": "hello-world", "title": "Hello, world!", "files": ["main.almd"] },
-        { "id": "fizzbuzz", "title": "FizzBuzz", "files": ["main.almd"] },
-        { "id": "omikuji", "title": "Omikuji (random)", "files": ["main.almd"] },
-        { "id": "dice", "title": "Dice (match)", "files": ["main.almd"] },
-        { "id": "pattern-matching", "title": "Pattern matching", "files": ["main.almd"] },
-        { "id": "pipes-and-lists", "title": "Pipes & lists", "files": ["main.almd"] },
-        { "id": "error-handling", "title": "Errors as values", "files": ["main.almd"] },
-        { "id": "modules", "title": "Modules (multi-file)", "files": ["main.almd", "stats.almd"] }
+        {
+          "id": "hello-world",
+          "title": "Hello, world!",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "fizzbuzz",
+          "title": "FizzBuzz",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "omikuji",
+          "title": "Omikuji (random)",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "dice",
+          "title": "Dice (match)",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "pattern-matching",
+          "title": "Pattern matching",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "pipes-and-lists",
+          "title": "Pipes & lists",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "error-handling",
+          "title": "Errors as values",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "modules",
+          "title": "Modules (multi-file)",
+          "files": [
+            "main.almd",
+            "stats.almd"
+          ]
+        }
       ]
     },
     {
       "id": "graphics",
       "title": "Graphics",
       "examples": [
-        { "id": "mandelbrot", "title": "Mandelbrot (PPM → pixels)", "files": ["main.almd"] },
-        { "id": "svg-art", "title": "Generative SVG", "files": ["main.almd"] },
-        { "id": "coin", "title": "Coin flip (SVG)", "files": ["main.almd", "coinview.almd", "gold.almd"] },
-        { "id": "fern", "title": "Barnsley fern (IFS)", "files": ["main.almd", "ifs.almd", "ppm.almd"] },
-        { "id": "voronoi", "title": "Voronoi (stained glass)", "files": ["main.almd", "glass.almd", "cell.almd"] },
-        { "id": "truchet", "title": "Truchet tiles (SVG)", "files": ["main.almd", "tile.almd", "view.almd"] },
-        { "id": "maze", "title": "Maze (recursive backtracker)", "files": ["main.almd", "grid.almd", "view.almd"] },
-        { "id": "hanabi", "title": "Hanabi (fireworks)", "files": ["main.almd", "spark.almd"] }
+        {
+          "id": "mandelbrot",
+          "title": "Mandelbrot (PPM → pixels)",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "svg-art",
+          "title": "Generative SVG",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "coin",
+          "title": "Coin flip (SVG)",
+          "files": [
+            "main.almd",
+            "coinview.almd",
+            "gold.almd"
+          ]
+        },
+        {
+          "id": "fern",
+          "title": "Barnsley fern (IFS)",
+          "files": [
+            "main.almd",
+            "ifs.almd",
+            "ppm.almd"
+          ]
+        },
+        {
+          "id": "voronoi",
+          "title": "Voronoi (stained glass)",
+          "files": [
+            "main.almd",
+            "glass.almd",
+            "cell.almd"
+          ]
+        },
+        {
+          "id": "truchet",
+          "title": "Truchet tiles (SVG)",
+          "files": [
+            "main.almd",
+            "tile.almd",
+            "view.almd"
+          ]
+        },
+        {
+          "id": "maze",
+          "title": "Maze (recursive backtracker)",
+          "files": [
+            "main.almd",
+            "grid.almd",
+            "view.almd"
+          ]
+        },
+        {
+          "id": "hanabi",
+          "title": "Hanabi (fireworks)",
+          "files": [
+            "main.almd",
+            "spark.almd"
+          ]
+        }
       ]
     },
     {
       "id": "parsers",
       "title": "Parsers & data",
       "examples": [
-        { "id": "mini-markdown", "title": "Mini Markdown → HTML", "files": ["main.almd"] },
-        { "id": "csv-report", "title": "CSV report (fs.read)", "files": ["main.almd", "data.csv"] }
+        {
+          "id": "mini-markdown",
+          "title": "Mini Markdown → HTML",
+          "files": [
+            "main.almd"
+          ]
+        },
+        {
+          "id": "csv-report",
+          "title": "CSV report (fs.read)",
+          "files": [
+            "main.almd",
+            "data.csv"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gui",
+      "title": "GUI (ceangal)",
+      "examples": [
+        {
+          "id": "todo",
+          "title": "Todo app",
+          "files": [
+            "main.almd"
+          ]
+        }
       ]
     }
   ]

@@ -20,7 +20,7 @@ rm -rf "$out"
 mkdir -p "$out/assets" "$out/compiler"
 (cd "$root/apps/playground" && "$almide" build src/main.almd --target wasm -o "$out/playground.wasm")
 node "$root/tests/wasm_stubs.mjs" "$out/playground.wasm"
-cp "$root/apps/playground/web/index.html" "$root/apps/playground/web/boot.js" "$root/hosts/web/host.js" "$root/hosts/web/runner.js" "$root/hosts/web/runner-worker.js" "$out/"
+cp "$root/apps/playground/web/index.html" "$root/apps/playground/web/boot.js" "$root/hosts/web/host.js" "$root/hosts/web/dom.js" "$root/hosts/web/gui.js" "$root/hosts/web/gui-worker.js" "$root/hosts/web/runner.js" "$root/hosts/web/runner-worker.js" "$out/"
 cp -R "$root/hosts/web/vendor" "$out/vendor"
 cp "$root/out/compiler-pkg/almide_compiler_service.js" "$root/out/compiler-pkg/almide_compiler_service_bg.wasm" "$out/compiler/"
 cp -R "$root/assets/fonts" "$out/assets/fonts"

@@ -79,12 +79,19 @@ jobs:
             ~/.cargo/git
             apps/playground/compiler/target
           key: compiler-wasm-${{ runner.os }}-${{ hashFiles('apps/playground/compiler/Cargo.lock') }}
+      - name: compiler service tests (bundled packages, GUI programs)
+        working-directory: apps/playground/compiler
+        run: cargo test --release --lib
+      - name: the Todo example is the Todo app
+        run: cmp apps/todo/src/main.almd apps/playground/assets/examples/todo/main.almd
       - name: build dist/web (compiler + app + closure-stub check)
         run: tools/build_web.sh
       - name: playground E2E (headless Chrome, WebGPU)
         run: SKIP_BUILD=1 node tests/e2e/web.mjs
       - name: fixtures and examples, native vs playground
         run: SKIP_BUILD=1 node tests/e2e/fixtures.mjs
+      - name: the real page (index.html, real input, user GUI window)
+        run: SKIP_BUILD=1 node tests/e2e/page.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -103,3 +110,18 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # The deployed site, in a real browser.
+  pages-e2e:
+    needs: pages
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node tests/e2e/page.mjs --url https://almide-graphics.github.io/ceangal2/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-pages
+          path: out/e2e/page-*.png

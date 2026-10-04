@@ -33,6 +33,7 @@ var out_tab = 0          // 0 output, 1 visual, 2 rust, 3 ast, 4 ai
 var rust_view = ed.with_read_only(ed.from_string(""), true)
 var ast_view = ed.with_syntax(ed.with_read_only(ed.from_string(""), true), false)
 var running = false
+var gui_running = false   // the run is a GUI program, shown in the Visual pane
 var run_id = -1
 var check_id = -1
 var rust_id = -1
@@ -206,6 +207,7 @@ pub fn run() -> Unit = {
 
 pub fn stop() -> Unit =
   if running then {
+    gui_running = false
     runner.runner_stop(run_id)
     running = false
     append_out("■ stopped", 2)
@@ -302,6 +304,7 @@ fn apply_diagnostics(body: String) -> Unit = {
 
 fn finish_run(ok_run: Bool, body: String) -> Unit = {
   running = false
+  gui_running = false
   runs_finished = runs_finished + 1
   if ok_run then {
     let code = field_int(body, "exitCode")
@@ -332,6 +335,7 @@ pub fn on_result(id: Int, code: Int, body: Bytes) -> Unit = {
     if code == 100 then { append_out(text, 0); list.push(stdout_text, text) }
     else if code == 101 then { append_out(text, 1); list.push(stderr_text, text) }
     else if code == 102 then { status = "Running…"; compile_ms = int.parse(text) ?? -1 }
+    else if code == 103 then { gui_running = true; status = "Running (window)"; out_tab = 1; mobile_output = true }
     else if code == 200 then finish_run(true, text)
     else if code == 500 then finish_run(false, text)
     else ()
@@ -554,3 +558,6 @@ pub fn export_zip() -> Unit = {
   let _ = file.file_save(bytes.data_ptr(name), bytes.len(name), bytes.data_ptr(z), bytes.len(z))
   status = "Exported almide-playground.zip — unzip and `almide run src/main.almd`"
 }
+
+// Where the running GUI program's window goes (logical px; 0 size hides it).
+pub fn gui_place(x: Float, y: Float, w: Float, h: Float) -> Unit = runner.runner_gui_place(x, y, w, h)

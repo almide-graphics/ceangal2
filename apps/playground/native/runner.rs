@@ -23,3 +23,4 @@ pub fn runner_run(files_ptr: i64, files_len: i64, entry_ptr: i64, entry_len: i64
 pub fn runner_rust(files_ptr: i64, files_len: i64, entry_ptr: i64, entry_len: i64) -> i64 { let _ = (files_ptr, files_len, entry_ptr, entry_len); pending("rust is not available natively yet") }
 pub fn runner_ast(src_ptr: i64, src_len: i64) -> i64 { let _ = (src_ptr, src_len); pending("ast is not available natively yet") }
 pub fn runner_stop(id: i64) { let _ = id; }
+pub fn runner_gui_place(x: f64, y: f64, w: f64, h: f64) { let _ = (x, y, w, h); }

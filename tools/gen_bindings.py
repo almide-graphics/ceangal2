@@ -104,6 +104,7 @@ NAMESPACES = {
         ("runner_rust", [("files_ptr", I), ("files_len", I), ("entry_ptr", I), ("entry_len", I)], I),
         ("runner_ast", [("src_ptr", I), ("src_len", I)], I),
         ("runner_stop", [("id", I)], U),
+        ("runner_gui_place", [("x", F), ("y", F), ("w", F), ("h", F)], U),
     ]),
     "file": ("ceangal/src/host/file.almd", "crate::file", [
         ("file_open", [("kind", I)], I),

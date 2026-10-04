@@ -7,32 +7,23 @@
 // invisible textarea and an ARIA overlay; every visible pixel comes from the
 // guest via snaidhm.
 
-const EV = { INIT: 1, RESIZE: 2, FRAME: 3, POINTER: 4, WHEEL: 5, KEY: 6, TEXT: 7, FOCUS: 8, LIFECYCLE: 9, RESULT: 10, APPEARANCE: 11, A11Y: 12 };
-
-const KEYS = {
-  Enter: 1, Tab: 2, Backspace: 3, Delete: 4, Escape: 5,
-  ArrowLeft: 10, ArrowRight: 11, ArrowUp: 12, ArrowDown: 13, Home: 14, End: 15, PageUp: 16, PageDown: 17,
-  F1: 40, F2: 41, F3: 42, F4: 43, F5: 44, F6: 45, F7: 46, F8: 47, F9: 48, F10: 49, F11: 50, F12: 51,
-};
-const LETTER_KEYS = { a: 20, c: 21, v: 22, x: 23, z: 24, y: 25, s: 26, f: 27, o: 28, n: 29, w: 30 };
-const CURSORS = ["default", "text", "pointer", "grab", "ew-resize", "ns-resize"];
-const ROLES = { 1: "application", 2: "group", 3: "button", 4: "note", 5: "textbox", 6: "list", 7: "listitem", 8: "tab", 9: "tablist", 10: "heading", 11: "link", 12: "checkbox", 13: "img", 14: "textbox" };
+import { EV, DomUi, NullUi, appleOS } from "./dom.js";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-function modsOf(e) {
-  return (e.shiftKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.altKey ? 4 : 0) | (e.metaKey ? 8 : 0);
-}
-
 export class UnsupportedError extends Error {}
 
-export async function start(opts) {
-  const { canvas, wasm, assets = {}, headless = null, appId = "ceangal" } = opts;
+export async function gpuDevice() {
   if (!navigator.gpu) throw new UnsupportedError("WebGPU is not available in this browser");
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: "low-power" });
   if (!adapter) throw new UnsupportedError("No WebGPU adapter");
-  const device = await adapter.requestDevice();
+  return adapter.requestDevice();
+}
+
+export async function start(opts) {
+  const { canvas, wasm, assets = {}, headless = null, appId = "ceangal" } = opts;
+  const device = await gpuDevice();
   const host = new Host({ device, canvas, headless, appId, onError: opts.onError });
   host.extensions = opts.extensions || [];
   host.launch = opts.launch ?? null;
@@ -42,13 +33,20 @@ export async function start(opts) {
   return host;
 }
 
-class Host {
-  constructor({ device, canvas, headless, appId, onError }) {
+// `ui` is where DOM-side requests go: a DomUi in a page, a NullUi headless,
+// or (in a Worker running a user GUI program) a RemoteUi from gui-worker.js.
+export class Host {
+  constructor({ device, canvas, headless, appId, onError, ui, stdout }) {
     this.device = device;
     this.canvas = canvas;
+    this.ui = ui || (headless || !canvas ? new NullUi() : new DomUi(canvas, this));
+    this.ui.t ??= this;
+    this.stdout = stdout || ((fd, text) => (fd === 2 ? console.error : console.log)(text));
     this.headless = headless;
     this.appId = appId;
     this.onError = onError || ((e) => console.error(e));
+    this.extensions = [];
+    this.launch = null;
     this.handles = [null];
     this.free = [];
     this.bindings = [];
@@ -76,6 +74,9 @@ class Host {
     } else {
       this.format = navigator.gpu.getPreferredCanvasFormat();
       this.context = canvas.getContext("webgpu");
+      this.width = canvas.width || 1;
+      this.height = canvas.height || 1;
+      this.scale = 1;
       this.context.configure({ device, format: this.format, alphaMode: "opaque" });
     }
   }
@@ -232,26 +233,22 @@ class Host {
       log: (p, n) => console.log(self.str(p, n)),
       event_len: () => BigInt(self.eventData.length),
       event_read: (p, n) => self.fill(self.eventData, p, n),
-      platform: () => (!self.headless && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? 17n : 1n),
-      set_cursor: (k) => { if (!self.headless) self.canvas.style.cursor = CURSORS[Number(k)] || "default"; },
-      set_title: (p, n) => { if (!self.headless) document.title = self.str(p, n); },
-      open_url: (p, n) => { window.open(self.str(p, n), "_blank", "noopener"); },
+      platform: () => (!self.headless && (self.ui.apple ?? appleOS()) ? 17n : 1n),
+      set_cursor: (k) => self.ui.cursor(Number(k)),
+      set_title: (p, n) => self.ui.title(self.str(p, n)),
+      open_url: (p, n) => self.ui.openUrl(self.str(p, n)),
       asset_len: (p, n) => { const a = self.assets.get(self.str(p, n)); return BigInt(a ? a.length : -1); },
       asset_read: (p, n, dp, dn) => { const a = self.assets.get(self.str(p, n)); return a ? self.fill(a, dp, dn) : 0n; },
       exit: () => { self.dead = true; },
       launch_len: () => BigInt(enc.encode(self.launchString()).length),
       launch_read: (p, n) => self.fill(enc.encode(self.launchString()), p, n),
-      set_location: (p, n) => {
-        if (self.headless) return;
-        const loc = self.str(p, n);
-        try { history.replaceState(null, "", loc.startsWith("#") || loc.startsWith("?") ? loc : "#" + loc); } catch {}
-      },
+      set_location: (p, n) => { if (!self.headless) self.ui.location(self.str(p, n)); },
     };
 
     const text_input = {
-      ime_begin: (x, y, w, h) => self.imeBegin(x, y, w, h),
-      ime_update: (x, y, w, h) => self.imePlace(x, y, w, h),
-      ime_end: () => self.imeEnd(),
+      ime_begin: (x, y, w, h) => self.ui.imeBegin(x, y, w, h),
+      ime_update: (x, y, w, h) => self.ui.imePlace(x, y, w, h),
+      ime_end: () => self.ui.imeEnd(),
     };
 
     const a11y = {
@@ -265,18 +262,21 @@ class Host {
         const node = (self.a11yNodes || []).findLast((m) => m.id === Number(id));
         if (node) node.value = self.str(p, n);
       },
-      a11y_commit: (focus) => self.a11yCommit(Number(focus)),
+      a11y_commit: (focus) => self.ui.a11y(self.a11yNodes || [], Number(focus)),
     };
 
     const clipboard = {
-      clipboard_write: (p, n) => { const s = self.str(p, n); navigator.clipboard?.writeText(s).catch(() => {}); },
+      clipboard_write: (p, n) => self.ui.clipboard(self.str(p, n)),
     };
 
+    // localStorage in a page; an in-memory sandbox in a Worker (user GUI
+    // programs never see the playground's storage or secrets).
+    const store = typeof localStorage !== "undefined" ? localStorage : memoryStorage();
     const kv = (prefix) => ({
-      len: (kp, kn) => { const v = localStorage.getItem(prefix + self.str(kp, kn)); return BigInt(v == null ? -1 : unb64(v).length); },
-      read: (kp, kn, dp, dn) => { const v = localStorage.getItem(prefix + self.str(kp, kn)); return v == null ? 0n : self.fill(unb64(v), dp, dn); },
-      write: (kp, kn, p, n) => { try { localStorage.setItem(prefix + self.str(kp, kn), b64(self.bytes(p, n))); } catch {} },
-      remove: (kp, kn) => localStorage.removeItem(prefix + self.str(kp, kn)),
+      len: (kp, kn) => { const v = store.getItem(prefix + self.str(kp, kn)); return BigInt(v == null ? -1 : unb64(v).length); },
+      read: (kp, kn, dp, dn) => { const v = store.getItem(prefix + self.str(kp, kn)); return v == null ? 0n : self.fill(unb64(v), dp, dn); },
+      write: (kp, kn, p, n) => { try { store.setItem(prefix + self.str(kp, kn), b64(self.bytes(p, n))); } catch {} },
+      remove: (kp, kn) => store.removeItem(prefix + self.str(kp, kn)),
     });
     const s1 = kv(`${self.appId}:kv:`), s2 = kv(`${self.appId}:secret:`);
     const storage = {
@@ -303,17 +303,8 @@ class Host {
     };
 
     const file = {
-      file_open: (kind) => { const id = self.nextRequest++; self.fileOpen(id, Number(kind)); return BigInt(id); },
-      file_save: (np, nn, p, n) => {
-        const id = self.nextRequest++;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([self.bytes(p, n)]));
-        a.download = self.str(np, nn);
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        queueMicrotask(() => self.deliver(id, 200, new Uint8Array(0)));
-        return BigInt(id);
-      },
+      file_open: (kind) => { const id = self.nextRequest++; self.ui.fileOpen(id, Number(kind)); return BigInt(id); },
+      file_save: (np, nn, p, n) => { const id = self.nextRequest++; self.ui.fileSave(id, self.str(np, nn), self.bytes(p, n)); return BigInt(id); },
     };
 
     const wasi = {
@@ -326,7 +317,7 @@ class Host {
           text += dec.decode(self.mem().subarray(p, p + n));
           total += n;
         }
-        (fd === 2 ? console.error : console.log)(text.replace(/\n$/, ""));
+        self.stdout(fd, text.replace(/\n$/, ""));
         v.setUint32(nwritten, total, true);
         return 0;
       },
@@ -388,24 +379,34 @@ class Host {
     try { this.instance.exports._start?.(); } catch (e) { if (!(e instanceof GuestExit)) throw e; }
     if (!this.headless) {
       this.measure();
-      this.attachEvents();
+      this.ui.attach();
     }
     this.dispatch(EV.INIT, 0, 0, this.width, this.height, this.scale);
     this.schedule();
   }
 
   measure() {
-    const r = this.canvas.getBoundingClientRect();
-    this.width = Math.max(1, r.width);
-    this.height = Math.max(1, r.height);
-    this.scale = window.devicePixelRatio || 1;
+    const m = this.ui.measure();
+    if (m) { this.width = m.width; this.height = m.height; this.scale = m.scale; }
+  }
+
+  // The UI side saw a new size (ResizeObserver, DPR change, or the page
+  // hosting a worker's canvas).
+  resize(width, height, scale) {
+    this.width = width;
+    this.height = height;
+    this.scale = scale;
+    this.dispatch(EV.RESIZE, 0, 0, width, height, scale);
+    this.frameRequested = true;
+    this.schedule();
   }
 
   schedule() {
     if (this.headless || this.rafPending || this.dead) return;
     if (!this.frameRequested && !this.animating) return;
     this.rafPending = true;
-    requestAnimationFrame((t) => {
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (f) => setTimeout(() => f(performance.now()), 16);
+    raf((t) => {
       this.rafPending = false;
       this.frameRequested = false;
       this.animating = this.dispatch(EV.FRAME, 0, 0, t) === 1;
@@ -465,181 +466,6 @@ class Host {
   text(s, kind = 0) { return this.withEvent(enc.encode(s), () => this.dispatch(EV.TEXT, kind, 0)); }
   key(code, mods = 0, phase = 0) { return this.dispatch(EV.KEY, phase, code, mods); }
 
-  // ── DOM events ──
-
-  attachEvents() {
-    const c = this.canvas;
-    c.style.touchAction = "none";
-    const pos = (e) => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-    const pid = (e) => (e.pointerType === "mouse" ? 0 : e.pointerId + 1);
-    c.addEventListener("pointerdown", (e) => {
-      c.setPointerCapture(e.pointerId);
-      const [x, y] = pos(e);
-      if (this.dispatch(EV.POINTER, 0, pid(e), x, y, e.buttons, modsOf(e))) e.preventDefault();
-      if (!this.imeActive) this.keySink().focus({ preventScroll: true });
-      this.schedule();
-    });
-    c.addEventListener("pointermove", (e) => {
-      const [x, y] = pos(e);
-      this.dispatch(EV.POINTER, 1, pid(e), x, y, e.buttons, modsOf(e));
-      this.schedule();
-    });
-    c.addEventListener("pointerup", (e) => {
-      const [x, y] = pos(e);
-      this.dispatch(EV.POINTER, 2, pid(e), x, y, e.buttons, modsOf(e));
-      this.schedule();
-    });
-    c.addEventListener("pointercancel", (e) => { const [x, y] = pos(e); this.dispatch(EV.POINTER, 3, pid(e), x, y, 0, 0); this.schedule(); });
-    c.addEventListener("pointerleave", (e) => { const [x, y] = pos(e); this.dispatch(EV.POINTER, 5, pid(e), x, y, 0, 0); this.schedule(); });
-    c.addEventListener("wheel", (e) => {
-      const [x, y] = pos(e);
-      const unit = e.deltaMode === 0 ? 1 : 0;
-      const k = e.deltaMode === 2 ? this.height : 1;
-      if (this.dispatch(EV.WHEEL, modsOf(e), unit, x, y, e.deltaX * k, e.deltaY * k)) e.preventDefault();
-      this.schedule();
-    }, { passive: false });
-    c.addEventListener("contextmenu", (e) => e.preventDefault());
-    new ResizeObserver(() => {
-      this.measure();
-      this.dispatch(EV.RESIZE, 0, 0, this.width, this.height, this.scale);
-      this.frameRequested = true;
-      this.schedule();
-    }).observe(c);
-    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener?.("change", () => {
-      this.measure();
-      this.dispatch(EV.RESIZE, 0, 0, this.width, this.height, this.scale);
-      this.schedule();
-    });
-    const dark = matchMedia("(prefers-color-scheme: dark)");
-    const appearance = () => this.dispatch(EV.APPEARANCE, dark.matches ? 1 : 0);
-    dark.addEventListener("change", () => { appearance(); this.schedule(); });
-    appearance();
-    document.addEventListener("visibilitychange", () => {
-      this.dispatch(EV.LIFECYCLE, document.hidden ? 0 : 1);
-      this.schedule();
-    });
-    window.addEventListener("focus", () => { this.dispatch(EV.FOCUS, 1); this.schedule(); });
-    window.addEventListener("blur", () => { this.dispatch(EV.FOCUS, 0); this.schedule(); });
-    this.keySink();
-  }
-
-  // The invisible textarea every keystroke and IME composition goes through.
-  keySink() {
-    if (this.sink) return this.sink;
-    const t = document.createElement("textarea");
-    t.setAttribute("autocapitalize", "off");
-    t.setAttribute("autocomplete", "off");
-    t.setAttribute("autocorrect", "off");
-    t.setAttribute("spellcheck", "false");
-    t.setAttribute("aria-hidden", "true");
-    Object.assign(t.style, {
-      position: "fixed", left: "0px", top: "0px", width: "1px", height: "1px", opacity: "0",
-      padding: "0", border: "0", outline: "none", resize: "none", overflow: "hidden",
-      fontSize: "16px", /* no zoom-on-focus on iOS */ caretColor: "transparent", whiteSpace: "pre",
-    });
-    document.body.appendChild(t);
-    let composing = false;
-    t.addEventListener("keydown", (e) => {
-      if (composing || e.isComposing) return;
-      const mods = modsOf(e);
-      const shortcut = e.ctrlKey || e.metaKey;
-      let code = KEYS[e.key];
-      if (code == null && shortcut && e.key.length === 1) code = LETTER_KEYS[e.key.toLowerCase()];
-      if (code == null && e.key === " " && shortcut) code = 60;
-      if (code != null) {
-        // Paste and copy go through the clipboard events below.
-        if (shortcut && (code === 22 || code === 21 || code === 23)) {
-          if (code === 23 || code === 21) this.dispatch(EV.KEY, e.repeat ? 2 : 0, code, mods);
-          this.schedule();
-          return;
-        }
-        if (this.dispatch(EV.KEY, e.repeat ? 2 : 0, code, mods)) e.preventDefault();
-        else if (code === 2) e.preventDefault();
-        this.schedule();
-      }
-    });
-    t.addEventListener("keyup", (e) => {
-      const code = KEYS[e.key];
-      if (code != null) { this.dispatch(EV.KEY, 1, code, modsOf(e)); this.schedule(); }
-    });
-    t.addEventListener("compositionstart", () => { composing = true; });
-    t.addEventListener("compositionupdate", (e) => {
-      const s = e.data || "";
-      this.withEvent(enc.encode(s), () => this.dispatch(EV.TEXT, 1, enc.encode(s).length));
-      this.schedule();
-    });
-    t.addEventListener("compositionend", (e) => {
-      composing = false;
-      this.withEvent(new Uint8Array(0), () => this.dispatch(EV.TEXT, 2, 0));
-      if (e.data) this.withEvent(enc.encode(e.data), () => this.dispatch(EV.TEXT, 0, 0));
-      t.value = "";
-      this.schedule();
-    });
-    t.addEventListener("input", (e) => {
-      if (composing || e.isComposing) return;
-      if (e.inputType === "insertText" || e.inputType === "insertReplacementText") {
-        const s = e.data ?? t.value;
-        if (s) this.withEvent(enc.encode(s), () => this.dispatch(EV.TEXT, 0, 0));
-      } else if (e.inputType === "insertLineBreak") {
-        this.dispatch(EV.KEY, 0, 1, 0);
-      }
-      t.value = "";
-      this.schedule();
-    });
-    t.addEventListener("paste", (e) => {
-      e.preventDefault();
-      const s = e.clipboardData?.getData("text/plain") || "";
-      this.withEvent(enc.encode(s), () => this.dispatch(EV.TEXT, 3, 0));
-      this.schedule();
-    });
-    t.addEventListener("copy", (e) => e.preventDefault());
-    t.addEventListener("cut", (e) => e.preventDefault());
-    this.sink = t;
-    return t;
-  }
-
-  imeBegin(x, y, w, h) {
-    this.imeActive = true;
-    if (this.headless) return;
-    this.imePlace(x, y, w, h);
-    this.keySink().focus({ preventScroll: true });
-  }
-  imePlace(x, y, w, h) {
-    if (this.headless) return;
-    const r = this.canvas.getBoundingClientRect();
-    Object.assign(this.keySink().style, { left: `${r.left + x}px`, top: `${r.top + y}px`, height: `${Math.max(1, h)}px` });
-  }
-  imeEnd() { this.imeActive = false; }
-
-  a11yCommit(focus) {
-    if (this.headless) return;
-    if (!this.a11yRoot) {
-      const root = document.createElement("div");
-      root.setAttribute("role", "application");
-      Object.assign(root.style, { position: "fixed", inset: "0", pointerEvents: "none", overflow: "hidden" });
-      Object.assign(root.dataset, { ceangalA11y: "" });
-      document.body.appendChild(root);
-      this.a11yRoot = root;
-    }
-    const r = this.canvas.getBoundingClientRect();
-    const frag = document.createDocumentFragment();
-    for (const n of this.a11yNodes || []) {
-      const el = document.createElement(n.role === 3 ? "button" : "div");
-      el.setAttribute("role", ROLES[n.role] || "group");
-      if (n.label) el.setAttribute("aria-label", n.label);
-      if (n.value != null) el.setAttribute("aria-valuetext", n.value);
-      if (n.flags & 4) el.setAttribute("aria-selected", "true");
-      if (n.flags & 8) el.setAttribute("aria-checked", "true");
-      if (n.flags & 16) el.setAttribute("aria-disabled", "true");
-      el.tabIndex = n.flags & 1 ? 0 : -1;
-      Object.assign(el.style, { position: "absolute", left: `${r.left + n.x}px`, top: `${r.top + n.y}px`, width: `${n.w}px`, height: `${n.h}px`, opacity: "0", pointerEvents: "none" });
-      el.addEventListener("click", () => { this.dispatch(EV.A11Y, n.id, 1); this.schedule(); });
-      el.addEventListener("focus", () => { this.dispatch(EV.A11Y, n.id, 2); this.schedule(); });
-      frag.appendChild(el);
-    }
-    this.a11yRoot.replaceChildren(frag);
-  }
-
   deliver(id, status, body) {
     this.withEvent(body, () => this.dispatch(EV.RESULT, id, status));
     this.frameRequested = true;
@@ -669,28 +495,9 @@ class Host {
       this.httpAborts.delete(id);
     }
   }
-
-  fileOpen(id, kind) {
-    const input = document.createElement("input");
-    input.type = "file";
-    if (kind === 0) input.accept = ".almd,.txt,.csv,.json,.md,text/*";
-    input.addEventListener("change", async () => {
-      const f = input.files?.[0];
-      if (!f) return this.deliver(id, 0, new Uint8Array(0));
-      const data = new Uint8Array(await f.arrayBuffer());
-      const name = enc.encode(f.name);
-      // body = u32 name length, name, contents
-      const out = new Uint8Array(4 + name.length + data.length);
-      new DataView(out.buffer).setUint32(0, name.length, true);
-      out.set(name, 4);
-      out.set(data, 4 + name.length);
-      this.deliver(id, 200, out);
-    });
-    input.click();
-  }
 }
 
-class GuestExit extends Error {
+export class GuestExit extends Error {
   constructor(code) { super(`exit ${code}`); this.code = code; }
 }
 
@@ -704,4 +511,9 @@ function unb64(s) {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+function memoryStorage() {
+  const m = new Map();
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) };
 }

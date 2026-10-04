@@ -585,6 +585,16 @@
     "Int"
    ],
    "ret": "Unit"
+  },
+  {
+   "name": "runner_gui_place",
+   "params": [
+    "Float",
+    "Float",
+    "Float",
+    "Float"
+   ],
+   "ret": "Unit"
   }
  ],
  "file": [

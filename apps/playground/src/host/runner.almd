@@ -31,3 +31,7 @@ fn runner_ast(src_ptr: Int, src_len: Int) -> Int = _
 @extern(wasm, "runner", "runner_stop")
 @extern(rust, "crate::runner", "runner_stop")
 fn runner_stop(id: Int) -> Unit = _
+
+@extern(wasm, "runner", "runner_gui_place")
+@extern(rust, "crate::runner", "runner_gui_place")
+fn runner_gui_place(x: Float, y: Float, w: Float, h: Float) -> Unit = _

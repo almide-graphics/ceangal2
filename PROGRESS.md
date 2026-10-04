@@ -4,10 +4,8 @@ Read at the start of every session; update at the end.
 
 ## Current milestone
 
-**M2 — the playground on the web** (M0 and M1 done). Every feature of the
-old playground is in, AI and export included, and passes locally. Left for
-M2: the first green CI run on main, which deploys Pages (blocked: pushing to
-main needs the user — see Blockers).
+**M4 — desktop** (M0–M3 done locally). M2's last item, the first green CI
+run on main that deploys Pages, waits for a push (see Blockers).
 
 ## Done
 
@@ -60,18 +58,29 @@ main needs the user — see Blockers).
 - CI: `web` job (macOS, real Chrome WebGPU) builds everything, runs both E2E
   suites, uploads screenshots, and deploys `dist/web` to Pages on main.
 
+### M3 — user GUI on the web (2026-10-04)
+- The compiler service embeds `ceangal` and `snaidhm` (build.rs, `import self.x`
+  rewritten to `import <pkg>.x` since provided modules carry no package id) and
+  resolves them for user programs; `apps/todo` is the demo, also the "Todo app"
+  example (CI checks the two are identical).
+- Programs exporting `ceangal_event` run as a window over the Visual pane:
+  `hosts/web/gui.js` (page side, DomUi) + `gui-worker.js` (Worker, own
+  GPUDevice, OffscreenCanvas, in-memory storage, handle/texture limits,
+  watchdog). host.js is split: `dom.js` holds every DOM concern.
+- Tests: `tests/e2e/web.mjs` "user GUI" step (real CDP input into the program
+  window: type Japanese, Enter, toggle, remove, Stop) and `tests/e2e/page.mjs`
+  (the real index.html: boot, type + Cmd/Ctrl+Enter run, Todo window, Stop);
+  `page.mjs --url` runs against the deployed site after each Pages deploy.
+
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
   commits wait for the user to push. Pages also needs Settings → Pages →
   Source "GitHub Actions" once.
 
 ## Next
-1. After the push: CI green, check the deployed URL in a real browser, link
-   it from README.
-2. M3: user GUI on the web — bundled ceangal/snaidhm packages for user code,
-   Worker + OffscreenCanvas host, the Todo demo editable and runnable in the
-   playground, E2E.
-3. M4: desktop native runner (compiler crate linked, wasm runtime: Pulley vs
+1. After the push: CI green (including `pages-e2e` on the live site), link the
+   site from README.
+2. M4: desktop native runner (compiler crate linked, wasm runtime: Pulley vs
    wasmi ADR), AccessKit adapter (set `a11y::ACTIVE`), file dialogs.
 
 ## Known issues / workarounds

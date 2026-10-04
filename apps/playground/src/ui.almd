@@ -48,6 +48,7 @@ let keep_toggle_examples = st.toggle_examples
 let keep_toggle_mobile_output = st.toggle_mobile_output
 let keep_pixel_scale = ceangal.pixel_scale
 let keep_export_zip = st.export_zip
+let keep_gui_place = st.gui_place
 let keep_ai_toggle = ai.toggle
 let keep_ai_select_provider = ai.select_provider
 let keep_ai_select_model = ai.select_model
@@ -184,9 +185,18 @@ fn out_tab(i: Int, name: String) -> v.View = {
     }) |> v.role(8) |> v.label(name)
 }
 
+// The running GUI program's window: the page puts the program's own canvas
+// exactly over this rect.
+fn gui_view() -> v.View =
+  v.custom("gui", (x, y, w, h) => {
+    snaidhm.fill(x * ceangal.pixel_scale(), y * ceangal.pixel_scale(), w * ceangal.pixel_scale(), h * ceangal.pixel_scale(), 0.0, c(PANEL))
+    st.gui_place(x, y, w, h)
+  }) |> v.grow(1.0) |> v.role(13) |> v.label("Program window")
+
 fn picture_view() -> v.View = {
   let p = st.picture
-  if p.kind == visual.Html then v.col([html.render(p.text, c(TEXT))]) |> v.grow(1.0) |> v.clip()
+  if st.gui_running then gui_view()
+  else if p.kind == visual.Html then v.col([html.render(p.text, c(TEXT))]) |> v.grow(1.0) |> v.clip()
   else if p.kind == visual.NoVisual then
     label("Print an SVG document, a PPM image or simple HTML to see it here.", 13.0, FAINT) |> v.padding(16.0)
   else v.custom("picture", (x, y, w, h) => {
@@ -261,6 +271,10 @@ fn examples_menu() -> v.View = {
 
 pub fn root() -> v.View = {
   let narrow = ceangal.viewport_width() < 760.0
+  // Hide the program window unless the Visual pane is on screen (it is
+  // placed again when gui_view paints).
+  let gui_shown = st.gui_running and st.out_tab == 1 and (not narrow or st.mobile_output) and not st.examples_open
+  if st.gui_running and not gui_shown then st.gui_place(0.0, 0.0, 0.0, 0.0) else ()
   let body =
     if narrow then (if st.mobile_output then output_pane() else editor_pane())
     else v.row([

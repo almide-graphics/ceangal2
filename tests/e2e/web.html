@@ -45,6 +45,14 @@ window.pg = {
       await sleep(50);
     }
   },
+  // The running GUI program (a GuiSession): its window rect on the page and
+  // the accessibility tree it last committed.
+  gui() {
+    const g = [...(host.guiSessions?.values() || [])][0];
+    if (!g || !g.started) return null;
+    const r = g.canvas.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height, nodes: g.nodes.map((n) => ({ ...n })) };
+  },
   async snapshot() {
     const snap = await host.snapshot();
     let s = "";

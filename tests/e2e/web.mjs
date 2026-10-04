@@ -212,6 +212,44 @@ try {
     assert((await ev(`pg.value("Code editor")`)).includes("repaired"), "fix not applied");
   });
 
+  await step("user GUI: the Todo example runs in the Visual pane, takes input, stops", async () => {
+    await page.goto(`${url}/tests/e2e/web.html`);
+    await ev(`pg.boot({ width: 1200, height: 760 })`, 120000);
+    await ev(`pg.click("Examples")`);
+    await ev(`pg.click("Todo app")`);
+    await ev(`pg.click("Run")`);
+    await until(`(pg) => pg.texts().includes("Running (window)") || pg.texts().includes("Runtime error")`, 120000);
+    if (await ev(`pg.texts().includes("Runtime error")`)) throw new Error(await ev(`pg.value("Program output")`));
+    const gui = () => ev(`pg.gui()`);
+    await until(`(pg) => { const g = pg.gui(); return (g && g.nodes.some((n) => n.label === "New task")) || pg.texts().includes("Runtime error"); }`, 60000);
+    if (await ev(`pg.texts().includes("Runtime error")`)) { await ev(`pg.click("Output")`); throw new Error("program failed: " + (await ev(`pg.value("Program output")`))); }
+    let g = await gui();
+    assert(g.w > 300 && g.h > 300, `window ${g.w}x${g.h}`);
+    const at = (label) => { const n = g.nodes.find((m) => m.label === label); if (!n) throw new Error(`no ${label} in ${g.nodes.map((m) => m.label)}`); return [g.x + n.x + n.w / 2, g.y + n.y + n.h / 2]; };
+    const click = async ([x, y]) => {
+      for (const type of ["mousePressed", "mouseReleased"]) await page.send("Input.dispatchMouseEvent", { type, x, y, button: "left", buttons: type === "mousePressed" ? 1 : 0, clickCount: 1 });
+    };
+    // type a task and press Enter (real input events through the page)
+    await click(at("New task"));
+    await page.send("Input.insertText", { text: "Buy milk 牛乳" });
+    await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "Buy milk 牛乳")`, 20000);
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "2 tasks left")`, 20000);
+    // toggle it, then remove the first task
+    g = await gui();
+    await click(at("Buy milk 牛乳"));
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "1 task left")`, 20000);
+    g = await gui();
+    await click(at("Remove Try the playground"));
+    await until(`(pg) => !pg.gui()?.nodes.some((n) => n.label === "Try the playground")`, 20000);
+    writeFileSync(join(out, "gui-todo.png"), await page.screenshot());
+    // Stop tears the program down
+    await ev(`pg.click("Stop")`);
+    await until(`(pg) => pg.texts().includes("Stopped") && pg.gui() === null`, 20000);
+    assert(await ev(`document.querySelectorAll("canvas").length === 0`), "program canvas left behind");
+  });
+
   const errs = await ev("pg.errors()");
   if (errs.length) { failed++; console.log("host errors:\n" + errs.join("\n")); }
 } finally {

@@ -105,6 +105,86 @@ fn collect_self_imports(
 }
 
 // ---------------------------------------------------------------------------
+// Bundled packages (user GUI programs: `import ceangal`, `import snaidhm…`)
+// ---------------------------------------------------------------------------
+
+mod packages {
+    include!(concat!(env!("OUT_DIR"), "/packages.rs"));
+}
+
+/// Whether `path` (an import) names a bundled package, and which.
+fn package_of(path: &[almide::intern::Sym]) -> Option<&'static str> {
+    let first = path.first()?.as_str();
+    packages::PACKAGES.iter().map(|(p, _)| *p).find(|p| *p == first)
+}
+
+/// The bundled-package modules a program needs, dependencies first: every
+/// module of each package the program (or one of its tabs) imports, and of
+/// the packages those import. Within a package, modules are ordered by their
+/// own imports (leaves first), as the CLI resolver loads them.
+fn package_modules(progs: &[&ast::Program]) -> Result<SelfModules, String> {
+    use std::collections::BTreeSet;
+    let mut wanted: BTreeSet<&'static str> = BTreeSet::new();
+    let mut queue: Vec<&'static str> = Vec::new();
+    for prog in progs {
+        for decl in &prog.imports {
+            if let ast::Decl::Import { path, .. } = decl {
+                if let Some(p) = package_of(path) { if wanted.insert(p) { queue.push(p); } }
+            }
+        }
+    }
+    // Parse every module of the wanted packages (and their package imports).
+    let mut parsed: BTreeMap<String, ast::Program> = BTreeMap::new();
+    while let Some(pkg) = queue.pop() {
+        let (_, mods) = packages::PACKAGES.iter().find(|(p, _)| *p == pkg).expect("known package");
+        for (name, src) in mods.iter() {
+            let prog = parse_strict(src, name)?;
+            for decl in &prog.imports {
+                if let ast::Decl::Import { path, .. } = decl {
+                    if let Some(p) = package_of(path) { if wanted.insert(p) { queue.push(p); } }
+                }
+            }
+            parsed.insert(name.to_string(), prog);
+        }
+    }
+    // Module names a module depends on (only those in `parsed`).
+    let deps_of = |name: &str, prog: &ast::Program| -> Vec<String> {
+        let pkg = name.split('.').next().unwrap_or(name).to_string();
+        let mut ds = Vec::new();
+        for decl in &prog.imports {
+            let ast::Decl::Import { path, .. } = decl else { continue };
+            let segs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
+            let dotted = if segs.first() == Some(&"self") {
+                std::iter::once(pkg.as_str()).chain(segs[1..].iter().copied()).collect::<Vec<_>>().join(".")
+            } else {
+                segs.join(".")
+            };
+            if parsed.contains_key(&dotted) && dotted != name { ds.push(dotted); }
+        }
+        ds
+    };
+    // Depth-first post-order over packages in declaration order (deps first).
+    let mut out: SelfModules = Vec::new();
+    let mut done: HashSet<String> = HashSet::new();
+    fn visit(name: &str, parsed: &BTreeMap<String, ast::Program>, deps_of: &dyn Fn(&str, &ast::Program) -> Vec<String>,
+             done: &mut HashSet<String>, stack: &mut HashSet<String>, out: &mut SelfModules) {
+        if done.contains(name) || stack.contains(name) { return; }
+        stack.insert(name.to_string());
+        let prog = &parsed[name];
+        for d in deps_of(name, prog) { visit(&d, parsed, deps_of, done, stack, out); }
+        stack.remove(name);
+        done.insert(name.to_string());
+        out.push((name.to_string(), prog.clone(), false));
+    }
+    let mut stack = HashSet::new();
+    for (pkg, mods) in packages::PACKAGES.iter() {
+        if !wanted.contains(pkg) { continue; }
+        for (name, _) in mods.iter() { visit(name, &parsed, &deps_of, &mut done, &mut stack, &mut out); }
+    }
+    Ok(out)
+}
+
+// ---------------------------------------------------------------------------
 // WASM target (Run)
 // ---------------------------------------------------------------------------
 
@@ -119,6 +199,23 @@ fn collect_self_imports(
 /// compiles natively.
 fn modules_for(source: &str, self_modules: SelfModules) -> SelfModules {
     let mut modules = almide_mir::pipeline::bundled_self_modules(source);
+    // Bundled packages the program imports, with the stdlib modules they need.
+    let mut progs: Vec<&ast::Program> = self_modules.iter().map(|(_, p, _)| p).collect();
+    let entry = parse_strict(source, "entry").ok();
+    if let Some(e) = entry.as_ref() { progs.push(e); }
+    let pkg_modules = package_modules(&progs).unwrap_or_default();
+    if !pkg_modules.is_empty() {
+        let mut seen: HashSet<String> = modules.iter().map(|(n, _, _)| n.clone()).collect();
+        for (_, mods) in packages::PACKAGES.iter() {
+            for (name, src) in mods.iter() {
+                if !pkg_modules.iter().any(|(n, _, _)| n == name) { continue; }
+                for m in almide_mir::pipeline::bundled_self_modules(src) {
+                    if seen.insert(m.0.clone()) { modules.push(m); }
+                }
+            }
+        }
+        modules.extend(pkg_modules);
+    }
     modules.extend(self_modules);
     modules
 }
@@ -490,6 +587,21 @@ fn main() -> Unit = {
         let rust = compile_project_to_rust(&json, "main.almd").unwrap();
         assert!(rust.contains("fn main"), "should contain main function");
         assert!(rust.contains("greet"), "should contain the module fn");
+    }
+
+    #[test]
+    fn test_gui_program_with_bundled_packages() {
+        let todo = include_str!("../../../todo/src/main.almd");
+        let wasm = compile_project_to_wasm(&files_json(&[("main.almd", todo)]), "main.almd").expect("todo compiles");
+        let text = String::from_utf8_lossy(&wasm);
+        assert!(text.contains("ceangal_event"), "GUI programs export ceangal_event");
+        assert!(text.contains("create_render_pipeline"), "imports the gpu namespace");
+    }
+
+    #[test]
+    fn test_unknown_package_is_still_an_error() {
+        let r = compile_project_to_wasm(&files_json(&[("main.almd", "import nopkg\n\neffect fn main() -> Unit = nopkg.hello()\n")]), "main.almd");
+        assert!(r.is_err());
     }
 
     #[test]
