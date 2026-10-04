@@ -27,5 +27,7 @@ wasmi = "2"
 serde_json = "1"
 TOML
 mkdir -p "$(dirname "$out")"
+# Baked into the binary: data directory and keychain entries live under it.
+export CEANGAL_APP_ID="${CEANGAL_APP_ID:-dev.almide.playground}"
 (cd "$build" && "$root/tools/almide" build src/main.almd --release -o "$out" "$@")
 echo "built $out"

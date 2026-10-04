@@ -1,14 +1,20 @@
 //! `storage` namespace — docs/abi.md §4.6: a per-app key/value store kept as
 //! one file per key under the app's data directory. `secret_*` share the
-//! shape; until the platform keychains are wired (M4/M5) they live in a
-//! separate directory with owner-only permissions.
+//! shape and live in the platform credential store (Keychain, Windows
+//! Credential Manager, Secret Service) via `keyring`; headless runs, and
+//! systems without a store, use a separate owner-only directory instead.
 
 #![allow(dead_code)]
 
 use std::path::PathBuf;
 
-fn app_id() -> String {
-    std::env::var("CEANGAL_APP_ID").unwrap_or_else(|_| "dev.almide.ceangal".to_string())
+/// The app's identity for its data directory and keychain entries: set at
+/// build time (`CEANGAL_APP_ID=… almide build`, see tools/build_native.sh),
+/// overridable at run time for tests.
+pub fn app_id() -> String {
+    std::env::var("CEANGAL_APP_ID").ok()
+        .or_else(|| option_env!("CEANGAL_APP_ID").map(str::to_string))
+        .unwrap_or_else(|| "dev.almide.ceangal".to_string())
 }
 
 pub fn data_dir() -> PathBuf {
@@ -73,7 +79,38 @@ pub fn storage_len(key_ptr: i64, key_len: i64) -> i64 { len("kv", key_ptr, key_l
 pub fn storage_read(key_ptr: i64, key_len: i64, dst_ptr: i64, dst_len: i64) -> i64 { read("kv", key_ptr, key_len, dst_ptr, dst_len) }
 pub fn storage_write(key_ptr: i64, key_len: i64, ptr: i64, len_: i64) { write("kv", key_ptr, key_len, ptr, len_) }
 pub fn storage_remove(key_ptr: i64, key_len: i64) { remove("kv", key_ptr, key_len) }
-pub fn secret_len(key_ptr: i64, key_len: i64) -> i64 { len("secrets", key_ptr, key_len) }
-pub fn secret_read(key_ptr: i64, key_len: i64, dst_ptr: i64, dst_len: i64) -> i64 { read("secrets", key_ptr, key_len, dst_ptr, dst_len) }
-pub fn secret_write(key_ptr: i64, key_len: i64, ptr: i64, len_: i64) { write("secrets", key_ptr, key_len, ptr, len_) }
-pub fn secret_remove(key_ptr: i64, key_len: i64) { remove("secrets", key_ptr, key_len) }
+/// The keychain entry for `key`, unless this run should not touch it.
+fn keychain(key: &str) -> Option<keyring::Entry> {
+    if std::env::var_os("CEANGAL_HEADLESS").is_some() || std::env::var("CEANGAL_SECRETS").is_ok_and(|v| v == "file") {
+        return None;
+    }
+    keyring::Entry::new(&app_id(), key).ok()
+}
+
+fn secret_get(key: &str) -> Option<Vec<u8>> {
+    match keychain(key) {
+        Some(e) => e.get_secret().ok(),
+        None => std::fs::read(key_path("secrets", key)).ok(),
+    }
+}
+
+pub fn secret_len(key_ptr: i64, key_len: i64) -> i64 {
+    secret_get(&crate::sys::string(key_ptr, key_len)).map_or(-1, |v| v.len() as i64)
+}
+pub fn secret_read(key_ptr: i64, key_len: i64, dst_ptr: i64, dst_len: i64) -> i64 {
+    secret_get(&crate::sys::string(key_ptr, key_len)).map_or(0, |v| crate::sys::fill(&v, dst_ptr, dst_len))
+}
+pub fn secret_write(key_ptr: i64, key_len: i64, ptr: i64, len_: i64) {
+    let key = crate::sys::string(key_ptr, key_len);
+    match keychain(&key) {
+        Some(e) => { let _ = e.set_secret(crate::sys::slice(ptr, len_)); }
+        None => write("secrets", key_ptr, key_len, ptr, len_),
+    }
+}
+pub fn secret_remove(key_ptr: i64, key_len: i64) {
+    let key = crate::sys::string(key_ptr, key_len);
+    match keychain(&key) {
+        Some(e) => { let _ = e.delete_credential(); }
+        None => remove("secrets", key_ptr, key_len),
+    }
+}
