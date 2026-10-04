@@ -35,7 +35,7 @@ flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream "$stage
 # (the linter wants them in the repo, under dl.flathub.org/media).
 flatpak-builder --force-clean --mirror-screenshots-url=https://dl.flathub.org/media/ \
   --repo="$out/repo" "$out/build" "$out/$id.yml"
-ostree commit --repo="$out/repo" --canonical-permissions --branch="screenshots/$(uname -m)" "$out/build/screenshots"
+ostree commit --repo="$out/repo" --canonical-permissions --branch="screenshots/$(uname -m)" "$out/build/files/share/app-info/media"
 flatpak build-bundle "$out/repo" "$out/$id.flatpak" "$id"
 
 # Flathub's linter on the manifest and the built repository
