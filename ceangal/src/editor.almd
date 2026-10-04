@@ -52,6 +52,10 @@ type Editor = {
   touch: Touch,           // the finger on the view, if any
   fling_v: Float,         // momentum after a touch scroll (px/ms, + = down); 0 = none
   fling_t: Float,         // when the momentum was last advanced (ms)
+  wrap: Bool,             // soft-wrap long lines at the view's width
+  rows: List[Int],        // wrap cache: first visual row of each line, then the total
+  rows_ver: Int,          // ... for this version
+  rows_w: Float,          // ... and this wrap width
 }
 
 // A touch gesture: pending until it moves (scroll) or is held first (select);
@@ -114,6 +118,10 @@ pub fn from_string(s: String) -> Editor = {
   touch: no_touch(),
   fling_v: 0.0,
   fling_t: 0.0,
+  wrap: false,
+  rows: [],
+  rows_ver: -1,
+  rows_w: 0.0,
 }
 
 pub fn text_field(s: String, placeholder: String) -> Editor =
@@ -125,6 +133,9 @@ pub fn with_read_only(e: Editor, on: Bool) -> Editor = { ...e, read_only: on }
 pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor = { ...e, diags: ds }
 pub fn with_gutter(e: Editor, on: Bool) -> Editor = { ...e, gutter: on }
 pub fn with_secret(e: Editor, on: Bool) -> Editor = { ...e, secret: on }
+// almide/almide#3358: `[]` in a spread update needs a typed helper.
+fn no_rows() -> List[Int] = []
+pub fn with_wrap(e: Editor, on: Bool) -> Editor = if e.wrap == on then e else { ...e, wrap: on, rows: no_rows(), scroll_x: 0.0, scroll_to_cursor: true }
 
 // What is drawn for a line: the text, or one bullet per character.
 fn shown(e: Editor, cps: List[Int]) -> List[Int] = if e.secret then list.repeat(8226, list.len(cps)) else cps
@@ -133,7 +144,7 @@ fn shown(e: Editor, cps: List[Int]) -> List[Int] = if e.secret then list.repeat(
 pub fn log() -> Editor = { ...from_string(""), syntax: false, read_only: true, gutter: false, font_size: 12.5 }
 
 fn at_bottom(e: Editor) -> Bool =
-  e.view_h <= 0.0 or e.scroll_y + e.view_h >= int.to_float(list.len(e.lines)) * line_h(e)
+  e.view_h <= 0.0 or e.scroll_y + e.view_h >= int.to_float(total_rows(e)) * line_h(e)
 
 // Append one line with a style (0 normal, 1 error, 2 dim, 3 success);
 // follows the tail while the view is scrolled to the bottom.
@@ -147,7 +158,9 @@ pub fn append_line(e: Editor, s: String, style: Int) -> Editor = {
   list.push(styles, style)
   let last = list.len(lines) - 1
   let e2 = { ...e, lines: lines, line_style: styles, version: e.version + 1 }
-  if follow then { ...e2, scroll_y: clamp_scroll(e2, int.to_float(last + 1) * line_h(e2) - e2.view_h + pad_y(e2) * 2.0) } else e2
+  let e3 = with_rows(e2)
+  let _ = last
+  if follow then { ...e3, scroll_y: clamp_scroll(e3, int.to_float(total_rows(e3)) * line_h(e3) - e3.view_h + pad_y(e3) * 2.0) } else e3
 }
 
 pub fn clear(e: Editor) -> Editor = {
@@ -427,7 +440,8 @@ fn col_at_x(e: Editor, line: Int, x: Float) -> Int = {
   best
 }
 
-fn vertical(e: Editor, dl: Int, extend: Bool) -> Editor = {
+fn vertical(e0: Editor, dl: Int, extend: Bool) -> Editor = if wrapping(e0) then vertical_rows(with_rows(e0), dl, extend) else {
+  let e = e0
   let wx = if e.want_x >= 0.0 then e.want_x else x_of(e, e.cur)
   let target = int.max(0, int.min(list.len(e.lines) - 1, e.cur.line + dl))
   let col = if target == e.cur.line and dl < 0 then 0
@@ -437,17 +451,130 @@ fn vertical(e: Editor, dl: Int, extend: Bool) -> Editor = {
 }
 
 // Keep the cursor inside the viewport after it moved.
-fn ensure_visible(e: Editor) -> Editor =
-  if not e.scroll_to_cursor or e.view_h <= 0.0 then e
+// Up / down by visual rows when wrapping (want_x is within the row).
+fn vertical_rows(e: Editor, dl: Int, extend: Bool) -> Editor = {
+  let bs = line_breaks(e, e.cur.line)
+  let j = seg_of(bs, e.cur.col)
+  let xs = col_xs(e, e.lines[e.cur.line])
+  let wx = if e.want_x >= 0.0 then e.want_x else xs[e.cur.col] - xs[bs[j]]
+  let row = row_start(e, e.cur.line) + j + dl
+  if row < 0 then { ...move_to(e, { line: 0, col: 0 }, extend), want_x: wx }
+  else if row >= total_rows(e) then {
+    let last = list.len(e.lines) - 1
+    { ...move_to(e, { line: last, col: line_len(e, last) }, extend), want_x: wx }
+  } else { ...move_to(e, pos_in_row(e, row, wx), extend), want_x: wx }
+}
+
+// The position at x (relative to the row's start) on visual row `row`.
+fn pos_in_row(e: Editor, row: Int, x: Float) -> Pos = {
+  let l = line_of_row(e, row)
+  let bs = line_breaks(e, l)
+  let j = int.max(0, int.min(list.len(bs) - 1, row - row_start(e, l)))
+  let xs = col_xs(e, e.lines[l])
+  let c0 = bs[j]
+  let c1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(e.lines[l])
+  var best = c0
+  for i in c0...c1 {
+    if i > c0 and (xs[i - 1] + xs[i]) * 0.5 - xs[c0] <= x then best = i else ()
+  }
+  // the end of a non-final row is the next row's start: stay on this row
+  let col = if j + 1 < list.len(bs) and best == c1 then int.max(c0, c1 - 1) else best
+  { line: l, col: col }
+}
+
+// ── Soft wrap ──
+//
+// A wrapped line is drawn as several visual rows ("segments"), broken after
+// the last space that fits (or mid-word when none does). `rows` caches the
+// first row of every line for the current text and width; everything that
+// maps lines to y goes through row_start / total_rows / row_at.
+
+fn wrapping(e: Editor) -> Bool = e.wrap and not e.single_line and e.view_w > 0.0
+
+fn wrap_avail(e: Editor) -> Float = float.max(40.0, e.view_w - gutter_w(e) - pad_x(e) * 2.0)
+
+// Segment start columns of a line given its glyph end positions `xs`
+// (xs[i] = x after i characters) and characters `cps`. Always starts with 0.
+fn breaks_of(xs: List[Float], cps: List[Int], avail: Float) -> List[Int] = {
+  var bs = [0]
+  var start = 0
+  var row_x = 0.0
+  var space = -1
+  for i in 1..<list.len(xs) {
+    if xs[i] - row_x > avail and i - 1 > start then {
+      let at = if space >= start + 1 then space else i - 1
+      list.push(bs, at)
+      start = at
+      row_x = xs[at]
+      space = -1
+    } else ()
+    if i - 1 < list.len(cps) and cps[i - 1] == 32 then space = i else ()
+  }
+  bs
+}
+
+fn line_breaks(e: Editor, l: Int) -> List[Int] =
+  if not wrapping(e) then [0]
+  else breaks_of(col_xs(e, e.lines[l]), e.lines[l], wrap_avail(e))
+
+fn rows_fresh(e: Editor) -> Bool =
+  e.rows_ver == e.version and e.rows_w == wrap_avail(e) and list.len(e.rows) == list.len(e.lines) + 1
+
+// Refresh the wrap cache if the text or the width changed.
+pub fn with_rows(e: Editor) -> Editor =
+  if not wrapping(e) or rows_fresh(e) then e
   else {
+    var rows = [0]
+    var acc = 0
+    for l in 0..<list.len(e.lines) {
+      acc = acc + list.len(line_breaks(e, l))
+      list.push(rows, acc)
+    }
+    { ...e, rows: rows, rows_ver: e.version, rows_w: wrap_avail(e) }
+  }
+
+fn row_start(e: Editor, l: Int) -> Int =
+  if wrapping(e) and list.len(e.rows) == list.len(e.lines) + 1 then e.rows[l] else l
+
+fn total_rows(e: Editor) -> Int =
+  if wrapping(e) and list.len(e.rows) == list.len(e.lines) + 1 then e.rows[list.len(e.lines)] else list.len(e.lines)
+
+// The line holding visual row r (clamped).
+fn line_of_row(e: Editor, r: Int) -> Int =
+  if not (wrapping(e) and list.len(e.rows) == list.len(e.lines) + 1) then int.max(0, int.min(list.len(e.lines) - 1, r))
+  else {
+    var lo = 0
+    var hi = list.len(e.lines) - 1
+    while lo < hi {
+      let mid = (lo + hi + 1) / 2
+      if e.rows[mid] <= r then lo = mid else hi = mid - 1
+    }
+    lo
+  }
+
+// Which segment of its line a column is on (the end of a segment belongs to
+// the next one, except at the end of the line).
+fn seg_of(bs: List[Int], col: Int) -> Int = {
+  var j = 0
+  for i in 0..<list.len(bs) { if bs[i] <= col then j = i else () }
+  j
+}
+
+fn row_of_pos(e: Editor, p: Pos) -> Int = row_start(e, p.line) + seg_of(line_breaks(e, p.line), p.col)
+
+fn ensure_visible(e0: Editor) -> Editor =
+  if not e0.scroll_to_cursor or e0.view_h <= 0.0 then e0
+  else {
+    let e = with_rows(e0)
     let lh = line_h(e)
-    let top = int.to_float(e.cur.line) * lh
+    let top = int.to_float(row_of_pos(e, e.cur)) * lh
     let sy = if top < e.scroll_y then top
       else if top + lh > e.scroll_y + e.view_h - pad_y(e) * 2.0 then top + lh - e.view_h + pad_y(e) * 2.0
       else e.scroll_y
     let cx = x_of(e, e.cur)
     let avail = e.view_w - gutter_w(e) - pad_x(e) * 2.0
-    let sx = if cx < e.scroll_x then float.max(0.0, cx - 20.0)
+    let sx = if wrapping(e) then 0.0
+      else if cx < e.scroll_x then float.max(0.0, cx - 20.0)
       else if cx > e.scroll_x + avail then cx - avail + 20.0
       else e.scroll_x
     { ...e, scroll_x: clamp_scroll_x(e, sx), scroll_y: clamp_scroll(e, sy), scroll_to_cursor: false }
@@ -458,7 +585,7 @@ fn pad_y(e: Editor) -> Float = if e.single_line then 0.0 else 8.0
 // Scrolling stops at the content's edges (as CodeMirror does): the last
 // line at the bottom, the end of the longest line at the right.
 fn clamp_scroll(e: Editor, sy: Float) -> Float = {
-  let content = int.to_float(list.len(e.lines)) * line_h(e) + pad_y(e) * 2.0
+  let content = int.to_float(total_rows(e)) * line_h(e) + pad_y(e) * 2.0
   float.max(0.0, float.min(sy, content - e.view_h))
 }
 
@@ -474,7 +601,7 @@ fn content_w(e: Editor) -> Float = {
   x_of(e, { line: at, col: best })
 }
 
-fn clamp_scroll_x(e: Editor, sx: Float) -> Float = {
+fn clamp_scroll_x(e: Editor, sx: Float) -> Float = if wrapping(e) then 0.0 else {
   let avail = e.view_w - gutter_w(e) - pad_x(e) * 2.0
   float.max(0.0, float.min(sx, content_w(e) - avail + 2.0))
 }
@@ -541,7 +668,10 @@ pub fn text(e: Editor, kind: Int, s: String, cursor: Int) -> Editor =
   }
 
 // The text position under a point of the view.
-fn pos_at(e: Editor, x: Float, y: Float) -> Pos = {
+fn pos_at(e: Editor, x: Float, y: Float) -> Pos = if wrapping(e) then {
+  let row = int.max(0, float.to_int(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e))))
+  pos_in_row(e, int.min(row, total_rows(e) - 1), x - gutter_w(e) - pad_x(e))
+} else {
   let line = int.max(0, int.min(list.len(e.lines) - 1, float.to_int(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e)))))
   { line: line, col: col_at_x(e, line, x - gutter_w(e) - pad_x(e) + e.scroll_x) }
 }
@@ -663,17 +793,22 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   let mono = not e.single_line
   let size = e.font_size * k
   snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, th.bg)
-  let first = int.max(0, float.to_int(float.floor((e.scroll_y - py) / lh)))
-  let last = int.min(list.len(e.lines) - 1, float.to_int(float.ceil((e.scroll_y + h) / lh)))
+  // visible rows, and the lines they belong to
+  let first_row = int.max(0, float.to_int(float.floor((e.scroll_y - py) / lh)))
+  let last_row = float.to_int(float.ceil((e.scroll_y + h) / lh))
+  let first = line_of_row(e, first_row)
+  let last = int.min(list.len(e.lines) - 1, line_of_row(e, last_row))
   let text_x = x + gw + px - e.scroll_x
   let a = sel_start(e)
   let b = sel_end(e)
   let sel = has_selection(e)
+  let row_y = (r: Int) => y + py + int.to_float(r) * lh - e.scroll_y
   snaidhm.push_clip(x * k, y * k, w * k, h * k)
-  // active line
+  // active line (all of its rows)
   if focused and not sel and not e.single_line then {
-    let ly = y + py + int.to_float(e.cur.line) * lh - e.scroll_y
-    snaidhm.fill(x * k, ly * k, w * k, lh * k, 0.0, th.active_line)
+    let r0 = row_start(e, e.cur.line)
+    let r1 = row_start(e, e.cur.line) + list.len(line_breaks(e, e.cur.line))
+    snaidhm.fill(x * k, row_y(r0) * k, w * k, int.to_float(r1 - r0) * lh * k, 0.0, th.active_line)
   } else ()
   // placeholder
   if e.single_line and list.len(e.lines) == 1 and list.len(e.lines[0]) == 0 and list.len(e.preedit) == 0 and e.placeholder != "" then
@@ -683,75 +818,97 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   let baseline_off = (lh - tx.line_height(e.font_size, mono)) * 0.5 + tx.ascent(e.font_size, mono)
   snaidhm.push_clip((x + gw) * k, y * k, (w - gw) * k, h * k)
   for l in first...last {
-    let ly = if e.single_line then y + (h - lh) * 0.5 else y + py + int.to_float(l) * lh - e.scroll_y
     var cps = shown(e, e.lines[l])
     let on_cursor_line = l == e.cur.line
     let pre_n = if on_cursor_line then list.len(e.preedit) else 0
     if pre_n > 0 then cps = list.take(cps, e.cur.col) + e.preedit + list.drop(cps, e.cur.col) else ()
     let gs = tx.shape(cps, size, mono, false)
-    let xs_end = if list.len(gs) == 0 then 0.0 else gs[list.len(gs) - 1].x + gs[list.len(gs) - 1].advance
-    // selection
-    if sel and l >= a.line and l <= b.line then {
-      let c0 = if l == a.line then a.col else 0
-      let c1 = if l == b.line then b.col else list.len(e.lines[l])
-      let x0 = if c0 == 0 then 0.0 else gs[c0 - 1].x + gs[c0 - 1].advance
-      let x1 = if c1 == 0 then 0.0 else gs[c1 - 1].x + gs[c1 - 1].advance
-      let extra = if l < b.line then 6.0 * k else 0.0
-      snaidhm.fill(text_x * k + x0, ly * k, x1 - x0 + extra, lh * k, 2.0 * k, th.selection)
-    } else ()
-    // tokens
-    let base = float.round(ly * k + baseline_off * k)
-    if e.syntax then {
-      let (spans, next) = syn.lex(e.lines[l], st)
+    // gx(i): x after i glyphs (device px)
+    let gx = (i: Int) => if i <= 0 then 0.0 else gs[int.min(i, list.len(gs)) - 1].x + gs[int.min(i, list.len(gs)) - 1].advance
+    var xs: List[Float] = [0.0]
+    for g in gs { list.push(xs, (g.x + g.advance) / k) }
+    let bs = if wrapping(e) then breaks_of(xs, cps, wrap_avail(e)) else [0]
+    let spans = if e.syntax then {
+      let (sp, next) = syn.lex(e.lines[l], st)
       st = next
-      for sp in spans {
-        if sp.kind != 0 or true then {
-          // shift spans after the cursor by the preedit length
-          let s0 = if pre_n > 0 and sp.start >= e.cur.col then sp.start + pre_n else sp.start
-          let s1 = if pre_n > 0 and sp.stop > e.cur.col then sp.stop + pre_n else sp.stop
-          let run = list.slice(gs, s0, s1)
-          tx.draw_run(run, text_x * k, base, size, th.colors[sp.kind])
+      sp
+    } else []
+    let n_all = list.len(gs)
+    for j in 0..<list.len(bs) {
+      let c0 = bs[j]
+      let c1 = if j + 1 < list.len(bs) then bs[j + 1] else n_all
+      let ly = if e.single_line then y + (h - lh) * 0.5 else row_y(row_start(e, l) + j)
+      let sx = text_x * k - gx(c0)    // segment origin: its first glyph at text_x
+      let last_seg = j + 1 == list.len(bs)
+      if ly + lh >= y and ly <= y + h then {
+        // selection (in original columns; preedit only exists without one)
+        if sel and l >= a.line and l <= b.line then {
+          let s0 = int.max(c0, if l == a.line then a.col else 0)
+          let s1 = int.min(c1, if l == b.line then b.col else list.len(e.lines[l]))
+          if s1 > s0 or (s1 == s0 and l < b.line and last_seg) then {
+            let extra = if l < b.line and last_seg then 6.0 * k else 0.0
+            snaidhm.fill(sx + gx(s0), ly * k, gx(s1) - gx(s0) + extra, lh * k, 2.0 * k, th.selection)
+          } else ()
         } else ()
-      }
-      if pre_n > 0 then tx.draw_run(list.slice(gs, e.cur.col, e.cur.col + pre_n), text_x * k, base, size, th.text) else ()
-    } else {
-      let st_i = if l < list.len(e.line_style) then e.line_style[l] else 0
-      let col = if st_i > 0 and st_i < list.len(th.styles) then th.styles[st_i] else th.text
-      tx.draw_run(gs, text_x * k, base, size, col)
-    }
-    // preedit underline
-    if pre_n > 0 then {
-      let u0 = if e.cur.col == 0 then 0.0 else gs[e.cur.col - 1].x + gs[e.cur.col - 1].advance
-      let u1 = gs[e.cur.col + pre_n - 1].x + gs[e.cur.col + pre_n - 1].advance
-      snaidhm.fill(text_x * k + u0, (ly + lh - 3.0) * k, u1 - u0, 1.5 * k, 0.0, th.text)
-    } else ()
-    // diagnostics underline
-    for d in e.diags {
-      if l >= d.line and l <= d.end_line then {
-        let n = list.len(e.lines[l])
-        let c0 = int.min(n, if l == d.line then d.col else 0)
-        let c1 = int.min(n, if l == d.end_line then int.max(d.end_col, c0 + 1) else n)
-        let x0 = if c0 == 0 then 0.0 else gs[c0 - 1].x + gs[c0 - 1].advance
-        let x1 = if c1 <= 0 then 4.0 * k else gs[c1 - 1].x + gs[c1 - 1].advance
-        let col = if d.severity == 0 then th.error else th.warning
-        snaidhm.fill(text_x * k + x0, (ly + lh - 2.5) * k, float.max(4.0 * k, x1 - x0), 2.0 * k, 1.0 * k, col)
+        // tokens
+        let base = float.round(ly * k + baseline_off * k)
+        if e.syntax then {
+          for sp in spans {
+            // shift spans after the cursor by the preedit length
+            let s0 = if pre_n > 0 and sp.start >= e.cur.col then sp.start + pre_n else sp.start
+            let s1 = if pre_n > 0 and sp.stop > e.cur.col then sp.stop + pre_n else sp.stop
+            let r0 = int.max(s0, c0)
+            let r1 = int.min(s1, c1)
+            if r1 > r0 then tx.draw_run(list.slice(gs, r0, r1), sx, base, size, th.colors[sp.kind]) else ()
+          }
+          if pre_n > 0 then {
+            let r0 = int.max(e.cur.col, c0)
+            let r1 = int.min(e.cur.col + pre_n, c1)
+            if r1 > r0 then tx.draw_run(list.slice(gs, r0, r1), sx, base, size, th.text) else ()
+          } else ()
+        } else {
+          let st_i = if l < list.len(e.line_style) then e.line_style[l] else 0
+          let col = if st_i > 0 and st_i < list.len(th.styles) then th.styles[st_i] else th.text
+          tx.draw_run(list.slice(gs, c0, c1), sx, base, size, col)
+        }
+        // preedit underline
+        if pre_n > 0 then {
+          let u0 = int.max(e.cur.col, c0)
+          let u1 = int.min(e.cur.col + pre_n, c1)
+          if u1 > u0 then snaidhm.fill(sx + gx(u0), (ly + lh - 3.0) * k, gx(u1) - gx(u0), 1.5 * k, 0.0, th.text) else ()
+        } else ()
+        // diagnostics underline
+        for d in e.diags {
+          if l >= d.line and l <= d.end_line then {
+            let n = list.len(e.lines[l])
+            let d0 = int.min(n, if l == d.line then d.col else 0)
+            let d1 = int.min(n, if l == d.end_line then int.max(d.end_col, d0 + 1) else n)
+            let r0 = int.max(d0, c0)
+            let r1 = int.min(d1, c1)
+            if r1 > r0 or (n == 0 and j == 0) then {
+              let col = if d.severity == 0 then th.error else th.warning
+              snaidhm.fill(sx + gx(r0), (ly + lh - 2.5) * k, float.max(4.0 * k, gx(r1) - gx(r0)), 2.0 * k, 1.0 * k, col)
+            } else ()
+          } else ()
+        }
+        // caret: on this segment if it starts here, or at the very end
+        if focused and on_cursor_line then {
+          let cc = e.cur.col + (if pre_n > 0 then preedit_cols(e) else 0)
+          if (cc >= c0 and cc < c1) or (last_seg and cc >= c0) then {
+            let cx = sx + gx(cc)
+            snaidhm.fill(cx, (ly + 3.0) * k, 2.0 * k, (lh - 6.0) * k, 0.0, th.caret)
+            ui.set_caret(cx / k, ly, 2.0, lh)
+          } else ()
+        } else ()
       } else ()
     }
-    // caret
-    if focused and on_cursor_line then {
-      let cc = e.cur.col + (if pre_n > 0 then preedit_cols(e) else 0)
-      let cx = if cc == 0 then 0.0 else gs[int.min(cc, list.len(gs)) - 1].x + gs[int.min(cc, list.len(gs)) - 1].advance
-      snaidhm.fill(text_x * k + cx, (ly + 3.0) * k, 2.0 * k, (lh - 6.0) * k, 0.0, th.caret)
-      ui.set_caret(text_x + cx / k, ly, 2.0, lh)
-    } else ()
-    let _ = xs_end
   }
   snaidhm.pop_clip()
-  // gutter
+  // gutter: the number on a line's first row
   if not e.single_line and e.gutter then {
     snaidhm.fill(x * k, y * k, gw * k, h * k, 0.0, th.gutter_bg)
     for l in first...last {
-      let ly = y + py + int.to_float(l) * lh - e.scroll_y
+      let ly = row_y(row_start(e, l))
       let label = int.to_string(l + 1)
       let lw = tx.width(label, size, true, false)
       let col = if l == e.cur.line then th.gutter_active else th.gutter_fg
@@ -786,6 +943,9 @@ fn preedit_cols(e: Editor) -> Int = {
 // table when `view` is called from a named fn of the app (almide/almide#3296).
 let keep_paint = paint
 let keep_fling = fling
+let keep_with_rows = with_rows
+let keep_rows_fresh = rows_fresh
+let keep_wrapping = wrapping
 let keep_visible = ensure_visible
 let keep_pointer = pointer
 let keep_wheel = wheel
@@ -806,7 +966,8 @@ pub fn field(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme) -
 fn with_role(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme, role: Int) -> v.View =
   v.custom(key, (x, y, w, h) => {
     let e = get()
-    if e.view_w != w or e.view_h != h then set(ensure_visible({ ...e, view_w: w, view_h: h })) else ()
+    if e.view_w != w or e.view_h != h then set(ensure_visible(with_rows({ ...e, view_w: w, view_h: h }))) else ()
+    if wrapping(get()) and not rows_fresh(get()) then set(with_rows(get())) else ()
     if e.fling_v != 0.0 then {
       let (e2, moving) = fling(get(), ui.clock_ms())
       set(e2)

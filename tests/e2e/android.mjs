@@ -111,11 +111,15 @@ function shot(name) {
   writeFileSync(join(shots, `android-${name}.png`), png);
 }
 
-async function launch(pkg, { clear = true } = {}) {
+// Stop the app for real (force-stop returns before the process is gone; a
+// start in that window is delivered to the dying instance), then start it.
+async function launch(pkg, { clear = true, data = null } = {}) {
   adb("shell", "am", "force-stop", pkg);
   if (clear) adb("shell", "pm", "clear", pkg);
+  for (let i = 0; i < 50 && pid(); i++) await sleep(100);
   adb("logcat", "-c");
-  adb("shell", "am", "start", "-n", `${pkg}/android.app.NativeActivity`);
+  adb("shell", "am", "start", "-n", `${pkg}/android.app.NativeActivity`, ...(data ? ["-d", data] : []));
+  for (let i = 0; i < 100 && !pid(); i++) await sleep(100);
 }
 
 adb("shell", "setprop", "debug.ceangal.a11y", "1");
@@ -179,9 +183,7 @@ for (const app of apps) {
       shot("playground-run");
     });
     await step("playground: the Todo example runs as a window and takes taps", async () => {
-      adb("logcat", "-c");
-      adb("shell", "am", "force-stop", pkg);
-      adb("shell", "am", "start", "-n", `${pkg}/android.app.NativeActivity`, "-d", "https://play.almide.dev/?example=todo");
+      await launch(pkg, { clear: false, data: "https://play.almide.dev/?example=todo" });
       await until(has("Run"), "the playground", 30000);
       await tap(tree(), "Run");
       await until(has("Program window"), "the program window", 60000);

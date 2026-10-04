@@ -119,6 +119,26 @@ item, the first green CI run on main that deploys Pages, waits for a push
     KVM).
 - iOS: not started (needs Xcode locally; see Human TODO).
 
+### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
+- `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
+  `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
+  Play feature graphic, Android adaptive layers, macOS .icns, MSIX tiles,
+  Linux hicolor, web favicon / PWA icons, the header mark.
+- Palettes: dark = almide/playground's CSS variables, light = almide/docs'
+  light theme. The app follows the system (event 11; Android reads the
+  configuration's night mode), the header toggle overrides it and is saved,
+  and `?theme=light|dark` forces it.
+- Phone layout as almide/playground: a bottom bar (AI, Output/Code, Share,
+  Run), Run flips to the output and loading an example flips back to the
+  code, AI is a bottom sheet, code is 15 px and soft-wraps.
+- Runs start on Output and go to Visual only when they exit 0 with a picture.
+- Editor: touch drag scrolls with momentum, a tap places the caret (and only
+  a tap raises the soft keyboard), press-and-hold then drag selects. Wheel
+  scrolling locks to the dominant axis and stops at the content's edges.
+  Soft wrap breaks at spaces, with row-based hit testing, caret movement
+  and line numbers.
+- Web passes the safe-area insets (env()) to the app.
+
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
   commits wait for the user to push. Pages also needs Settings → Pages →
@@ -131,6 +151,12 @@ item, the first green CI run on main that deploys Pages, waits for a push
    server; AccessKit checked with VoiceOver / Narrator / Orca (Human TODO).
 
 ## Known issues / workarounds
+- almide/almide#3349 — `build --cdylib -o <path>` uses the path as the crate
+  name: build with `-o <name>` and move `lib<name>.so`.
+- almide/almide#3350 — `[native-deps]` cannot be target-specific: the
+  `ceangal_platform` facade crate (ADR 0004).
+- almide/almide#3358 — `[]` in a record spread update fails E018: a typed
+  helper (`no_rows()` in editor.almd).
 - almide/almide#3346 — cdylib builds omit `flate2` for zlib users: the
   playground declares it in `[native-deps]` (tools/build_native.sh).
 - almide/almide#3347 — one `thread_local!` per top-level var exhausts

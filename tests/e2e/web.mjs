@@ -176,6 +176,10 @@ try {
     await ev(`pg.boot({ width: 390, height: 760, scale: 2 })`, 120000);
     await until(`(pg) => !!pg.find("Code editor")`);
     await shot("mobile-code");
+    // long lines wrap instead of scrolling sideways (as almide/playground)
+    await setCode('effect fn main() -> Unit = {\n  let message = "a long line that does not fit on a phone screen at all, so it wraps"\n  println(message)\n}\n');
+    await new Promise((r) => setTimeout(r, 300));
+    await shot("mobile-wrap");
     await ev(`pg.click("Output")`);
     await until(`(pg) => !!pg.find("Program output")`);
     await shot("mobile-output");

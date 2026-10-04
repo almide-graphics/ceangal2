@@ -416,7 +416,7 @@ pub fn root() -> v.View = {
   pal = if light then light_pal() else dark_pal()
   ceangal.set_background(c(pal.bg))
   let narrow = ceangal.viewport_width() < 760.0
-  st.set_code_font(if narrow then 15.0 else 13.0)
+  st.set_code_layout(if narrow then 15.0 else 13.0, narrow)
   // Hide the program window unless the Visual pane is on screen (it is
   // placed again when gui_view paints).
   let gui_shown = st.gui_running and st.out_tab == 1 and (not narrow or st.mobile_output) and not st.examples_open

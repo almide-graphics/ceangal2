@@ -67,22 +67,27 @@ var stderr_text: List[String] = []
 
 // ── Tabs ──
 
-// Code font size: 13 px, 15 px in the phone layout (fingers, and iOS zooms
-// into anything smaller than 16 px on the web).
+// Code views: 13 px on desktop; the phone layout uses 15 px (fingers, and
+// iOS zooms into anything smaller than 16 px on the web) and soft-wraps long
+// lines instead of scrolling sideways, as almide/playground does.
 var font_px = 13.0
+var wrap_code = false
 
 fn editor_for(name: String, text: String) -> ed.Editor =
-  ed.with_font_size(ed.with_syntax(ed.from_string(text), string.ends_with(name, ".almd")), font_px)
+  ed.with_wrap(ed.with_font_size(ed.with_syntax(ed.from_string(text), string.ends_with(name, ".almd")), font_px), wrap_code)
 
-pub fn set_code_font(size: Float) -> Unit =
-  if size != font_px then {
+fn code_layout(e: ed.Editor, size: Float) -> ed.Editor = ed.with_wrap(ed.with_font_size(e, size), wrap_code)
+
+pub fn set_code_layout(size: Float, wrap: Bool) -> Unit =
+  if size != font_px or wrap != wrap_code then {
     font_px = size
+    wrap_code = wrap
     var ts: List[Tab] = []
-    for t in tabs { list.push(ts, { ...t, ed: ed.with_font_size(t.ed, size) }) }
+    for t in tabs { list.push(ts, { ...t, ed: code_layout(t.ed, size) }) }
     tabs = ts
-    out = ed.with_font_size(out, size - 0.5)
-    rust_view = ed.with_font_size(rust_view, size)
-    ast_view = ed.with_font_size(ast_view, size)
+    out = code_layout(out, size - 0.5)
+    rust_view = code_layout(rust_view, size)
+    ast_view = code_layout(ast_view, size)
   } else ()
 
 pub fn set_files(files: List[(String, String)]) -> Unit = {
