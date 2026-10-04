@@ -49,6 +49,9 @@ let keep_toggle_mobile_output = st.toggle_mobile_output
 let keep_pixel_scale = ceangal.pixel_scale
 let keep_export_zip = st.export_zip
 let keep_gui_place = st.gui_place
+let keep_gui_event = st.gui_event
+let keep_gui_text = st.gui_text
+let keep_gui_ime = st.gui_ime
 let keep_ai_toggle = ai.toggle
 let keep_ai_select_provider = ai.select_provider
 let keep_ai_select_model = ai.select_model
@@ -187,11 +190,25 @@ fn out_tab(i: Int, name: String) -> v.View = {
 
 // The running GUI program's window: the page puts the program's own canvas
 // exactly over this rect.
+// The running GUI program's window. Web: the page lays the program's own
+// canvas over this rect. Native: the program renders offscreen and we draw
+// its texture here, forwarding input (pointer coordinates are already
+// relative to the view) and its IME caret.
 fn gui_view() -> v.View =
   v.custom("gui", (x, y, w, h) => {
-    snaidhm.fill(x * ceangal.pixel_scale(), y * ceangal.pixel_scale(), w * ceangal.pixel_scale(), h * ceangal.pixel_scale(), 0.0, c(PANEL))
-    st.gui_place(x, y, w, h)
-  }) |> v.grow(1.0) |> v.role(13) |> v.label("Program window")
+    let k = ceangal.pixel_scale()
+    snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, c(PANEL))
+    let tex = st.gui_place(x, y, w, h)
+    if tex != 0 then snaidhm.image(tex, x * k, y * k, w * k, h * k, 0.0, 1.0) else ()
+    let cx = st.gui_ime(0)
+    if cx >= 0.0 and ceangal.is_focused("gui") then ceangal.set_caret(x + cx, y + st.gui_ime(1), st.gui_ime(2), st.gui_ime(3)) else ()
+  })
+    |> v.grow(1.0) |> v.role(13) |> v.label("Program window")
+    |> v.text_input("gui")
+    |> v.on_pointer((p) => { if p.phase == 0 then ceangal.focus("gui") else (); st.gui_event(4, p.phase, p.id, p.x, p.y, int.to_float(p.buttons), int.to_float(p.mods)) })
+    |> v.on_wheel((x, y, dx, dy) => st.gui_event(5, 0, 1, x, y, dx, dy))
+    |> v.on_key((phase, code, mods) => st.gui_event(6, phase, code, int.to_float(mods), 0.0, 0.0, 0.0))
+    |> v.on_text((kind, s, cur) => st.gui_text(kind, s, cur))
 
 fn picture_view() -> v.View = {
   let p = st.picture
@@ -274,7 +291,7 @@ pub fn root() -> v.View = {
   // Hide the program window unless the Visual pane is on screen (it is
   // placed again when gui_view paints).
   let gui_shown = st.gui_running and st.out_tab == 1 and (not narrow or st.mobile_output) and not st.examples_open
-  if st.gui_running and not gui_shown then st.gui_place(0.0, 0.0, 0.0, 0.0) else ()
+  if st.gui_running and not gui_shown then { let _ = st.gui_place(0.0, 0.0, 0.0, 0.0); () } else ()
   let body =
     if narrow then (if st.mobile_output then output_pane() else editor_pane())
     else v.row([

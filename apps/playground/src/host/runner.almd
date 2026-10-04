@@ -34,4 +34,16 @@ fn runner_stop(id: Int) -> Unit = _
 
 @extern(wasm, "runner", "runner_gui_place")
 @extern(rust, "crate::runner", "runner_gui_place")
-fn runner_gui_place(x: Float, y: Float, w: Float, h: Float) -> Unit = _
+fn runner_gui_place(x: Float, y: Float, w: Float, h: Float, scale: Float) -> Int = _
+
+@extern(wasm, "runner", "runner_gui_event")
+@extern(rust, "crate::runner", "runner_gui_event")
+fn runner_gui_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int = _
+
+@extern(wasm, "runner", "runner_gui_text")
+@extern(rust, "crate::runner", "runner_gui_text")
+fn runner_gui_text(kind: Int, ptr: Int, len: Int, cursor: Int) -> Int = _
+
+@extern(wasm, "runner", "runner_gui_ime")
+@extern(rust, "crate::runner", "runner_gui_ime")
+fn runner_gui_ime(i: Int) -> Float = _

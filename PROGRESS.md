@@ -72,6 +72,20 @@ run on main that deploys Pages, waits for a push (see Blockers).
   (the real index.html: boot, type + Cmd/Ctrl+Enter run, Todo window, Stop);
   `page.mjs --url` runs against the deployed site after each Pages deploy.
 
+### M4 — desktop (in progress)
+- macOS native playground runs everything: `tools/build_native.sh` links the
+  compiler crate and wasmi (ADR 0003: wasmi 3.3–4.6× faster than Pulley).
+  `apps/playground/native/runner.rs` compiles on worker threads, runs console
+  programs on wasmi with WASI (`pg_wasi.rs`, in-memory data tabs) in fuel
+  slices (Stop), and hands GUI programs to `guest.rs`: their own GpuContext
+  rendered offscreen and composited with `external_texture`, imports from the
+  generated `guest_abi.rs` (gpu/clipboard → host; sys/storage/… sandboxed),
+  fuel per event, input + IME caret forwarded from the Visual pane.
+- Native host: async results + waker, `ureq` HTTP with cancel, `rfd` file
+  dialogs, headless virtual clock, `CEANGAL_A11Y_DUMP` for tests.
+- `tests/e2e/native.mjs`: 11 scenarios incl. the Todo window and all 29
+  fixtures/examples byte-identical with the CLI; CI job `native-macos`.
+
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
   commits wait for the user to push. Pages also needs Settings → Pages →
@@ -80,8 +94,9 @@ run on main that deploys Pages, waits for a push (see Blockers).
 ## Next
 1. After the push: CI green (including `pages-e2e` on the live site), link the
    site from README.
-2. M4: desktop native runner (compiler crate linked, wasm runtime: Pulley vs
-   wasmi ADR), AccessKit adapter (set `a11y::ACTIVE`), file dialogs.
+2. M4 rest: AccessKit adapter (set `a11y::ACTIVE`), keychain-backed secrets,
+   Windows and Linux CI builds + native E2E there, a native AI test against a
+   mock server, a windowed smoke run on macOS.
 
 ## Known issues / workarounds
 - almide/almide#3281 — `@export` outside the root module is dropped: apps carry
@@ -115,7 +130,6 @@ run on main that deploys Pages, waits for a push (see Blockers).
 - `w_pct` inside a row is ignored by the layout engine; the playground sizes
   its output pane from the viewport instead.
 - `clip()` is rectangular; no kerning; a11y tree is flat (parent 0).
-- Native runner is a stub (status "native runner pending (M4)").
 - Native `secret_*` is a 0600 file, not yet the platform keychain (M4/M5).
 
 ## Human TODO

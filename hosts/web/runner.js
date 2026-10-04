@@ -111,7 +111,12 @@ export function runnerExtension({ compiler = "./compiler/almide_compiler_service
           if (g) { g.stop(); guis.delete(Number(id)); deliver(Number(id), 500, JSON.stringify({ phase: "stopped", error: "stopped" })); }
           else if (pending.has(Number(id))) restart("stopped");
         },
-        runner_gui_place: (x, y, w, h) => { guiRect = [x, y, w, h]; place(); },
+        // The program draws into its own overlay canvas and gets DOM input
+        // directly, so there is no texture to return and nothing to forward.
+        runner_gui_place: (x, y, w, h) => { guiRect = [x, y, w, h]; place(); return 0n; },
+        runner_gui_event: () => 0n,
+        runner_gui_text: () => 0n,
+        runner_gui_ime: () => -1,
       },
     };
   };

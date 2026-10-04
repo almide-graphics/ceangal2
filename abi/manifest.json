@@ -592,9 +592,40 @@
     "Float",
     "Float",
     "Float",
+    "Float",
     "Float"
    ],
-   "ret": "Unit"
+   "ret": "Int"
+  },
+  {
+   "name": "runner_gui_event",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Float",
+    "Float",
+    "Float",
+    "Float"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_gui_text",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_gui_ime",
+   "params": [
+    "Int"
+   ],
+   "ret": "Float"
   }
  ],
  "file": [

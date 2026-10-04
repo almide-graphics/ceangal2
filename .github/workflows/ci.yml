@@ -60,6 +60,31 @@ jobs:
           name: pixel-macos
           path: out/pixel/*.png
 
+  # The native playground: compiler crate + wasmi linked in, headless E2E
+  # (run, check, stop, examples, visual, Rust/AST, export, the Todo window,
+  # every fixture and example byte-identical with the CLI).
+  native-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: native-playground-${{ runner.os }}-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
+      - run: tools/build_native.sh
+      - run: node tests/e2e/native.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-native-macos
+          path: out/e2e-native/*.png
+
   # The web playground: compiler wasm, app wasm, real-browser E2E, the old
   # playground's fixtures, and (on main) the GitHub Pages deploy.
   web:

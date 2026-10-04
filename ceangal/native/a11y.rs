@@ -66,3 +66,16 @@ pub fn a11y_commit(focus_id: i64) {
         t.changed = true;
     });
 }
+
+/// Headless tests: `CEANGAL_A11Y_DUMP=<file>` gets the committed tree after
+/// every settle, one node per line: role, x, y, w, h, flags, label, value
+/// (tab-separated; tabs and newlines in text become spaces).
+pub fn dump_if_requested() {
+    let Ok(path) = std::env::var("CEANGAL_A11Y_DUMP") else { return };
+    let clean = |s: &str| s.replace(['\t', '\n'], " ");
+    let text: String = TREE.with(|t| t.borrow().committed.iter().map(|n| format!(
+        "{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{}\t{}\n",
+        n.role, n.rect.0, n.rect.1, n.rect.2, n.rect.3, n.flags, clean(&n.label), clean(n.value.as_deref().unwrap_or(""))
+    )).collect());
+    let _ = std::fs::write(path, text);
+}

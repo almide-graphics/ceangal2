@@ -560,4 +560,11 @@ pub fn export_zip() -> Unit = {
 }
 
 // Where the running GUI program's window goes (logical px; 0 size hides it).
-pub fn gui_place(x: Float, y: Float, w: Float, h: Float) -> Unit = runner.runner_gui_place(x, y, w, h)
+// Native returns the program's texture to draw (0 on the web).
+pub fn gui_place(x: Float, y: Float, w: Float, h: Float) -> Int = runner.runner_gui_place(x, y, w, h, ceangal.pixel_scale())
+pub fn gui_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Bool = runner.runner_gui_event(kind, a, b, x, y, z, w) == 1
+pub fn gui_text(kind: Int, s: String, cursor: Int) -> Bool = {
+  let b = bytes.from_string(s)
+  runner.runner_gui_text(kind, bytes.data_ptr(b), bytes.len(b), cursor) == 1
+}
+pub fn gui_ime(i: Int) -> Float = runner.runner_gui_ime(i)

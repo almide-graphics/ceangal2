@@ -89,15 +89,29 @@ fn parse_size(s: &str) -> (f64, f64) {
 }
 
 fn settle(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64) {
-    // Timers fire immediately in headless runs (deterministic tests).
+    // Headless time is virtual (frame times advance 16 ms): a timer fires at
+    // once and the clock jumps to its due time, so debounces resolve without
+    // waiting — the web host's settle() does the same.
     crate::sys::STATE.with(|s| {
+        let now = crate::sys::now_ms();
         let mut s = s.borrow_mut();
-        if s.frame_deadline.take().is_some() { s.frame_requested = true; }
+        if let Some(due) = s.frame_deadline.take() {
+            s.frame_requested = true;
+            *t += (due - now).max(0.0);
+        }
     });
     crate::file::perform(false);
     deliver_results(ctx);
     // Render until the guest stops asking for frames (bounded: animations).
     for _ in 0..8 {
+        crate::sys::STATE.with(|s| {
+            let now = crate::sys::now_ms();
+            let mut s = s.borrow_mut();
+            if let Some(due) = s.frame_deadline.take() {
+                s.frame_requested = true;
+                *t += (due - now).max(0.0);
+            }
+        });
         let wanted = crate::sys::take_frame_request();
         let again = call(ctx, EV_FRAME, 0, 0, *t, 0.0, 0.0, 0.0) == 1;
         *t += 16.0;
@@ -105,6 +119,7 @@ fn settle(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64) {
             break;
         }
     }
+    crate::a11y::dump_if_requested();
 }
 
 fn snapshot(ctx: &Rc<RefCell<GpuContext>>, path: &str) {

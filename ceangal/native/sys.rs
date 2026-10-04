@@ -157,7 +157,7 @@ thread_local! {
     static ASSET_CACHE: RefCell<Option<(String, Vec<u8>)>> = const { RefCell::new(None) };
 }
 
-fn with_asset<R>(name: &str, f: impl FnOnce(Option<&[u8]>) -> R) -> R {
+pub(crate) fn with_asset<R>(name: &str, f: impl FnOnce(Option<&[u8]>) -> R) -> R {
     ASSET_CACHE.with(|c| {
         let mut c = c.borrow_mut();
         if c.as_ref().map(|(n, _)| n.as_str()) != Some(name) {
