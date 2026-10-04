@@ -98,6 +98,13 @@ try {
     await shot("visual");
   });
 
+  await step("a run without a picture goes back to Output", async () => {
+    await setCode('effect fn main() -> Unit = println("plain text")\n');
+    await ev(`pg.click("Run")`);
+    await until(`(pg) => pg.texts().includes("Exited 0")`, 60000);
+    await until(`(pg) => (pg.value("Program output") || "").includes("plain text") && !pg.find("Visual output")`, 10000);
+  });
+
   await step("Rust and AST views", async () => {
     await ev(`pg.click("Rust")`);
     await until(`(pg) => { const v = pg.value("Generated Rust") || ""; return v.includes("fn ") && !v.startsWith("// compiling"); }`, 60000);
