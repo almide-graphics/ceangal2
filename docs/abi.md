@@ -116,7 +116,7 @@ the current context (thread-local) before calling `ceangal.dispatch`, and the
 | `now_ms` | `() -> Float` | monotonic |
 | `log` | `(ptr, len) -> Unit` | debug output |
 | `event_len` / `event_read` | `() -> Int` / `(ptr, len) -> Int` | event data buffer |
-| `platform` | `() -> Int` | `1 web, 2 macos, 3 windows, 4 linux, 5 ios, 6 android` |
+| `platform` | `() -> Int` | `1 web, 2 macos, 3 windows, 4 linux, 5 ios, 6 android`; `17` = web on an Apple OS (Cmd is the shortcut key) |
 | `set_cursor` | `(kind) -> Unit` | `0 default, 1 text, 2 pointer, 3 grab, 4 resize-ew, 5 resize-ns` |
 | `set_title` | `(ptr, len) -> Unit` | |
 | `open_url` | `(ptr, len) -> Unit` | external browser |
@@ -170,6 +170,9 @@ Committed and composing text arrives as event 7.
 Retained tree, rebuilt by ceangal after layout:
 `a11y_begin()`, `a11y_node(id, parent, role, x, y, w, h, flags, label_ptr, label_len)`,
 `a11y_value(id, ptr, len)`, `a11y_commit(focus_id)`.
+`a11y_active() -> Int` is 1 while something consumes the tree (the web ARIA
+overlay always; native once an assistive technology connects); ceangal skips
+building the tree while it is 0.
 Roles `1 window, 2 group, 3 button, 4 text, 5 text field, 6 list, 7 list item, 8 tab, 9 tab list, 10 heading, 11 link, 12 checkbox, 13 image, 14 code editor`.
 Flags `1 focusable, 2 focused, 4 selected, 8 checked, 16 disabled`.
 Actions (event 12) `1 click, 2 focus, 3 increment, 4 decrement, 5 scroll into view`.

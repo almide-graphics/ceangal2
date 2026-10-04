@@ -45,6 +45,8 @@ type Editor = {
   syntax: Bool,
   placeholder: String,
   scroll_to_cursor: Bool,
+  line_style: List[Int],  // per-line color index into Theme.styles (plain text only)
+  gutter: Bool,
 }
 
 let GUTTER_PAD = 12.0
@@ -87,6 +89,8 @@ pub fn from_string(s: String) -> Editor = {
   syntax: true,
   placeholder: "",
   scroll_to_cursor: false,
+  line_style: [],
+  gutter: true,
 }
 
 pub fn text_field(s: String, placeholder: String) -> Editor =
@@ -96,6 +100,35 @@ pub fn with_font_size(e: Editor, size: Float) -> Editor = { ...e, font_size: siz
 pub fn with_syntax(e: Editor, on: Bool) -> Editor = { ...e, syntax: on }
 pub fn with_read_only(e: Editor, on: Bool) -> Editor = { ...e, read_only: on }
 pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor = { ...e, diags: ds }
+pub fn with_gutter(e: Editor, on: Bool) -> Editor = { ...e, gutter: on }
+
+// A read-only log (the playground's output panel): plain text, per-line style.
+pub fn log() -> Editor = { ...from_string(""), syntax: false, read_only: true, gutter: false, font_size: 12.5 }
+
+fn at_bottom(e: Editor) -> Bool =
+  e.view_h <= 0.0 or e.scroll_y + e.view_h >= int.to_float(list.len(e.lines)) * line_h(e)
+
+// Append one line with a style (0 normal, 1 error, 2 dim, 3 success);
+// follows the tail while the view is scrolled to the bottom.
+pub fn append_line(e: Editor, s: String, style: Int) -> Editor = {
+  let follow = at_bottom(e)
+  let n = list.len(e.lines)
+  let empty_doc = n == 1 and list.len(e.lines[0]) == 0
+  let lines = if empty_doc then [tx.codepoints(s)] else e.lines + [tx.codepoints(s)]
+  var styles = e.line_style
+  while list.len(styles) < (if empty_doc then 0 else n) { list.push(styles, 0) }
+  list.push(styles, style)
+  let last = list.len(lines) - 1
+  let e2 = { ...e, lines: lines, line_style: styles, version: e.version + 1 }
+  if follow then { ...e2, scroll_y: clamp_scroll(e2, int.to_float(last + 1) * line_h(e2) - e2.view_h + pad_y(e2) * 2.0) } else e2
+}
+
+pub fn clear(e: Editor) -> Editor = {
+  let p = { line: 0, col: 0 }
+  let none_lines: List[List[Int]] = [[]]
+  let none_styles: List[Int] = []
+  { ...e, lines: none_lines, line_style: none_styles, cur: p, anchor: p, scroll_x: 0.0, scroll_y: 0.0, version: e.version + 1 }
+}
 
 fn cps_to_string(cps: List[Int]) -> String = {
   var b = bytes.new(0)
@@ -111,6 +144,17 @@ fn cps_to_string(cps: List[Int]) -> String = {
 pub fn to_string(e: Editor) -> String = {
   var parts: List[String] = []
   for l in e.lines { list.push(parts, cps_to_string(l)) }
+  string.join(parts, "\n")
+}
+
+// The lines on screen (plus a few around them), for assistive technology:
+// a 10k-line buffer must not be re-joined every frame.
+pub fn visible_text(e: Editor) -> String = {
+  let lh = line_h(e)
+  let first = int.max(0, float.to_int(float.floor(e.scroll_y / lh)) - 5)
+  let last = int.min(list.len(e.lines) - 1, float.to_int(float.ceil((e.scroll_y + float.max(e.view_h, lh * 40.0)) / lh)) + 5)
+  var parts: List[String] = []
+  for i in first..<(last + 1) { list.push(parts, cps_to_string(e.lines[i])) }
   string.join(parts, "\n")
 }
 
@@ -326,7 +370,7 @@ pub fn redo(e: Editor) -> Editor = {
 fn line_h(e: Editor) -> Float = float.ceil(e.font_size * 1.55)
 
 fn gutter_w(e: Editor) -> Float =
-  if e.single_line then 0.0
+  if e.single_line or not e.gutter then 0.0
   else {
     let digits = string.len(int.to_string(list.len(e.lines)))
     float.ceil(int.to_float(int.max(2, digits)) * tx.width("0", e.font_size, true, false)) + GUTTER_PAD * 2.0
@@ -471,6 +515,7 @@ type Theme = {
   bg: snaidhm.Color, gutter_bg: snaidhm.Color, gutter_fg: snaidhm.Color, gutter_active: snaidhm.Color,
   text: snaidhm.Color, caret: snaidhm.Color, selection: snaidhm.Color, active_line: snaidhm.Color,
   colors: List[snaidhm.Color], error: snaidhm.Color, warning: snaidhm.Color, placeholder: snaidhm.Color,
+  styles: List[snaidhm.Color],
 }
 
 // Tokyo-night-like, matching the playground's previous CodeMirror theme.
@@ -480,6 +525,7 @@ pub fn dark_theme() -> Theme = {
   colors: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xBB9AF7), snaidhm.hex(0x9ECE6A), snaidhm.hex(0x565F89), snaidhm.hex(0xFF9E64),
            snaidhm.hex(0x2AC3DE), snaidhm.hex(0x7AA2F7), snaidhm.hex(0xE0AF68), snaidhm.hex(0x7DCFFF), snaidhm.hex(0x89DDFF), snaidhm.hex(0x9AA5CE)],
   error: snaidhm.hex(0xF7768E), warning: snaidhm.hex(0xE0AF68), placeholder: snaidhm.hex(0x565F89),
+  styles: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xF7768E), snaidhm.hex(0x565F89), snaidhm.hex(0x9ECE6A)],
 }
 
 pub fn light_theme() -> Theme = {
@@ -488,6 +534,7 @@ pub fn light_theme() -> Theme = {
   colors: [snaidhm.hex(0x1F2937), snaidhm.hex(0x7C3AED), snaidhm.hex(0x15803D), snaidhm.hex(0x9CA3AF), snaidhm.hex(0xC2410C),
            snaidhm.hex(0x0E7490), snaidhm.hex(0x2563EB), snaidhm.hex(0xB45309), snaidhm.hex(0x0369A1), snaidhm.hex(0x475569), snaidhm.hex(0x6B7280)],
   error: snaidhm.hex(0xDC2626), warning: snaidhm.hex(0xD97706), placeholder: snaidhm.hex(0x9CA3AF),
+  styles: [snaidhm.hex(0x1F2937), snaidhm.hex(0xDC2626), snaidhm.hex(0x9CA3AF), snaidhm.hex(0x15803D)],
 }
 
 // ── Paint ──
@@ -567,7 +614,11 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
         } else ()
       }
       if pre_n > 0 then tx.draw_run(list.slice(gs, e.cur.col, e.cur.col + pre_n), text_x * k, base, size, th.text) else ()
-    } else tx.draw_run(gs, text_x * k, base, size, th.text)
+    } else {
+      let st_i = if l < list.len(e.line_style) then e.line_style[l] else 0
+      let col = if st_i > 0 and st_i < list.len(th.styles) then th.styles[st_i] else th.text
+      tx.draw_run(gs, text_x * k, base, size, col)
+    }
     // preedit underline
     if pre_n > 0 then {
       let u0 = if e.cur.col == 0 then 0.0 else gs[e.cur.col - 1].x + gs[e.cur.col - 1].advance
@@ -597,7 +648,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   }
   snaidhm.pop_clip()
   // gutter
-  if not e.single_line then {
+  if not e.single_line and e.gutter then {
     snaidhm.fill(x * k, y * k, gw * k, h * k, 0.0, th.gutter_bg)
     for l in first...last {
       let ly = y + py + int.to_float(l) * lh - e.scroll_y
@@ -632,15 +683,26 @@ fn preedit_cols(e: Editor) -> Int = {
 
 // Functions called only from the view's closures are listed here so they are
 // reachability roots: otherwise the wasm leg can drop them from its function
-// table when `view` is called from a named fn of the app (almide/almide#3288).
+// table when `view` is called from a named fn of the app (almide/almide#3296).
 let keep_paint = paint
 let keep_visible = ensure_visible
 let keep_pointer = pointer
 let keep_wheel = wheel
 let keep_key = key
 let keep_text = text
+let keep_focused = ui.is_focused
+let keep_visible_text = visible_text
+let keep_with_role = with_role
 
-pub fn view(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme) -> v.View =
+// A code editor (multi-line) view. `get` / `set` read and write the state.
+pub fn view(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme) -> v.View = with_role(key, get, set, th, 14)
+
+// A single-line text field view (announced as a text field).
+pub fn field(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme) -> v.View = with_role(key, get, set, th, 5)
+
+// `role` is passed in rather than read from the state: get() copies the
+// whole buffer on the native leg, and the view is rebuilt every frame.
+fn with_role(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme, role: Int) -> v.View =
   v.custom(key, (x, y, w, h) => {
     let e = get()
     if e.view_w != w or e.view_h != h then set(ensure_visible({ ...e, view_w: w, view_h: h })) else ()
@@ -648,7 +710,8 @@ pub fn view(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme) ->
   })
     |> v.text_input(key)
     |> v.cursor(1)
-    |> v.role(14)
+    |> v.role(role)
+    |> v.value(() => visible_text(get()))
     |> v.on_pointer((p) => { set(pointer(get(), p)); true })
     |> v.on_wheel((x, y, dx, dy) => { set(wheel(get(), dx, dy)); true })
     |> v.on_key((phase, code, mods) => {

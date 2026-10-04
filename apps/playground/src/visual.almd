@@ -1,0 +1,91 @@
+// The Visual tab: a program's stdout shown as a picture when it is one.
+//
+// stdout that is an ASCII/binary PPM (P3/P6) becomes pixels; an <svg …>
+// document is rasterised by snaidhm.vector; simple HTML is rendered as
+// views (html.almd). Everything else stays text in the Output tab.
+
+import snaidhm
+import snaidhm.vector as vector
+
+type Kind = | NoVisual | Pixels | Svg | Html
+
+type Picture = { kind: Kind, w: Int, h: Int, rgba: Bytes, text: String }
+
+pub fn empty() -> Picture = { kind: NoVisual, w: 0, h: 0, rgba: bytes.new(0), text: "" }
+
+fn is_space(c: Int) -> Bool = c == 32 or c == 10 or c == 13 or c == 9
+
+// PPM tokens: whitespace-separated, '#' comments to end of line.
+fn tokens(b: Bytes, limit: Int) -> (List[Int], Int) = {
+  let n = bytes.len(b)
+  var out: List[Int] = []
+  var i = 2
+  while i < n and list.len(out) < limit {
+    let c = bytes.read_u8(b, i)
+    if is_space(c) then i = i + 1
+    else if c == 35 then { while i < n and bytes.read_u8(b, i) != 10 { i = i + 1 } }
+    else {
+      var v = 0
+      while i < n and bytes.read_u8(b, i) >= 48 and bytes.read_u8(b, i) <= 57 {
+        v = v * 10 + bytes.read_u8(b, i) - 48
+        i = i + 1
+      }
+      list.push(out, v)
+      if i < n and not is_space(bytes.read_u8(b, i)) then i = i + 1 else ()
+    }
+  }
+  (out, i)
+}
+
+pub fn parse_ppm(text: String) -> Picture = {
+  let b = bytes.from_string(text)
+  if bytes.len(b) < 2 or bytes.read_u8(b, 0) != 80 then empty()
+  else {
+    let magic = bytes.read_u8(b, 1)
+    let (head, pos) = tokens(b, 3)
+    if list.len(head) < 3 or (magic != 51 and magic != 54) then empty()
+    else {
+      let w = head[0]
+      let h = head[1]
+      let maxv = int.max(1, head[2])
+      if w <= 0 or h <= 0 or w > 4096 or h > 4096 then empty()
+      else {
+        var rgba = bytes.new(w * h * 4)
+        if magic == 51 then {
+          let (vals, _) = tokens(bytes.slice(b, pos - 2, bytes.len(b)), w * h * 3)
+          let m = list.len(vals) / 3
+          for i in 0..<int.min(m, w * h) {
+            bytes.set_at(rgba, i * 4, vals[i * 3] * 255 / maxv)
+            bytes.set_at(rgba, i * 4 + 1, vals[i * 3 + 1] * 255 / maxv)
+            bytes.set_at(rgba, i * 4 + 2, vals[i * 3 + 2] * 255 / maxv)
+            bytes.set_at(rgba, i * 4 + 3, 255)
+          }
+        } else {
+          let start = pos
+          for i in 0..<(w * h) {
+            let o = start + i * 3
+            if o + 2 < bytes.len(b) then {
+              bytes.set_at(rgba, i * 4, bytes.read_u8(b, o) * 255 / maxv)
+              bytes.set_at(rgba, i * 4 + 1, bytes.read_u8(b, o + 1) * 255 / maxv)
+              bytes.set_at(rgba, i * 4 + 2, bytes.read_u8(b, o + 2) * 255 / maxv)
+              bytes.set_at(rgba, i * 4 + 3, 255)
+            } else ()
+          }
+        }
+        { kind: Pixels, w: w, h: h, rgba: rgba, text: "" }
+      }
+    }
+  }
+}
+
+// Classify a run's stdout and decode it.
+pub fn detect(stdout: String) -> Picture = {
+  let t = string.trim(stdout)
+  if string.starts_with(t, "P3") or string.starts_with(t, "P6") then parse_ppm(t)
+  else if string.starts_with(t, "<svg") or (string.starts_with(t, "<?xml") and string.contains(t, "<svg")) then {
+    let img = vector.rasterize_svg(t, 1024)
+    if img.w > 0 then { kind: Svg, w: img.w, h: img.h, rgba: img.rgba, text: t } else empty()
+  } else if string.starts_with(t, "<") and (string.contains(t, "</h1>") or string.contains(t, "</p>") or string.contains(t, "</li>") or string.contains(t, "</div>")) then
+    { kind: Html, w: 0, h: 0, rgba: bytes.new(0), text: t }
+  else empty()
+}

@@ -22,6 +22,7 @@ type Style = {
   absolute: Bool,
   pos_top: Float, pos_right: Float, pos_bottom: Float, pos_left: Float,
   clip: Bool,
+  wrap: Bool,
   bg: Color, fg: Color,
   radius: Float, opacity: Float,
   border_width: Float, border_color: Color,
@@ -52,6 +53,7 @@ let default_style: Style = {
   absolute: false,
   pos_top: UNDEF, pos_right: UNDEF, pos_bottom: UNDEF, pos_left: UNDEF,
   clip: false,
+  wrap: false,
   bg: transparent, fg: black,
   radius: 0.0, opacity: 1.0,
   border_width: 0.0, border_color: transparent,
@@ -89,6 +91,9 @@ type View = {
   paint: Painter,
   label: String,
   role: Int,
+  // Text an assistive technology reads as the node's value (text fields,
+  // editors). Called once per committed frame, so keep it cheap.
+  value: () -> String,
 }
 
 // Default handlers are lambdas, not named fns: a named fn stored as a value
@@ -99,7 +104,7 @@ fn node(kind: Int, children: List[View], content: String) -> View = {
   on_wheel: (x, y, dx, dy) => false, wheel: false,
   focusable: false, text_input: false,
   on_key: (phase, key, mods) => false, on_text: (kind, t, c) => false, on_focus: (f) => (),
-  paint: (x, y, w, h) => (), label: "", role: 0,
+  paint: (x, y, w, h) => (), label: "", role: 0, value: () => "",
 }
 
 // ── Constructors ──
@@ -107,6 +112,8 @@ fn node(kind: Int, children: List[View], content: String) -> View = {
 pub fn text(content: String) -> View = node(TEXT, [], content)
 pub fn col(children: List[View]) -> View = node(COL, children, "")
 pub fn row(children: List[View]) -> View = node(ROW, children, "")
+// A row whose children flow onto further lines when they do not fit.
+pub fn wrap_row(children: List[View]) -> View = { ...node(ROW, children, ""), style: { ...default_style, wrap: true, align: 0 } }
 pub fn box(child: View) -> View = node(COL, [child], "")
 pub fn empty() -> View = node(BOX, [], "")
 pub fn spacer() -> View = node(BOX, [], "") |> grow(1.0)
@@ -197,3 +204,4 @@ pub fn key(v: View, k: String) -> View = { ...v, key: k }
 
 pub fn label(v: View, l: String) -> View = { ...v, label: l }
 pub fn role(v: View, r: Int) -> View = { ...v, role: r }
+pub fn value(v: View, f: () -> String) -> View = { ...v, value: f }

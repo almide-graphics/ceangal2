@@ -4,6 +4,10 @@
 // Only Int and Float cross the boundary; byte ranges are (ptr, len) from
 // bytes.data_ptr.
 
+@extern(wasm, "a11y", "a11y_active")
+@extern(rust, "crate::a11y", "a11y_active")
+fn a11y_active() -> Int = _
+
 @extern(wasm, "a11y", "a11y_begin")
 @extern(rust, "crate::a11y", "a11y_begin")
 fn a11y_begin() -> Unit = _

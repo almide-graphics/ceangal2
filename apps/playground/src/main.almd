@@ -1,0 +1,29 @@
+// The Almide Playground, built on ceangal: one source for the web and every
+// native platform. State and actions live in state.almd, views in ui.almd.
+
+import ceangal
+import snaidhm
+import self.state as st
+import self.ui as ui
+
+fn on_key(phase: Int, code: Int, mods: Int) -> Bool =
+  if phase == 1 then false
+  else if code == 1 and ceangal.is_shortcut(mods) then { st.run(); true }     // Cmd/Ctrl+Enter
+  else if code == 26 and ceangal.is_shortcut(mods) then { st.share(); true } // Cmd/Ctrl+S: share link
+  else if code == 5 and st.examples_open then { st.close_examples(); true }
+  else if code == 5 and st.running then { st.stop(); true }
+  else false
+
+// One line every ceangal app carries (almide/almide#3281).
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit = {
+  st.boot()!
+  ceangal.run(ceangal.app(ui.root)
+    |> ceangal.background(snaidhm.hex(ui.BG))
+    |> ceangal.on_key(on_key)
+    |> ceangal.on_frame((t) => st.tick(t))
+    |> ceangal.on_result((id, code, body) => st.on_result(id, code, body)))
+}

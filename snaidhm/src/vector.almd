@@ -1,0 +1,925 @@
+// SVG → RGBA, in Almide.
+//
+// Enough of SVG 1.1 for program-generated art: svg/g/defs, rect, circle,
+// ellipse, line, polyline, polygon, path (every command incl. arcs),
+// transforms, fill / stroke / opacity (attributes and `style`), named, hex,
+// rgb() and hsl() colours, linear and radial gradients. Shapes become
+// polygons in device space and are rasterised with signed-area coverage
+// accumulation (as glyphs are, font.almd); strokes are the union of segment
+// quads and round caps / joins.
+
+import math
+import self.color as col
+
+type Image = { w: Int, h: Int, rgba: Bytes }
+
+// ── Small helpers ──
+
+// snaidhm.Color: a second {r, g, b, a} record type makes the native leg emit
+// the wrong struct for literals (almide/almide#3283).
+type Rgba = col.Color
+
+let transparent: Rgba = { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }
+let black: Rgba = { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }
+
+fn clamp01(x: Float) -> Float = float.max(0.0, float.min(1.0, x))
+
+// ── XML ──
+
+type Attr = { name: String, value: String }
+type Tag = { name: String, attrs: List[Attr], closing: Bool, self_closing: Bool }
+
+fn is_ws(c: Int) -> Bool = c == 32 or c == 9 or c == 10 or c == 13
+
+fn sub(b: Bytes, a: Int, z: Int) -> String = bytes.to_string_lossy(bytes.slice(b, a, z))
+
+fn parse_tags(text: String) -> List[Tag] = {
+  let b = bytes.from_string(text)
+  let n = bytes.len(b)
+  var tags: List[Tag] = []
+  var i = 0
+  while i < n {
+    if bytes.read_u8(b, i) != 60 then i = i + 1
+    else if i + 3 < n and bytes.read_u8(b, i + 1) == 33 and bytes.read_u8(b, i + 2) == 45 then {
+      // <!-- comment -->
+      i = i + 4
+      while i + 2 < n and not (bytes.read_u8(b, i) == 45 and bytes.read_u8(b, i + 1) == 45 and bytes.read_u8(b, i + 2) == 62) { i = i + 1 }
+      i = i + 3
+    } else if i + 1 < n and (bytes.read_u8(b, i + 1) == 63 or bytes.read_u8(b, i + 1) == 33) then {
+      while i < n and bytes.read_u8(b, i) != 62 { i = i + 1 }
+      i = i + 1
+    } else {
+      i = i + 1
+      var closing = false
+      if i < n and bytes.read_u8(b, i) == 47 then { closing = true; i = i + 1 } else ()
+      let ns = i
+      while i < n and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 and bytes.read_u8(b, i) != 47 { i = i + 1 }
+      let name = sub(b, ns, i)
+      var attrs: List[Attr] = []
+      var self_closing = false
+      var done = false
+      while i < n and not done {
+        let c = bytes.read_u8(b, i)
+        if c == 62 then { done = true; i = i + 1 }
+        else if c == 47 then { self_closing = true; i = i + 1 }
+        else if is_ws(c) then i = i + 1
+        else {
+          let as = i
+          while i < n and bytes.read_u8(b, i) != 61 and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 { i = i + 1 }
+          let an = sub(b, as, i)
+          while i < n and is_ws(bytes.read_u8(b, i)) { i = i + 1 }
+          if i < n and bytes.read_u8(b, i) == 61 then {
+            i = i + 1
+            while i < n and is_ws(bytes.read_u8(b, i)) { i = i + 1 }
+            let q = if i < n then bytes.read_u8(b, i) else 0
+            if q == 34 or q == 39 then {
+              i = i + 1
+              let vs = i
+              while i < n and bytes.read_u8(b, i) != q { i = i + 1 }
+              list.push(attrs, { name: an, value: sub(b, vs, i) })
+              i = i + 1
+            } else {
+              let vs = i
+              while i < n and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 { i = i + 1 }
+              list.push(attrs, { name: an, value: sub(b, vs, i) })
+            }
+          } else list.push(attrs, { name: an, value: "" })
+        }
+      }
+      list.push(tags, { name: name, attrs: attrs, closing: closing, self_closing: self_closing })
+    }
+  }
+  tags
+}
+
+fn attr(t: Tag, name: String) -> String? = {
+  var found: String? = none
+  for a in t.attrs { if a.name == name then found = some(a.value) else () }
+  found
+}
+
+// ── Numbers ──
+
+// Parse a list of numbers (SVG number syntax: 1e-3, .5, -2, 3-4 = 3 -4).
+fn numbers(s: String) -> List[Float] = {
+  let b = bytes.from_string(s)
+  let n = bytes.len(b)
+  var out: List[Float] = []
+  var i = 0
+  while i < n {
+    let c = bytes.read_u8(b, i)
+    let starts = (c >= 48 and c <= 57) or c == 45 or c == 43 or c == 46
+    if not starts then i = i + 1
+    else {
+      let st = i
+      i = i + 1
+      var seen_dot = c == 46
+      var seen_e = false
+      var go = true
+      while i < n and go {
+        let d = bytes.read_u8(b, i)
+        if d >= 48 and d <= 57 then i = i + 1
+        else if d == 46 and not seen_dot and not seen_e then { seen_dot = true; i = i + 1 }
+        else if (d == 101 or d == 69) and not seen_e then {
+          seen_e = true
+          i = i + 1
+          if i < n and (bytes.read_u8(b, i) == 45 or bytes.read_u8(b, i) == 43) then i = i + 1 else ()
+        } else go = false
+      }
+      match float.parse(sub(b, st, i)) {
+        ok(v) => list.push(out, v),
+        err(_) => (),
+      }
+    }
+  }
+  out
+}
+
+fn num(s: String?, default: Float) -> Float = match s {
+  some(t) => {
+    let ns = numbers(t)
+    if list.len(ns) > 0 then (if string.ends_with(string.trim(t), "%") then ns[0] / 100.0 else ns[0]) else default
+  },
+  none => default,
+}
+
+// ── Colours ──
+
+fn hex_digit(c: Int) -> Int =
+  if c >= 48 and c <= 57 then c - 48
+  else if c >= 97 and c <= 102 then c - 87
+  else if c >= 65 and c <= 70 then c - 55
+  else 0
+
+fn hsl(h: Float, s: Float, l: Float) -> Rgba = {
+  let hh = ((h % 360.0) + 360.0) % 360.0 / 360.0
+  let q = if l < 0.5 then l * (1.0 + s) else l + s - l * s
+  let p = 2.0 * l - q
+  let ch = (t0: Float) => {
+    let t = if t0 < 0.0 then t0 + 1.0 else if t0 > 1.0 then t0 - 1.0 else t0
+    if t < 1.0 / 6.0 then p + (q - p) * 6.0 * t
+    else if t < 0.5 then q
+    else if t < 2.0 / 3.0 then p + (q - p) * (2.0 / 3.0 - t) * 6.0
+    else p
+  }
+  { r: ch(hh + 1.0 / 3.0), g: ch(hh), b: ch(hh - 1.0 / 3.0), a: 1.0 }
+}
+
+let NAMED = [("black", 0x000000), ("white", 0xFFFFFF), ("red", 0xFF0000), ("green", 0x008000), ("blue", 0x0000FF),
+  ("yellow", 0xFFFF00), ("orange", 0xFFA500), ("purple", 0x800080), ("gray", 0x808080), ("grey", 0x808080),
+  ("silver", 0xC0C0C0), ("navy", 0x000080), ("teal", 0x008080), ("maroon", 0x800000), ("olive", 0x808000),
+  ("lime", 0x00FF00), ("aqua", 0x00FFFF), ("cyan", 0x00FFFF), ("fuchsia", 0xFF00FF), ("magenta", 0xFF00FF),
+  ("pink", 0xFFC0CB), ("gold", 0xFFD700), ("brown", 0xA52A2A), ("coral", 0xFF7F50), ("crimson", 0xDC143C),
+  ("indigo", 0x4B0082), ("violet", 0xEE82EE), ("salmon", 0xFA8072), ("tomato", 0xFF6347), ("skyblue", 0x87CEEB),
+  ("steelblue", 0x4682B4), ("tan", 0xD2B48C), ("khaki", 0xF0E68C), ("lightgray", 0xD3D3D3), ("darkgray", 0xA9A9A9),
+  ("darkgreen", 0x006400), ("darkblue", 0x00008B), ("darkred", 0x8B0000), ("beige", 0xF5F5DC), ("ivory", 0xFFFFF0)]
+
+fn rgb_int(n: Int) -> Rgba = { r: int.to_float((n / 65536) % 256) / 255.0, g: int.to_float((n / 256) % 256) / 255.0, b: int.to_float(n % 256) / 255.0, a: 1.0 }
+
+// A paint: a colour, a gradient reference (url(#id)), or none.
+type Paint = | NoPaint | Solid(Rgba) | GradientRef(String) | Inherit
+
+fn parse_paint(s0: String) -> Paint = {
+  let s = string.trim(s0)
+  let low = string.to_lower(s)
+  if low == "none" or low == "transparent" then NoPaint
+  else if low == "inherit" or low == "currentcolor" or s == "" then Inherit
+  else if string.starts_with(s, "url(") then {
+    let inner = string.trim(string.replace(string.replace(string.drop(s, 4), ")", ""), "#", ""))
+    GradientRef(inner)
+  } else if string.starts_with(s, "#") then {
+    let b = bytes.from_string(s)
+    let n = bytes.len(b)
+    if n == 4 or n == 5 then {
+      let r = hex_digit(bytes.read_u8(b, 1)) * 17
+      let g = hex_digit(bytes.read_u8(b, 2)) * 17
+      let bl = hex_digit(bytes.read_u8(b, 3)) * 17
+      let a = if n == 5 then int.to_float(hex_digit(bytes.read_u8(b, 4)) * 17) / 255.0 else 1.0
+      Solid({ r: int.to_float(r) / 255.0, g: int.to_float(g) / 255.0, b: int.to_float(bl) / 255.0, a: a })
+    } else if n >= 7 then {
+      let v = (i: Int) => hex_digit(bytes.read_u8(b, i)) * 16 + hex_digit(bytes.read_u8(b, i + 1))
+      let a = if n >= 9 then int.to_float(v(7)) / 255.0 else 1.0
+      Solid({ r: int.to_float(v(1)) / 255.0, g: int.to_float(v(3)) / 255.0, b: int.to_float(v(5)) / 255.0, a: a })
+    } else Solid(black)
+  } else if string.starts_with(low, "rgb") then {
+    let ns = numbers(s)
+    let pct = string.contains(s, "%")
+    let k = if pct then 0.01 else 1.0 / 255.0
+    if list.len(ns) >= 3 then Solid({ r: clamp01(ns[0] * k), g: clamp01(ns[1] * k), b: clamp01(ns[2] * k), a: if list.len(ns) >= 4 then clamp01(ns[3]) else 1.0 })
+    else Solid(black)
+  } else if string.starts_with(low, "hsl") then {
+    let ns = numbers(s)
+    if list.len(ns) >= 3 then {
+      let c = hsl(ns[0], clamp01(ns[1] / 100.0), clamp01(ns[2] / 100.0))
+      Solid({ ...c, a: if list.len(ns) >= 4 then clamp01(ns[3]) else 1.0 })
+    } else Solid(black)
+  } else {
+    var c = Solid(black)
+    for (name, v) in NAMED { if name == low then c = Solid(rgb_int(v)) else () }
+    c
+  }
+}
+
+// ── Transforms (a b c d e f: x' = a x + c y + e, y' = b x + d y + f) ──
+
+type Mat = { a: Float, b: Float, c: Float, d: Float, e: Float, f: Float }
+
+let identity: Mat = { a: 1.0, b: 0.0, c: 0.0, d: 1.0, e: 0.0, f: 0.0 }
+
+fn mul(m: Mat, n: Mat) -> Mat = {
+  a: m.a * n.a + m.c * n.b, b: m.b * n.a + m.d * n.b,
+  c: m.a * n.c + m.c * n.d, d: m.b * n.c + m.d * n.d,
+  e: m.a * n.e + m.c * n.f + m.e, f: m.b * n.e + m.d * n.f + m.f,
+}
+
+fn apply_x(m: Mat, x: Float, y: Float) -> Float = m.a * x + m.c * y + m.e
+fn apply_y(m: Mat, x: Float, y: Float) -> Float = m.b * x + m.d * y + m.f
+
+fn parse_transform(s: String) -> Mat = {
+  var m = identity
+  for part in string.split(s, ")") {
+    let p = string.trim(part)
+    let ns = numbers(p)
+    let n = list.len(ns)
+    let t =
+      if string.contains(p, "matrix") and n >= 6 then { a: ns[0], b: ns[1], c: ns[2], d: ns[3], e: ns[4], f: ns[5] }
+      else if string.contains(p, "translate") and n >= 1 then { ...identity, e: ns[0], f: if n >= 2 then ns[1] else 0.0 }
+      else if string.contains(p, "scale") and n >= 1 then { ...identity, a: ns[0], d: if n >= 2 then ns[1] else ns[0] }
+      else if string.contains(p, "rotate") and n >= 1 then {
+        let r = ns[0] * 3.141592653589793 / 180.0
+        let rot = { a: math.cos(r), b: math.sin(r), c: 0.0 - math.sin(r), d: math.cos(r), e: 0.0, f: 0.0 }
+        if n >= 3 then mul(mul({ ...identity, e: ns[1], f: ns[2] }, rot), { ...identity, e: 0.0 - ns[1], f: 0.0 - ns[2] }) else rot
+      }
+      else if string.contains(p, "skewX") and n >= 1 then { ...identity, c: math.tan(ns[0] * 3.141592653589793 / 180.0) }
+      else if string.contains(p, "skewY") and n >= 1 then { ...identity, b: math.tan(ns[0] * 3.141592653589793 / 180.0) }
+      else identity
+    m = mul(m, t)
+  }
+  m
+}
+
+// ── Style (inherited through groups) ──
+
+type Style = {
+  fill: Paint, stroke: Paint, stroke_width: Float, opacity: Float,
+  fill_opacity: Float, stroke_opacity: Float, evenodd: Bool, round_cap: Bool, m: Mat,
+}
+
+let root_style: Style = {
+  fill: Solid(black), stroke: NoPaint, stroke_width: 1.0, opacity: 1.0,
+  fill_opacity: 1.0, stroke_opacity: 1.0, evenodd: false, round_cap: false, m: identity,
+}
+
+fn prop(t: Tag, name: String) -> String? = {
+  // `style="a: b; c: d"` wins over presentation attributes.
+  var v = attr(t, name)
+  match attr(t, "style") {
+    some(st) => {
+      for decl in string.split(st, ";") {
+        match string.index_of(decl, ":") {
+          some(k) => { if string.trim(string.take(decl, k)) == name then v = some(string.trim(string.drop(decl, k + 1))) else () },
+          none => (),
+        }
+      }
+    },
+    none => (),
+  }
+  v
+}
+
+fn styled(parent: Style, t: Tag) -> Style = {
+  let fill = match prop(t, "fill") { some(p) => { let q = parse_paint(p); if q == Inherit then parent.fill else q }, none => parent.fill }
+  let stroke = match prop(t, "stroke") { some(p) => { let q = parse_paint(p); if q == Inherit then parent.stroke else q }, none => parent.stroke }
+  let m = match attr(t, "transform") { some(tr) => mul(parent.m, parse_transform(tr)), none => parent.m }
+  {
+    fill: fill,
+    stroke: stroke,
+    stroke_width: num(prop(t, "stroke-width"), parent.stroke_width),
+    // group opacity is approximated by multiplying into the children
+    opacity: parent.opacity * num(prop(t, "opacity"), 1.0),
+    fill_opacity: num(prop(t, "fill-opacity"), parent.fill_opacity),
+    stroke_opacity: num(prop(t, "stroke-opacity"), parent.stroke_opacity),
+    evenodd: match prop(t, "fill-rule") { some(r) => r == "evenodd", none => parent.evenodd },
+    round_cap: match prop(t, "stroke-linecap") { some(c) => c == "round", none => parent.round_cap },
+    m: m,
+  }
+}
+
+// ── Geometry: subpaths as point lists in user space ──
+
+type Sub = { xs: List[Float], ys: List[Float], closed: Bool }
+
+fn ellipse_sub(cx: Float, cy: Float, rx: Float, ry: Float) -> Sub = {
+  let n = int.max(16, int.min(256, float.to_int(float.sqrt(float.max(rx, ry)) * 12.0)))
+  var xs: List[Float] = []
+  var ys: List[Float] = []
+  for i in 0..<n {
+    let t = int.to_float(i) / int.to_float(n) * 6.283185307179586
+    list.push(xs, cx + rx * math.cos(t))
+    list.push(ys, cy + ry * math.sin(t))
+  }
+  { xs: xs, ys: ys, closed: true }
+}
+
+fn rect_subs(x: Float, y: Float, w: Float, h: Float, rx0: Float, ry0: Float) -> List[Sub] =
+  if rx0 <= 0.0 and ry0 <= 0.0 then [{ xs: [x, x + w, x + w, x], ys: [y, y, y + h, y + h], closed: true }]
+  else {
+    let rx = float.min(w / 2.0, if rx0 > 0.0 then rx0 else ry0)
+    let ry = float.min(h / 2.0, if ry0 > 0.0 then ry0 else rx0)
+    var xs: List[Float] = []
+    var ys: List[Float] = []
+    let centers = [(x + w - rx, y + ry, 0.0 - 1.5707963267948966), (x + w - rx, y + h - ry, 0.0), (x + rx, y + h - ry, 1.5707963267948966), (x + rx, y + ry, 3.141592653589793)]
+    for (ccx, ccy, a0) in centers {
+      for i in 0...8 {
+        let t = a0 + int.to_float(i) / 8.0 * 1.5707963267948966
+        list.push(xs, ccx + rx * math.cos(t))
+        list.push(ys, ccy + ry * math.sin(t))
+      }
+    }
+    [{ xs: xs, ys: ys, closed: true }]
+  }
+
+// atan2 from atan (the stdlib has no atan2).
+fn atan2(y: Float, x: Float) -> Float =
+  if x > 0.0 then math.atan(y / x)
+  else if x < 0.0 and y >= 0.0 then math.atan(y / x) + 3.141592653589793
+  else if x < 0.0 then math.atan(y / x) - 3.141592653589793
+  else if y > 0.0 then 1.5707963267948966
+  else if y < 0.0 then 0.0 - 1.5707963267948966
+  else 0.0
+
+fn vec_angle(ux: Float, uy: Float, vx: Float, vy: Float) -> Float = atan2(ux * vy - uy * vx, ux * vx + uy * vy)
+
+fn is_cmd(c: Int) -> Bool = (c >= 65 and c <= 90 or c >= 97 and c <= 122) and c != 101 and c != 69
+
+// Parse path data into subpaths, flattening curves and arcs. `tol` is the
+// flattening scale (device px per user unit).
+fn path_subs(d: String, scale: Float) -> List[Sub] = {
+  let b = bytes.from_string(d)
+  let n = bytes.len(b)
+  var subs: List[Sub] = []
+  var xs: List[Float] = []
+  var ys: List[Float] = []
+  var cx = 0.0
+  var cy = 0.0
+  var sx = 0.0
+  var sy = 0.0
+  var lcx = 0.0    // last control point (for S/T)
+  var lcy = 0.0
+  var last_cmd = 0
+  var i = 0
+  let seg_count = (len: Float) => int.max(2, int.min(64, float.to_int(len * scale / 3.0) + 2))
+  while i < n {
+    // read command letter
+    while i < n and not is_cmd(bytes.read_u8(b, i)) and not ((bytes.read_u8(b, i) >= 48 and bytes.read_u8(b, i) <= 57) or bytes.read_u8(b, i) == 45 or bytes.read_u8(b, i) == 46) { i = i + 1 }
+    if i >= n then ()
+    else {
+      var cmd = last_cmd
+      if is_cmd(bytes.read_u8(b, i)) then { cmd = bytes.read_u8(b, i); i = i + 1 } else ()
+      // collect this command's numbers (until the next command letter)
+      let st = i
+      while i < n and not is_cmd(bytes.read_u8(b, i)) { i = i + 1 }
+      let args = numbers(sub(b, st, i))
+      let rel = cmd >= 97
+      let up = if rel then cmd - 32 else cmd
+      let na = list.len(args)
+      if up == 90 then {
+        // Z
+        list.push(xs, sx)
+        list.push(ys, sy)
+        if list.len(xs) >= 2 then list.push(subs, { xs: xs, ys: ys, closed: true }) else ()
+        xs = []
+        ys = []
+        cx = sx
+        cy = sy
+        list.push(xs, cx)
+        list.push(ys, cy)
+      } else if up == 77 then {
+        var k = 0
+        while k + 1 < na {
+          let x = if rel then cx + args[k] else args[k]
+          let y = if rel then cy + args[k + 1] else args[k + 1]
+          if k == 0 then {
+            if list.len(xs) >= 2 then list.push(subs, { xs: xs, ys: ys, closed: false }) else ()
+            xs = []
+            ys = []
+            sx = x
+            sy = y
+          } else ()
+          list.push(xs, x)
+          list.push(ys, y)
+          cx = x
+          cy = y
+          k = k + 2
+        }
+        lcx = cx
+        lcy = cy
+      } else if up == 76 or up == 72 or up == 86 then {
+        let stride = if up == 76 then 2 else 1
+        var k = 0
+        while k + stride - 1 < na {
+          let x = if up == 86 then cx else if rel then cx + args[k] else args[k]
+          let y = if up == 72 then cy else if up == 86 then (if rel then cy + args[k] else args[k]) else if rel then cy + args[k + 1] else args[k + 1]
+          if list.len(xs) == 0 then { list.push(xs, cx); list.push(ys, cy) } else ()
+          list.push(xs, x)
+          list.push(ys, y)
+          cx = x
+          cy = y
+          k = k + stride
+        }
+        lcx = cx
+        lcy = cy
+      } else if up == 67 or up == 83 or up == 81 or up == 84 then {
+        let stride = if up == 67 then 6 else if up == 83 or up == 81 then 4 else 2
+        var k = 0
+        while k + stride - 1 < na {
+          let o = if rel then (cx, cy) else (0.0, 0.0)
+          // control points
+          let (x1, y1, x2, y2, x, y) =
+            if up == 67 then (o.0 + args[k], o.1 + args[k + 1], o.0 + args[k + 2], o.1 + args[k + 3], o.0 + args[k + 4], o.1 + args[k + 5])
+            else if up == 83 then {
+              let rx1 = if last_cmd == 67 or last_cmd == 99 or last_cmd == 83 or last_cmd == 115 then 2.0 * cx - lcx else cx
+              let ry1 = if last_cmd == 67 or last_cmd == 99 or last_cmd == 83 or last_cmd == 115 then 2.0 * cy - lcy else cy
+              (rx1, ry1, o.0 + args[k], o.1 + args[k + 1], o.0 + args[k + 2], o.1 + args[k + 3])
+            }
+            else if up == 81 then (o.0 + args[k], o.1 + args[k + 1], 0.0, 0.0, o.0 + args[k + 2], o.1 + args[k + 3])
+            else {
+              let qx = if last_cmd == 81 or last_cmd == 113 or last_cmd == 84 or last_cmd == 116 then 2.0 * cx - lcx else cx
+              let qy = if last_cmd == 81 or last_cmd == 113 or last_cmd == 84 or last_cmd == 116 then 2.0 * cy - lcy else cy
+              (qx, qy, 0.0, 0.0, o.0 + args[k], o.1 + args[k + 1])
+            }
+          if list.len(xs) == 0 then { list.push(xs, cx); list.push(ys, cy) } else ()
+          let len = float.sqrt((x1 - cx) * (x1 - cx) + (y1 - cy) * (y1 - cy)) + float.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1))
+          let segs = seg_count(len)
+          let cubic = up == 67 or up == 83
+          for j in 1...segs {
+            let t = int.to_float(j) / int.to_float(segs)
+            let mt = 1.0 - t
+            if cubic then {
+              list.push(xs, mt * mt * mt * cx + 3.0 * mt * mt * t * x1 + 3.0 * mt * t * t * x2 + t * t * t * x)
+              list.push(ys, mt * mt * mt * cy + 3.0 * mt * mt * t * y1 + 3.0 * mt * t * t * y2 + t * t * t * y)
+            } else {
+              list.push(xs, mt * mt * cx + 2.0 * mt * t * x1 + t * t * x)
+              list.push(ys, mt * mt * cy + 2.0 * mt * t * y1 + t * t * y)
+            }
+          }
+          lcx = if cubic then x2 else x1
+          lcy = if cubic then y2 else y1
+          cx = x
+          cy = y
+          k = k + stride
+          last_cmd = cmd
+        }
+      } else if up == 65 then {
+        var k = 0
+        while k + 6 < na {
+          let rx0 = float.abs(args[k])
+          let ry0 = float.abs(args[k + 1])
+          let phi = args[k + 2] * 3.141592653589793 / 180.0
+          let large = args[k + 3] != 0.0
+          let sweep = args[k + 4] != 0.0
+          let x = if rel then cx + args[k + 5] else args[k + 5]
+          let y = if rel then cy + args[k + 6] else args[k + 6]
+          if list.len(xs) == 0 then { list.push(xs, cx); list.push(ys, cy) } else ()
+          if rx0 == 0.0 or ry0 == 0.0 then { list.push(xs, x); list.push(ys, y) }
+          else {
+            // endpoint → centre parameterisation (SVG 1.1 F.6.5)
+            let cp = math.cos(phi)
+            let sp = math.sin(phi)
+            let dx2 = (cx - x) / 2.0
+            let dy2 = (cy - y) / 2.0
+            let x1p = cp * dx2 + sp * dy2
+            let y1p = 0.0 - sp * dx2 + cp * dy2
+            let lam = (x1p * x1p) / (rx0 * rx0) + (y1p * y1p) / (ry0 * ry0)
+            let rx = if lam > 1.0 then rx0 * float.sqrt(lam) else rx0
+            let ry = if lam > 1.0 then ry0 * float.sqrt(lam) else ry0
+            let num0 = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p
+            let den = rx * rx * y1p * y1p + ry * ry * x1p * x1p
+            let co0 = if den == 0.0 then 0.0 else float.sqrt(float.max(0.0, num0 / den))
+            let co = if large == sweep then 0.0 - co0 else co0
+            let cxp = co * rx * y1p / ry
+            let cyp = 0.0 - co * ry * x1p / rx
+            let ccx = cp * cxp - sp * cyp + (cx + x) / 2.0
+            let ccy = sp * cxp + cp * cyp + (cy + y) / 2.0
+            let th1 = vec_angle(1.0, 0.0, (x1p - cxp) / rx, (y1p - cyp) / ry)
+            var dth = vec_angle((x1p - cxp) / rx, (y1p - cyp) / ry, (0.0 - x1p - cxp) / rx, (0.0 - y1p - cyp) / ry)
+            if not sweep and dth > 0.0 then dth = dth - 6.283185307179586 else ()
+            if sweep and dth < 0.0 then dth = dth + 6.283185307179586 else ()
+            let segs = seg_count(float.abs(dth) * float.max(rx, ry))
+            for j in 1...segs {
+              let t = th1 + dth * int.to_float(j) / int.to_float(segs)
+              list.push(xs, cp * rx * math.cos(t) - sp * ry * math.sin(t) + ccx)
+              list.push(ys, sp * rx * math.cos(t) + cp * ry * math.sin(t) + ccy)
+            }
+          }
+          cx = x
+          cy = y
+          k = k + 7
+        }
+        lcx = cx
+        lcy = cy
+      } else ()
+      last_cmd = cmd
+    }
+  }
+  if list.len(xs) >= 2 then list.push(subs, { xs: xs, ys: ys, closed: false }) else ()
+  subs
+}
+
+// ── Rasterisation ──
+
+// The canvas: device-space polygon edges are accumulated into `acc`
+// (stride w+2); coverage is then composited into `px` and cleared. Both are
+// local lists threaded through as `mut` parameters: an element write to a
+// list inside a `mut` record, or to a module `var`, copies the whole list on
+// the native leg (seen in this module; not reproduced in isolation).
+
+fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut acc: List[Float]) -> Unit = {
+  if ay != by then {
+    let stride = w + 2
+    let down = ay < by
+    let dir = if down then 1.0 else -1.0
+    let x0 = if down then ax else bx
+    let y0 = if down then ay else by
+    let x1 = if down then bx else ax
+    let y1 = if down then by else ay
+    let dxdy = (x1 - x0) / (y1 - y0)
+    var x = x0
+    let ystart = int.max(0, float.to_int(float.floor(y0)))
+    if y0 < 0.0 then x = x - y0 * dxdy else ()
+    let yend = int.min(h, float.to_int(float.ceil(y1)))
+    for yi in ystart..<yend {
+      let row = yi * stride
+      let fy = int.to_float(yi)
+      let dy = float.min(fy + 1.0, y1) - float.max(fy, y0)
+      let xnext = x + dxdy * dy
+      let d = dy * dir
+      // clamp to the canvas: everything left of 0 lands in column 0
+      let xa = float.max(0.0, float.min(x, xnext))
+      let xb = float.max(0.0, float.max(x, xnext))
+      let xaf = float.floor(xa)
+      let xai = int.min(w, float.to_int(xaf))
+      let xbc = float.ceil(xb)
+      let xbi = int.min(w, float.to_int(xbc))
+      if xbi <= xai + 1 then {
+        let xmf = float.min(1.0, 0.5 * (xa + xb) - xaf)
+        acc[row + xai] = acc[row + xai] + d - d * xmf
+        acc[row + xai + 1] = acc[row + xai + 1] + d * xmf
+      } else {
+        let sl = 1.0 / (xb - xa)
+        let x0f = xa - xaf
+        let a0 = 0.5 * sl * (1.0 - x0f) * (1.0 - x0f)
+        let x1f = xb - xbc + 1.0
+        let am = 0.5 * sl * x1f * x1f
+        acc[row + xai] = acc[row + xai] + d * a0
+        if xbi == xai + 2 then acc[row + xai + 1] = acc[row + xai + 1] + d * (1.0 - a0 - am)
+        else {
+          let a1 = sl * (1.5 - x0f)
+          acc[row + xai + 1] = acc[row + xai + 1] + d * (a1 - a0)
+          for xi in (xai + 2)..<(xbi - 1) { acc[row + xi] = acc[row + xi] + d * sl }
+          let a2 = a1 + int.to_float(xbi - xai - 3) * sl
+          acc[row + xbi - 1] = acc[row + xbi - 1] + d * (1.0 - a2 - am)
+        }
+        acc[row + xbi] = acc[row + xbi] + d * am
+      }
+      x = xnext
+    }
+  } else ()
+}
+
+type Grad = { linear: Bool, x1: Float, y1: Float, x2: Float, y2: Float, r: Float, offs: List[Float], cols: List[Rgba], user: Bool }
+
+fn grad_color(g: Grad, t0: Float) -> Rgba = {
+  let t = clamp01(t0)
+  let n = list.len(g.offs)
+  if n == 0 then transparent
+  else if t <= g.offs[0] then g.cols[0]
+  else if t >= g.offs[n - 1] then g.cols[n - 1]
+  else {
+    var c = g.cols[n - 1]
+    var found = false
+    for i in 1..<n {
+      if not found and t <= g.offs[i] then {
+        let span = float.max(0.000001, g.offs[i] - g.offs[i - 1])
+        let u = (t - g.offs[i - 1]) / span
+        let a = g.cols[i - 1]
+        let b = g.cols[i]
+        c = { r: a.r + (b.r - a.r) * u, g: a.g + (b.g - a.g) * u, b: a.b + (b.b - a.b) * u, a: a.a + (b.a - a.a) * u }
+        found = true
+      } else ()
+    }
+    c
+  }
+}
+
+// Composite the accumulated coverage in rows y0..y1 with a solid colour or a
+// gradient (`bbox` in user space and `inv` mapping device → user for
+// gradients), then clear the accumulator there.
+fn composite(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], y0: Int, y1: Int, color: Rgba, grad: Grad?, inv: Mat, bx: Float, by: Float, bw: Float, bh: Float, alpha: Float, evenodd: Bool) -> Unit = {
+  let stride = w + 2
+  for y in int.max(0, y0)..<int.min(h, y1) {
+    var sum = 0.0
+    for x in 0..<stride {
+      let i = y * stride + x
+      sum = sum + acc[i]
+      acc[i] = 0.0
+      if x < w then {
+        let cov0 = if evenodd then { let m = float.abs(sum) % 2.0; if m > 1.0 then 2.0 - m else m } else float.min(1.0, float.abs(sum))
+        if cov0 > 0.002 then {
+          let col = match grad {
+            some(g) => {
+              let px = int.to_float(x) + 0.5
+              let py = int.to_float(y) + 0.5
+              let ux0 = apply_x(inv, px, py)
+              let uy0 = apply_y(inv, px, py)
+              let ux = if g.user then ux0 else (ux0 - bx) / float.max(0.000001, bw)
+              let uy = if g.user then uy0 else (uy0 - by) / float.max(0.000001, bh)
+              if g.linear then {
+                let dx = g.x2 - g.x1
+                let dy = g.y2 - g.y1
+                let l2 = float.max(0.000001, dx * dx + dy * dy)
+                grad_color(g, ((ux - g.x1) * dx + (uy - g.y1) * dy) / l2)
+              } else grad_color(g, float.sqrt((ux - g.x1) * (ux - g.x1) + (uy - g.y1) * (uy - g.y1)) / float.max(0.000001, g.r))
+            },
+            none => color,
+          }
+          let a = col.a * alpha * cov0
+          let o = (y * w + x) * 4
+          let da = px[o + 3]
+          let out_a = a + da * (1.0 - a)
+          if out_a > 0.0 then {
+            px[o] = (col.r * a + px[o] * da * (1.0 - a)) / out_a
+            px[o + 1] = (col.g * a + px[o + 1] * da * (1.0 - a)) / out_a
+            px[o + 2] = (col.b * a + px[o + 2] * da * (1.0 - a)) / out_a
+            px[o + 3] = out_a
+          } else ()
+        } else ()
+      } else ()
+    }
+  }
+}
+
+fn invert(m: Mat) -> Mat = {
+  let det = m.a * m.d - m.b * m.c
+  if float.abs(det) < 0.0000000001 then identity
+  else {
+    let id = 1.0 / det
+    { a: m.d * id, b: 0.0 - m.b * id, c: 0.0 - m.c * id, d: m.a * id,
+      e: (m.c * m.f - m.d * m.e) * id, f: (m.b * m.e - m.a * m.f) * id }
+  }
+}
+
+fn bbox_of(subs: List[Sub]) -> (Float, Float, Float, Float) = {
+  var x0 = 1.0e30
+  var y0 = 1.0e30
+  var x1 = -1.0e30
+  var y1 = -1.0e30
+  for s in subs {
+    for i in 0..<list.len(s.xs) {
+      x0 = float.min(x0, s.xs[i])
+      y0 = float.min(y0, s.ys[i])
+      x1 = float.max(x1, s.xs[i])
+      y1 = float.max(y1, s.ys[i])
+    }
+  }
+  (x0, y0, x1 - x0, y1 - y0)
+}
+
+fn paint_color(p: Paint) -> Rgba = match p { Solid(c) => c, _ => transparent }
+
+fn find_grad(grads: List[(String, Grad)], id: String) -> Grad? = {
+  var found: Grad? = none
+  for (gid, g) in grads { if gid == id and found == none then found = some(g) else () }
+  found
+}
+
+fn paint_grad(p: Paint, grads: List[(String, Grad)]) -> Grad? = match p { GradientRef(id) => find_grad(grads, id), _ => none }
+
+// Fill `subs` (user space, mapped by `m`) with paint.
+fn fill_subs(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: List[Sub], m: Mat, paint: Paint, alpha: Float, evenodd: Bool, grads: List[(String, Grad)]) -> Unit = {
+  // Expression-form matches: assigning a match binding to an outer `var`
+  // emits a borrow natively (almide/almide#3303).
+  let color = paint_color(paint)
+  let grad = paint_grad(paint, grads)
+  let draw = match paint { Solid(_) => true, GradientRef(_) => grad != none, _ => false }
+  if draw and alpha > 0.0 then {
+    var ymin = h
+    var ymax = 0
+    for s in subs {
+      let n = list.len(s.xs)
+      if n >= 2 then {
+        for i in 0..<n {
+          let j = if i + 1 < n then i + 1 else 0
+          let ax = apply_x(m, s.xs[i], s.ys[i])
+          let ay = apply_y(m, s.xs[i], s.ys[i])
+          let bx = apply_x(m, s.xs[j], s.ys[j])
+          let by = apply_y(m, s.xs[j], s.ys[j])
+          line_acc(ax, ay, bx, by, w, h, acc)
+          ymin = int.min(ymin, float.to_int(float.floor(float.min(ay, by))))
+          ymax = int.max(ymax, float.to_int(float.ceil(float.max(ay, by))) + 1)
+        }
+      } else ()
+    }
+    let (bx, by, bw, bh) = bbox_of(subs)
+    composite(w, h, acc, px, ymin, ymax, color, grad, invert(m), bx, by, bw, bh, alpha, evenodd)
+  } else ()
+}
+
+// Stroke outline pieces (user space): one quad per segment plus round
+// caps/joins, each a separate sub so the union fills with nonzero winding
+// all in the same orientation.
+fn stroke_subs(subs: List[Sub], width: Float, round: Bool) -> List[Sub] = {
+  let hw = width / 2.0
+  var out: List[Sub] = []
+  for s in subs {
+    let n = list.len(s.xs)
+    let segs = if s.closed then n else n - 1
+    for i in 0..<segs {
+      let j = (i + 1) % n
+      let ax = s.xs[i]
+      let ay = s.ys[i]
+      let bx = s.xs[j]
+      let by = s.ys[j]
+      let dx = bx - ax
+      let dy = by - ay
+      let len = float.sqrt(dx * dx + dy * dy)
+      if len > 0.0 then {
+        let nx = 0.0 - dy / len * hw
+        let ny = dx / len * hw
+        // orientation fixed so overlapping quads add up instead of cancelling
+        list.push(out, { xs: [ax + nx, bx + nx, bx - nx, ax - nx], ys: [ay + ny, by + ny, by - ny, ay - ny], closed: true })
+      } else ()
+    }
+    // joins (and caps when round)
+    for i in 0..<n {
+      let interior = s.closed or (i > 0 and i < n - 1)
+      if (interior or round) and hw > 0.0 then list.push(out, ellipse_sub(s.xs[i], s.ys[i], hw, hw)) else ()
+    }
+  }
+  out
+}
+
+fn stroke_union(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], pieces: List[Sub], m: Mat, paint: Paint, alpha: Float, grads: List[(String, Grad)]) -> Unit = {
+  // Each piece is accumulated on its own and merged with max, so pieces do
+  // not need consistent winding.
+  var cov: List[Float] = list.repeat(0.0, w * h)
+  var any = false
+  var ymin = h
+  var ymax = 0
+  let stride = w + 2
+  for p in pieces {
+    var py0 = h
+    var py1 = 0
+    let n = list.len(p.xs)
+    for i in 0..<n {
+      let j = (i + 1) % n
+      let ax = apply_x(m, p.xs[i], p.ys[i])
+      let ay = apply_y(m, p.xs[i], p.ys[i])
+      let bx = apply_x(m, p.xs[j], p.ys[j])
+      let by = apply_y(m, p.xs[j], p.ys[j])
+      line_acc(ax, ay, bx, by, w, h, acc)
+      py0 = int.min(py0, float.to_int(float.floor(float.min(ay, by))))
+      py1 = int.max(py1, float.to_int(float.ceil(float.max(ay, by))) + 1)
+    }
+    for y in int.max(0, py0)..<int.min(h, py1) {
+      var sum = 0.0
+      for x in 0..<stride {
+        let i = y * stride + x
+        sum = sum + acc[i]
+        acc[i] = 0.0
+        if x < w then {
+          let cv1 = float.min(1.0, float.abs(sum))
+          if cv1 > cov[y * w + x] then cov[y * w + x] = cv1 else ()
+        } else ()
+      }
+    }
+    ymin = int.min(ymin, py0)
+    ymax = int.max(ymax, py1)
+    any = true
+  }
+  if any then {
+    // write the merged coverage back as an exact accumulation: per row,
+    // coverage differences so that the running sum reproduces `cov`
+    for y in int.max(0, ymin)..<int.min(h, ymax) {
+      var prev = 0.0
+      for x in 0..<w {
+        let cv1 = cov[y * w + x]
+        acc[y * stride + x] = cv1 - prev
+        prev = cv1
+      }
+      acc[y * stride + w] = 0.0 - prev
+    }
+    let (bx, by, bw, bh) = bbox_of(pieces)
+    composite(w, h, acc, px, ymin, ymax, paint_color(paint), paint_grad(paint, grads), invert(m), bx, by, bw, bh, alpha, false)
+  } else ()
+}
+
+// ── Document ──
+
+fn draw_shape(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: List[Sub], st: Style, grads: List[(String, Grad)]) -> Unit = {
+  if st.fill != NoPaint then fill_subs(w, h, acc, px, subs, st.m, st.fill, st.opacity * st.fill_opacity, st.evenodd, grads) else ()
+  if st.stroke != NoPaint and st.stroke_width > 0.0 then
+    stroke_union(w, h, acc, px, stroke_subs(subs, st.stroke_width, st.round_cap), st.m, st.stroke, st.opacity * st.stroke_opacity, grads)
+  else ()
+}
+
+fn shape_subs(t: Tag, scale: Float) -> List[Sub] = {
+  let a = (n: String) => num(attr(t, n), 0.0)
+  if t.name == "rect" then rect_subs(a("x"), a("y"), a("width"), a("height"), a("rx"), a("ry"))
+  else if t.name == "circle" then { let r = a("r"); if r > 0.0 then [ellipse_sub(a("cx"), a("cy"), r, r)] else [] }
+  else if t.name == "ellipse" then [ellipse_sub(a("cx"), a("cy"), a("rx"), a("ry"))]
+  else if t.name == "line" then [{ xs: [a("x1"), a("x2")], ys: [a("y1"), a("y2")], closed: false }]
+  else if t.name == "polyline" or t.name == "polygon" then {
+    let ns = match attr(t, "points") { some(p) => numbers(p), none => [] }
+    var xs: List[Float] = []
+    var ys: List[Float] = []
+    var k = 0
+    while k + 1 < list.len(ns) { list.push(xs, ns[k]); list.push(ys, ns[k + 1]); k = k + 2 }
+    [{ xs: xs, ys: ys, closed: t.name == "polygon" }]
+  }
+  else if t.name == "path" then match attr(t, "d") { some(d) => path_subs(d, scale), none => [] }
+  else []
+}
+
+// Rasterise an SVG document to fit within `max_px` on its longer side.
+pub fn rasterize_svg(text: String, max_px: Int) -> Image = {
+  let tags = parse_tags(text)
+  var vb: List[Float] = []
+  var w0 = 300.0
+  var h0 = 150.0
+  for t in tags {
+    if t.name == "svg" and not t.closing and list.len(vb) == 0 then {
+      match attr(t, "viewBox") { some(v) => { vb = numbers(v) }, none => () }
+      w0 = num(attr(t, "width"), if list.len(vb) == 4 then vb[2] else 300.0)
+      h0 = num(attr(t, "height"), if list.len(vb) == 4 then vb[3] else 150.0)
+    } else ()
+  }
+  let vx = if list.len(vb) == 4 then vb[0] else 0.0
+  let vy = if list.len(vb) == 4 then vb[1] else 0.0
+  let vw = if list.len(vb) == 4 then vb[2] else w0
+  let vh = if list.len(vb) == 4 then vb[3] else h0
+  let aspect = if vh > 0.0 then vw / vh else 1.0
+  let w = if aspect >= 1.0 then max_px else int.max(1, float.to_int(int.to_float(max_px) * aspect))
+  let h = if aspect >= 1.0 then int.max(1, float.to_int(int.to_float(max_px) / aspect)) else max_px
+  let s = int.to_float(w) / float.max(0.000001, vw)
+  var px: List[Float] = list.repeat(0.0, w * h * 4)
+  var acc: List[Float] = list.repeat(0.0, (w + 2) * h + 4)
+  let base = { ...root_style, m: { a: s, b: 0.0, c: 0.0, d: s, e: 0.0 - vx * s, f: 0.0 - vy * s } }
+  // gradients (first pass)
+  var grads: List[(String, Grad)] = []
+  var gi = 0
+  let nt = list.len(tags)
+  while gi < nt {
+    let t = tags[gi]
+    if (t.name == "linearGradient" or t.name == "radialGradient") and not t.closing then {
+      let linear = t.name == "linearGradient"
+      let user = match attr(t, "gradientUnits") { some(u) => u == "userSpaceOnUse", none => false }
+      var g: Grad = {
+        linear: linear,
+        x1: num(attr(t, if linear then "x1" else "cx"), if linear then 0.0 else 0.5),
+        y1: num(attr(t, if linear then "y1" else "cy"), if linear then 0.0 else 0.5),
+        x2: num(attr(t, "x2"), 1.0), y2: num(attr(t, "y2"), 0.0),
+        r: num(attr(t, "r"), 0.5), offs: [], cols: [], user: user,
+      }
+      var k = gi + 1
+      if not t.self_closing then {
+        while k < nt and not (tags[k].closing and tags[k].name == t.name) {
+          let st = tags[k]
+          if st.name == "stop" then {
+            let base_c = match prop(st, "stop-color") { some(c) => match parse_paint(c) { Solid(cc) => cc, _ => black }, none => black }
+            let op = num(prop(st, "stop-opacity"), 1.0)
+            g = { ...g, offs: g.offs + [clamp01(num(attr(st, "offset"), 0.0))], cols: g.cols + [{ ...base_c, a: base_c.a * op }] }
+          } else ()
+          k = k + 1
+        }
+      } else ()
+      match attr(t, "id") { some(id) => list.push(grads, (id, g)), none => () }
+      gi = k
+    } else gi = gi + 1
+  }
+  // shapes (second pass), with a style stack for groups
+  var stack: List[Style] = [base]
+  var skip = 0   // depth inside <defs> / gradients / <text>
+  for t in tags {
+    let top = stack[list.len(stack) - 1]
+    let container = t.name == "g" or t.name == "svg" or t.name == "a"
+    let hidden = t.name == "defs" or t.name == "linearGradient" or t.name == "radialGradient" or t.name == "clipPath" or t.name == "mask" or t.name == "symbol" or t.name == "pattern"
+    if hidden then {
+      if t.closing then skip = int.max(0, skip - 1) else if not t.self_closing then skip = skip + 1 else ()
+    } else if skip > 0 then ()
+    else if container then {
+      if t.closing then { if list.len(stack) > 1 then stack = list.take(stack, list.len(stack) - 1) else () }
+      else if not t.self_closing then list.push(stack, styled(top, t))
+      else ()
+    } else if not t.closing then {
+      let st = styled(top, t)
+      let scale = s * float.sqrt(float.abs(st.m.a * st.m.d - st.m.b * st.m.c)) / s
+      draw_shape(w, h, acc, px, shape_subs(t, scale), st, grads)
+    } else ()
+  }
+  var out = bytes.new(w * h * 4)
+  for i in 0..<(w * h * 4) {
+    bytes.set_at(out, i, float.to_int(clamp01(px[i]) * 255.0 + 0.5))
+  }
+  { w: w, h: h, rgba: out }
+}

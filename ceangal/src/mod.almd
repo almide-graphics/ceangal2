@@ -12,6 +12,7 @@ import self.text as tx
 import self.host.sys as sys
 import self.host.text_input as text_input
 import self.host.clipboard as clip
+import self.host.a11y as a11y
 
 type App = {
   view: () -> v.View,
@@ -64,6 +65,14 @@ var caret_h = 0.0
 var ime_active = false
 var ime_rect: List[Float] = [0.0, 0.0, 0.0, 0.0]
 var platform_id = 0
+var frame_time = 0.0
+// a11y values (editor text…) are refreshed at most every A11Y_VALUE_MS; in
+// between the last ones are reused, and one trailing frame catches up.
+let A11Y_VALUE_MS = 250.0
+var a11y_values_at = -1000000.0
+var a11y_values_focus = "-"
+var a11y_cache: List[(String, String)] = []
+var a11y_catch_up = false
 
 pub fn run(a: App) -> Unit = {
   current = a
@@ -104,7 +113,7 @@ pub fn set_caret(x: Float, y: Float, w: Float, h: Float) -> Unit = {
 // Cmd on Apple platforms, Ctrl elsewhere.
 pub fn is_shortcut(mods: Int) -> Bool = {
   if platform_id == 0 then platform_id = sys.platform() else ()
-  let apple = platform_id == 2 or platform_id == 5
+  let apple = platform_id == 2 or platform_id == 5 or platform_id == 17
   if apple then mods % 16 >= 8 else (mods / 2) % 2 == 1
 }
 
@@ -181,11 +190,16 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     invalidate()
     0
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
+  else if kind == 12 then { if a11y_action(a, b) then 1 else 0 }
   else 0
 
 fn key(phase: Int, code: Int, mods: Int) -> Bool = {
   let fi = find_key(focus_key)
-  var handled = fi >= 0 and frame_views[fi].on_key(phase, code, mods)
+  // App shortcuts (Cmd/Ctrl+…) win over the focused widget, except the
+  // editing ones a text widget owns (select all, copy, cut, undo, redo).
+  let editing = code == 20 or code == 21 or code == 23 or code == 24 or code == 25
+  var handled = is_shortcut(mods) and not editing and current.on_key(phase, code, mods)
+  if not handled then handled = fi >= 0 and frame_views[fi].on_key(phase, code, mods) else ()
   if not handled then handled = current.on_key(phase, code, mods) else ()
   if not handled and phase != 1 and code == 2 then {
     cycle_focus(has_shift(mods))
@@ -233,6 +247,7 @@ fn event_string() -> String = bytes.to_string_lossy(event_bytes())
 // ── Frame ──
 
 fn frame(t: Float) -> Int = {
+  frame_time = t
   let animating = current.on_frame(t)
   if dirty or animating then {
     dirty = false
@@ -253,6 +268,62 @@ fn render() -> Unit = {
   paint(root, rects, 0)
   let _ = snaidhm.end(current.background)
   update_ime()
+  if a11y.a11y_active() == 1 then emit_a11y() else ()
+}
+
+// ── Accessibility: a flat tree of the nodes that carry meaning ──
+// Ids are frame indices + 1; the host diffs by id after each commit.
+
+fn cached_value(id: String) -> String = {
+  var found = ""
+  for kv in a11y_cache { if kv.0 == id then found = kv.1 else () }
+  found
+}
+
+fn emit_a11y() -> Unit = {
+  let elapsed = frame_time - a11y_values_at
+  let refresh = elapsed >= A11Y_VALUE_MS or elapsed < 0.0 or focus_key != a11y_values_focus
+  var fresh: List[(String, String)] = []
+  a11y.a11y_begin()
+  for i in 0..<list.len(frame_views) {
+    let vw = frame_views[i]
+    let is_text = vw.kind == v.TEXT and vw.content != ""
+    if vw.role != 0 or vw.label != "" or vw.focusable or is_text then {
+      let r = frame_rects[i]
+      let role = if vw.role != 0 then vw.role else if is_text then 4 else 2
+      let label = if vw.label != "" then vw.label else vw.content
+      let lb = bytes.from_string(label)
+      let focused_flag = if vw.focusable and vw.key != "" and vw.key == focus_key then 2 else 0
+      let flags = (if vw.focusable then 1 else 0) + focused_flag
+      a11y.a11y_node(i + 1, 0, role, r.x, r.y, r.w, r.h, flags, bytes.data_ptr(lb), bytes.len(lb))
+      let id = vw.key + "\u{1}" + label
+      let val = if refresh then vw.value() else cached_value(id)
+      if refresh and val != "" then list.push(fresh, (id, val)) else ()
+      if val != "" then {
+        let vb = bytes.from_string(val)
+        a11y.a11y_value(i + 1, bytes.data_ptr(vb), bytes.len(vb))
+      } else ()
+    } else ()
+  }
+  a11y.a11y_commit(find_key(focus_key) + 1)
+  if refresh then {
+    a11y_cache = fresh
+    a11y_values_at = frame_time
+    a11y_values_focus = focus_key
+    a11y_catch_up = false
+  } else if not a11y_catch_up then {
+    a11y_catch_up = true
+    dirty = true
+    sys.request_frame_after(A11Y_VALUE_MS - elapsed)
+  } else ()
+}
+
+fn a11y_action(id: Int, action: Int) -> Bool = {
+  let i = id - 1
+  if i < 0 or i >= list.len(frame_views) then false
+  else if action == 1 and frame_views[i].clickable then { frame_views[i].on_click(); invalidate(); true }
+  else if action == 2 and frame_views[i].focusable then { focus(frame_views[i].key); true }
+  else false
 }
 
 // ── View → layout node ──
@@ -271,6 +342,8 @@ fn to_node(view: v.View) -> lay.Node = {
   {
     ...base,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
+    wrap: if s.wrap then lay.WRAP_WRAP else lay.WRAP_NONE,
+    gap_cross: if s.wrap then s.gap else 0.0,
     justify: s.justify,
     align_items: s.align,
     align_self: s.align_self,

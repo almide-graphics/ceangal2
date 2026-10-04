@@ -28,6 +28,18 @@ thread_local! {
     pub static TREE: RefCell<Tree> = RefCell::new(Tree::default());
 }
 
+/// Whether anything consumes the tree. Platform adapters (AccessKit, M4)
+/// switch this on when an assistive technology connects; until then ceangal
+/// skips building it. `CEANGAL_A11Y=1` forces it (tests, debugging).
+pub fn a11y_active() -> i64 {
+    let forced = std::env::var("CEANGAL_A11Y").map_or(false, |v| v == "1");
+    if forced || ACTIVE.with(|a| a.get()) { 1 } else { 0 }
+}
+
+thread_local! {
+    pub static ACTIVE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 pub fn a11y_begin() {
     TREE.with(|t| t.borrow_mut().building.clear());
 }

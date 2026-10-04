@@ -27,6 +27,12 @@ jobs:
       - name: layout engine (Yoga-derived)
         working-directory: ceangal
         run: ../tools/almide test src/layout_test.almd
+      - name: font engine
+        working-directory: snaidhm
+        run: ../tools/almide test src/font_test.almd
+      - name: playground units
+        working-directory: apps/playground
+        run: ../../tools/almide test src/deflate_test.almd
       - name: wasm check (every app)
         run: |
           for app in apps/*/; do
@@ -53,3 +59,47 @@ jobs:
         with:
           name: pixel-macos
           path: out/pixel/*.png
+
+  # The web playground: compiler wasm, app wasm, real-browser E2E, the old
+  # playground's fixtures, and (on main) the GitHub Pages deploy.
+  web:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: taiki-e/install-action@v2
+        with: { tool: wasm-bindgen-cli@0.2.129 }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/playground/compiler/target
+          key: compiler-wasm-${{ runner.os }}-${{ hashFiles('apps/playground/compiler/Cargo.lock') }}
+      - name: build dist/web (compiler + app + closure-stub check)
+        run: tools/build_web.sh
+      - name: playground E2E (headless Chrome, WebGPU)
+        run: SKIP_BUILD=1 node tests/e2e/web.mjs
+      - name: fixtures and examples, native vs playground
+        run: SKIP_BUILD=1 node tests/e2e/fixtures.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-web
+          path: out/e2e/*.png
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with: { path: dist/web }
+
+  pages:
+    needs: web
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: { pages: write, id-token: write }
+    environment: { name: github-pages, url: '${{ steps.deploy.outputs.page_url }}' }
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

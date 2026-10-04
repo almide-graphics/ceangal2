@@ -34,6 +34,8 @@ export async function start(opts) {
   if (!adapter) throw new UnsupportedError("No WebGPU adapter");
   const device = await adapter.requestDevice();
   const host = new Host({ device, canvas, headless, appId, onError: opts.onError });
+  host.extensions = opts.extensions || [];
+  host.launch = opts.launch ?? null;
   await host.loadAssets(assets);
   await host.instantiate(wasm);
   host.boot();
@@ -55,6 +57,8 @@ class Host {
     this.eventData = new Uint8Array(0);
     this.assets = new Map();
     this.frameRequested = true;
+    this.clock = 0;
+    this.timers = [];
     this.animating = false;
     this.rafPending = false;
     this.nextRequest = 1;
@@ -219,17 +223,29 @@ class Host {
       abi_version: () => 1n,
       run: () => {},
       request_frame: () => { self.frameRequested = true; self.schedule(); },
+      request_frame_after: (ms) => {
+        // Headless: a virtual timer that settle() fast-forwards to.
+        if (self.headless) { self.timers.push(self.clock + Math.max(0, ms)); return; }
+        setTimeout(() => { self.frameRequested = true; self.schedule(); }, Math.max(0, ms));
+      },
       now_ms: () => performance.now(),
       log: (p, n) => console.log(self.str(p, n)),
       event_len: () => BigInt(self.eventData.length),
       event_read: (p, n) => self.fill(self.eventData, p, n),
-      platform: () => 1n,
+      platform: () => (!self.headless && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? 17n : 1n),
       set_cursor: (k) => { if (!self.headless) self.canvas.style.cursor = CURSORS[Number(k)] || "default"; },
       set_title: (p, n) => { if (!self.headless) document.title = self.str(p, n); },
       open_url: (p, n) => { window.open(self.str(p, n), "_blank", "noopener"); },
       asset_len: (p, n) => { const a = self.assets.get(self.str(p, n)); return BigInt(a ? a.length : -1); },
       asset_read: (p, n, dp, dn) => { const a = self.assets.get(self.str(p, n)); return a ? self.fill(a, dp, dn) : 0n; },
       exit: () => { self.dead = true; },
+      launch_len: () => BigInt(enc.encode(self.launchString()).length),
+      launch_read: (p, n) => self.fill(enc.encode(self.launchString()), p, n),
+      set_location: (p, n) => {
+        if (self.headless) return;
+        const loc = self.str(p, n);
+        try { history.replaceState(null, "", loc.startsWith("#") || loc.startsWith("?") ? loc : "#" + loc); } catch {}
+      },
     };
 
     const text_input = {
@@ -239,6 +255,8 @@ class Host {
     };
 
     const a11y = {
+      // The ARIA overlay (and headless tests) always consume the tree.
+      a11y_active: () => 1n,
       a11y_begin: () => { self.a11yNodes = []; },
       a11y_node: (id, parent, role, x, y, w, h, flags, lp, ln) => {
         (self.a11yNodes ||= []).push({ id: Number(id), parent: Number(parent), role: Number(role), x, y, w, h, flags: Number(flags), label: self.str(lp, ln) });
@@ -321,7 +339,16 @@ class Host {
       args_get: () => 0,
     };
     const wasiProxy = new Proxy(wasi, { get: (t, k) => t[k] || (() => 52 /* ENOSYS */) });
-    return { gpu, sys, text_input, a11y, clipboard, storage, net, file, wasi_snapshot_preview1: wasiProxy };
+    const base = { gpu, sys, text_input, a11y, clipboard, storage, net, file, wasi_snapshot_preview1: wasiProxy };
+    // App-specific namespaces (e.g. the playground's `runner`).
+    for (const ext of this.extensions) Object.assign(base, ext(this));
+    return base;
+  }
+
+  launchString() {
+    if (this.launch != null) return this.launch;
+    if (this.headless || typeof location === "undefined") return "";
+    return location.href;
   }
 
   async instantiate(wasm) {
@@ -341,8 +368,11 @@ class Host {
     try {
       return Number(this.instance.exports.ceangal_event(BigInt(kind), BigInt(a), BigInt(b), x, y, z, w));
     } catch (e) {
-      if (e instanceof GuestExit) { this.dead = true; return 0; }
       this.dead = true;
+      if (e instanceof GuestExit) {
+        if (e.code !== 0) this.onError(new Error(`guest exited with status ${e.code} during event ${kind}`));
+        return 0;
+      }
       this.onError(e);
       return 0;
     }
@@ -383,11 +413,21 @@ class Host {
   }
 
   // Headless: render frames until settled, then read the target back as RGBA.
+  // Headless: run frames until the guest is idle. Time is virtual — each
+  // frame advances it 16 ms, and when only timers remain it jumps to the
+  // earliest one, so debounces and timeouts resolve without waiting.
   async settle(maxFrames = 8) {
     for (let i = 0; i < maxFrames; i++) {
-      const wanted = this.frameRequested;
+      let wanted = this.frameRequested;
+      if (!wanted && this.timers.length) {
+        const due = Math.min(...this.timers);
+        this.timers = this.timers.filter((t) => t !== due);
+        this.clock = Math.max(this.clock, due);
+        wanted = true;
+      }
       this.frameRequested = false;
-      const again = this.dispatch(EV.FRAME, 0, 0, i * 16) === 1;
+      const again = this.dispatch(EV.FRAME, 0, 0, this.clock) === 1;
+      this.clock += 16;
       if (!wanted && !again) break;
     }
     await this.device.queue.onSubmittedWorkDone();

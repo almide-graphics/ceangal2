@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Almide Playground</title>
+<meta name="description" content="Write and run Almide in your browser.">
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1b26; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; }
+  #unsupported { display: none; color: #c0caf5; font: 15px/1.5 system-ui, sans-serif; padding: 32px; max-width: 560px; }
+</style>
+<canvas id="app" aria-label="Almide Playground"></canvas>
+<p id="unsupported">The Almide Playground needs WebGPU. Use a current version of Chrome, Edge, Safari or Firefox with WebGPU turned on.</p>
+<script type="module">
+import { start, UnsupportedError } from "./host.js";
+import { playgroundOptions } from "./boot.js";
+
+try {
+  window.ceangal = await start({ ...(await playgroundOptions()), canvas: document.getElementById("app"), onError: (e) => console.error(e) });
+} catch (e) {
+  if (!(e instanceof UnsupportedError)) throw e;
+  document.getElementById("app").remove();
+  document.getElementById("unsupported").style.display = "block";
+}
+</script>

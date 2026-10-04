@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>playground e2e</title>
+<body>
+<script type="module">
+// Drives the built playground (dist/web) through its accessibility tree:
+// every lookup is by the label a screen reader would announce.
+import { start } from "/dist/web/host.js";
+import { playgroundOptions } from "/dist/web/boot.js";
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let host = null;
+const errors = [];
+
+window.pg = {
+  async boot({ width = 1200, height = 760, scale = 1, launch = "" } = {}) {
+    const opts = await playgroundOptions({ base: "/dist/web/" });
+    host = await start({ ...opts, canvas: null, headless: { width, height, scale }, launch, onError: (e) => errors.push(String(e)) });
+    await host.settle();
+    return true;
+  },
+  errors: () => errors,
+  host: () => host,
+  nodes: () => (host.a11yNodes || []).map((n) => ({ ...n })),
+  find(label) { return (host.a11yNodes || []).find((n) => n.label === label) || null; },
+  value(label) { return this.find(label)?.value ?? null; },
+  texts() { return (host.a11yNodes || []).filter((n) => n.role === 4).map((n) => n.label); },
+  async click(label) {
+    const n = this.find(label);
+    if (!n) throw new Error(`no node labelled ${JSON.stringify(label)}; have ${JSON.stringify(this.nodes().map((m) => m.label).filter(Boolean))}`);
+    host.click(n.x + n.w / 2, n.y + n.h / 2);
+    await host.settle();
+  },
+  async key(code, mods = 0) { host.key(code, mods); await host.settle(); },
+  async type(s) { host.text(s, 0); await host.settle(); },
+  // Polls `pred` (a function source) between frames until it is truthy.
+  async until(pred, timeoutMs = 30000) {
+    const f = new Function("pg", `return (${pred})(pg)`);
+    const t0 = performance.now();
+    for (;;) {
+      await host.settle();
+      const v = f(this);
+      if (v) return v;
+      if (performance.now() - t0 > timeoutMs) throw new Error(`timed out waiting for ${pred}; texts: ${JSON.stringify(this.texts())}`);
+      await sleep(50);
+    }
+  },
+  async snapshot() {
+    const snap = await host.snapshot();
+    let s = "";
+    for (let i = 0; i < snap.rgba.length; i += 0x8000) s += String.fromCharCode.apply(null, snap.rgba.subarray(i, i + 0x8000));
+    return { width: snap.width, height: snap.height, rgba: btoa(s) };
+  },
+};
+window.__ready = true;
+</script>

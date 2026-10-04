@@ -19,6 +19,8 @@ pub struct SysState {
     pub title: Option<String>,
     pub exit_code: Option<i64>,
     pub open_urls: Vec<String>,
+    pub location: Option<String>,
+    pub frame_deadline: Option<f64>,
 }
 
 thread_local! {
@@ -30,6 +32,8 @@ thread_local! {
         title: None,
         exit_code: None,
         open_urls: Vec::new(),
+        location: None,
+        frame_deadline: None,
     });
 }
 
@@ -78,8 +82,9 @@ pub fn take_frame_request() -> bool {
 /// Directories searched for bundled assets, in order.
 pub fn asset_dirs() -> Vec<std::path::PathBuf> {
     let mut dirs = Vec::new();
-    if let Ok(d) = std::env::var("CEANGAL_ASSETS") {
-        dirs.push(d.into());
+    // A path list (`:`-separated, `;` on Windows): app assets, then shared ones.
+    if let Some(d) = std::env::var_os("CEANGAL_ASSETS") {
+        dirs.extend(std::env::split_paths(&d));
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
@@ -123,6 +128,29 @@ pub fn run() {
 
 pub fn request_frame() {
     STATE.with(|s| s.borrow_mut().frame_requested = true);
+}
+
+/// A frame `ms` from now (timers: debounced checks, caret blink). The host
+/// loop wakes at the earliest deadline.
+pub fn request_frame_after(ms: f64) {
+    let at = now_ms() + ms.max(0.0);
+    STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        s.frame_deadline = Some(s.frame_deadline.map_or(at, |d: f64| d.min(at)));
+    });
+}
+
+/// Take the pending deadline if it has passed (it then counts as a frame
+/// request); otherwise leave it and return it for the loop's wait.
+pub fn due_deadline() -> Option<f64> {
+    let now = now_ms();
+    STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        match s.frame_deadline {
+            Some(d) if d <= now => { s.frame_deadline = None; s.frame_requested = true; None }
+            other => other,
+        }
+    })
 }
 
 pub fn now_ms() -> f64 {
@@ -173,4 +201,22 @@ pub fn asset_read(name_ptr: i64, name_len: i64, dst_ptr: i64, dst_len: i64) -> i
 
 pub fn exit(code: i64) {
     STATE.with(|s| s.borrow_mut().exit_code = Some(code));
+}
+
+/// How the app was opened: a deep link / file argument (`CEANGAL_LAUNCH`, or
+/// the first command-line argument). The web host passes `location.search` +
+/// `location.hash`.
+fn launch() -> String {
+    std::env::var("CEANGAL_LAUNCH").ok().or_else(|| std::env::args().nth(1)).unwrap_or_default()
+}
+
+pub fn launch_len() -> i64 { launch().len() as i64 }
+
+pub fn launch_read(ptr: i64, len: i64) -> i64 { fill(launch().as_bytes(), ptr, len) }
+
+/// The app's shareable location changed (web: the URL hash). Natively it is
+/// remembered for "copy link".
+pub fn set_location(ptr: i64, len: i64) {
+    let l = string(ptr, len);
+    STATE.with(|s| s.borrow_mut().location = Some(l));
 }

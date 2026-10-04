@@ -6,3 +6,4 @@ node_modules/
 *.wasm
 !hosts/web/vendor/*.wasm
 .DS_Store
+dist/

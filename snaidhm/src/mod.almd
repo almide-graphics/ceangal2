@@ -7,8 +7,9 @@
 
 import self.gpu
 import self.shader
+import self.color as col
 
-type Color = { r: Float, g: Float, b: Float, a: Float }
+type Color = col.Color
 
 pub fn rgba(r: Float, g: Float, b: Float, a: Float) -> Color = { r: r, g: g, b: b, a: a }
 
@@ -124,6 +125,20 @@ pub fn forget_image(tex: Int) -> Unit = {
 
 pub fn atlas() -> Int = { ensure_ready(); atlas_tex }
 pub fn atlas_size() -> Int = ATLAS_SIZE
+
+// An RGBA8 (straight alpha) image texture for `image`. Release with
+// `release_image` when done.
+pub fn create_image(w: Int, h: Int, rgba: Bytes) -> Int = {
+  ensure_ready()
+  let tex = gpu.create_texture(w, h, gpu.FORMAT_RGBA8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
+  if tex != 0 and w > 0 and h > 0 then gpu.write_texture(tex, 0, 0, w, h, bytes.data_ptr(rgba), bytes.len(rgba), w * 4) else ()
+  tex
+}
+
+pub fn release_image(tex: Int) -> Unit = {
+  forget_image(tex)
+  gpu.release(tex)
+}
 
 // Write an 8-bit coverage bitmap (w*h, row-major) into the atlas at (x, y).
 pub fn upload_coverage(x: Int, y: Int, w: Int, h: Int, pixels: Bytes) -> Unit = {

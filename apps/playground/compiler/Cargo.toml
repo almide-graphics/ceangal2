@@ -1,0 +1,29 @@
+[package]
+name = "almide-compiler-service"
+version = "0.1.0"
+edition = "2021"
+description = "The Almide compiler as a library for the ceangal2 playground: check, compile to wasm/Rust, AST"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+web = ["dep:wasm-bindgen"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Pinned to the toolchain in .almide-version; almide-mir is the v1 wasm
+# renderer (the only live wasm codegen, almide#782).
+almide = { git = "https://github.com/almide/almide.git", tag = "v0.66.0", default-features = false }
+almide-mir = { git = "https://github.com/almide/almide.git", tag = "v0.66.0" }
+wat = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

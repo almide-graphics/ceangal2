@@ -226,6 +226,13 @@
    "ret": "Unit"
   },
   {
+   "name": "request_frame_after",
+   "params": [
+    "Float"
+   ],
+   "ret": "Unit"
+  },
+  {
    "name": "now_ms",
    "params": [],
    "ret": "Float"
@@ -303,6 +310,27 @@
     "Int"
    ],
    "ret": "Unit"
+  },
+  {
+   "name": "launch_len",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "launch_read",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "set_location",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
   }
  ],
  "text_input": [
@@ -333,6 +361,11 @@
   }
  ],
  "a11y": [
+  {
+   "name": "a11y_active",
+   "params": [],
+   "ret": "Int"
+  },
   {
    "name": "a11y_begin",
    "params": [],
@@ -482,6 +515,66 @@
    "params": [
     "Int",
     "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "runner": [
+  {
+   "name": "runner_version_len",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_version_read",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_check",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_run",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_rust",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_ast",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "runner_stop",
+   "params": [
     "Int"
    ],
    "ret": "Unit"

@@ -1,0 +1,172 @@
+// A small HTML renderer for the Visual tab: the block and inline elements a
+// program typically prints (h1–h6, p, ul/ol/li, pre/code, blockquote, hr,
+// br, strong/b, em/i, a) become ceangal views. Unknown tags keep their text.
+
+import ceangal.view as v
+import snaidhm
+
+type HNode = | Text(String) | El(String, List[HNode])
+
+fn decode_entities(s: String) -> String =
+  s |> string.replace("&lt;", "<") |> string.replace("&gt;", ">") |> string.replace("&quot;", "\"")
+    |> string.replace("&#39;", "'") |> string.replace("&nbsp;", " ") |> string.replace("&amp;", "&")
+
+let VOID = ["br", "hr", "img", "meta", "link", "input"]
+
+// Parse into a tree (forgiving: unclosed tags close at their parent's end).
+fn parse(text: String) -> List[HNode] = {
+  let b = bytes.from_string(text)
+  let n = bytes.len(b)
+  // a stack of (tag, children)
+  var tags: List[String] = ["#root"]
+  var kids: List[List[HNode]] = [[]]
+  var i = 0
+  while i < n {
+    if bytes.read_u8(b, i) == 60 then {
+      var j = i + 1
+      while j < n and bytes.read_u8(b, j) != 62 { j = j + 1 }
+      let inner = bytes.to_string_lossy(bytes.slice(b, i + 1, j))
+      let closing = string.starts_with(inner, "/")
+      let raw = string.trim(if closing then string.drop(inner, 1) else inner)
+      let name = string.to_lower(match string.index_of(raw, " ") { some(k) => string.take(raw, k), none => string.replace(raw, "/", "") })
+      if string.starts_with(inner, "!") or string.starts_with(inner, "?") then ()
+      else if closing then {
+        // pop to the matching tag
+        var depth = list.len(tags) - 1
+        while depth > 0 and tags[depth] != name { depth = depth - 1 }
+        if depth > 0 then {
+          while list.len(tags) - 1 >= depth {
+            let top = list.len(tags) - 1
+            let el = El(tags[top], kids[top])
+            tags = list.take(tags, top)
+            kids = list.take(kids, top)
+            kids[top - 1] = kids[top - 1] + [el]
+          }
+        } else ()
+      } else if list.contains(VOID, name) or string.ends_with(inner, "/") then {
+        let top = list.len(tags) - 1
+        kids[top] = kids[top] + [El(name, [])]
+      } else {
+        list.push(tags, name)
+        list.push(kids, [])
+      }
+      i = j + 1
+    } else {
+      var j = i
+      while j < n and bytes.read_u8(b, j) != 60 { j = j + 1 }
+      let t = decode_entities(bytes.to_string_lossy(bytes.slice(b, i, j)))
+      let top = list.len(tags) - 1
+      if string.trim(t) != "" then kids[top] = kids[top] + [Text(t)] else ()
+      i = j
+    }
+  }
+  while list.len(tags) > 1 {
+    let top = list.len(tags) - 1
+    let el = El(tags[top], kids[top])
+    tags = list.take(tags, top)
+    kids = list.take(kids, top)
+    kids[top - 1] = kids[top - 1] + [el]
+  }
+  kids[0]
+}
+
+type Style = { size: Float, bold: Bool, mono: Bool, color: snaidhm.Color }
+
+fn inline_views(nodes: List[HNode], st: Style) -> List[v.View] = {
+  var out: List[v.View] = []
+  for nd in nodes {
+    match nd {
+      Text(t) => {
+        // collapse whitespace; one view per word keeps wrapping possible
+        for w in string.split(string.replace(string.replace(t, "\n", " "), "\t", " "), " ") {
+          if w != "" then {
+            var tv = v.text(w) |> v.font(st.size) |> v.color(st.color)
+            if st.bold then tv = tv |> v.bold() else ()
+            if st.mono then tv = tv |> v.mono() |> v.bg(snaidhm.rgba(0.5, 0.55, 0.8, 0.15)) |> v.px(3.0) |> v.rounded(3.0) else ()
+            list.push(out, tv)
+          } else ()
+        }
+      },
+      El(tag, ch) => {
+        let s2 = if tag == "strong" or tag == "b" then { ...st, bold: true }
+          else if tag == "code" or tag == "kbd" or tag == "tt" then { ...st, mono: true }
+          else if tag == "a" then { ...st, color: snaidhm.hex(0x7AA2F7) }
+          else if tag == "em" or tag == "i" then { ...st, color: snaidhm.with_alpha(st.color, 0.85) }
+          else st
+        if tag == "br" then list.push(out, v.empty() |> v.w_pct(100.0) |> v.h(0.0))
+        else out = out + inline_views(ch, s2)
+      },
+    }
+  }
+  out
+}
+
+fn flow(views: List[v.View]) -> v.View = v.wrap_row(views) |> v.gap(5.0)
+
+fn block(nd: HNode, base: Style, depth: Int) -> List[v.View] = match nd {
+  Text(t) => [flow(inline_views([Text(t)], base))],
+  El(tag, ch) => {
+    let heading = tag == "h1" or tag == "h2" or tag == "h3" or tag == "h4" or tag == "h5" or tag == "h6"
+    if heading then {
+      let size = if tag == "h1" then 26.0 else if tag == "h2" then 21.0 else if tag == "h3" then 18.0 else 16.0
+      [flow(inline_views(ch, { ...base, size: size, bold: true })) |> v.my(6.0)]
+    } else if tag == "p" then [flow(inline_views(ch, base)) |> v.my(4.0)]
+    else if tag == "hr" then [v.empty() |> v.h(1.0) |> v.bg(snaidhm.rgba(1.0, 1.0, 1.0, 0.15)) |> v.my(8.0)]
+    else if tag == "pre" then [v.col(lines_of(ch, base)) |> v.padding(10.0) |> v.rounded(6.0) |> v.bg(snaidhm.rgba(0.0, 0.0, 0.0, 0.25))]
+    else if tag == "ul" or tag == "ol" then {
+      var items: List[v.View] = []
+      var k = 1
+      for c in ch {
+        match c {
+          El(t2, cc) => {
+            if t2 == "li" then {
+              let marker = if tag == "ol" then int.to_string(k) + "." else "•"
+              list.push(items, v.row([
+                v.text(marker) |> v.font(base.size) |> v.color(base.color) |> v.w(18.0),
+                v.col(blocks(cc, base, depth + 1)) |> v.grow(1.0) |> v.shrink(1.0),
+              ]) |> v.gap(4.0))
+              k = k + 1
+            } else ()
+          },
+          Text(_) => (),
+        }
+      }
+      [v.col(items) |> v.gap(3.0) |> v.my(4.0)]
+    }
+    else if tag == "blockquote" then [v.col(blocks(ch, base, depth + 1)) |> v.pad(4.0, 0.0, 4.0, 12.0) |> v.border(0.0, base.color)]
+    else if tag == "div" or tag == "section" or tag == "article" or tag == "body" or tag == "html" or tag == "main" or tag == "li" then blocks(ch, base, depth + 1)
+    else [flow(inline_views([nd], base))]
+  },
+}
+
+fn lines_of(nodes: List[HNode], base: Style) -> List[v.View] = {
+  var text = ""
+  for nd in nodes { text = text + node_text(nd) }
+  var out: List[v.View] = []
+  for l in string.split(text, "\n") { list.push(out, v.text(l) |> v.mono() |> v.font(13.0) |> v.color(base.color)) }
+  out
+}
+
+fn node_text(nd: HNode) -> String = match nd {
+  Text(t) => t,
+  El(_, ch) => { var s = ""; for c in ch { s = s + node_text(c) }; s },
+}
+
+fn blocks(nodes: List[HNode], base: Style, depth: Int) -> List[v.View] = {
+  var out: List[v.View] = []
+  // consecutive inline nodes form one paragraph
+  var inline: List[HNode] = []
+  let is_block = (t: String) => list.contains(["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "pre", "hr", "blockquote", "div", "section", "article", "body", "html", "main", "table"], t)
+  for nd in nodes {
+    let blk = match nd { El(t, _) => is_block(t), Text(_) => false }
+    if blk then {
+      if list.len(inline) > 0 then { list.push(out, flow(inline_views(inline, base))); inline = [] } else ()
+      out = out + block(nd, base, depth)
+    } else list.push(inline, nd)
+  }
+  if list.len(inline) > 0 then list.push(out, flow(inline_views(inline, base))) else ()
+  out
+}
+
+pub fn render(text: String, color: snaidhm.Color) -> v.View =
+  v.col(blocks(parse(text), { size: 15.0, bold: false, mono: false, color: color }, 0)) |> v.gap(4.0) |> v.padding(16.0)

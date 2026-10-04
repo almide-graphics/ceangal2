@@ -1,0 +1,94 @@
+// A small pure raw-deflate compressor (LZ77 + fixed Huffman) for share links.
+// stdlib zlib.deflate is an effect fn, and share runs from a click handler.
+// The output is the same raw format zlib.deflate writes, so zlib.inflate reads it.
+
+let POW2 = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648]
+let LEN_BASE = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258]
+let LEN_EXTRA = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0]
+let DIST_BASE = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577]
+let DIST_EXTRA = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13]
+
+// w = [bit buffer, bit count]; bits go out LSB first.
+fn put(mut out: List[Int], mut w: List[Int], v: Int, n: Int) -> Unit = {
+  w[0] = w[0] + v * POW2[w[1]]
+  w[1] = w[1] + n
+  while w[1] >= 8 {
+    list.push(out, w[0] % 256)
+    w[0] = w[0] / 256
+    w[1] = w[1] - 8
+  }
+}
+
+// Huffman codes are sent MSB first.
+fn put_code(mut out: List[Int], mut w: List[Int], code: Int, n: Int) -> Unit = {
+  var r = 0
+  for i in 0..<n { r = r * 2 + (code / POW2[i]) % 2 }
+  put(out, w, r, n)
+}
+
+fn put_sym(mut out: List[Int], mut w: List[Int], s: Int) -> Unit =
+  if s < 144 then put_code(out, w, 48 + s, 8)
+  else if s < 256 then put_code(out, w, 400 + s - 144, 9)
+  else if s < 280 then put_code(out, w, s - 256, 7)
+  else put_code(out, w, 192 + s - 280, 8)
+
+fn find_index(table: List[Int], v: Int) -> Int = {
+  var i = 0
+  while i + 1 < list.len(table) and table[i + 1] <= v { i = i + 1 }
+  i
+}
+
+pub fn raw(b: Bytes) -> Bytes = {
+  let n = bytes.len(b)
+  var out: List[Int] = []
+  var w: List[Int] = [0, 0]
+  put(out, w, 1, 1)   // BFINAL
+  put(out, w, 1, 2)   // fixed Huffman
+  var head: List[Int] = list.repeat(-1, 4096)
+  var prev: List[Int] = list.repeat(-1, n)
+  var i = 0
+  while i < n {
+    var best_len = 0
+    var best_dist = 0
+    if i + 2 < n then {
+      let h = (bytes.read_u8(b, i) * 409 + bytes.read_u8(b, i + 1) * 31 + bytes.read_u8(b, i + 2)) % 4096
+      var cand = head[h]
+      var tries = 0
+      while cand >= 0 and i - cand <= 32768 and tries < 32 {
+        var l = 0
+        while l < 258 and i + l < n and bytes.read_u8(b, cand + l) == bytes.read_u8(b, i + l) { l = l + 1 }
+        if l > best_len then { best_len = l; best_dist = i - cand } else ()
+        cand = prev[cand]
+        tries = tries + 1
+      }
+      prev[i] = head[h]
+      head[h] = i
+    } else ()
+    if best_len >= 3 then {
+      let li = find_index(LEN_BASE, best_len)
+      put_sym(out, w, 257 + li)
+      put(out, w, best_len - LEN_BASE[li], LEN_EXTRA[li])
+      let di = find_index(DIST_BASE, best_dist)
+      put_code(out, w, di, 5)
+      put(out, w, best_dist - DIST_BASE[di], DIST_EXTRA[di])
+      // index the skipped positions so later matches can find them
+      for k in (i + 1)..<(i + best_len) {
+        if k + 2 < n then {
+          let h2 = (bytes.read_u8(b, k) * 409 + bytes.read_u8(b, k + 1) * 31 + bytes.read_u8(b, k + 2)) % 4096
+          prev[k] = head[h2]
+          head[h2] = k
+        } else ()
+      }
+      i = i + best_len
+    } else {
+      put_sym(out, w, bytes.read_u8(b, i))
+      i = i + 1
+    }
+  }
+  put_sym(out, w, 256)
+  let pad = (8 - w[1]) % 8   // a separate let: almide/almide#3306
+  if pad > 0 then put(out, w, 0, pad) else ()
+  var r = bytes.new(list.len(out))
+  for j in 0..<list.len(out) { bytes.set_at(r, j, out[j]) }
+  r
+}

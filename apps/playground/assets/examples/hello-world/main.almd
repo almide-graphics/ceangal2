@@ -1,0 +1,8 @@
+// Hello, world!
+//
+// The smallest Almide program. `effect fn` marks a function that
+// touches the outside world — printing counts. The body is just the
+// expression after `=`: no braces needed for a single expression.
+
+effect fn main() -> Unit =
+  println("Hello, world!")

@@ -40,7 +40,7 @@ fn view() -> v.View =
     v.row([
       v.text("main.almd") |> v.font(13.0) |> v.color(snaidhm.hex(0xC0CAF5)),
       v.spacer(),
-      ed.view("search", () => field, (e) => { field = e }, ed.dark_theme())
+      ed.field("search", () => field, (e) => { field = e }, ed.dark_theme())
         |> v.size(220.0, 30.0) |> v.rounded(6.0) |> v.clip(),
     ]) |> v.h(44.0) |> v.px(12.0) |> v.align(v.Middle) |> v.bg(snaidhm.hex(0x16161E)),
     ed.view("main", () => doc, (e) => { doc = e }, ed.dark_theme()) |> v.grow(1.0),

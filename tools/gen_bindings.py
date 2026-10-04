@@ -48,6 +48,7 @@ NAMESPACES = {
         ("abi_version", [], I),
         ("run", [], U),
         ("request_frame", [], U),
+        ("request_frame_after", [("ms", F)], U),
         ("now_ms", [], F),
         ("log", [("ptr", I), ("len", I)], U),
         ("event_len", [], I),
@@ -59,6 +60,9 @@ NAMESPACES = {
         ("asset_len", [("name_ptr", I), ("name_len", I)], I),
         ("asset_read", [("name_ptr", I), ("name_len", I), ("dst_ptr", I), ("dst_len", I)], I),
         ("exit", [("code", I)], U),
+        ("launch_len", [], I),
+        ("launch_read", [("ptr", I), ("len", I)], I),
+        ("set_location", [("ptr", I), ("len", I)], U),
     ]),
     "text_input": ("ceangal/src/host/text_input.almd", "crate::text_input", [
         ("ime_begin", [("x", F), ("y", F), ("w", F), ("h", F)], U),
@@ -66,6 +70,7 @@ NAMESPACES = {
         ("ime_end", [], U),
     ]),
     "a11y": ("ceangal/src/host/a11y.almd", "crate::a11y", [
+        ("a11y_active", [], I),
         ("a11y_begin", [], U),
         ("a11y_node", [("id", I), ("parent", I), ("role", I), ("x", F), ("y", F), ("w", F), ("h", F), ("flags", I), ("label_ptr", I), ("label_len", I)], U),
         ("a11y_value", [("id", I), ("ptr", I), ("len", I)], U),
@@ -88,6 +93,16 @@ NAMESPACES = {
         ("http_begin", [("method_ptr", I), ("method_len", I), ("url_ptr", I), ("url_len", I)], I),
         ("http_header", [("id", I), ("name_ptr", I), ("name_len", I), ("value_ptr", I), ("value_len", I)], U),
         ("http_send", [("id", I), ("body_ptr", I), ("body_len", I)], U),
+    ]),
+    # App-specific: the playground's compiler service (apps/playground/docs/runner.md).
+    "runner": ("apps/playground/src/host/runner.almd", "crate::runner", [
+        ("runner_version_len", [], I),
+        ("runner_version_read", [("ptr", I), ("len", I)], I),
+        ("runner_check", [("files_ptr", I), ("files_len", I), ("entry_ptr", I), ("entry_len", I)], I),
+        ("runner_run", [("files_ptr", I), ("files_len", I), ("entry_ptr", I), ("entry_len", I)], I),
+        ("runner_rust", [("files_ptr", I), ("files_len", I), ("entry_ptr", I), ("entry_len", I)], I),
+        ("runner_ast", [("src_ptr", I), ("src_len", I)], I),
+        ("runner_stop", [("id", I)], U),
     ]),
     "file": ("ceangal/src/host/file.almd", "crate::file", [
         ("file_open", [("kind", I)], I),

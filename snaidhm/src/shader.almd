@@ -110,7 +110,7 @@ fn fs_main(in: VOut) -> @location(0) vec4<f32> {
     cov = atlas_cov;
   } else if (kind == 3.0) {
     let a = texel.a * inst.color.a * clamp(0.5 - d, 0.0, 1.0);
-    return vec4<f32>(texel.rgb * (a / max(texel.a, 0.00001)), a);
+    return vec4<f32>(texel.rgb * a, a);
   } else {
     let sigma = max(inst.p.z, 0.5);
     cov = 0.5 - 0.5 * erf_approx(d / (sigma * 1.41421356));

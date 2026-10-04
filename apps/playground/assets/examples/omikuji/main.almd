@@ -1,0 +1,19 @@
+// Omikuji — a shrine fortune, dev edition
+//
+// `random.choice` is an effect fn returning Option[T]. The `!`
+// unwraps both layers at once — an empty list would propagate
+// an error instead of crashing.
+
+import random
+
+effect fn main() -> Unit = {
+  let omikuji = [
+    "大吉 — Ship it. CI smiles upon you.",
+    "中吉 — Refactor boldly. Tests hold.",
+    "小吉 — One bug found, ten prevented.",
+    "末吉 — Read the docs first.",
+    "凶 — Do not deploy on Friday.",
+  ]
+  let fortune = random.choice(omikuji)!
+  println(fortune)
+}

@@ -1,0 +1,227 @@
+// Playground views. Everything is ceangal: header, file tabs, the editor,
+// the output / visual / Rust / AST panel, examples menu and status bar.
+
+import ceangal
+import ceangal.view as v
+import ceangal.editor as ed
+import snaidhm
+import self.state as st
+import self.visual as visual
+import self.html as html
+
+// ── Theme ──
+
+let BG = 0x1A1B26
+let PANEL = 0x16161E
+let RAISED = 0x24283B
+let BORDER = 0x2A2E42
+let TEXT = 0xC0CAF5
+let MUTED = 0x737AA2
+let FAINT = 0x565F89
+let ACCENT = 0x7AA2F7
+let GO = 0x9ECE6A
+let STOP = 0xF7768E
+
+
+// Functions reached only from closures below; without a top-level reference
+// the wasm leg replaces the closure bodies with an exit(1) stub
+// (almide/almide#3296).
+let keep_add_tab = st.add_tab
+let keep_cancel_rename = st.cancel_rename
+let keep_close_tab = st.close_tab
+let keep_commit_rename = st.commit_rename
+let keep_current = st.current
+let keep_load_example = st.load_example
+let keep_picture_texture = st.picture_texture
+let keep_run = st.run
+let keep_select_tab = st.select_tab
+let keep_set_ast_view = st.set_ast_view
+let keep_set_current = st.set_current
+let keep_set_out = st.set_out
+let keep_set_out_tab = st.set_out_tab
+let keep_set_rename_field = st.set_rename_field
+let keep_set_rust_view = st.set_rust_view
+let keep_share = st.share
+let keep_show_ast = st.show_ast
+let keep_toggle_examples = st.toggle_examples
+let keep_toggle_mobile_output = st.toggle_mobile_output
+let keep_pixel_scale = ceangal.pixel_scale
+
+fn c(n: Int) -> snaidhm.Color = snaidhm.hex(n)
+
+fn label(s: String, size: Float, col: Int) -> v.View = v.text(s) |> v.font(size) |> v.color(c(col))
+
+fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
+  label(s, 13.0, if on then BG else TEXT)
+    |> v.px(12.0) |> v.py(6.0) |> v.rounded(6.0)
+    |> v.bg(if on then c(ACCENT) else c(RAISED))
+    |> v.on_click(f) |> v.role(3) |> v.label(s)
+
+// ── Header ──
+
+fn header(narrow: Bool) -> v.View = {
+  let run_label = if st.running then "■ Stop" else "▶ Run"
+  let run_btn = label(run_label, 13.0, BG) |> v.bold()
+    |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
+    |> v.bg(c(if st.running then STOP else GO))
+    |> v.on_click(() => st.run()) |> v.role(3) |> v.label(if st.running then "Stop" else "Run")
+  var items: List[v.View] = [
+    v.empty() |> v.size(18.0, 18.0) |> v.rounded(5.0) |> v.bg(c(ACCENT)),
+  ]
+  if not narrow then list.push(items, label("Almide Playground", 15.0, TEXT) |> v.bold()) else ()
+  list.push(items, v.spacer())
+  if not st.embed then {
+    list.push(items, button("Examples", st.examples_open, () => st.toggle_examples()))
+    list.push(items, button("Share", false, () => st.share()))
+  } else ()
+  if narrow then list.push(items, button(if st.mobile_output then "Code" else "Output", false, () => st.toggle_mobile_output())) else ()
+  list.push(items, run_btn)
+  v.row(items) |> v.gap(if narrow then 6.0 else 10.0) |> v.align(v.Middle) |> v.h(48.0) |> v.px(if narrow then 10.0 else 14.0) |> v.bg(c(PANEL))
+}
+
+
+// ── File tabs ──
+
+fn tab_view(i: Int) -> v.View = {
+  let t = st.tabs[i]
+  let on = i == st.active
+  let errs = list.len(list.filter(t.ed.diags, (d) => d.severity == 0))
+  if st.renaming == i then
+    ed.field("rename", () => st.rename_field, (e) => st.set_rename_field(e), ed.dark_theme())
+      |> v.size(150.0, 28.0) |> v.rounded(5.0) |> v.clip()
+      |> v.on_key((phase, code, mods) => {
+        if phase != 1 and code == 1 then { st.commit_rename(); true }
+        else if phase != 1 and code == 5 then { st.cancel_rename(); true }
+        else false
+      })
+  else {
+    var parts: List[v.View] = [label(t.name, 13.0, if on then TEXT else MUTED)]
+    if errs > 0 then list.push(parts, v.empty() |> v.size(6.0, 6.0) |> v.rounded(3.0) |> v.bg(c(STOP))) else ()
+    if list.len(st.tabs) > 1 and t.name != st.ENTRY then
+      list.push(parts, label("×", 13.0, FAINT) |> v.px(3.0) |> v.on_click(() => st.close_tab(i)) |> v.label("Close " + t.name))
+    else ()
+    v.row(parts) |> v.gap(6.0) |> v.align(v.Middle) |> v.px(12.0) |> v.h(34.0)
+      |> v.bg(if on then c(BG) else c(PANEL))
+      |> v.on_click(() => st.select_tab(i)) |> v.role(8) |> v.label(t.name)
+  }
+}
+
+fn tab_bar() -> v.View = {
+  var items: List[v.View] = []
+  for i in 0..<list.len(st.tabs) { list.push(items, tab_view(i)) }
+  list.push(items, label("+", 16.0, MUTED) |> v.px(12.0) |> v.h(34.0) |> v.center() |> v.on_click(() => st.add_tab()) |> v.label("New file"))
+  v.row(items) |> v.h(34.0) |> v.bg(c(PANEL)) |> v.clip() |> v.role(9)
+}
+
+// ── Editor + problems ──
+
+fn editor_pane() -> v.View = {
+  var parts: List[v.View] = [
+    ed.view("editor", () => st.current(), (e) => st.set_current(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Code editor"),
+  ]
+  if st.problems > 0 then
+    list.push(parts, v.row([
+      label("●", 11.0, STOP),
+      label(st.problem_text, 12.0, TEXT) |> v.shrink(1.0),
+      v.spacer(),
+      label(if st.problems == 1 then "1 problem" else int.to_string(st.problems) + " problems", 12.0, MUTED),
+    ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(28.0) |> v.px(12.0) |> v.bg(c(PANEL)) |> v.clip())
+  else ()
+  v.col(parts) |> v.grow(1.0) |> v.clip()
+}
+
+// ── Output panel ──
+
+fn out_tab(i: Int, name: String) -> v.View = {
+  let on = st.out_tab == i
+  label(name, 12.0, if on then TEXT else MUTED)
+    |> v.px(12.0) |> v.h(32.0) |> v.center()
+    |> v.bg(if on then c(BG) else c(PANEL))
+    |> v.on_click(() => {
+      if i == 2 then st.show_rust() else if i == 3 then st.show_ast() else st.set_out_tab(i)
+    }) |> v.role(8) |> v.label(name)
+}
+
+fn picture_view() -> v.View = {
+  let p = st.picture
+  if p.kind == visual.Html then v.col([html.render(p.text, c(TEXT))]) |> v.grow(1.0) |> v.clip()
+  else if p.kind == visual.NoVisual then
+    label("Print an SVG document, a PPM image or simple HTML to see it here.", 13.0, FAINT) |> v.padding(16.0)
+  else v.custom("picture", (x, y, w, h) => {
+    let tex = st.picture_texture()
+    let k = ceangal.pixel_scale()
+    let pw = int.to_float(p.w)
+    let ph = int.to_float(p.h)
+    let s = float.min((w - 24.0) / pw, (h - 24.0) / ph)
+    let dw = pw * s
+    let dh = ph * s
+    let dx = x + (w - dw) * 0.5
+    let dy = y + (h - dh) * 0.5
+    snaidhm.image(tex, dx * k, dy * k, dw * k, dh * k, 4.0 * k, 1.0)
+  }) |> v.grow(1.0) |> v.role(13) |> v.label("Visual output")
+}
+
+fn output_pane() -> v.View = {
+  let body =
+    if st.out_tab == 0 then ed.view("output", () => st.out, (e) => st.set_out(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Program output")
+    else if st.out_tab == 1 then picture_view()
+    else if st.out_tab == 2 then ed.view("rust", () => st.rust_view, (e) => st.set_rust_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Generated Rust")
+    else ed.view("ast", () => st.ast_view, (e) => st.set_ast_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Syntax tree")
+  var tabs: List[v.View] = [out_tab(0, "Output"), out_tab(1, "Visual")]
+  if not list.contains(st.hidden, "rust") then list.push(tabs, out_tab(2, "Rust")) else ()
+  if not list.contains(st.hidden, "ast") then list.push(tabs, out_tab(3, "AST")) else ()
+  v.col([
+    v.row(tabs) |> v.h(32.0) |> v.bg(c(PANEL)),
+    body,
+  ]) |> v.grow(1.0) |> v.clip() |> v.bg(c(BG))
+}
+
+// ── Status bar ──
+
+fn status_bar(narrow: Bool) -> v.View = {
+  // narrow screens keep the status and drop the version string
+  var right = if narrow then "" else st.version_text
+  if st.compile_ms >= 0 then right = "compiled in " + int.to_string(st.compile_ms) + " ms" + (if right == "" then "" else " · " + right) else ()
+  v.row([
+    label(st.status, 12.0, MUTED) |> v.shrink(1.0),
+    v.spacer(),
+    label(right, 12.0, FAINT),
+  ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(26.0) |> v.px(12.0) |> v.bg(c(PANEL)) |> v.clip()
+}
+
+// ── Examples menu ──
+
+fn examples_menu() -> v.View = {
+  var rows: List[v.View] = []
+  for cat in st.categories {
+    list.push(rows, label(cat.title, 11.0, FAINT) |> v.bold() |> v.pad(10.0, 12.0, 4.0, 12.0))
+    for e in cat.examples {
+      let id = e.id
+      list.push(rows, label(e.title, 13.0, TEXT) |> v.px(12.0) |> v.py(6.0) |> v.rounded(4.0)
+        |> v.on_click(() => { let _ = st.load_example(id) }) |> v.role(11) |> v.label(e.title))
+    }
+  }
+  v.col(rows) |> v.w(260.0) |> v.py(6.0) |> v.bg(c(RAISED)) |> v.rounded(8.0)
+    |> v.border(1.0, c(BORDER)) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
+    |> v.absolute() |> v.top(52.0) |> v.right(110.0) |> v.clip()
+}
+
+// ── Root ──
+
+pub fn root() -> v.View = {
+  let narrow = ceangal.viewport_width() < 760.0
+  let body =
+    if narrow then (if st.mobile_output then output_pane() else editor_pane())
+    else v.row([
+      editor_pane(),
+      v.empty() |> v.w(1.0) |> v.bg(c(BORDER)),
+      output_pane() |> v.w(float.max(320.0, ceangal.viewport_width() * 0.42)) |> v.grow(0.0),
+    ]) |> v.grow(1.0)
+  var parts: List[v.View] = []
+  if not (st.embed and list.contains(st.hidden, "header")) then list.push(parts, header(narrow)) else ()
+  list.push(parts, tab_bar())
+  list.push(parts, body |> v.grow(1.0))
+  list.push(parts, status_bar(narrow))
+  if st.examples_open then list.push(parts, examples_menu()) else ()
+  v.col(parts) |> v.bg(c(BG))
+}

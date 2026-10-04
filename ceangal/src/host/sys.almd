@@ -16,6 +16,10 @@ fn run() -> Unit = _
 @extern(rust, "crate::sys", "request_frame")
 fn request_frame() -> Unit = _
 
+@extern(wasm, "sys", "request_frame_after")
+@extern(rust, "crate::sys", "request_frame_after")
+fn request_frame_after(ms: Float) -> Unit = _
+
 @extern(wasm, "sys", "now_ms")
 @extern(rust, "crate::sys", "now_ms")
 fn now_ms() -> Float = _
@@ -59,3 +63,15 @@ fn asset_read(name_ptr: Int, name_len: Int, dst_ptr: Int, dst_len: Int) -> Int =
 @extern(wasm, "sys", "exit")
 @extern(rust, "crate::sys", "exit")
 fn exit(code: Int) -> Unit = _
+
+@extern(wasm, "sys", "launch_len")
+@extern(rust, "crate::sys", "launch_len")
+fn launch_len() -> Int = _
+
+@extern(wasm, "sys", "launch_read")
+@extern(rust, "crate::sys", "launch_read")
+fn launch_read(ptr: Int, len: Int) -> Int = _
+
+@extern(wasm, "sys", "set_location")
+@extern(rust, "crate::sys", "set_location")
+fn set_location(ptr: Int, len: Int) -> Unit = _

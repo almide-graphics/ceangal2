@@ -62,6 +62,11 @@ fn parse_size(s: &str) -> (f64, f64) {
 }
 
 fn settle(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64) {
+    // Timers fire immediately in headless runs (deterministic tests).
+    crate::sys::STATE.with(|s| {
+        let mut s = s.borrow_mut();
+        if s.frame_deadline.take().is_some() { s.frame_requested = true; }
+    });
     // Render until the guest stops asking for frames (bounded: animations).
     for _ in 0..8 {
         let wanted = crate::sys::take_frame_request();
@@ -398,8 +403,15 @@ impl ApplicationHandler for Windowed {
     }
 
     fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+        let deadline = crate::sys::due_deadline();
         self.apply_requests();
-        el.set_control_flow(ControlFlow::Wait);
+        match deadline {
+            Some(at) => {
+                let wait = std::time::Duration::from_secs_f64(((at - crate::sys::now_ms()) / 1000.0).max(0.0));
+                el.set_control_flow(ControlFlow::WaitUntil(std::time::Instant::now() + wait));
+            }
+            None => el.set_control_flow(ControlFlow::Wait),
+        }
     }
 }
 

@@ -1,0 +1,15 @@
+import self.deflate as deflate
+import zlib
+
+test "raw deflate round-trips through the stdlib inflater" {
+  let samples = ["", "a", "hello hello hello hello", string.repeat("let x = 1\n", 400) + "effect fn main() -> Unit = println(\"日本語\")"]
+  for s in samples {
+    let z = deflate.raw(bytes.from_string(s))
+    assert_eq(bytes.to_string_lossy(zlib.inflate(z)!), s)
+  }
+}
+
+test "compresses repetitive text" {
+  let s = string.repeat("println(\"hi\")\n", 200)
+  assert(bytes.len(deflate.raw(bytes.from_string(s))) < 100)
+}

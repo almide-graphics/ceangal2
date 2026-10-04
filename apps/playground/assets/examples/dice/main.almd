@@ -1,0 +1,27 @@
+// Dice — a table you can read at a glance
+//
+// The six faces are data, not branches: each row of FACES draws the die it
+// stands for. `list.get` returns an Option because the index might be out of
+// range; `!` unwraps it and would propagate an error instead of crashing.
+
+import random
+
+let FACES = [
+  ["     ", "  ●  ", "     "],
+  ["●    ", "     ", "    ●"],
+  ["●    ", "  ●  ", "    ●"],
+  ["●   ●", "     ", "●   ●"],
+  ["●   ●", "  ●  ", "●   ●"],
+  ["●   ●", "●   ●", "●   ●"],
+]
+
+effect fn main() -> Unit = {
+  let n = random.int(1, 6)
+  let face = list.get(FACES, n - 1)!
+  println("╭───────╮")
+  for row in face {
+    println("│ ${row} │")
+  }
+  println("╰───────╯")
+  println("  you rolled ${int.to_string(n)}")
+}
