@@ -144,7 +144,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (secrets or a self-signed test cert), then WACK in CI.
 - Linux: `tools/build_flatpak.sh` → Flatpak built offline from the exported
   Rust project; app ID `io.github.almide.playground` (Flathub verifies the
-  domain; almide.dev does not resolve), runtime 26.08, flathub linter in CI.
+  domain; almide.dev does not resolve), runtime 26.08. Built in CI with
+  `flathub-build` (Flathub's own wrapper: screenshot / icon mirroring) and
+  passes `flatpak-builder-lint` manifest + repo.
 - macOS: `tools/package_macos.sh` → universal (arm64 + x86_64) `.app` with
   App Sandbox (network client + user-selected files only), Info.plist, the
   .icns, signed (secrets identity or ad hoc) and an installer pkg; the
@@ -181,9 +183,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
   until then the `pages` job fails.
 
 ## Next
-1. CI green on the push with iOS, the WACK fixes and the Flathub ID: `ios`
-   (first run on macos-26), `native-windows` (WACK), `flatpak` (linter),
-   `android` (settled taps).
+1. CI is green for every job except `pages` (needs the Pages source setting,
+   Human TODO); then `pages-e2e` runs against the live site.
 2. M6: store screenshots for iOS from the simulator build (the generator
    renders the web build today); the Play / App Store data-safety answers
    checked against the final feature set.
