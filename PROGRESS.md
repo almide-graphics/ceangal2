@@ -4,8 +4,9 @@ Read at the start of every session; update at the end.
 
 ## Current milestone
 
-**M4 — desktop** (M0–M3 done locally). M2's last item, the first green CI
-run on main that deploys Pages, waits for a push (see Blockers).
+**M5 — mobile** (M0–M4 done locally; Android done, iOS next). M2's last
+item, the first green CI run on main that deploys Pages, waits for a push
+(see Blockers).
 
 ## Done
 
@@ -92,6 +93,32 @@ run on main that deploys Pages, waits for a push (see Blockers).
   click/focus actions → event 12); secrets in the platform keychain
   (`keyring`; headless runs use a 0600 file); app id baked in at build.
 
+### M5 — mobile (in progress)
+- Android (ADR 0004): apps are NativeActivity cdylibs (`android_main` runs the
+  program's `main`). Without Gradle, `tools/build_android.sh <app>` builds a
+  signed AAB (Play upload) and a universal APK for arm64-v8a and x86_64,
+  targetSdk 37, min 26. Libraries are 16 KB aligned (`zipalign -c -P 16`),
+  and `apksigner verify` and `bundletool validate` both pass.
+- The host's per-target crates live in `ceangal/native/ceangal_platform`
+  (desktop arboard / rfd / keyring; mobile fallbacks; Android JNI helpers).
+- Mobile host: touch → pointer ids ≥ 1, the surface is dropped on suspend
+  and recreated on resume, and safe-area insets (Android `WindowInsets`
+  incl. the IME; iOS safe area) arrive as event 11. ceangal lays the app out
+  inside them. Also: the soft keyboard follows the text focus, Back maps to
+  Escape, the deep link comes from the intent data, assets from the
+  AssetManager, and stdout / stderr / `log` go to logcat.
+- GPU: on Android the host tries Vulkan, then GL, one backend per instance,
+  with the display handle (EGL `BadAlloc` otherwise).
+- `tests/e2e/android.mjs` (emulator, `adb input`, a11y tree via logcat with
+  `debug.ceangal.a11y` / `gui_a11y`):
+  - Todo app: type with the soft keyboard + Enter, toggle, remove,
+    background → foreground, safe area.
+  - Playground: compiles and runs on the device, and the Todo program runs
+    as a window that takes taps and Stops.
+  - Passes 8/8 on an API 37 arm64 emulator. CI job `android` (API 35 x86_64,
+    KVM).
+- iOS: not started (needs Xcode locally; see Human TODO).
+
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
   commits wait for the user to push. Pages also needs Settings → Pages →
@@ -104,6 +131,15 @@ run on main that deploys Pages, waits for a push (see Blockers).
    server; AccessKit checked with VoiceOver / Narrator / Orca (Human TODO).
 
 ## Known issues / workarounds
+- almide/almide#3346 — cdylib builds omit `flate2` for zlib users: the
+  playground declares it in `[native-deps]` (tools/build_native.sh).
+- almide/almide#3347 — one `thread_local!` per top-level var exhausts
+  Android's pthread keys ("out of TLS keys"): the Android build rebuilds std
+  with emulated TLS (`-Zbuild-std`, `-Zhas-thread-local=yes`,
+  `RUSTC_BOOTSTRAP=1`, clang builtins linked).
+- Android has no TalkBack (accesskit's adapter needs GameActivity). The
+  clipboard is in-app only on mobile, and export saves into the app's
+  `Downloads` folder (no share sheet / picker yet).
 - almide/almide#3281 — `@export` outside the root module is dropped: apps carry
   the one-line `ceangal_event` forwarder.
 - almide/almide#3283 — native leg emits the wrong struct for same-shape record
@@ -135,17 +171,20 @@ run on main that deploys Pages, waits for a push (see Blockers).
 - `w_pct` inside a row is ignored by the layout engine; the playground sizes
   its output pane from the viewport instead.
 - `clip()` is rectangular; no kerning; a11y tree is flat (parent 0).
-- Native `secret_*` is a 0600 file, not yet the platform keychain (M4/M5).
 
 ## Human TODO
 - [ ] Apple Developer Program membership (iOS + macOS App Store), team ID,
       distribution certificates, App Store Connect API key → GitHub secrets.
 - [ ] Google Play developer account; start the 12-tester / 14-day closed test
-      early (new personal accounts). Upload key → GitHub secrets.
+      early (new personal accounts). Upload key → GitHub secrets
+      `ANDROID_KEYSTORE_B64` (base64 .jks), `ANDROID_KEYSTORE_PASS`,
+      `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASS`; enroll in Play App Signing.
+- [ ] Android: try the APK on a real phone (soft keyboard with a Japanese
+      IME, notch / gesture bar insets, Vulkan driver).
 - [ ] Microsoft Partner Center account; reserve the app name.
 - [ ] Flathub: app ID decision (e.g. `dev.almide.Playground`) and submission PR.
-- [ ] Install Xcode locally (only Command Line Tools present) if local iOS
-      builds are wanted; CI uses GitHub macOS runners.
+- [ ] Install Xcode locally from the App Store and open it once (license,
+      components); then iOS builds and the simulator run here too.
 - [ ] Native: check the API key lands in Keychain / Credential Manager /
       Secret Service (the app asks the OS store; tests use a file instead).
 - [ ] Native: VoiceOver (macOS), Narrator (Windows), Orca (Linux) read the

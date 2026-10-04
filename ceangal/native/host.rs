@@ -44,6 +44,67 @@ impl From<accesskit_winit::Event> for UserEvent {
     fn from(e: accesskit_winit::Event) -> Self { UserEvent::A11y(e) }
 }
 
+// ── Android entry ──
+//
+// The app is a cdylib loaded by NativeActivity, which calls `android_main`
+// on its own thread. almide renames the program's `main` in a cdylib; this
+// runs it, and the program's `ceangal.run` enters the host loop below.
+
+#[cfg(target_os = "android")]
+pub use winit::platform::android::activity::AndroidApp;
+
+#[cfg(target_os = "android")]
+static ANDROID_APP: std::sync::OnceLock<AndroidApp> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "android")]
+pub fn android_app() -> Option<&'static AndroidApp> { ANDROID_APP.get() }
+
+/// `log` records (wgpu, winit) to logcat: warnings and errors.
+#[cfg(target_os = "android")]
+struct Logcat;
+
+#[cfg(target_os = "android")]
+impl log::Log for Logcat {
+    fn enabled(&self, m: &log::Metadata) -> bool { m.level() <= log::Level::Warn }
+    fn log(&self, r: &log::Record) {
+        if self.enabled(r.metadata()) {
+            crate::sys::log_line(&format!("{} {}: {}", r.level(), r.target(), r.args()));
+        }
+    }
+    fn flush(&self) {}
+}
+
+/// stdout / stderr (println, runtime errors) go nowhere on Android: pipe them
+/// into logcat line by line.
+#[cfg(target_os = "android")]
+fn redirect_stdio_to_logcat() {
+    use std::io::BufRead;
+    use std::os::fd::FromRawFd;
+    extern "C" {
+        fn pipe(fds: *mut i32) -> i32;
+        fn dup2(old: i32, new: i32) -> i32;
+    }
+    let mut fds = [0i32; 2];
+    if unsafe { pipe(fds.as_mut_ptr()) } != 0 { return }
+    unsafe { dup2(fds[1], 1); dup2(fds[1], 2); }
+    let read = unsafe { std::fs::File::from_raw_fd(fds[0]) };
+    std::thread::spawn(move || {
+        for line in std::io::BufReader::new(read).lines().map_while(Result::ok) {
+            crate::sys::log_line(&line);
+        }
+    });
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+fn android_main(app: AndroidApp) {
+    std::panic::set_hook(Box::new(|info| crate::sys::log_line(&format!("panic: {info}"))));
+    redirect_stdio_to_logcat();
+    let _ = log::set_logger(&Logcat).map(|()| log::set_max_level(log::LevelFilter::Warn));
+    let _ = ANDROID_APP.set(app);
+    crate::__almide_unused_main();
+}
+
 pub fn run() {
     match std::env::var("CEANGAL_HEADLESS") {
         Ok(out) => run_headless(&out),
@@ -233,7 +294,43 @@ struct Windowed {
     cursor: (f64, f64),
     buttons: i64,
     animating: bool,
-    clipboard: Option<arboard::Clipboard>,
+    clipboard: Option<ceangal_platform::Clipboard>,
+    /// Touch pointer ids: slot i holds the finger of pointer id i + 1.
+    touches: Vec<Option<u64>>,
+    dark: bool,
+    insets: (f64, f64, f64, f64),
+}
+
+/// The surface covers the whole window. On iOS `inner_size` is the safe
+/// area, so the full size is `outer_size` there.
+fn surface_size(w: &Window) -> winit::dpi::PhysicalSize<u32> {
+    if cfg!(target_os = "ios") { w.outer_size() } else { w.inner_size() }
+}
+
+/// Safe-area insets in logical px (top, right, bottom, left): the parts of
+/// the surface under the notch, system bars or home indicator.
+fn safe_insets(w: &Window, scale: f64) -> (f64, f64, f64, f64) {
+    let full = surface_size(w);
+    let (fw, fh) = (full.width as f64, full.height as f64);
+    #[cfg(target_os = "ios")]
+    let (x, y, iw, ih) = {
+        let o = w.outer_position().unwrap_or_default();
+        let i = w.inner_position().unwrap_or_default();
+        let s = w.inner_size();
+        ((i.x - o.x) as f64, (i.y - o.y) as f64, s.width as f64, s.height as f64)
+    };
+    #[cfg(target_os = "android")]
+    let (x, y, iw, ih) = match android_app().and_then(|a| ceangal_platform::android_insets(a.vm_as_ptr(), a.activity_as_ptr())) {
+        Some([l, t, r, b]) => (l as f64, t as f64, fw - (l + r) as f64, fh - (t + b) as f64),
+        None => (0.0, 0.0, fw, fh),
+    };
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    let (x, y, iw, ih) = (0.0, 0.0, fw, fh);
+    if iw <= 0.0 || ih <= 0.0 {
+        return (0.0, 0.0, 0.0, 0.0);
+    }
+    let c = |v: f64| (v / scale).max(0.0);
+    (c(y), c(fw - x - iw), c(fh - y - ih), c(x))
 }
 
 fn mods_bits(m: ModifiersState) -> i64 {
@@ -278,6 +375,19 @@ fn key_code(key: &Key) -> Option<i64> {
     })
 }
 
+/// Android reports Enter / Tab / Backspace as their control characters.
+fn normalize_key(key: &Key) -> Key {
+    match key {
+        Key::Character(c) if c == "\n" || c == "\r" => Key::Named(NamedKey::Enter),
+        Key::Character(c) if c == "\t" => Key::Named(NamedKey::Tab),
+        Key::Character(c) if c == "\u{8}" => Key::Named(NamedKey::Backspace),
+        Key::Character(c) if c == "\u{7f}" => Key::Named(NamedKey::Delete),
+        // The system back button / gesture closes things, like Escape.
+        Key::Named(NamedKey::BrowserBack) => Key::Named(NamedKey::Escape),
+        k => k.clone(),
+    }
+}
+
 fn cursor_icon(kind: i64) -> CursorIcon {
     match kind {
         1 => CursorIcon::Text,
@@ -293,6 +403,7 @@ impl Windowed {
     /// Give AccessKit the latest committed tree (when it is listening).
     fn push_a11y(&mut self, force: bool) {
         if !(crate::a11y::take_changed() || force) { return }
+        crate::a11y::log_if_requested(self.scale);
         let scale = self.scale;
         let title = self.title.clone();
         if let Some(a) = self.a11y.as_mut() { a.update_if_active(|| crate::a11y::tree_update(scale, &title)); }
@@ -300,6 +411,40 @@ impl Windowed {
 
     fn call(&self, kind: i64, a: i64, b: i64, x: f64, y: f64, z: f64, w: f64) -> i64 {
         call(&self.ctx, kind, a, b, x, y, z, w)
+    }
+
+    /// Event 11: theme and safe-area insets, when either changed (or `force`).
+    fn send_appearance(&mut self, force: bool) {
+        let Some(w) = self.window.clone() else { return };
+        let insets = safe_insets(&w, self.scale);
+        if insets != self.insets || force {
+            self.insets = insets;
+            let (t, r, b, l) = insets;
+            self.call(EV_APPEARANCE, self.dark as i64, 0, t, r, b, l);
+        }
+    }
+
+    /// Size the surface to the window and tell the guest.
+    fn resize(&mut self) {
+        let Some(w) = self.window.clone() else { return };
+        let size = surface_size(&w);
+        self.ctx.borrow_mut().resize_surface(size.width, size.height);
+        let l = size.to_logical::<f64>(self.scale);
+        self.call(EV_RESIZE, 0, 0, l.width, l.height, self.scale, 0.0);
+        self.send_appearance(false);
+    }
+
+    /// A pointer id (>= 1) for a finger, allocated on touch start.
+    fn touch_id(&mut self, finger: u64, start: bool) -> Option<i64> {
+        if let Some(i) = self.touches.iter().position(|t| *t == Some(finger)) {
+            return Some(i as i64 + 1);
+        }
+        if !start { return None }
+        let i = match self.touches.iter().position(Option::is_none) {
+            Some(i) => { self.touches[i] = Some(finger); i }
+            None => { self.touches.push(Some(finger)); self.touches.len() - 1 }
+        };
+        Some(i as i64 + 1)
     }
 
     /// Apply what the guest requested during the last call(s).
@@ -328,7 +473,7 @@ impl Windowed {
         crate::file::perform(true);
         if let Some(text) = crate::clipboard::take_write() {
             if let Some(cb) = self.clipboard.as_mut() {
-                let _ = cb.set_text(text);
+                cb.set_text(text);
             }
         }
         if crate::sys::take_frame_request() || self.animating {
@@ -362,31 +507,89 @@ impl ApplicationHandler<UserEvent> for Windowed {
     }
 
     fn resumed(&mut self, el: &ActiveEventLoop) {
-        if self.window.is_some() {
-            self.call(EV_LIFECYCLE, 1, 0, 0.0, 0.0, 0.0, 0.0);
-            return;
+        let first = self.window.is_none();
+        if first {
+            let title = std::env::var("CEANGAL_TITLE").unwrap_or_else(|_| "ceangal".into());
+            self.title = title.clone();
+            // AccessKit must attach before the window is first shown.
+            let mut attrs = Window::default_attributes().with_title(title).with_visible(false);
+            if cfg!(not(any(target_os = "android", target_os = "ios"))) {
+                attrs = attrs.with_inner_size(winit::dpi::LogicalSize::new(1100.0, 760.0));
+            }
+            let window = Arc::new(el.create_window(attrs).expect("create window"));
+            self.a11y = Some(accesskit_winit::Adapter::with_event_loop_proxy(el, &window, self.proxy.clone()));
+            window.set_visible(true);
+            self.dark = matches!(window.theme(), Some(winit::window::Theme::Dark));
+            self.window = Some(window);
         }
-        let title = std::env::var("CEANGAL_TITLE").unwrap_or_else(|_| "ceangal".into());
-        self.title = title.clone();
-        // AccessKit must attach before the window is first shown.
-        let attrs = Window::default_attributes()
-            .with_title(title)
-            .with_visible(false)
-            .with_inner_size(winit::dpi::LogicalSize::new(1100.0, 760.0));
-        let window = Arc::new(el.create_window(attrs).expect("create window"));
-        self.a11y = Some(accesskit_winit::Adapter::with_event_loop_proxy(el, &window, self.proxy.clone()));
-        window.set_visible(true);
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let surface = instance.create_surface(window.clone()).expect("create surface");
-        gpu::init_shared(instance, Some(&surface));
-        let size = window.inner_size();
-        self.scale = window.scale_factor();
-        self.ctx.borrow_mut().attach_surface(surface, size.width, size.height);
-        self.window = Some(window.clone());
-        let logical = size.to_logical::<f64>(self.scale);
-        self.call(EV_INIT, 0, 0, logical.width, logical.height, self.scale, 0.0);
+        let window = self.window.clone().unwrap();
+        // Mobile drops the surface while suspended (the native window is
+        // gone); make one for the current window.
+        if !self.ctx.borrow().has_surface() {
+            let existing = if gpu::shared_ready() { gpu::shared() } else { None };
+            let surface = match existing {
+                Some(sh) => sh.instance.create_surface(window.clone()).expect("create surface"),
+                None => {
+                    // Android: one backend per instance — a Vulkan and a GL
+                    // surface cannot share the native window (EGL BadAlloc).
+                    let order = if cfg!(target_os = "android") {
+                        vec![wgpu::Backends::VULKAN, wgpu::Backends::GL]
+                    } else {
+                        vec![wgpu::Backends::all()]
+                    };
+                    let mut made = None;
+                    for backends in order {
+                        // GL (EGL) needs the display at instance creation.
+                        let mut desc = wgpu::InstanceDescriptor::new_with_display_handle(Box::new(el.owned_display_handle()));
+                        desc.backends = backends;
+                        let desc = desc.with_env();
+                        let instance = wgpu::Instance::new(desc);
+                        let Ok(surface) = instance.create_surface(window.clone()) else { continue };
+                        if gpu::try_init_shared(instance, &surface) {
+                            made = Some(surface);
+                            break;
+                        }
+                    }
+                    match made {
+                        Some(s) => s,
+                        None => {
+                            crate::sys::log_line("ceangal: no GPU adapter can present to this window");
+                            return;
+                        }
+                    }
+                }
+            };
+            if first && cfg!(any(target_os = "android", target_os = "ios")) {
+                if let Some(sh) = gpu::shared() {
+                    let i = sh.adapter.get_info();
+                    crate::sys::log_line(&format!("ceangal: GPU {} ({:?})", i.name, i.backend));
+                }
+            }
+            let size = surface_size(&window);
+            self.scale = window.scale_factor();
+            self.ctx.borrow_mut().attach_surface(surface, size.width, size.height);
+        }
+        if first {
+            let l = surface_size(&window).to_logical::<f64>(self.scale);
+            self.call(EV_INIT, 0, 0, l.width, l.height, self.scale, 0.0);
+            self.send_appearance(true);
+        } else {
+            self.call(EV_LIFECYCLE, 1, 0, 0.0, 0.0, 0.0, 0.0);
+            self.resize();
+        }
         self.apply_requests();
         window.request_redraw();
+    }
+
+    fn suspended(&mut self, _el: &ActiveEventLoop) {
+        self.call(EV_LIFECYCLE, 0, 0, 0.0, 0.0, 0.0, 0.0);
+        if cfg!(any(target_os = "android", target_os = "ios")) {
+            self.ctx.borrow_mut().detach_surface();
+        }
+    }
+
+    fn memory_warning(&mut self, _el: &ActiveEventLoop) {
+        self.call(EV_LIFECYCLE, 2, 0, 0.0, 0.0, 0.0, 0.0);
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -397,22 +600,32 @@ impl ApplicationHandler<UserEvent> for Windowed {
                 el.exit();
                 return;
             }
-            WindowEvent::Resized(size) => {
-                self.ctx.borrow_mut().resize_surface(size.width, size.height);
-                let l = size.to_logical::<f64>(self.scale);
-                self.call(EV_RESIZE, 0, 0, l.width, l.height, self.scale, 0.0);
-            }
+            WindowEvent::Resized(_) => self.resize(),
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.scale = scale_factor;
-                if let Some(w) = &self.window {
-                    let size = w.inner_size();
-                    self.ctx.borrow_mut().resize_surface(size.width, size.height);
-                    let l = size.to_logical::<f64>(self.scale);
-                    self.call(EV_RESIZE, 0, 0, l.width, l.height, self.scale, 0.0);
+                self.resize();
+            }
+            WindowEvent::Touch(t) => {
+                use winit::event::TouchPhase;
+                let start = t.phase == TouchPhase::Started;
+                if let Some(id) = self.touch_id(t.id, start) {
+                    let l = t.location.to_logical::<f64>(self.scale);
+                    let (phase, buttons) = match t.phase {
+                        TouchPhase::Started => (0, 1.0),
+                        TouchPhase::Moved => (1, 1.0),
+                        TouchPhase::Ended => (2, 0.0),
+                        TouchPhase::Cancelled => (3, 0.0),
+                    };
+                    if phase >= 2 {
+                        self.touches[id as usize - 1] = None;
+                    }
+                    self.call(EV_POINTER, phase, id, l.x, l.y, buttons, 0.0);
                 }
             }
             WindowEvent::RedrawRequested => {
                 let t = crate::sys::now_ms();
+                // The soft keyboard and system bars move without a resize.
+                if cfg!(target_os = "android") { self.send_appearance(false); }
                 self.animating = self.call(EV_FRAME, 0, 0, t, 0.0, 0.0, 0.0) == 1;
                 self.push_a11y(false);
             }
@@ -448,13 +661,14 @@ impl ApplicationHandler<UserEvent> for Windowed {
                     (ElementState::Pressed, true) => 2,
                     _ => 0,
                 };
-                let named = matches!(event.logical_key, Key::Named(_));
+                let key = normalize_key(&event.logical_key);
+                let named = matches!(key, Key::Named(_));
                 let mut handled = false;
-                if let Some(code) = key_code(&event.logical_key) {
+                if let Some(code) = key_code(&key) {
                     if named || shortcut {
                         // Cmd/Ctrl+V: deliver the clipboard as a paste event.
                         if code == 22 && shortcut && phase != 1 {
-                            if let Some(text) = self.clipboard.as_mut().and_then(|c| c.get_text().ok()) {
+                            if let Some(text) = self.clipboard.as_mut().and_then(|c| c.get_text()) {
                                 text_event(&self.ctx, 3, &text, 0);
                                 handled = true;
                             }
@@ -490,8 +704,8 @@ impl ApplicationHandler<UserEvent> for Windowed {
                 self.call(EV_FOCUS, f as i64, 0, 0.0, 0.0, 0.0, 0.0);
             }
             WindowEvent::ThemeChanged(theme) => {
-                let dark = matches!(theme, winit::window::Theme::Dark) as i64;
-                self.call(EV_APPEARANCE, dark, 0, 0.0, 0.0, 0.0, 0.0);
+                self.dark = matches!(theme, winit::window::Theme::Dark);
+                self.send_appearance(true);
             }
             _ => {}
         }
@@ -522,7 +736,13 @@ impl ApplicationHandler<UserEvent> for Windowed {
 }
 
 fn run_windowed() {
-    let event_loop = EventLoop::<UserEvent>::with_user_event().build().expect("event loop");
+    let mut builder = EventLoop::<UserEvent>::with_user_event();
+    #[cfg(target_os = "android")]
+    {
+        use winit::platform::android::EventLoopBuilderExtAndroid;
+        if let Some(app) = android_app() { builder.with_android_app(app.clone()); }
+    }
+    let event_loop = builder.build().expect("event loop");
     let proxy = event_loop.create_proxy();
     let waker = proxy.clone();
     crate::sys::set_waker(Box::new(move || { let _ = waker.send_event(UserEvent::Wake); }));
@@ -537,7 +757,10 @@ fn run_windowed() {
         cursor: (0.0, 0.0),
         buttons: 0,
         animating: false,
-        clipboard: arboard::Clipboard::new().ok(),
+        clipboard: ceangal_platform::Clipboard::new(),
+        touches: Vec::new(),
+        dark: false,
+        insets: (0.0, 0.0, 0.0, 0.0),
     };
     event_loop.run_app(&mut app).expect("event loop");
 }

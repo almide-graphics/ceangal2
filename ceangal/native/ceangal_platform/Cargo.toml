@@ -1,0 +1,20 @@
+# Platform services whose crates exist only on some targets. almide's
+# [native-deps] cannot be target-specific, so ceangal depends on this crate
+# (copied into the generated project's src/ with the rest of native/) and the
+# per-target choice is made here. See docs/adr/0004-mobile-hosts.md.
+[package]
+name = "ceangal_platform"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "lib.rs"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+arboard = "3"
+rfd = "0.15"
+keyring = "4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"

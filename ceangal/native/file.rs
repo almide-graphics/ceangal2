@@ -1,6 +1,6 @@
 //! `file` namespace — docs/abi.md §4.7. Picker requests are queued for the
 //! host loop (system dialogs must run on the main thread); results arrive as
-//! event 10. Dialogs are `rfd` (macOS / Windows / Linux portals).
+//! event 10. Dialogs come from `ceangal_platform`.
 
 #![allow(dead_code)]
 
@@ -50,7 +50,7 @@ pub fn perform(interactive: bool) {
         match req {
             FileRequest::Save { id, name, data } => {
                 let path = if interactive {
-                    rfd::FileDialog::new().set_file_name(&name).save_file()
+                    ceangal_platform::save_dialog(&name, &crate::storage::data_dir().join("Downloads"))
                 } else {
                     std::env::var_os("CEANGAL_DOWNLOADS").map(|d| std::path::PathBuf::from(d).join(&name))
                 };
@@ -65,7 +65,7 @@ pub fn perform(interactive: bool) {
             }
             FileRequest::Open { id, kind: _ } => {
                 let path = if interactive {
-                    rfd::FileDialog::new().pick_file()
+                    ceangal_platform::open_dialog()
                 } else {
                     std::env::var_os("CEANGAL_OPEN_FILE").map(std::path::PathBuf::from)
                 };

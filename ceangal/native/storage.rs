@@ -1,8 +1,9 @@
 //! `storage` namespace — docs/abi.md §4.6: a per-app key/value store kept as
 //! one file per key under the app's data directory. `secret_*` share the
 //! shape and live in the platform credential store (Keychain, Windows
-//! Credential Manager, Secret Service) via `keyring`; headless runs, and
-//! systems without a store, use a separate owner-only directory instead.
+//! Credential Manager, Secret Service) via `ceangal_platform`; headless runs,
+//! mobile (the app sandbox is already private) and systems without a store
+//! use a separate owner-only directory instead.
 
 #![allow(dead_code)]
 
@@ -21,8 +22,13 @@ pub fn data_dir() -> PathBuf {
     if let Ok(d) = std::env::var("CEANGAL_DATA_DIR") {
         return d.into();
     }
+    #[cfg(target_os = "android")]
+    if let Some(d) = crate::host::android_app().and_then(|a| a.internal_data_path()) {
+        return d;
+    }
     let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).unwrap_or_else(|_| ".".into());
-    let base: PathBuf = if cfg!(target_os = "macos") {
+    // iOS: HOME is the app's container.
+    let base: PathBuf = if cfg!(any(target_os = "macos", target_os = "ios")) {
         PathBuf::from(&home).join("Library/Application Support")
     } else if cfg!(target_os = "windows") {
         std::env::var("APPDATA").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from(&home))
@@ -80,16 +86,16 @@ pub fn storage_read(key_ptr: i64, key_len: i64, dst_ptr: i64, dst_len: i64) -> i
 pub fn storage_write(key_ptr: i64, key_len: i64, ptr: i64, len_: i64) { write("kv", key_ptr, key_len, ptr, len_) }
 pub fn storage_remove(key_ptr: i64, key_len: i64) { remove("kv", key_ptr, key_len) }
 /// The keychain entry for `key`, unless this run should not touch it.
-fn keychain(key: &str) -> Option<keyring::Entry> {
+fn keychain(key: &str) -> Option<ceangal_platform::Keychain> {
     if std::env::var_os("CEANGAL_HEADLESS").is_some() || std::env::var("CEANGAL_SECRETS").is_ok_and(|v| v == "file") {
         return None;
     }
-    keyring::Entry::new(&app_id(), key).ok()
+    ceangal_platform::Keychain::new(&app_id(), key)
 }
 
 fn secret_get(key: &str) -> Option<Vec<u8>> {
     match keychain(key) {
-        Some(e) => e.get_secret().ok(),
+        Some(e) => e.get(),
         None => std::fs::read(key_path("secrets", key)).ok(),
     }
 }
@@ -103,14 +109,14 @@ pub fn secret_read(key_ptr: i64, key_len: i64, dst_ptr: i64, dst_len: i64) -> i6
 pub fn secret_write(key_ptr: i64, key_len: i64, ptr: i64, len_: i64) {
     let key = crate::sys::string(key_ptr, key_len);
     match keychain(&key) {
-        Some(e) => { let _ = e.set_secret(crate::sys::slice(ptr, len_)); }
+        Some(e) => e.set(crate::sys::slice(ptr, len_)),
         None => write("secrets", key_ptr, key_len, ptr, len_),
     }
 }
 pub fn secret_remove(key_ptr: i64, key_len: i64) {
     let key = crate::sys::string(key_ptr, key_len);
     match keychain(&key) {
-        Some(e) => { let _ = e.delete_credential(); }
+        Some(e) => e.delete(),
         None => remove("secrets", key_ptr, key_len),
     }
 }

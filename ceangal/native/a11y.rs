@@ -32,7 +32,7 @@ thread_local! {
 /// switch this on when an assistive technology connects; until then ceangal
 /// skips building it. `CEANGAL_A11Y=1` forces it (tests, debugging).
 pub fn a11y_active() -> i64 {
-    let forced = std::env::var("CEANGAL_A11Y").map_or(false, |v| v == "1");
+    let forced = crate::sys::test_flag("A11Y");
     if forced || ACTIVE.with(|a| a.get()) { 1 } else { 0 }
 }
 
@@ -128,4 +128,19 @@ pub fn set_active(on: bool) { ACTIVE.with(|a| a.set(on)); }
 /// An AccessKit action as an ABI event-12 action code (docs/abi.md §4.4).
 pub fn action_code(a: accesskit::Action) -> Option<i64> {
     match a { accesskit::Action::Click => Some(1), accesskit::Action::Focus => Some(2), _ => None }
+}
+
+/// Android tests (`debug.ceangal.a11y` = 1): the committed tree to logcat,
+/// framed by `a11y-begin <scale>` / `a11y-end`, lines as in the dump file.
+pub fn log_if_requested(scale: f64) {
+    if !cfg!(target_os = "android") || !crate::sys::test_flag("A11Y") { return }
+    let clean = |s: &str| s.replace(['\t', '\n'], " ");
+    let mut out = format!("a11y-begin {scale}\n");
+    TREE.with(|t| for n in &t.borrow().committed {
+        out.push_str(&format!("{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\t{}\t{}\t{}\n",
+            n.role, n.rect.0, n.rect.1, n.rect.2, n.rect.3, n.flags, clean(&n.label), clean(n.value.as_deref().unwrap_or(""))));
+    });
+    out.push_str("a11y-end");
+    // logcat truncates long entries: one line per entry
+    for line in out.lines() { crate::sys::log_line(line); }
 }

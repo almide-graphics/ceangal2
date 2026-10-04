@@ -7,11 +7,12 @@ description = "UI framework for Almide (ceangal2): one ABI, every platform"
 snaidhm = { path = "../snaidhm" }
 
 [native-deps]
-winit = "0.30"
+winit = { version = "0.30", features = ["android-native-activity"] }
 png = "0.18"
-arboard = "3"
+log = "0.4"
 ureq = "2"
-rfd = "0.15"
 accesskit = "0.25"
 accesskit_winit = "0.34"
-keyring = "4"
+# native/ceangal_platform is copied into the generated crate's src/ with the
+# other native files; it holds the target-specific crates (arboard, rfd, keyring).
+ceangal_platform = { path = "src/ceangal_platform" }

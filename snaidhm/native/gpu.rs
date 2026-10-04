@@ -39,11 +39,28 @@ pub fn shared() -> Option<&'static Shared> {
         .as_ref()
 }
 
+/// Whether the shared device exists yet (without creating it).
+pub fn shared_ready() -> bool {
+    SHARED.get().is_some()
+}
+
 /// Initialise the shared device for a given instance and (optionally) a
 /// surface the adapter must be able to present to. The windowed host calls
 /// this before anything else touches [`shared`].
 pub fn init_shared(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> Option<&'static Shared> {
     SHARED.get_or_init(|| init_with(instance, surface)).as_ref()
+}
+
+/// Like [`init_shared`], but leaves the device unset when this instance has
+/// no adapter for the surface, so the caller can try other backends.
+pub fn try_init_shared(instance: wgpu::Instance, surface: &wgpu::Surface<'_>) -> bool {
+    if SHARED.get().is_some() {
+        return true;
+    }
+    match init_with(instance, Some(surface)) {
+        Some(sh) => { let _ = SHARED.set(Some(sh)); true }
+        None => false,
+    }
 }
 
 fn init_with(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> Option<Shared> {
@@ -206,6 +223,17 @@ impl GpuContext {
         surface.configure(&sh.device, &config);
         self.format = format;
         self.surface = Some(SurfaceState { surface, config });
+    }
+
+    pub fn has_surface(&self) -> bool {
+        self.surface.is_some()
+    }
+
+    /// Drop the window surface (mobile apps lose their native window while
+    /// suspended); `attach_surface` again on resume.
+    pub fn detach_surface(&mut self) {
+        self.frame = None;
+        self.surface = None;
     }
 
     pub fn resize_surface(&mut self, width: u32, height: u32) {

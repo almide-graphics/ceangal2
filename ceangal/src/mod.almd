@@ -44,6 +44,13 @@ var current: App = app(() => v.empty())
 var width = 1.0
 var height = 1.0
 var scale = 1.0
+// Safe-area insets (logical px; notch, home indicator, system bars): the app
+// is laid out inside them, the background fills the whole surface.
+var safe_t = 0.0
+var safe_r = 0.0
+var safe_b = 0.0
+var safe_l = 0.0
+var dark_mode = false
 var dirty = true
 var started = false
 
@@ -160,8 +167,10 @@ fn update_ime() -> Unit = {
   } else ()
 }
 
-pub fn viewport_width() -> Float = width
-pub fn viewport_height() -> Float = height
+// The area the app is laid out in (inside the safe-area insets).
+pub fn viewport_width() -> Float = float.max(1.0, width - safe_l - safe_r)
+pub fn viewport_height() -> Float = float.max(1.0, height - safe_t - safe_b)
+pub fn is_dark() -> Bool = dark_mode
 pub fn pixel_scale() -> Float = scale
 
 // ── Dispatch (docs/abi.md §2) ──
@@ -190,6 +199,15 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     invalidate()
     0
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
+  else if kind == 11 then {
+    dark_mode = a == 1
+    safe_t = float.max(0.0, x)
+    safe_r = float.max(0.0, y)
+    safe_b = float.max(0.0, z)
+    safe_l = float.max(0.0, w)
+    invalidate()
+    0
+  }
   else if kind == 12 then { if a11y_action(a, b) then 1 else 0 }
   else 0
 
@@ -257,7 +275,9 @@ fn frame(t: Float) -> Int = {
 }
 
 fn render() -> Unit = {
-  let root = current.view() |> v.w(width) |> v.h(height)
+  let inner = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
+  let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
+  let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
   let node = to_node(root)
   let rects = lay.layout(node, width, height)
   frame_views = flatten(root)

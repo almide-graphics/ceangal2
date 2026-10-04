@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Build the native playground (the Almide compiler and wasmi linked in).
 #   tools/build_native.sh [-o out/playground] [extra almide build args…]
+# With --cdylib (mobile), -o names the shared library to produce.
+# CEANGAL_BUILD_TAG separates build directories (default: the host OS).
 # almide copies [native-deps] specs verbatim into a Cargo project in a
 # scratch directory, so the compiler crate's path must be absolute: this
 # writes a build manifest with absolute paths next to the app's sources.
@@ -11,7 +13,7 @@ nroot="$(cygpath -m "$root" 2>/dev/null || echo "$root")"
 out="$root/out/playground"
 if [ "${1:-}" = "-o" ]; then out="$2"; shift 2; fi
 case "$out" in /*|[A-Za-z]:*) ;; *) out="$PWD/$out" ;; esac
-build="$root/out/build/playground-$(uname -s)"
+build="$root/out/build/playground-${CEANGAL_BUILD_TAG:-$(uname -s)}"
 rm -rf "$build"; mkdir -p "$build"
 ln -s "$root/apps/playground/src" "$build/src"
 ln -s "$root/apps/playground/native" "$build/native"
@@ -28,9 +30,17 @@ snaidhm = { path = "$nroot/snaidhm" }
 almide-compiler-service = { path = "$nroot/apps/playground/compiler" }
 wasmi = "2"
 serde_json = "1"
+# almide/almide#3346: cdylib builds omit flate2 for zlib users (Android).
+flate2 = "1"
 TOML
 mkdir -p "$(dirname "$out")"
 # Baked into the binary: data directory and keychain entries live under it.
 export CEANGAL_APP_ID="${CEANGAL_APP_ID:-dev.almide.playground}"
-(cd "$build" && "$root/tools/almide" build src/main.almd --release -o "$out" "$@")
+if [[ " $* " == *" --cdylib "* ]]; then
+  # almide names a cdylib's crate after -o and writes lib<name>.so here.
+  (cd "$build" && "$root/tools/almide" build src/main.almd --release -o playground "$@")
+  mv "$build"/libplayground.* "$out"
+else
+  (cd "$build" && "$root/tools/almide" build src/main.almd --release -o "$out" "$@")
+fi
 echo "built $out"

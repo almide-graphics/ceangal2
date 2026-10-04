@@ -150,6 +150,13 @@ fn read_asset(name: &str) -> Option<Vec<u8>> {
     if name.contains("..") {
         return None;
     }
+    // Android: assets live inside the APK, read through the AssetManager.
+    #[cfg(target_os = "android")]
+    if let Some(app) = crate::host::android_app() {
+        let path = std::ffi::CString::new(name).ok()?;
+        let mut a = app.asset_manager().open(&path)?;
+        return a.buffer().ok().map(|b| b.to_vec());
+    }
     asset_dirs().into_iter().find_map(|d| std::fs::read(d.join(name)).ok())
 }
 
@@ -207,7 +214,54 @@ pub fn now_ms() -> f64 {
 }
 
 pub fn log(ptr: i64, len: i64) {
-    eprintln!("{}", string(ptr, len));
+    log_line(&string(ptr, len));
+}
+
+/// Android system property (`adb shell setprop debug.ceangal.… 1`): test
+/// hooks, since an activity gets no environment variables.
+#[cfg(target_os = "android")]
+pub fn android_prop(name: &str) -> Option<String> {
+    extern "C" {
+        fn __system_property_get(name: *const std::ffi::c_char, value: *mut std::ffi::c_char) -> i32;
+    }
+    let name = std::ffi::CString::new(name).ok()?;
+    let mut buf = [0 as std::ffi::c_char; 92]; // PROP_VALUE_MAX
+    let n = unsafe { __system_property_get(name.as_ptr(), buf.as_mut_ptr()) };
+    if n <= 0 { return None }
+    let bytes: Vec<u8> = buf[..n as usize].iter().map(|&c| c as u8).collect();
+    Some(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// A test hook switch: `CEANGAL_<NAME>=1`, or on Android the system property
+/// `debug.ceangal.<name>` = 1.
+pub fn test_flag(name: &str) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        static CACHE: std::sync::Mutex<Vec<(String, bool)>> = std::sync::Mutex::new(Vec::new());
+        let mut c = CACHE.lock().unwrap();
+        if let Some((_, v)) = c.iter().find(|(n, _)| n == name) { return *v }
+        let v = android_prop(&format!("debug.ceangal.{}", name.to_lowercase())).is_some_and(|v| v == "1");
+        c.push((name.to_string(), v));
+        v
+    }
+    #[cfg(not(target_os = "android"))]
+    std::env::var(format!("CEANGAL_{name}")).is_ok_and(|v| v == "1")
+}
+
+/// stderr, or logcat on Android (where stderr goes nowhere).
+pub fn log_line(s: &str) {
+    #[cfg(target_os = "android")]
+    {
+        #[link(name = "log")]
+        extern "C" {
+            fn __android_log_write(prio: i32, tag: *const std::ffi::c_char, text: *const std::ffi::c_char) -> i32;
+        }
+        let text = std::ffi::CString::new(s.replace('\0', " ")).unwrap_or_default();
+        // 4 = ANDROID_LOG_INFO
+        unsafe { __android_log_write(4, c"ceangal".as_ptr(), text.as_ptr()); }
+    }
+    #[cfg(not(target_os = "android"))]
+    eprintln!("{s}");
 }
 
 pub fn event_len() -> i64 {
@@ -256,6 +310,10 @@ pub fn exit(code: i64) {
 /// the first command-line argument). The web host passes `location.search` +
 /// `location.hash`.
 fn launch() -> String {
+    #[cfg(target_os = "android")]
+    if let Some(app) = crate::host::android_app() {
+        return ceangal_platform::android_intent_data(app.vm_as_ptr(), app.activity_as_ptr()).unwrap_or_default();
+    }
     std::env::var("CEANGAL_LAUNCH").ok().or_else(|| std::env::args().nth(1)).unwrap_or_default()
 }
 

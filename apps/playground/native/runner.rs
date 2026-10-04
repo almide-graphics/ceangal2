@@ -241,10 +241,25 @@ fn end_session(id: i64, end: End) {
 }
 
 /// For tests: the program's accessibility labels and rects, one per line.
+/// Android (`debug.ceangal.gui_a11y` = 1): logged to logcat between
+/// `gui-a11y-begin` / `gui-a11y-end` when it changes.
 fn dump_a11y(sess: &Session) {
-    if let Ok(path) = std::env::var("CEANGAL_GUI_A11Y") {
-        let text: String = sess.a11y().iter().map(|n| format!("{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\n", n.label, n.rect.0, n.rect.1, n.rect.2, n.rect.3)).collect();
-        let _ = std::fs::write(path, text);
+    let to_file = std::env::var("CEANGAL_GUI_A11Y").ok();
+    let to_log = cfg!(target_os = "android") && crate::sys::test_flag("GUI_A11Y");
+    if to_file.is_none() && !to_log { return }
+    let text: String = sess.a11y().iter().map(|n| format!("{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\n", n.label, n.rect.0, n.rect.1, n.rect.2, n.rect.3)).collect();
+    if let Some(path) = to_file {
+        let _ = std::fs::write(path, &text);
+    }
+    if to_log {
+        static LAST: Mutex<String> = Mutex::new(String::new());
+        let mut last = LAST.lock().unwrap();
+        if *last != text {
+            crate::sys::log_line("gui-a11y-begin");
+            for l in text.lines() { crate::sys::log_line(l); }
+            crate::sys::log_line("gui-a11y-end");
+            *last = text;
+        }
     }
 }
 
