@@ -41,7 +41,7 @@ see what it prints — or what it draws.
   straight to the provider you choose.
 
 Almide is an open-source language designed to be easy for people and for AI
-to read and write. Learn more at almide.dev.
+to read and write. Learn more at github.com/almide/almide.
 
 ## Description (JA)
 
@@ -83,7 +83,7 @@ Almide Playground は、プログラミング言語 Almide を書いて動かす
   "user-generated / AI-generated content: yes, not shared with other users").
 
 ## URLs
-- Marketing: https://almide.dev
+- Marketing: https://github.com/almide/almide
 - Support: https://github.com/almide/almide/issues
 - Privacy policy: https://almide-graphics.github.io/ceangal2/privacy.html (published with the web build; source: store/playground/privacy-policy.md)
 

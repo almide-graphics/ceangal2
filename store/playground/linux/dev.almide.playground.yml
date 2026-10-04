@@ -39,4 +39,11 @@ modules:
     sources:
       - type: dir
         path: stage
+      # almide's crates read ../../{stdlib,runtime} from their build scripts
+      # (almide/almide#3361): unpack the matching source tree where
+      # vendor/<crate>/../.. lands.
+      - type: archive
+        url: https://github.com/almide/almide/archive/refs/tags/v0.66.0.tar.gz
+        sha256: 774e27032a2beb6c89e17361256c9c25f96563fee78649bf06adf5a4f129c426
+        dest: cargo
       - cargo-sources.json
