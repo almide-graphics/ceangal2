@@ -2,9 +2,9 @@
 # of this file (out/flatpak/): the exported Rust project (src/), the vendored
 # crates (cargo-sources.json, from flatpak-cargo-generator) and the assets.
 # The build itself is offline.
-id: dev.almide.playground
+id: io.github.almide.playground
 runtime: org.freedesktop.Platform
-runtime-version: '25.08'
+runtime-version: '26.08'
 sdk: org.freedesktop.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
@@ -24,7 +24,7 @@ build-options:
   env:
     CARGO_HOME: /run/build/almide-playground/cargo
     CARGO_NET_OFFLINE: 'true'
-    CEANGAL_APP_ID: dev.almide.playground
+    CEANGAL_APP_ID: io.github.almide.playground
 modules:
   - name: almide-playground
     buildsystem: simple
@@ -33,9 +33,9 @@ modules:
       - install -Dm755 src/app/target/release/almide-out /app/bin/almide-playground
       - mkdir -p /app/share/almide-playground/assets
       - cp -R assets/. /app/share/almide-playground/assets/
-      - install -Dm644 linux/dev.almide.playground.desktop /app/share/applications/dev.almide.playground.desktop
-      - install -Dm644 linux/dev.almide.playground.metainfo.xml /app/share/metainfo/dev.almide.playground.metainfo.xml
-      - for s in 64 128 256 512; do install -Dm644 icons/${s}x${s}.png /app/share/icons/hicolor/${s}x${s}/apps/dev.almide.playground.png; done
+      - install -Dm644 linux/io.github.almide.playground.desktop /app/share/applications/io.github.almide.playground.desktop
+      - install -Dm644 linux/io.github.almide.playground.metainfo.xml /app/share/metainfo/io.github.almide.playground.metainfo.xml
+      - for s in 64 128 256 512; do install -Dm644 icons/${s}x${s}.png /app/share/icons/hicolor/${s}x${s}/apps/io.github.almide.playground.png; done
     sources:
       - type: dir
         path: stage

@@ -155,6 +155,8 @@ jobs:
   # otherwise), installer pkg; the sandboxed app is launched once.
   macos-store:
     runs-on: macos-15
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -191,7 +193,6 @@ jobs:
       - name: validate for the App Store (needs App Store Connect API key)
         if: env.ASC_KEY_ID != ''
         env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
@@ -202,6 +203,49 @@ jobs:
         with:
           name: macos-store
           path: out/macos/playground.pkg
+
+  # iOS: the Xcode project (XcodeGen) around the Rust executable, the
+  # user-level E2E in a simulator (XCUITest: taps, the on-screen keyboard)
+  # for both apps, and the App Store archive with its checks. Signed,
+  # exported and validated by App Store Connect when the secrets exist.
+  ios:
+    runs-on: macos-26
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: ios-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
+      - name: App Store Connect key (when the secrets exist)
+        if: env.ASC_KEY_ID != ''
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+      - name: E2E (Todo)
+        run: tools/package_ios.sh todo e2e
+      - name: E2E (playground)
+        run: tools/package_ios.sh playground e2e
+      - name: archive (+ export and validate with the secrets)
+        run: tools/package_ios.sh playground archive
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios
+          path: |
+            out/ios/*/e2e/*.png
+            out/ios/playground/export/*.ipa
 
   # Linux: the Flatpak, built offline from the exported Rust project and
   # vendored crates, and checked with Flathub's linter.
@@ -222,7 +266,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder desktop-file-utils python3-aiohttp python3-tomlkit
           flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak --user install -y --noninteractive flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.flatpak.Builder
+          flatpak --user install -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08 org.flatpak.Builder
       - name: build + lint
         run: |
           sed -i 's/^flatpak-builder /flatpak-builder --user /' tools/build_flatpak.sh
@@ -230,7 +274,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: flatpak
-          path: out/flatpak/dev.almide.playground.flatpak
+          path: out/flatpak/io.github.almide.playground.flatpak
 
   # Android: both apps as signed AABs (upload key from secrets, else a debug
   # key) + universal APKs, 16 KB-aligned; E2E on an x86_64 emulator (KVM):

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>dev.almide.playground</id>
+  <id>io.github.almide.playground</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Almide Playground</name>
@@ -24,7 +24,7 @@
       <li>Optional AI assistant with your own API key (Claude, GPT or Gemini)</li>
     </ul>
   </description>
-  <launchable type="desktop-id">dev.almide.playground.desktop</launchable>
+  <launchable type="desktop-id">io.github.almide.playground.desktop</launchable>
   <url type="homepage">https://github.com/almide/almide</url>
   <url type="bugtracker">https://github.com/almide/almide/issues</url>
   <url type="vcs-browser">https://github.com/almide-graphics/ceangal2</url>

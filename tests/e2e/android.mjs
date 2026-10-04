@@ -234,7 +234,8 @@ for (const app of apps) {
       adb("shell", "input", "text", "Buy%smilk");
       await sleep(300);
       adb("shell", "input", "keyevent", "66");
-      await untilGui((g) => g.some((n) => n.label === "Buy milk") && g.some((n) => n.label === "2 tasks left"), "the program to add the task");
+      // the example starts with one task open: Buy milk makes two, done again one
+      await untilGui((g) => g.some((n) => n.label === "Remove Buy milk") && g.some((n) => n.label === "2 tasks left"), "the program to add the task");
       await tapGui("Buy milk");
       await untilGui((g) => g.some((n) => n.label === "1 task left"), "the program to toggle the task");
       shot("playground-gui");

@@ -38,6 +38,29 @@ Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$layout/Assets", "$layout/assets" | Out-Null
 
 Copy-Item $Exe "$layout/playground.exe"
+# The application manifest WACK looks for: per-monitor DPI awareness (winit
+# also sets it at run time), Windows 10/11, UTF-8, the user's privileges.
+$appManifest = Join-Path $out "playground.exe.manifest"
+Set-Content -Encoding utf8 $appManifest @'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application><supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /></application>
+  </compatibility>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+    </windowsSettings>
+  </application>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false" /></requestedPrivileges></security>
+  </trustInfo>
+</assembly>
+'@
+& (Join-Path $bin "mt.exe") -nologo -manifest $appManifest "-outputresource:$layout\playground.exe;#1"
+if ($LASTEXITCODE -ne 0) { throw "mt.exe failed" }
 foreach ($d in ($app.APP_ASSETS -split ' ')) {
   Copy-Item -Recurse -Force "$d/*" "$layout/assets/"
 }
@@ -82,7 +105,7 @@ Set-Content -Encoding utf8 "$layout/AppxManifest.xml" $manifest
 
 # resources.pri resolves Assets\X.png to its scale / target-size variants
 Push-Location $layout
-& $makepri createconfig /cf "$out/priconfig.xml" /dq en-US /o | Out-Null
+& $makepri createconfig /cf "$out/priconfig.xml" /dq "lang-en-US_scale-100_contrast-standard" /o | Out-Null
 & $makepri new /pr $layout /cf "$out/priconfig.xml" /mn "$layout/AppxManifest.xml" /of "$layout/resources.pri" /o | Out-Null
 Pop-Location
 
@@ -114,10 +137,11 @@ if ($Wack) {
   & $appcert reset | Out-Null
   & $appcert test -appxpackagepath $msix -reportoutputpath $report
   [xml]$r = Get-Content $report
-  $overall = $r.REPORT.OVERALL_RESULT
+  $overall = "$($r.REPORT.OVERALL_RESULT)"
   Write-Host "WACK: $overall"
   $r.REPORT.REQUIREMENTS.REQUIREMENT | ForEach-Object {
-    $_.TEST | Where-Object { $_.RESULT -ne "PASS" } | ForEach-Object { Write-Host "  $($_.NAME): $($_.RESULT) — $($_.MESSAGES.MESSAGE.TEXT)" }
+    # RESULT is CDATA (an element, not a string): compare its text
+    $_.TEST | Where-Object { $_.RESULT.InnerText -ne "PASS" } | ForEach-Object { Write-Host "  $($_.NAME): $($_.RESULT.InnerText) — $($_.MESSAGES.InnerText)" }
   }
   if ($overall -ne "PASS") { throw "WACK did not pass ($overall)" }
 }

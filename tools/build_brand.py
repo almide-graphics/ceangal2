@@ -126,13 +126,15 @@ def main():
         if shutil.which("iconutil"):
             subprocess.run(["iconutil", "-c", "icns", iconset, "-o", os.path.join(OUT, "macos/AppIcon.icns")], check=True)
 
-    # Windows MSIX: white plates (scale-200) + unplated marks for the taskbar.
+    # Windows MSIX: white plates at scale 100 (the default resources.pri
+    # resolves to) and 200, + unplated marks for the taskbar.
     def plate(w, h, frac):
         return place(Image.new("RGBA", (w, h), WHITE + (255,)), symbol(), frac * h / w).convert("RGB")
-    save(plate(88, 88, 0.80), "windows", "Square44x44Logo.scale-200.png")
-    save(plate(300, 300, 0.62), "windows", "Square150x150Logo.scale-200.png")
-    save(plate(620, 300, 0.62), "windows", "Wide310x150Logo.scale-200.png")
-    save(plate(100, 100, 0.80), "windows", "StoreLogo.scale-200.png")
+    for k in (1, 2):
+        save(plate(44 * k, 44 * k, 0.80), "windows", f"Square44x44Logo.scale-{k * 100}.png")
+        save(plate(150 * k, 150 * k, 0.62), "windows", f"Square150x150Logo.scale-{k * 100}.png")
+        save(plate(310 * k, 150 * k, 0.62), "windows", f"Wide310x150Logo.scale-{k * 100}.png")
+        save(plate(50 * k, 50 * k, 0.80), "windows", f"StoreLogo.scale-{k * 100}.png")
     for s in (16, 24, 32, 48, 256):
         save(place(Image.new("RGBA", (s, s), (0, 0, 0, 0)), symbol(), 0.94), "windows", f"Square44x44Logo.targetsize-{s}_altform-unplated.png")
 

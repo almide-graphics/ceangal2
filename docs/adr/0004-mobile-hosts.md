@@ -35,9 +35,20 @@ target-specific.
     → bundletool AAB, then a universal APK for emulators. Libraries are
     linked with `max-page-size=16384` and stored uncompressed with 16 KB
     alignment (checked with `zipalign -c -P 16`).
-- **iOS.** A winit app built from the same sources. The surface uses
-  `outer_size`, the safe area comes from `inner_position` / `inner_size`, and
-  data lives under `$HOME/Library/Application Support`.
+- **iOS.** A winit app built from the same sources, as a plain executable
+  (ADR 0005 has the packaging). The surface uses `outer_size`, the safe area
+  comes from `inner_position` / `inner_size`, and data lives under
+  `$HOME/Library/Application Support`. UIKit reports the on-screen keyboard
+  only through notifications: `ceangal_platform` observes
+  `UIKeyboardWillChangeFrameNotification` (objc2 + block2) and the host adds
+  the keyboard's height to the bottom inset, re-reading it for a second after
+  it asks for the keyboard (it moves without a resize). Secrets are generic
+  passwords in the app's keychain (security-framework).
+- **The soft keyboard opens on a tap.** On phones and tablets ceangal asks for
+  the on-screen keyboard only after a finger tapped a text field, not when
+  the app focuses one by itself (the playground focuses its editor at start,
+  and a keyboard covering half the screen on launch is wrong). A tap
+  elsewhere moves the focus and so closes it.
 - **GPU.** On first resume the host creates the wgpu instance with the
   window's display handle, which GL/EGL needs. On Android it tries Vulkan
   first and GL second, one backend per instance: a Vulkan surface and an EGL

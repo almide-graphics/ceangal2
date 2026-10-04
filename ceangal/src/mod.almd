@@ -96,6 +96,9 @@ var caret_h = 0.0
 var ime_active = false
 var ime_rect: List[Float] = [0.0, 0.0, 0.0, 0.0]
 var platform_id = 0
+// Phones and tablets: the on-screen keyboard opens when a finger taps a text
+// field, not when the app focuses one by itself (it would cover the screen).
+var kb_tapped = false
 var frame_time = 0.0
 // a11y values (editor text…) are refreshed at most every A11Y_VALUE_MS; in
 // between the last ones are reused, and one trailing frame catches up.
@@ -174,9 +177,14 @@ fn cycle_focus(back: Bool) -> Unit = {
   } else ()
 }
 
+fn touch_platform() -> Bool = {
+  if platform_id == 0 then platform_id = sys.platform() else ()
+  platform_id == 5 or platform_id == 6
+}
+
 fn update_ime() -> Unit = {
   let fi = find_key(focus_key)
-  let want = fi >= 0 and frame_views[fi].text_input and caret_w >= 0.0
+  let want = fi >= 0 and frame_views[fi].text_input and caret_w >= 0.0 and (kb_tapped or not touch_platform())
   if want then {
     let changed = not ime_active or ime_rect[0] != caret_x or ime_rect[1] != caret_y or ime_rect[3] != caret_h
     if changed then {
@@ -672,10 +680,12 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
     // Pressing (a mouse) or tapping (a finger) moves focus to the focusable
     // node under the pointer, or clears it.
     var f = ""
+    var text = false
     let n = int.min(list.len(frame_views), list.len(frame_rects))
     for i in 0..<n {
-      if frame_views[i].focusable and inside(frame_rects[i], x, y) then f = frame_views[i].key else ()
+      if frame_views[i].focusable and inside(frame_rects[i], x, y) then { f = frame_views[i].key; text = frame_views[i].text_input } else ()
     }
+    if id >= 1 then kb_tapped = text else ()
     focus(f)
   } else ()
   if target < 0 then false

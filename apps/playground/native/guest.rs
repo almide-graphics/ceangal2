@@ -170,7 +170,7 @@ pub struct Session {
     store: Store<Guest>,
     event: EventFn,
     ctx: Rc<RefCell<GpuContext>>,
-    size: (f64, f64, f64),
+    pub(crate) size: (f64, f64, f64),
     animating: bool,
     /// The playground-side handle of our offscreen texture, and its size.
     tex: i64,
@@ -264,8 +264,10 @@ impl Session {
             self.animating = self.dispatch(3, 0, 0, now, 0.0, 0.0, 0.0)? == 1;
         }
         if px != self.tex_px || self.tex == 0 {
-            if self.tex != 0 { gpu::release(self.tex); }
+            // the new handle first, so it never reuses the old one's number
+            let old = self.tex;
             self.tex = gpu::external_texture(self.ctx.borrow().id as i64);
+            if old != 0 { gpu::release(old); }
             self.tex_px = px;
         }
         Ok(self.tex)

@@ -3,7 +3,7 @@
 Shared by every store; per-store limits are noted. English first, then
 Japanese. Source of truth for the copy pasted into App Store Connect, Play
 Console, Partner Center and the Flathub metainfo
-(`store/playground/linux/dev.almide.playground.metainfo.xml`).
+(`store/playground/linux/io.github.almide.playground.metainfo.xml`).
 
 ## Name
 - **Almide Playground** (App Store / Play / Microsoft Store / Flathub)

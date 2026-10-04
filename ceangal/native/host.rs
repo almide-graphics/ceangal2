@@ -299,6 +299,8 @@ struct Windowed {
     touches: Vec<Option<u64>>,
     dark: bool,
     insets: (f64, f64, f64, f64),
+    /// iOS: re-read the insets until then (ms), while the keyboard animates.
+    kb_poll_until: f64,
 }
 
 /// The surface covers the whole window. On iOS `inner_size` is the safe
@@ -330,7 +332,11 @@ fn safe_insets(w: &Window, scale: f64) -> (f64, f64, f64, f64) {
         return (0.0, 0.0, 0.0, 0.0);
     }
     let c = |v: f64| (v / scale).max(0.0);
-    (c(y), c(fw - x - iw), c(fh - y - ih), c(x))
+    let bottom = c(fh - y - ih);
+    // iOS: the on-screen keyboard (points = logical px) covers the bottom
+    #[cfg(target_os = "ios")]
+    let bottom = bottom.max(ceangal_platform::ios_keyboard_height());
+    (c(y), c(fw - x - iw), bottom, c(x))
 }
 
 fn mods_bits(m: ModifiersState) -> i64 {
@@ -471,6 +477,7 @@ impl Windowed {
         }
         if let Some(req) = crate::text_input::take_change() {
             window.set_ime_allowed(req.active);
+            self.kb_poll_until = crate::sys::now_ms() + 1000.0;
             if req.active {
                 let (x, y, w, h) = req.rect;
                 window.set_ime_cursor_area(
@@ -526,6 +533,8 @@ impl ApplicationHandler<UserEvent> for Windowed {
                 attrs = attrs.with_inner_size(winit::dpi::LogicalSize::new(1100.0, 760.0));
             }
             let window = Arc::new(el.create_window(attrs).expect("create window"));
+            #[cfg(target_os = "ios")]
+            ceangal_platform::watch_ios_keyboard();
             self.a11y = Some(accesskit_winit::Adapter::with_event_loop_proxy(el, &window, self.proxy.clone()));
             window.set_visible(true);
             self.dark = matches!(window.theme(), Some(winit::window::Theme::Dark));
@@ -734,6 +743,13 @@ impl ApplicationHandler<UserEvent> for Windowed {
         }
         let deadline = crate::sys::due_deadline();
         self.apply_requests();
+        // iOS: the keyboard moves in and out without a resize
+        if cfg!(target_os = "ios") && crate::sys::now_ms() < self.kb_poll_until {
+            self.send_appearance(false);
+            if let Some(w) = &self.window { w.request_redraw(); }
+            el.set_control_flow(ControlFlow::WaitUntil(std::time::Instant::now() + std::time::Duration::from_millis(30)));
+            return;
+        }
         match deadline {
             Some(at) => {
                 let wait = std::time::Duration::from_secs_f64(((at - crate::sys::now_ms()) / 1000.0).max(0.0));
@@ -770,6 +786,7 @@ fn run_windowed() {
         touches: Vec::new(),
         dark: false,
         insets: (0.0, 0.0, 0.0, 0.0),
+        kb_poll_until: 0.0,
     };
     event_loop.run_app(&mut app).expect("event loop");
 }

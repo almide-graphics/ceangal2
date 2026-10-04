@@ -133,7 +133,9 @@ pub fn action_code(a: accesskit::Action) -> Option<i64> {
 /// Android tests (`debug.ceangal.a11y` = 1): the committed tree to logcat,
 /// framed by `a11y-begin <scale>` / `a11y-end`, lines as in the dump file.
 pub fn log_if_requested(scale: f64) {
-    if !cfg!(target_os = "android") || !crate::sys::test_flag("A11Y") { return }
+    // iOS (the simulator UI test): the same text, in a file
+    let file = if cfg!(target_os = "android") { None } else { std::env::var("CEANGAL_A11Y_LOG").ok() };
+    if !(cfg!(target_os = "android") && crate::sys::test_flag("A11Y")) && file.is_none() { return }
     let clean = |s: &str| s.replace(['\t', '\n'], " ");
     let mut out = format!("a11y-begin {scale}\n");
     TREE.with(|t| for n in &t.borrow().committed {
@@ -141,6 +143,12 @@ pub fn log_if_requested(scale: f64) {
             n.role, n.rect.0, n.rect.1, n.rect.2, n.rect.3, n.flags, clean(&n.label), clean(n.value.as_deref().unwrap_or(""))));
     });
     out.push_str("a11y-end");
+    if let Some(path) = file {
+        // written whole, then renamed: a reader never sees half a tree
+        let tmp = format!("{path}.tmp");
+        if std::fs::write(&tmp, &out).is_ok() { let _ = std::fs::rename(&tmp, &path); }
+        return;
+    }
     // logcat truncates long entries: one line per entry
     for line in out.lines() { crate::sys::log_line(line); }
 }

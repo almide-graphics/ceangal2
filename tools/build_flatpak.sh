@@ -3,14 +3,14 @@
 # the desktop files, turn Cargo.lock into offline sources, build with
 # flatpak-builder (no network during the build) and lint it like Flathub.
 #
-#   tools/build_flatpak.sh            → out/flatpak/dev.almide.playground.flatpak
+#   tools/build_flatpak.sh            → out/flatpak/io.github.almide.playground.flatpak
 #
-# Needs flatpak, flatpak-builder, org.freedesktop.{Platform,Sdk}//25.08, the
+# Needs flatpak, flatpak-builder, org.freedesktop.{Platform,Sdk}//26.08, the
 # rust-stable extension, org.flatpak.Builder (the linter), python3 with
 # aiohttp + tomlkit (flatpak-cargo-generator), and network for the staging.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-id=dev.almide.playground
+id=io.github.almide.playground
 out="$root/out/flatpak"
 stage="$out/stage"
 rm -rf "$stage" "$out/build" "$out/repo"; mkdir -p "$stage"

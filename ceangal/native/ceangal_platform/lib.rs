@@ -55,14 +55,28 @@ mod imp {
 
     pub fn open_dialog() -> Option<PathBuf> { None }
 
-    /// The app sandbox already keeps its files private; secrets use them.
+    /// Android: the app sandbox already keeps its files private; secrets use them.
+    #[cfg(target_os = "android")]
     pub struct Keychain;
 
+    #[cfg(target_os = "android")]
     impl Keychain {
         pub fn new(_service: &str, _key: &str) -> Option<Self> { None }
         pub fn get(&self) -> Option<Vec<u8>> { None }
         pub fn set(&self, _v: &[u8]) {}
         pub fn delete(&self) {}
+    }
+
+    /// iOS: a generic password in the app's keychain.
+    #[cfg(target_os = "ios")]
+    pub struct Keychain(String, String);
+
+    #[cfg(target_os = "ios")]
+    impl Keychain {
+        pub fn new(service: &str, key: &str) -> Option<Self> { Some(Keychain(service.into(), key.into())) }
+        pub fn get(&self) -> Option<Vec<u8>> { security_framework::passwords::get_generic_password(&self.0, &self.1).ok() }
+        pub fn set(&self, v: &[u8]) { let _ = security_framework::passwords::set_generic_password(&self.0, &self.1, v); }
+        pub fn delete(&self) { let _ = security_framework::passwords::delete_generic_password(&self.0, &self.1); }
     }
 }
 
@@ -130,3 +144,64 @@ pub fn android_intent_data(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c
     });
     r.unwrap_or_else(|_| { let _ = env.exception_clear(); None })
 }
+
+/// iOS: how far the on-screen keyboard reaches up from the bottom of the
+/// screen, in points (0 when it is hidden). UIKit says so only through
+/// notifications: `watch_ios_keyboard` subscribes once, on the main thread.
+#[cfg(target_os = "ios")]
+mod ios_keyboard {
+    use objc2::encode::{Encode, Encoding};
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Rect { x: f64, y: f64, w: f64, h: f64 }
+    unsafe impl Encode for Rect {
+        const ENCODING: Encoding = Encoding::Struct("CGRect", &[
+            Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]),
+            Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]),
+        ]);
+    }
+
+    static HEIGHT: AtomicU64 = AtomicU64::new(0);
+    static WATCHING: AtomicBool = AtomicBool::new(false);
+
+    fn ns_string(s: &std::ffi::CStr) -> *mut AnyObject {
+        unsafe { msg_send![class!(NSString), stringWithUTF8String: s.as_ptr()] }
+    }
+
+    pub fn watch() {
+        if WATCHING.swap(true, Ordering::SeqCst) { return }
+        let block = block2::RcBlock::new(|note: *mut AnyObject| unsafe {
+            if note.is_null() { return }
+            let info: *mut AnyObject = msg_send![note, userInfo];
+            if info.is_null() { return }
+            let value: *mut AnyObject = msg_send![info, objectForKey: ns_string(c"UIKeyboardFrameEndUserInfoKey")];
+            if value.is_null() { return }
+            let frame: Rect = msg_send![value, CGRectValue];
+            let screen: *mut AnyObject = msg_send![class!(UIScreen), mainScreen];
+            let bounds: Rect = msg_send![screen, bounds];
+            let h = (bounds.h - frame.y).clamp(0.0, bounds.h);
+            HEIGHT.store(h.to_bits(), Ordering::SeqCst);
+        });
+        unsafe {
+            let center: *mut AnyObject = msg_send![class!(NSNotificationCenter), defaultCenter];
+            let null: *mut AnyObject = std::ptr::null_mut();
+            let observer: *mut AnyObject = msg_send![center,
+                addObserverForName: ns_string(c"UIKeyboardWillChangeFrameNotification"),
+                object: null, queue: null, usingBlock: &*block];
+            let _: *mut AnyObject = msg_send![observer, retain];
+        }
+        std::mem::forget(block);
+    }
+
+    pub fn height() -> f64 { f64::from_bits(HEIGHT.load(Ordering::SeqCst)) }
+}
+
+#[cfg(target_os = "ios")]
+pub fn watch_ios_keyboard() { ios_keyboard::watch() }
+
+#[cfg(target_os = "ios")]
+pub fn ios_keyboard_height() -> f64 { ios_keyboard::height() }

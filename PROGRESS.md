@@ -4,7 +4,8 @@ Read at the start of every session; update at the end.
 
 ## Current milestone
 
-**M5 — mobile** (M0–M4 done locally; Android done, iOS next). M2's last
+**M5 — mobile** (M0–M4 done locally; Android and iOS done locally, iOS CI
+job added). M2's last
 item, the first green CI run on main that deploys Pages, waits for a push
 (see Blockers).
 
@@ -115,11 +116,35 @@ item, the first green CI run on main that deploys Pages, waits for a push
     background → foreground, safe area.
   - Playground: compiles and runs on the device, and the Todo program runs
     as a window that takes taps and Stops.
-  - Passes 8/8 on an API 37 arm64 emulator. CI job `android` (API 35 x86_64,
+  - Passes 9/9 on an API 37 arm64 emulator (taps wait for the box to stop
+    moving; slow CI emulators tapped mid-layout). CI job `android` (API 35 x86_64,
     KVM).
-- iOS: not started (needs Xcode locally; see Human TODO).
+- iOS (ADR 0004, 0005): the same winit host. `tools/package_ios.sh <app>
+  sim|e2e|archive|all` builds the Rust executable per SDK and an XcodeGen
+  project around it (icon, assets, PrivacyInfo.xcprivacy); `archive` is the
+  App Store build with local checks (and signing, export and App Store
+  Connect validation once the secrets exist).
+  - The keyboard's height (UIKit notification) joins the bottom inset; the
+    soft keyboard opens on a tap on a text field only (all phones).
+  - Keychain: generic passwords via security-framework.
+  - `tests/e2e/ios/E2E.swift` (XCUITest; taps at the tree's boxes, typing on
+    the on-screen keyboard): Todo app 2/2 (type, toggle, remove, background
+    → foreground, safe area) and playground 3/3 (run on the device, Examples
+    menu scrolls, the Todo example runs as a window and takes taps and
+    typing). Local: iPhone 17 simulator, iOS 26.5, Xcode 26.6. CI job `ios`
+    (macos-26).
+- Fixed on every platform along the way: a resized user-program window kept
+  drawing its old texture (a freed texture handle's number was reused and
+  snaidhm's bind group cache still pointed at the old texture).
 
-### M6 — packaging (started)
+### M6 — packaging (started; ADR 0005)
+- iOS: see M5 (archive + local checks).
+- Windows: `tools/package_msix.ps1` → MSIX with resources.pri, the app
+  manifest (DPI awareness) embedded with mt.exe, scale-100/200 tiles, signed
+  (secrets or a self-signed test cert), then WACK in CI.
+- Linux: `tools/build_flatpak.sh` → Flatpak built offline from the exported
+  Rust project; app ID `io.github.almide.playground` (Flathub verifies the
+  domain; almide.dev does not resolve), runtime 26.08, flathub linter in CI.
 - macOS: `tools/package_macos.sh` → universal (arm64 + x86_64) `.app` with
   App Sandbox (network client + user-selected files only), Info.plist, the
   .icns, signed (secrets identity or ad hoc) and an installer pkg; the
@@ -152,15 +177,18 @@ item, the first green CI run on main that deploys Pages, waits for a push
   the Examples menu uses one (70% of the screen at most).
 
 ## Blockers
-- Pushing to `main` was refused by the session's permission check; local
-  commits wait for the user to push. Pages also needs Settings → Pages →
-  Source "GitHub Actions" once.
+- Pages needs Settings → Pages → Source "GitHub Actions" once (Human TODO);
+  until then the `pages` job fails.
 
 ## Next
-1. After the push: CI green (including `pages-e2e` on the live site), link the
-   site from README.
-2. M4 rest: see the Windows CI result; a native AI test against a mock
-   server; AccessKit checked with VoiceOver / Narrator / Orca (Human TODO).
+1. CI green on the push with iOS, the WACK fixes and the Flathub ID: `ios`
+   (first run on macos-26), `native-windows` (WACK), `flatpak` (linter),
+   `android` (settled taps).
+2. M6: store screenshots for iOS from the simulator build (the generator
+   renders the web build today); the Play / App Store data-safety answers
+   checked against the final feature set.
+3. M4 rest: a native AI test against a mock server on Windows / Linux;
+   AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
 - almide/almide#3349 — `build --cdylib -o <path>` uses the path as the crate
@@ -227,12 +255,16 @@ item, the first green CI run on main that deploys Pages, waits for a push
       ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
 - [ ] GitHub Pages: Settings → Pages → Source "GitHub Actions".
 - [ ] Microsoft Partner Center account; reserve the app name.
-- [ ] Flathub: app ID decision (e.g. `dev.almide.Playground`) and submission PR.
-- [ ] Install Xcode locally from the App Store and open it once (license,
-      components); then iOS builds and the simulator run here too.
+- [ ] Flathub: confirm the app ID `io.github.almide.playground` (or register
+      almide.dev and move to `dev.almide.playground`), then the submission PR.
+- [ ] iOS App Store: GitHub secret IOS_TEAM_ID (with the ASC_* key above the
+      `ios` job signs, exports and validates); create the app record
+      `dev.almide.playground` in App Store Connect; try the app on a real
+      iPhone (Xcode → Settings → Accounts, then Run on the device).
 - [ ] Native: check the API key lands in Keychain / Credential Manager /
       Secret Service (the app asks the OS store; tests use a file instead).
 - [ ] Native: VoiceOver (macOS), Narrator (Windows), Orca (Linux) read the
-      playground through AccessKit.
+      playground through AccessKit. iOS VoiceOver / Android TalkBack: not
+      wired yet (AccessKit has no UIKit adapter; Android needs GameActivity).
 - [ ] Check the deployed web playground with a screen reader (VoiceOver) and
       on a phone (Safari iOS 26 / Chrome Android with WebGPU).

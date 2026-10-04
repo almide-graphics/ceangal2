@@ -249,7 +249,8 @@ fn dump_a11y(sess: &Session) {
     if to_file.is_none() && !to_log { return }
     let text: String = sess.a11y().iter().map(|n| format!("{}\t{:.0}\t{:.0}\t{:.0}\t{:.0}\n", n.label, n.rect.0, n.rect.1, n.rect.2, n.rect.3)).collect();
     if let Some(path) = to_file {
-        let _ = std::fs::write(path, &text);
+        let tmp = format!("{path}.tmp");
+        if std::fs::write(&tmp, &text).is_ok() { let _ = std::fs::rename(&tmp, &path); }
     }
     if to_log {
         static LAST: Mutex<String> = Mutex::new(String::new());
@@ -276,8 +277,12 @@ pub fn runner_gui_place(_x: f64, _y: f64, w: f64, h: f64, scale: f64) -> i64 {
         let mut cell = cell.borrow_mut();
         let sess = cell.as_mut()?;
         let id = sess.run_id;
+        let before = sess.size;
         Some((id, sess.place(w, h, scale.max(0.5)).map(|tex| {
-            if sess.wants_frame() { crate::sys::request_frame(); }
+            // A new size is laid out from this frame's rect: draw once more,
+            // so the pane and the program agree when the rect stops moving
+            // (the soft keyboard, a rotation).
+            if sess.wants_frame() || sess.size != before { crate::sys::request_frame(); }
             if let Some(d) = sess.deadline() { crate::sys::request_frame_after(d - crate::sys::now_ms()); }
             dump_a11y(sess);
             tex
