@@ -1,17 +1,219 @@
-// Text measurement and drawing.
+// Text: font loading, fallback, measurement and drawing.
 //
-// M0 placeholder metrics: monospace-like advance of 0.6 em, line height
-// 1.3 em, nothing drawn. M1 replaces this with the font engine (TTF parse,
-// glyph rasterisation into snaidhm's atlas, CJK fallback).
+// Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
+// once by snaidhm.font. Each codepoint is drawn with the first font in the
+// style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
+// cjk → ui). Glyphs are rasterised on first use into snaidhm's coverage
+// atlas (shelf-packed); a full atlas is cleared at the start of the next
+// frame and refilled lazily.
 
 import snaidhm
+import snaidhm.font as font
 import self.layout as lay
+import self.host.sys as sys
 
 // Sizes are layout.Size: a second record type with the same fields makes the
 // native leg emit the wrong struct (almide/almide#3283).
 type Extent = lay.Size
 
-pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
-  { w: int.to_float(string.len(s)) * size * 0.6, h: size * 1.3 }
+let FONT_UI = 0
+let FONT_UI_BOLD = 1
+let FONT_MONO = 2
+let FONT_CJK = 3
 
-pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, c: snaidhm.Color) -> Unit = ()
+let FONT_FILES = ["fonts/ui.ttf", "fonts/ui-semibold.ttf", "fonts/mono.ttf", "fonts/cjk.ttf"]
+
+var fonts: List[font.Font] = []
+var font_tried: List[Bool] = [false, false, false, false]
+
+fn load_asset(name: String) -> Bytes = {
+  let key = bytes.from_string(name)
+  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
+  if n <= 0 then bytes.new(0)
+  else {
+    var buf = bytes.new(n)
+    let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
+    buf
+  }
+}
+
+fn font_at(slot: Int) -> font.Font = {
+  if list.len(fonts) == 0 then fonts = [font.empty_font(), font.empty_font(), font.empty_font(), font.empty_font()] else ()
+  if not font_tried[slot] then {
+    let f = font.parse(load_asset(FONT_FILES[slot]))
+    fonts[slot] = f
+    // A missing asset may still be loading (web fetches the CJK font in the
+    // background): retry on a later frame rather than giving up for good.
+    if f.ok then font_tried[slot] = true else sys.request_frame()
+    f
+  } else fonts[slot]
+}
+
+fn chain(mono: Bool, bold: Bool) -> List[Int] =
+  if mono then [FONT_MONO, FONT_CJK, FONT_UI]
+  else if bold then [FONT_UI_BOLD, FONT_CJK, FONT_MONO]
+  else [FONT_UI, FONT_CJK, FONT_MONO]
+
+// ── UTF-8 ──
+
+pub fn codepoints(s: String) -> List[Int] = {
+  let b = bytes.from_string(s)
+  let n = bytes.len(b)
+  var out: List[Int] = []
+  var i = 0
+  while i < n {
+    let c = bytes.read_u8(b, i)
+    if c < 128 then { list.push(out, c); i = i + 1 }
+    else if c < 224 and i + 1 < n then {
+      list.push(out, (c % 32) * 64 + bytes.read_u8(b, i + 1) % 64)
+      i = i + 2
+    } else if c < 240 and i + 2 < n then {
+      list.push(out, (c % 16) * 4096 + (bytes.read_u8(b, i + 1) % 64) * 64 + bytes.read_u8(b, i + 2) % 64)
+      i = i + 3
+    } else if i + 3 < n then {
+      list.push(out, (c % 8) * 262144 + (bytes.read_u8(b, i + 1) % 64) * 4096 + (bytes.read_u8(b, i + 2) % 64) * 64 + bytes.read_u8(b, i + 3) % 64)
+      i = i + 4
+    } else { list.push(out, 0xFFFD); i = i + 1 }
+  }
+  out
+}
+
+// ── Shaping (cmap + advances + fallback) ──
+
+// One positioned glyph: font slot, glyph id, pen x (px from the run start)
+// and advance (px).
+type Glyph = { slot: Int, gid: Int, x: Float, advance: Float }
+
+pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph] = {
+  let ch = chain(mono, bold)
+  var out: List[Glyph] = []
+  var x = 0.0
+  for cp in cps {
+    var slot = ch[0]
+    var gid = 0
+    for s in ch {
+      if gid == 0 then {
+        let f = font_at(s)
+        let g = font.glyph_index(f, cp)
+        if g != 0 then { slot = s; gid = g } else ()
+      } else ()
+    }
+    let f = font_at(slot)
+    let adv = if cp == 9 then font.advance(f, font.glyph_index(f, 32)) * 4.0 else font.advance(f, gid)
+    let a = adv * size / f.units_per_em
+    list.push(out, { slot: slot, gid: gid, x: x, advance: a })
+    x = x + a
+  }
+  out
+}
+
+// Line metrics of the primary font at `size`: ascent and full line height.
+pub fn ascent(size: Float, mono: Bool) -> Float = {
+  let f = font_at(if mono then FONT_MONO else FONT_UI)
+  f.ascender * size / f.units_per_em
+}
+
+pub fn line_height(size: Float, mono: Bool) -> Float = {
+  let f = font_at(if mono then FONT_MONO else FONT_UI)
+  float.ceil((f.ascender - f.descender + f.line_gap) * size / f.units_per_em)
+}
+
+pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float = {
+  let gs = shape(codepoints(s), size, mono, bold)
+  let n = list.len(gs)
+  if n == 0 then 0.0 else gs[n - 1].x + gs[n - 1].advance
+}
+
+pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
+  { w: float.ceil(width(s, size, mono, false)), h: line_height(size, mono) }
+
+pub fn measure_style(s: String, size: Float, mono: Bool, bold: Bool) -> Extent =
+  { w: float.ceil(width(s, size, mono, bold)), h: line_height(size, mono) }
+
+// ── Glyph atlas cache ──
+
+type Cached = { ax: Int, ay: Int, w: Int, h: Int, left: Int, top: Int }
+
+var cache: Map[Int, Cached] = map.new()
+var shelf_x = 1
+var shelf_y = 1
+var shelf_h = 0
+var atlas_full = false
+
+fn cache_key(slot: Int, gid: Int, px: Float) -> Int =
+  (slot * 65536 + gid) * 4096 + int.min(4095, float.to_int(px * 4.0 + 0.5))
+
+// Call at the start of a frame: drops the atlas if it filled up last frame.
+pub fn begin_frame() -> Unit =
+  if atlas_full then {
+    cache = map.new()
+    shelf_x = 1
+    shelf_y = 1
+    shelf_h = 0
+    atlas_full = false
+  } else ()
+
+fn glyph_entry(slot: Int, gid: Int, px: Float) -> Cached? = {
+  let key = cache_key(slot, gid, px)
+  match map.get(cache, key) {
+    some(c) => some(c),
+    none => {
+      let bm = font.rasterize(font_at(slot), gid, px)
+      let size = snaidhm.atlas_size()
+      if bm.w == 0 then {
+        let c = { ax: 0, ay: 0, w: 0, h: 0, left: 0, top: 0 }
+        map.insert(cache, key, c)
+        some(c)
+      } else {
+        if shelf_x + bm.w + 1 >= size then {
+          shelf_x = 1
+          shelf_y = shelf_y + shelf_h + 1
+          shelf_h = 0
+        } else ()
+        if shelf_y + bm.h + 1 >= size then {
+          atlas_full = true
+          sys.request_frame()
+          none
+        } else {
+          let c = { ax: shelf_x, ay: shelf_y, w: bm.w, h: bm.h, left: bm.left, top: bm.top }
+          snaidhm.upload_coverage(shelf_x, shelf_y, bm.w, bm.h, bm.pixels)
+          shelf_x = shelf_x + bm.w + 1
+          shelf_h = int.max(shelf_h, bm.h)
+          map.insert(cache, key, c)
+          some(c)
+        }
+      }
+    }
+  }
+}
+
+// ── Drawing ──
+
+// Draw `s` on one line inside (x, y, w, h) — physical pixels, vertically
+// centred — at `size` physical px.
+pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, c: snaidhm.Color) -> Unit =
+  draw_style(s, x, y, w, h, size, mono, false, c)
+
+pub fn draw_style(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit = {
+  let lh = line_height(size, mono)
+  let baseline = float.round(y + (h - lh) * 0.5 + ascent(size, mono))
+  draw_run(shape(codepoints(s), size, mono, bold), x, baseline, size, c)
+}
+
+// Draw shaped glyphs with the pen starting at (x, baseline), physical px.
+pub fn draw_run(gs: List[Glyph], x: Float, baseline: Float, size: Float, c: snaidhm.Color) -> Unit = {
+  for g in gs {
+    if g.gid != 0 then {
+      match glyph_entry(g.slot, g.gid, size) {
+        some(e) => {
+          if e.w > 0 then {
+            let gx = float.round(x + g.x) + int.to_float(e.left)
+            let gy = baseline - int.to_float(e.top)
+            snaidhm.glyph(gx, gy, int.to_float(e.w), int.to_float(e.h), e.ax, e.ay, e.w, e.h, c)
+          } else ()
+        },
+        none => (),
+      }
+    } else ()
+  }
+}

@@ -118,6 +118,7 @@ fn render() -> Unit = {
   let rects = lay.layout(node, width, height)
   frame_views = flatten(root)
   frame_rects = rects
+  tx.begin_frame()
   snaidhm.begin(float.to_int(float.ceil(width * scale)), float.to_int(float.ceil(height * scale)))
   paint(root, rects, 0)
   let _ = snaidhm.end(current.background)
@@ -130,9 +131,12 @@ fn edges(t: Float, r: Float, b: Float, l: Float) -> lay.Edges = { top: t, right:
 fn to_node(view: v.View) -> lay.Node = {
   let s = view.style
   let base = lay.node_defaults()
-  let intrinsic = if view.kind == v.TEXT then tx.measure(view.content, s.font_size, s.mono) else { w: lay.UNDEFINED, h: lay.UNDEFINED }
-  let width = if s.width != v.UNDEF then s.width else intrinsic.w
-  let height = if s.height != v.UNDEF then s.height else intrinsic.h
+  // Text measures its content box; padding adds to it.
+  let intrinsic = if view.kind == v.TEXT then tx.measure_style(view.content, s.font_size, s.mono, s.bold) else { w: lay.UNDEFINED, h: lay.UNDEFINED }
+  let is_text = view.kind == v.TEXT
+  let unset = lay.UNDEFINED
+  let width = if s.width != unset or s.width_pct != unset then s.width else if is_text then intrinsic.w + s.pl + s.pr else unset
+  let height = if s.height != unset or s.height_pct != unset then s.height else if is_text then intrinsic.h + s.pt + s.pb else unset
   {
     ...base,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
@@ -196,7 +200,11 @@ fn paint(view: v.View, rects: List[lay.LayoutRect], idx: Int) -> Int = {
   if s.border_width > 0.0 then
     snaidhm.stroke(x, y, w, h, s.radius * k, s.border_width * k, s.border_color)
   else ()
-  if view.kind == v.TEXT then tx.draw(view.content, x, y, w, h, s.font_size * k, s.mono, s.fg) else ()
+  if view.kind == v.TEXT then {
+    snaidhm.push_clip(x, y, w, h)
+    tx.draw_style(view.content, x + s.pl * k, y + s.pt * k, w - (s.pl + s.pr) * k, h - (s.pt + s.pb) * k, s.font_size * k, s.mono, s.bold, s.fg)
+    snaidhm.pop_clip()
+  } else ()
   if view.kind == v.CUSTOM then view.paint(r.x, r.y, r.w, r.h) else ()
   if has_clip then snaidhm.pop_clip() else ()
   var next = idx + 1

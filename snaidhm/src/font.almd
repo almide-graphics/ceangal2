@@ -1,0 +1,483 @@
+// TrueType font reading and glyph rasterisation, in Almide.
+//
+// Reads the tables a UI needs (head, hhea, maxp, cmap 4/12, hmtx, loca,
+// glyf — simple and composite glyphs) straight from the font's bytes and
+// rasterises outlines with signed-area coverage accumulation (the font-rs
+// method): every line segment adds its exact area contribution to the cells
+// it crosses, and a running sum per row yields anti-aliased coverage.
+
+type Font = {
+  data: Bytes,
+  ok: Bool,
+  units_per_em: Float,
+  ascender: Float,
+  descender: Float,
+  line_gap: Float,
+  num_glyphs: Int,
+  num_hmetrics: Int,
+  index_to_loc: Int,
+  cmap4: Int,
+  cmap12: Int,
+  loca: Int,
+  glyf: Int,
+  hmtx: Int,
+}
+
+// A function, not a `let`: a constant holding Bytes does not build natively
+// (almide/almide#3287).
+pub fn empty_font() -> Font = {
+  data: bytes.new(0), ok: false, units_per_em: 1000.0, ascender: 800.0, descender: -200.0, line_gap: 0.0,
+  num_glyphs: 0, num_hmetrics: 0, index_to_loc: 0, cmap4: 0, cmap12: 0, loca: 0, glyf: 0, hmtx: 0,
+}
+
+fn u8(b: Bytes, p: Int) -> Int = bytes.read_u8(b, p)
+fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
+fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.read_u16_be(b, p); if v >= 32768 then v - 65536 else v }
+fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
+fn i8(b: Bytes, p: Int) -> Int = { let v = bytes.read_u8(b, p); if v >= 128 then v - 256 else v }
+fn f2dot14(b: Bytes, p: Int) -> Float = int.to_float(i16(b, p)) / 16384.0
+
+fn tag(b: Bytes, p: Int) -> Int = u32(b, p)
+
+// 'head' 'hhea' 'maxp' 'cmap' 'hmtx' 'loca' 'glyf' as big-endian u32
+let TAG_HEAD = 1751474532
+let TAG_HHEA = 1751672161
+let TAG_MAXP = 1835104368
+let TAG_CMAP = 1668112752
+let TAG_HMTX = 1752003704
+let TAG_LOCA = 1819239265
+let TAG_GLYF = 1735162214
+
+fn find_table(b: Bytes, t: Int) -> Int = {
+  let n = u16(b, 4)
+  var off = 0
+  for i in 0..<n {
+    let rec = 12 + i * 16
+    if tag(b, rec) == t then off = u32(b, rec + 8) else ()
+  }
+  off
+}
+
+pub fn parse(b: Bytes) -> Font =
+  if bytes.len(b) < 12 then empty_font()
+  else {
+    let head = find_table(b, TAG_HEAD)
+    let hhea = find_table(b, TAG_HHEA)
+    let maxp = find_table(b, TAG_MAXP)
+    let cmap = find_table(b, TAG_CMAP)
+    let hmtx = find_table(b, TAG_HMTX)
+    let loca = find_table(b, TAG_LOCA)
+    let glyf = find_table(b, TAG_GLYF)
+    if head == 0 or hhea == 0 or maxp == 0 or cmap == 0 or hmtx == 0 or loca == 0 or glyf == 0 then empty_font()
+    else {
+      var c4 = 0
+      var c12 = 0
+      let nsub = u16(b, cmap + 2)
+      for i in 0..<nsub {
+        let rec = cmap + 4 + i * 8
+        let pid = u16(b, rec)
+        let eid = u16(b, rec + 2)
+        let sub = cmap + u32(b, rec + 4)
+        let fmt = u16(b, sub)
+        let unicode = pid == 0 or (pid == 3 and (eid == 1 or eid == 10))
+        if unicode and fmt == 4 and c4 == 0 then c4 = sub else ()
+        if unicode and fmt == 12 and c12 == 0 then c12 = sub else ()
+      }
+      {
+        data: b,
+        ok: true,
+        units_per_em: int.to_float(u16(b, head + 18)),
+        ascender: int.to_float(i16(b, hhea + 4)),
+        descender: int.to_float(i16(b, hhea + 6)),
+        line_gap: int.to_float(i16(b, hhea + 8)),
+        num_glyphs: u16(b, maxp + 4),
+        num_hmetrics: u16(b, hhea + 34),
+        index_to_loc: i16(b, head + 50),
+        cmap4: c4,
+        cmap12: c12,
+        loca: loca,
+        glyf: glyf,
+        hmtx: hmtx,
+      }
+    }
+  }
+
+// ── Character map ──
+
+pub fn glyph_index(f: Font, cp: Int) -> Int =
+  if not f.ok then 0
+  else if f.cmap12 != 0 then cmap12_lookup(f.data, f.cmap12, cp)
+  else if f.cmap4 != 0 and cp < 65536 then cmap4_lookup(f.data, f.cmap4, cp)
+  else 0
+
+fn cmap4_lookup(b: Bytes, sub: Int, cp: Int) -> Int = {
+  let seg2 = u16(b, sub + 6)
+  let ends = sub + 14
+  let starts = ends + seg2 + 2
+  let deltas = starts + seg2
+  let ranges = deltas + seg2
+  // binary search for the first segment whose end >= cp
+  var lo = 0
+  var hi = seg2 / 2
+  while lo < hi {
+    let mid = (lo + hi) / 2
+    if u16(b, ends + mid * 2) < cp then lo = mid + 1 else hi = mid
+  }
+  if lo >= seg2 / 2 then 0
+  else {
+    let start = u16(b, starts + lo * 2)
+    if cp < start then 0
+    else {
+      let delta = u16(b, deltas + lo * 2)
+      let ro = u16(b, ranges + lo * 2)
+      if ro == 0 then (cp + delta) % 65536
+      else {
+        let gp = ranges + lo * 2 + ro + (cp - start) * 2
+        let g = u16(b, gp)
+        if g == 0 then 0 else (g + delta) % 65536
+      }
+    }
+  }
+}
+
+fn cmap12_lookup(b: Bytes, sub: Int, cp: Int) -> Int = {
+  let n = u32(b, sub + 12)
+  var lo = 0
+  var hi = n
+  while lo < hi {
+    let mid = (lo + hi) / 2
+    if u32(b, sub + 16 + mid * 12 + 4) < cp then lo = mid + 1 else hi = mid
+  }
+  if lo >= n then 0
+  else {
+    let g = sub + 16 + lo * 12
+    let start = u32(b, g)
+    if cp < start then 0 else u32(b, g + 8) + (cp - start)
+  }
+}
+
+// ── Metrics ──
+
+pub fn advance(f: Font, gid: Int) -> Float =
+  if not f.ok then 0.0
+  else {
+    let i = if gid < f.num_hmetrics then gid else f.num_hmetrics - 1
+    int.to_float(u16(f.data, f.hmtx + i * 4))
+  }
+
+// ── Outlines ──
+
+// A glyph outline in font units: points with on-curve flags, and the index
+// one past the last point of each contour.
+type Outline = { xs: List[Float], ys: List[Float], on: List[Bool], ends: List[Int] }
+
+fn glyph_range(f: Font, gid: Int) -> (Int, Int) =
+  if f.index_to_loc == 0 then (u16(f.data, f.loca + gid * 2) * 2, u16(f.data, f.loca + gid * 2 + 2) * 2)
+  else (u32(f.data, f.loca + gid * 4), u32(f.data, f.loca + gid * 4 + 4))
+
+pub fn outline(f: Font, gid: Int) -> Outline = {
+  var o: Outline = { xs: [], ys: [], on: [], ends: [] }
+  if f.ok and gid >= 0 and gid < f.num_glyphs then append_glyph(f, gid, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, o, 0) else ()
+  o
+}
+
+// Append glyph `gid` transformed by [a b; c d] + (dx, dy) to `o`.
+fn append_glyph(f: Font, gid: Int, a: Float, b: Float, c: Float, d: Float, dx: Float, dy: Float, mut o: Outline, depth: Int) -> Unit = {
+  let (start, stop) = glyph_range(f, gid)
+  if stop > start and depth < 8 then {
+    let p = f.glyf + start
+    let nc = i16(f.data, p)
+    if nc >= 0 then append_simple(f.data, p, nc, a, b, c, d, dx, dy, o)
+    else append_composite(f, p, a, b, c, d, dx, dy, o, depth)
+  } else ()
+}
+
+fn append_simple(data: Bytes, p: Int, nc: Int, a: Float, b: Float, c: Float, d: Float, dx: Float, dy: Float, mut o: Outline) -> Unit = {
+  if nc > 0 then {
+    let base = list.len(o.xs)
+    let npts = u16(data, p + 10 + (nc - 1) * 2) + 1
+    let ilen = u16(data, p + 10 + nc * 2)
+    var pos = p + 12 + nc * 2 + ilen
+    var flags: List[Int] = []
+    while list.len(flags) < npts {
+      let fl = u8(data, pos)
+      pos = pos + 1
+      list.push(flags, fl)
+      if int.band(fl, 8) != 0 then {
+        let r = u8(data, pos)
+        pos = pos + 1
+        for _ in 0..<r { list.push(flags, fl) }
+      } else ()
+    }
+    var xs: List[Int] = []
+    var v = 0
+    for i in 0..<npts {
+      let fl = flags[i]
+      if int.band(fl, 2) != 0 then {
+        let dv = u8(data, pos)
+        pos = pos + 1
+        v = v + (if int.band(fl, 16) != 0 then dv else 0 - dv)
+      } else if int.band(fl, 16) == 0 then {
+        v = v + i16(data, pos)
+        pos = pos + 2
+      } else ()
+      list.push(xs, v)
+    }
+    v = 0
+    for i in 0..<npts {
+      let fl = flags[i]
+      if int.band(fl, 4) != 0 then {
+        let dv = u8(data, pos)
+        pos = pos + 1
+        v = v + (if int.band(fl, 32) != 0 then dv else 0 - dv)
+      } else if int.band(fl, 32) == 0 then {
+        v = v + i16(data, pos)
+        pos = pos + 2
+      } else ()
+      let x = int.to_float(xs[i])
+      let y = int.to_float(v)
+      list.push(o.xs, a * x + c * y + dx)
+      list.push(o.ys, b * x + d * y + dy)
+      list.push(o.on, int.band(flags[i], 1) != 0)
+    }
+    for k in 0..<nc {
+      list.push(o.ends, base + u16(data, p + 10 + k * 2) + 1)
+    }
+  } else ()
+}
+
+fn append_composite(f: Font, p: Int, a: Float, b: Float, c: Float, d: Float, dx: Float, dy: Float, mut o: Outline, depth: Int) -> Unit = {
+  var pos = p + 10
+  var more = true
+  while more {
+    let flags = u16(f.data, pos)
+    let gid = u16(f.data, pos + 2)
+    pos = pos + 4
+    var ox = 0.0
+    var oy = 0.0
+    if int.band(flags, 1) != 0 then {
+      ox = int.to_float(i16(f.data, pos))
+      oy = int.to_float(i16(f.data, pos + 2))
+      pos = pos + 4
+    } else {
+      ox = int.to_float(i8(f.data, pos))
+      oy = int.to_float(i8(f.data, pos + 1))
+      pos = pos + 2
+    }
+    var ca = 1.0
+    var cb = 0.0
+    var cc = 0.0
+    var cd = 1.0
+    if int.band(flags, 8) != 0 then {
+      ca = f2dot14(f.data, pos)
+      cd = ca
+      pos = pos + 2
+    } else if int.band(flags, 64) != 0 then {
+      ca = f2dot14(f.data, pos)
+      cd = f2dot14(f.data, pos + 2)
+      pos = pos + 4
+    } else if int.band(flags, 128) != 0 then {
+      ca = f2dot14(f.data, pos)
+      cb = f2dot14(f.data, pos + 2)
+      cc = f2dot14(f.data, pos + 4)
+      cd = f2dot14(f.data, pos + 6)
+      pos = pos + 8
+    } else ()
+    // Compose the component transform with the parent's.
+    let na = a * ca + c * cb
+    let nb = b * ca + d * cb
+    let nc = a * cc + c * cd
+    let nd = b * cc + d * cd
+    let ndx = a * ox + c * oy + dx
+    let ndy = b * ox + d * oy + dy
+    append_glyph(f, gid, na, nb, nc, nd, ndx, ndy, o, depth + 1)
+    more = int.band(flags, 32) != 0
+  }
+}
+
+// ── Rasterisation ──
+
+type Bitmap = { w: Int, h: Int, left: Int, top: Int, pixels: Bytes }
+
+fn empty_bitmap() -> Bitmap = { w: 0, h: 0, left: 0, top: 0, pixels: bytes.new(0) }
+
+// Rasterise glyph `gid` at `size_px` pixels per em. `left`/`top` place the
+// bitmap relative to the pen position on the baseline (top is distance above
+// the baseline). Pixels are 8-bit coverage, row-major, w*h.
+pub fn rasterize(f: Font, gid: Int, size_px: Float) -> Bitmap = {
+  let o = outline(f, gid)
+  let n = list.len(o.xs)
+  if n == 0 then empty_bitmap()
+  else {
+    let s = size_px / f.units_per_em
+    var minx = o.xs[0]
+    var maxx = o.xs[0]
+    var miny = o.ys[0]
+    var maxy = o.ys[0]
+    for i in 0..<n {
+      minx = float.min(minx, o.xs[i])
+      maxx = float.max(maxx, o.xs[i])
+      miny = float.min(miny, o.ys[i])
+      maxy = float.max(maxy, o.ys[i])
+    }
+    let left = float.to_int(float.floor(minx * s))
+    let right = float.to_int(float.ceil(maxx * s))
+    let top = float.to_int(float.ceil(maxy * s))
+    let bottom = float.to_int(float.floor(miny * s))
+    let w = right - left + 1
+    let h = top - bottom + 1
+    if w <= 0 or h <= 0 or w > 1024 or h > 1024 then empty_bitmap()
+    else {
+      let stride = w + 2
+      var acc: List[Float] = list.repeat(0.0, stride * h + 4)
+      // pixel space: x' = x*s - left, y' = top - y*s (y down)
+      let ox = int.to_float(left)
+      let oy = int.to_float(top)
+      var start = 0
+      for e in o.ends {
+        if e - start >= 2 then contour(o, start, e, s, ox, oy, stride, h, acc) else ()
+        start = e
+      }
+      var out = bytes.new(w * h)
+      for y in 0..<h {
+        var sum = 0.0
+        for x in 0..<stride {
+          sum = sum + acc[y * stride + x]
+          if x < w then {
+            let cov = float.min(1.0, float.abs(sum))
+            bytes.set_at(out, y * w + x, float.to_int(cov * 255.0 + 0.5))
+          } else ()
+        }
+      }
+      { w: w, h: h, left: left, top: top, pixels: out }
+    }
+  }
+}
+
+// Walk one contour (points start..<stop), emitting line segments; quadratic
+// curves (with implied on-curve midpoints) are flattened.
+fn contour(o: Outline, start: Int, stop: Int, s: Float, ox: Float, oy: Float, stride: Int, h: Int, mut acc: List[Float]) -> Unit = {
+  let n = stop - start
+  // First on-curve point (or the midpoint of the first two off-curve ones).
+  var first = -1
+  for i in 0..<n { if first < 0 and o.on[start + i] then first = i else () }
+  let px = (i) => o.xs[start + ((i % n) + n) % n] * s - ox
+  let py = (i) => oy - o.ys[start + ((i % n) + n) % n] * s
+  let on = (i) => o.on[start + ((i % n) + n) % n]
+  var sx = 0.0
+  var sy = 0.0
+  var k0 = 0
+  if first >= 0 then {
+    sx = px(first)
+    sy = py(first)
+    k0 = first
+  } else {
+    sx = (px(0) + px(1)) * 0.5
+    sy = (py(0) + py(1)) * 0.5
+    k0 = 0
+  }
+  var cx = sx
+  var cy = sy
+  var i = 1
+  while i <= n {
+    let k = k0 + i
+    if on(k) then {
+      line(cx, cy, px(k), py(k), stride, h, acc)
+      cx = px(k)
+      cy = py(k)
+      i = i + 1
+    } else {
+      let qx = px(k)
+      let qy = py(k)
+      var ex = 0.0
+      var ey = 0.0
+      if on(k + 1) then {
+        ex = px(k + 1)
+        ey = py(k + 1)
+        i = i + 2
+      } else {
+        ex = (qx + px(k + 1)) * 0.5
+        ey = (qy + py(k + 1)) * 0.5
+        i = i + 1
+      }
+      if i > n + 1 then { ex = sx; ey = sy } else ()
+      quad(cx, cy, qx, qy, ex, ey, stride, h, acc)
+      cx = ex
+      cy = ey
+    }
+  }
+  if cx != sx or cy != sy then line(cx, cy, sx, sy, stride, h, acc) else ()
+}
+
+fn quad(x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, stride: Int, h: Int, mut acc: List[Float]) -> Unit = {
+  let ddx = x0 - 2.0 * x1 + x2
+  let ddy = y0 - 2.0 * y1 + y2
+  let dd = float.sqrt(ddx * ddx + ddy * ddy)
+  let n = int.max(1, int.min(32, float.to_int(float.ceil(float.sqrt(dd * 4.0)))))
+  let step = 1.0 / int.to_float(n)
+  var lx = x0
+  var ly = y0
+  for j in 1...n {
+    let t = int.to_float(j) * step
+    let mt = 1.0 - t
+    let x = mt * mt * x0 + 2.0 * mt * t * x1 + t * t * x2
+    let y = mt * mt * y0 + 2.0 * mt * t * y1 + t * t * y2
+    line(lx, ly, x, y, stride, h, acc)
+    lx = x
+    ly = y
+  }
+}
+
+fn line(ax: Float, ay: Float, bx: Float, by: Float, stride: Int, h: Int, mut acc: List[Float]) -> Unit = {
+  if ay != by then {
+    let down = ay < by
+    let dir = if down then 1.0 else -1.0
+    let x0 = if down then ax else bx
+    let y0 = if down then ay else by
+    let x1 = if down then bx else ax
+    let y1 = if down then by else ay
+    let dxdy = (x1 - x0) / (y1 - y0)
+    var x = x0
+    let ystart = int.max(0, float.to_int(float.floor(y0)))
+    if y0 < 0.0 then x = x - y0 * dxdy else ()
+    let yend = int.min(h, float.to_int(float.ceil(y1)))
+    for yi in ystart..<yend {
+      let row = yi * stride
+      let fy = int.to_float(yi)
+      let dy = float.min(fy + 1.0, y1) - float.max(fy, y0)
+      let xnext = x + dxdy * dy
+      let d = dy * dir
+      let xa = float.min(x, xnext)
+      let xb = float.max(x, xnext)
+      let xaf = float.floor(xa)
+      let xai = int.max(0, float.to_int(xaf))
+      let xbc = float.ceil(xb)
+      let xbi = int.min(stride - 2, float.to_int(xbc))
+      if xbi <= xai + 1 then {
+        let xmf = 0.5 * (x + xnext) - xaf
+        acc[row + xai] = acc[row + xai] + d - d * xmf
+        acc[row + xai + 1] = acc[row + xai + 1] + d * xmf
+      } else {
+        let sl = 1.0 / (xb - xa)
+        let x0f = xa - xaf
+        let a0 = 0.5 * sl * (1.0 - x0f) * (1.0 - x0f)
+        let x1f = xb - xbc + 1.0
+        let am = 0.5 * sl * x1f * x1f
+        acc[row + xai] = acc[row + xai] + d * a0
+        if xbi == xai + 2 then {
+          acc[row + xai + 1] = acc[row + xai + 1] + d * (1.0 - a0 - am)
+        } else {
+          let a1 = sl * (1.5 - x0f)
+          acc[row + xai + 1] = acc[row + xai + 1] + d * (a1 - a0)
+          for xi in (xai + 2)..<(xbi - 1) {
+            acc[row + xi] = acc[row + xi] + d * sl
+          }
+          let a2 = a1 + int.to_float(xbi - xai - 3) * sl
+          acc[row + xbi - 1] = acc[row + xbi - 1] + d * (1.0 - a2 - am)
+        }
+        acc[row + xbi] = acc[row + xbi] + d * am
+      }
+      x = xnext
+    }
+  } else ()
+}

@@ -9,10 +9,12 @@ var selected = 1
 
 fn card(i: Int) -> v.View = {
   let on = i == selected
+  let titles = ["Layout", "テキスト", "Input"]
+  let notes = ["Flexbox, Yoga-tested", "日本語も同じ経路で描画", "Pointer, keys, IME"]
   v.col([
-    v.empty() |> v.h(28.0) |> v.rounded(6.0) |> v.bg(if on then snaidhm.hex(0x3B82F6) else snaidhm.hex(0xCBD5E1)),
-    v.empty() |> v.h(10.0) |> v.w_pct(70.0) |> v.rounded(5.0) |> v.bg(snaidhm.hex(0xE2E8F0)),
-    v.empty() |> v.h(10.0) |> v.w_pct(45.0) |> v.rounded(5.0) |> v.bg(snaidhm.hex(0xE2E8F0)),
+    v.text(titles[i]) |> v.font(18.0) |> v.bold() |> v.color(if on then snaidhm.hex(0x1D4ED8) else snaidhm.hex(0x0F172A)),
+    v.text(notes[i]) |> v.font(13.0) |> v.color(snaidhm.hex(0x64748B)),
+    v.empty() |> v.h(6.0) |> v.rounded(3.0) |> v.bg(if on then snaidhm.hex(0x3B82F6) else snaidhm.hex(0xE2E8F0)),
   ])
     |> v.gap(10.0) |> v.padding(16.0) |> v.grow(1.0)
     |> v.bg(snaidhm.hex(0xFFFFFF)) |> v.rounded(14.0)
@@ -25,13 +27,15 @@ fn view() -> v.View =
   v.col([
     v.row([
       v.empty() |> v.size(36.0, 36.0) |> v.rounded(18.0) |> v.bg(snaidhm.hex(0x0F172A)),
-      v.empty() |> v.h(14.0) |> v.w(160.0) |> v.rounded(7.0) |> v.bg(snaidhm.hex(0x334155)),
+      v.text("ceangal2") |> v.font(22.0) |> v.bold() |> v.color(snaidhm.hex(0x0F172A)),
       v.spacer(),
-      v.empty() |> v.size(88.0, 32.0) |> v.rounded(16.0) |> v.bg(snaidhm.hex(0x10B981)),
+      v.text("Run ▶") |> v.font(14.0) |> v.bold() |> v.color(snaidhm.hex(0xFFFFFF))
+        |> v.px(16.0) |> v.py(8.0) |> v.rounded(16.0) |> v.bg(snaidhm.hex(0x10B981)),
     ]) |> v.gap(12.0) |> v.align(v.Middle),
     v.row([card(0), card(1), card(2)]) |> v.gap(16.0),
     v.col([
-      v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xFDE68A)),
+      v.text("let total = list.fold(xs, 0, (a, x) => a + x)  // 合計") |> v.mono() |> v.font(13.0)
+        |> v.h(48.0) |> v.px(12.0) |> v.bg(snaidhm.hex(0xFDE68A)) |> v.color(snaidhm.hex(0x422006)),
       v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xFCA5A5)),
       v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xA5B4FC)),
     ]) |> v.h(100.0) |> v.clip() |> v.rounded(12.0),

@@ -122,6 +122,12 @@ pub fn forget_image(tex: Int) -> Unit = {
 pub fn atlas() -> Int = { ensure_ready(); atlas_tex }
 pub fn atlas_size() -> Int = ATLAS_SIZE
 
+// Write an 8-bit coverage bitmap (w*h, row-major) into the atlas at (x, y).
+pub fn upload_coverage(x: Int, y: Int, w: Int, h: Int, pixels: Bytes) -> Unit = {
+  ensure_ready()
+  if w > 0 and h > 0 then gpu.write_texture(atlas_tex, x, y, w, h, bytes.data_ptr(pixels), bytes.len(pixels), w) else ()
+}
+
 // ── Frame ──
 
 pub fn begin(width: Int, height: Int) -> Unit = {

@@ -59,7 +59,8 @@ function renderNative(bin, c) {
 
 async function renderWeb(page, base, wasmPath, c) {
   const rel = wasmPath.slice(root.length);
-  const url = `${base}/tests/pixel/page.html?wasm=${encodeURIComponent(rel)}&w=${c.w}&h=${c.h}&scale=${c.scale || 1}&script=${encodeURIComponent(c.script)}`;
+  const assets = Object.fromEntries(["ui.ttf", "ui-semibold.ttf", "mono.ttf", "cjk.ttf"].map((f) => [`fonts/${f}`, `/assets/fonts/${f}`]));
+  const url = `${base}/tests/pixel/page.html?wasm=${encodeURIComponent(rel)}&w=${c.w}&h=${c.h}&scale=${c.scale || 1}&script=${encodeURIComponent(c.script)}&assets=${encodeURIComponent(JSON.stringify(assets))}`;
   await page.goto(url);
   const r = await page.eval("window.__run()", 120000);
   const img = { width: r.width, height: r.height, rgba: new Uint8Array(Buffer.from(r.rgba, "base64")) };

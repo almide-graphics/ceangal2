@@ -1,0 +1,4 @@
+# almide.lock — auto-generated, do not edit
+
+ceangal = { git = "", ref = "main", commit = "716815c75ef61decb92c07dbda2df2c19008728d" }
+snaidhm = { git = "", ref = "main", commit = "716815c75ef61decb92c07dbda2df2c19008728d" }
