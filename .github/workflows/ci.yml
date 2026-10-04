@@ -134,9 +134,22 @@ jobs:
         with:
           name: e2e-native-windows
           path: out/e2e-native/*.png
+      # Microsoft Store: MSIX (signed with the Partner Center certificate from
+      # secrets, or a trusted test certificate) through the Windows App
+      # Certification Kit.
+      - name: MSIX + Windows App Certification Kit
+        shell: pwsh
+        env:
+          MSIX_PUBLISHER: ${{ secrets.MSIX_PUBLISHER }}
+        run: tools/package_msix.ps1 -Exe out/playground.exe -Wack
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: msix
+          path: |
+            out/msix/playground.msix
+            out/msix/wack-report.xml
 
-  # The web playground: compiler wasm, app wasm, real-browser E2E, the old
-  # playground's fixtures, and (on main) the GitHub Pages deploy.
   # Mac App Store: universal (arm64 + x86_64) app with App Sandbox, signed
   # with the distribution identity from secrets when present (ad hoc
   # otherwise), installer pkg; the sandboxed app is launched once.
@@ -286,6 +299,8 @@ jobs:
             out/e2e/android-*.png
             out/e2e/android-*.log
 
+  # The web playground: compiler wasm, app wasm, real-browser E2E, the old
+  # playground's fixtures, and (on main) the GitHub Pages deploy.
   web:
     runs-on: macos-15
     steps:
