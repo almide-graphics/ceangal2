@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Almide Playground
+Comment=Write, run and share Almide programs
+Comment[ja]=Almide のプログラムを書いて、動かして、共有する
+Exec=almide-playground
+Icon=dev.almide.playground
+Terminal=false
+Categories=Development;IDE;Education;
+Keywords=almide;programming;compiler;code;editor;
+StartupWMClass=dev.almide.playground

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.almide.playground</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Almide Playground</name>
+  <summary>Write, run and share Almide programs</summary>
+  <developer id="dev.almide">
+    <name>Almide contributors</name>
+  </developer>
+  <description>
+    <p>
+      Almide Playground is a complete environment for the Almide programming
+      language. Write a program, press Run, and see what it prints — or what
+      it draws.
+    </p>
+    <ul>
+      <li>The Almide compiler itself compiles your code, and it runs in a sandbox on your computer</li>
+      <li>Programs that print SVG, PPM or simple HTML show up in the Visual tab</li>
+      <li>Build GUI apps with the ceangal framework and use them inside the playground</li>
+      <li>Syntax highlighting, errors as you type, multiple files, light and dark themes</li>
+      <li>Examples from Hello World to parsers and graphics</li>
+      <li>Share a whole project in one link, or export it as a buildable project</li>
+      <li>Optional AI assistant with your own API key (Claude, GPT or Gemini)</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">dev.almide.playground.desktop</launchable>
+  <url type="homepage">https://almide.dev</url>
+  <url type="bugtracker">https://github.com/almide/almide/issues</url>
+  <url type="vcs-browser">https://github.com/almide-graphics/ceangal2</url>
+  <categories>
+    <category>Development</category>
+    <category>IDE</category>
+    <category>Education</category>
+  </categories>
+  <keywords>
+    <keyword>almide</keyword>
+    <keyword>programming</keyword>
+    <keyword>compiler</keyword>
+  </keywords>
+  <branding>
+    <color type="primary" scheme_preference="light">#e0f3f3</color>
+    <color type="primary" scheme_preference="dark">#0b1420</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Generative art in the Visual tab</caption>
+      <image>https://raw.githubusercontent.com/almide-graphics/ceangal2/main/store/playground/screenshots/linux/1-fireworks.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A Markdown converter and its output, in the light theme</caption>
+      <image>https://raw.githubusercontent.com/almide-graphics/ceangal2/main/store/playground/screenshots/linux/2-markdown.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A GUI app written in the playground, running inside it</caption>
+      <image>https://raw.githubusercontent.com/almide-graphics/ceangal2/main/store/playground/screenshots/linux/3-todo-gui.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-10-04">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

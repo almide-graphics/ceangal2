@@ -22,7 +22,7 @@ Writes (all committed):
   store/playground/macos/AppIcon.icns     macOS (rounded tile, Big Sur grid)
   store/playground/ios/AppIcon-1024.png   iOS single-size app icon
   store/playground/windows/*.png          MSIX tile and logo assets
-  store/playground/linux/<n>x<n>.png      hicolor icons
+  store/playground/linux/icons/<n>x<n>.png  hicolor icons
   store/playground/web/*                  favicon, PWA icons, apple-touch-icon
   apps/playground/assets/brand/logo(-dark).rgba  header marks (u16 w, u16 h, RGBA)
 Needs Pillow; the .icns step needs macOS `iconutil` (skipped elsewhere).
@@ -88,7 +88,7 @@ def save(img, *parts):
 
 def main():
     # generated folders only (ios/ also holds the hand-written privacy manifest)
-    for d in ("android", "windows", "linux", "web", "macos"):
+    for d in ("android", "windows", "linux/icons", "web", "macos"):
         shutil.rmtree(os.path.join(OUT, d), ignore_errors=True)
 
     master = full_icon(1024)
@@ -138,7 +138,7 @@ def main():
 
     # Linux (hicolor) and web.
     for s in (64, 128, 256, 512):
-        save(rounded_tile(s, round(s * 0.06), round(s * 0.2)), "linux", f"{s}x{s}.png")
+        save(rounded_tile(s, round(s * 0.06), round(s * 0.2)), "linux", "icons", f"{s}x{s}.png")
     save(full_icon(512), "web", "icon-512.png")
     save(full_icon(192), "web", "icon-192.png")
     save(full_icon(180, frac=0.76), "web", "apple-touch-icon.png")

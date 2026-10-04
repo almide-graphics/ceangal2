@@ -56,7 +56,14 @@ try {
     await key("Enter", "Enter", 13, process.platform === "darwin" ? 4 : 2);   // Cmd/Ctrl+Enter runs
     await waitFor(async () => (await textOf()).includes("Exited 0"), 60000, "Exited 0");
     // the a11y value of the output refreshes at most every 250 ms: wait for it
-    await waitFor(async () => ((await labelRect("Program output"))?.value || "").includes("real page: 42"), 5000, "output in the a11y tree");
+    try {
+      await waitFor(async () => ((await labelRect("Program output"))?.value || "").includes("real page: 42"), 5000, "output in the a11y tree");
+    } catch (e) {
+      writeFileSync(join(out, "page-run-fail.png"), await page.screenshot());
+      const code = (await labelRect("Code editor"))?.value;
+      const outp = (await labelRect("Program output"))?.value;
+      throw new Error(`${e.message}; code ${JSON.stringify(code)}; output ${JSON.stringify(outp)}; texts ${JSON.stringify(await textOf())}`);
+    }
     writeFileSync(join(out, "page-run.png"), await page.screenshot());
   });
 
