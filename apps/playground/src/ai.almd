@@ -141,6 +141,20 @@ fn note_diff(before: String, after: String) -> Unit = {
 
 // ── Requests ──
 
+// Tests point the providers at a mock server with an `ai/base.txt` asset
+// (never shipped; not reachable from a link, so a key cannot be redirected).
+fn endpoint(real: String) -> String = {
+  let k = bytes.from_string("ai/base.txt")
+  let n = sys.asset_len(bytes.data_ptr(k), bytes.len(k))
+  if n <= 0 then real
+  else {
+    var b = bytes.new(n)
+    let _ = sys.asset_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
+    let base = string.trim(bytes.to_string_lossy(b))
+    match string.index_of(real, "/v1") { some(i) => base + string.drop(real, i), none => base }
+  }
+}
+
 fn system_prompt() -> String = {
   let k = bytes.from_string("ai/system.md")
   let n = sys.asset_len(bytes.data_ptr(k), bytes.len(k))
@@ -180,19 +194,19 @@ fn start_stream() -> Unit = {
   st.set_active_text("")
   let id =
     if provider == 0 then {
-      let r = begin("https://api.anthropic.com/v1/messages")
+      let r = begin(endpoint("https://api.anthropic.com/v1/messages"))
       header(r, "content-type", "application/json")
       header(r, "x-api-key", key)
       header(r, "anthropic-version", "2023-06-01")
       header(r, "anthropic-dangerous-direct-browser-access", "true")
       r
     } else if provider == 1 then {
-      let r = begin("https://api.openai.com/v1/chat/completions")
+      let r = begin(endpoint("https://api.openai.com/v1/chat/completions"))
       header(r, "content-type", "application/json")
       header(r, "authorization", "Bearer " + key)
       r
     } else {
-      let r = begin("https://generativelanguage.googleapis.com/v1beta/models/" + m.id + ":streamGenerateContent?alt=sse")
+      let r = begin(endpoint("https://generativelanguage.googleapis.com/v1beta/models/" + m.id + ":streamGenerateContent?alt=sse"))
       header(r, "content-type", "application/json")
       header(r, "x-goog-api-key", key)
       r

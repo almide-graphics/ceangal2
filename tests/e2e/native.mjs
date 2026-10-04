@@ -2,7 +2,7 @@
 // script (ceangal/native/host.rs) and asserts on the accessibility tree it
 // leaves behind (CEANGAL_A11Y_DUMP) — the same labels the web E2E uses.
 //   node tests/e2e/native.mjs [--bin out/playground] [--skip-fixtures]
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -128,6 +128,54 @@ step("user GUI: the Todo example runs as a window, takes input, stops", () => {
   assert(g().some((n) => n.label === "1 task left"), "toggle");
   assert(texts(t).includes("Stopped") && !find(t, "Program window"), `after Stop: ${texts(t)}`);
   rmSync(work, { recursive: true, force: true });
+});
+
+step("AI: generate, repair once, against a mock provider (real HTTP)", () => {
+  // A mock Anthropic endpoint in a child process (the binary's ureq talks to it).
+  const work = mkdtempSync(join(tmpdir(), "pg-ai-"));
+  const assets = join(work, "assets");
+  mkdirSync(join(assets, "ai"), { recursive: true });
+  const port = 18000 + Math.floor(Math.random() * 1000);
+  writeFileSync(join(assets, "ai/base.txt"), `http://127.0.0.1:${port}`);
+  const replies = [
+    "effect fn main() -> Unit = {\n  let n: Int = \"oops\"\n  println(int.to_string(n))\n}\n",
+    "effect fn main() -> Unit = println(\"fixed natively\")\n",
+  ];
+  const server = join(work, "server.mjs");
+  writeFileSync(server, `
+    import { createServer } from "node:http";
+    import { appendFileSync } from "node:fs";
+    const replies = ${JSON.stringify(replies)};
+    let n = 0;
+    createServer((req, res) => {
+      let body = ""; req.on("data", (d) => body += d); req.on("end", () => {
+        appendFileSync(${JSON.stringify(join(work, "calls.log"))}, JSON.stringify({ url: req.url, key: req.headers["x-api-key"], body: JSON.parse(body) }) + "\\n");
+        res.writeHead(200, { "content-type": "text/event-stream" });
+        const text = replies[Math.min(n++, replies.length - 1)];
+        for (let i = 0; i < text.length; i += 9) res.write("data: " + JSON.stringify({ type: "content_block_delta", delta: { type: "text_delta", text: text.slice(i, i + 9) } }) + "\\n\\n");
+        res.end("data: [DONE]\\n\\n");
+      });
+    }).listen(${port}, "127.0.0.1");
+    setTimeout(() => process.exit(0), 120000);
+  `);
+  const child = spawn(process.execPath, [server], { stdio: "ignore" });
+  try {
+    const t0 = Date.now(); while (Date.now() - t0 < 600) {}   // let it listen
+    const aiBoot = session("native-ai-boot", `wait; click ${at("AI assistant")}; frames 2`);
+    const field = (l) => { const n = find(aiBoot, l); if (!n) throw new Error(`no ${l}`); return center(n); };
+    const sep = process.platform === "win32" ? ";" : ":";
+    const s = session("native-ai", `wait; click ${at("AI assistant")}; frames 2; click ${field("API key")}; text sk-ant-native; click ${field("Prompt")}; text say hi; key 1 0; wait; frames 2; wait; frames 2; wait`, {
+      env: { CEANGAL_ASSETS: [assets, join(root, "apps/playground/assets"), join(root, "assets")].join(sep) },
+    });
+    assert(texts(s).some((t) => t.startsWith("Repaired (1)")), `status: ${texts(s)}`);
+    const calls = readFileSync(join(work, "calls.log"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert(calls.length === 2 && calls[0].key === "sk-ant-native" && calls[0].url === "/v1/messages", JSON.stringify(calls.map((c) => [c.url, c.key])));
+    assert(/Compile error/.test(calls[1].body.messages.at(-1).content), "repair carries the error");
+    assert((find(s, "Code editor")?.value || "").includes("fixed natively"), "fixed code in the editor");
+  } finally {
+    child.kill();
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 // The old playground's fixtures and every example: byte-identical stdout
