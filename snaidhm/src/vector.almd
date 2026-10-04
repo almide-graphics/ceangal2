@@ -528,13 +528,23 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
 
 // ── Rasterisation ──
 
+// f32 buffers in Bytes: a `mut List[Float]` parameter is copied on every
+// call on the wasm leg (almide/almide#3337); a single mut Bytes is not.
+fn getf(b: Bytes, i: Int) -> Float = bytes.read_f32_le(b, i * 4)
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.set_f32_le(b, i * 4, v)
+
 // The canvas: device-space polygon edges are accumulated into `acc`
 // (stride w+2); coverage is then composited into `px` and cleared. Both are
 // local lists threaded through as `mut` parameters: an element write to a
 // list inside a `mut` record, or to a module `var`, copies the whole list on
 // the native leg (seen in this module; not reproduced in isolation).
 
-fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut acc: List[Float]) -> Unit = {
+// The accumulator columns an edge from x=a to x=b can touch (clamped like
+// line_acc clamps), so per-shape passes only visit those.
+fn col_lo(a: Float, b: Float, w: Int) -> Int = int.min(w, int.max(0, float.to_int(float.floor(float.min(a, b))) - 1))
+fn col_hi(a: Float, b: Float, w: Int) -> Int = int.min(w + 2, int.max(2, float.to_int(float.ceil(float.max(a, b))) + 3))
+
+fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf: Bytes) -> Unit = {
   if ay != by then {
     let stride = w + 2
     let down = ay < by
@@ -563,24 +573,24 @@ fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut acc:
       let xbi = int.min(w, float.to_int(xbc))
       if xbi <= xai + 1 then {
         let xmf = float.min(1.0, 0.5 * (xa + xb) - xaf)
-        acc[row + xai] = acc[row + xai] + d - d * xmf
-        acc[row + xai + 1] = acc[row + xai + 1] + d * xmf
+        setf(buf, row + xai, getf(buf, row + xai) + d - d * xmf)
+        setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * xmf)
       } else {
         let sl = 1.0 / (xb - xa)
         let x0f = xa - xaf
         let a0 = 0.5 * sl * (1.0 - x0f) * (1.0 - x0f)
         let x1f = xb - xbc + 1.0
         let am = 0.5 * sl * x1f * x1f
-        acc[row + xai] = acc[row + xai] + d * a0
-        if xbi == xai + 2 then acc[row + xai + 1] = acc[row + xai + 1] + d * (1.0 - a0 - am)
+        setf(buf, row + xai, getf(buf, row + xai) + d * a0)
+        if xbi == xai + 2 then setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * (1.0 - a0 - am))
         else {
           let a1 = sl * (1.5 - x0f)
-          acc[row + xai + 1] = acc[row + xai + 1] + d * (a1 - a0)
-          for xi in (xai + 2)..<(xbi - 1) { acc[row + xi] = acc[row + xi] + d * sl }
+          setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * (a1 - a0))
+          for xi in (xai + 2)..<(xbi - 1) { setf(buf, row + xi, getf(buf, row + xi) + d * sl) }
           let a2 = a1 + int.to_float(xbi - xai - 3) * sl
-          acc[row + xbi - 1] = acc[row + xbi - 1] + d * (1.0 - a2 - am)
+          setf(buf, row + xbi - 1, getf(buf, row + xbi - 1) + d * (1.0 - a2 - am))
         }
-        acc[row + xbi] = acc[row + xbi] + d * am
+        setf(buf, row + xbi, getf(buf, row + xbi) + d * am)
       }
       x = xnext
     }
@@ -615,23 +625,23 @@ fn grad_color(g: Grad, t0: Float) -> Rgba = {
 // Composite the accumulated coverage in rows y0..y1 with a solid colour or a
 // gradient (`bbox` in user space and `inv` mapping device → user for
 // gradients), then clear the accumulator there.
-fn composite(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], y0: Int, y1: Int, color: Rgba, grad: Grad?, inv: Mat, bx: Float, by: Float, bw: Float, bh: Float, alpha: Float, evenodd: Bool) -> Unit = {
+fn composite(w: Int, h: Int, mut buf: Bytes, pxo: Int, x0: Int, x1: Int, y0: Int, y1: Int, color: Rgba, grad: Grad?, inv: Mat, bx: Float, by: Float, bw: Float, bh: Float, alpha: Float, evenodd: Bool) -> Unit = {
   let stride = w + 2
   for y in int.max(0, y0)..<int.min(h, y1) {
     var sum = 0.0
-    for x in 0..<stride {
+    for x in int.max(0, x0)..<int.min(stride, x1) {
       let i = y * stride + x
-      sum = sum + acc[i]
-      acc[i] = 0.0
+      sum = sum + getf(buf, i)
+      setf(buf, i, 0.0)
       if x < w then {
         let cov0 = if evenodd then { let m = float.abs(sum) % 2.0; if m > 1.0 then 2.0 - m else m } else float.min(1.0, float.abs(sum))
         if cov0 > 0.002 then {
           let col = match grad {
             some(g) => {
-              let px = int.to_float(x) + 0.5
-              let py = int.to_float(y) + 0.5
-              let ux0 = apply_x(inv, px, py)
-              let uy0 = apply_y(inv, px, py)
+              let qx = int.to_float(x) + 0.5
+              let qy = int.to_float(y) + 0.5
+              let ux0 = apply_x(inv, qx, qy)
+              let uy0 = apply_y(inv, qx, qy)
               let ux = if g.user then ux0 else (ux0 - bx) / float.max(0.000001, bw)
               let uy = if g.user then uy0 else (uy0 - by) / float.max(0.000001, bh)
               if g.linear then {
@@ -645,13 +655,13 @@ fn composite(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], y0: Int,
           }
           let a = col.a * alpha * cov0
           let o = (y * w + x) * 4
-          let da = px[o + 3]
+          let da = getf(buf, pxo + o + 3)
           let out_a = a + da * (1.0 - a)
           if out_a > 0.0 then {
-            px[o] = (col.r * a + px[o] * da * (1.0 - a)) / out_a
-            px[o + 1] = (col.g * a + px[o + 1] * da * (1.0 - a)) / out_a
-            px[o + 2] = (col.b * a + px[o + 2] * da * (1.0 - a)) / out_a
-            px[o + 3] = out_a
+            setf(buf, pxo + o, (col.r * a + getf(buf, pxo + o) * da * (1.0 - a)) / out_a)
+            setf(buf, pxo + o + 1, (col.g * a + getf(buf, pxo + o + 1) * da * (1.0 - a)) / out_a)
+            setf(buf, pxo + o + 2, (col.b * a + getf(buf, pxo + o + 2) * da * (1.0 - a)) / out_a)
+            setf(buf, pxo + o + 3, out_a)
           } else ()
         } else ()
       } else ()
@@ -696,7 +706,7 @@ fn find_grad(grads: List[(String, Grad)], id: String) -> Grad? = {
 fn paint_grad(p: Paint, grads: List[(String, Grad)]) -> Grad? = match p { GradientRef(id) => find_grad(grads, id), _ => none }
 
 // Fill `subs` (user space, mapped by `m`) with paint.
-fn fill_subs(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: List[Sub], m: Mat, paint: Paint, alpha: Float, evenodd: Bool, grads: List[(String, Grad)]) -> Unit = {
+fn fill_subs(w: Int, h: Int, mut buf: Bytes, pxo: Int, subs: List[Sub], m: Mat, paint: Paint, alpha: Float, evenodd: Bool, grads: List[(String, Grad)]) -> Unit = {
   // Expression-form matches: assigning a match binding to an outer `var`
   // emits a borrow natively (almide/almide#3303).
   let color = paint_color(paint)
@@ -705,6 +715,8 @@ fn fill_subs(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: Li
   if draw and alpha > 0.0 then {
     var ymin = h
     var ymax = 0
+    var xmin = w + 2
+    var xmax = 0
     for s in subs {
       let n = list.len(s.xs)
       if n >= 2 then {
@@ -714,14 +726,16 @@ fn fill_subs(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: Li
           let ay = apply_y(m, s.xs[i], s.ys[i])
           let bx = apply_x(m, s.xs[j], s.ys[j])
           let by = apply_y(m, s.xs[j], s.ys[j])
-          line_acc(ax, ay, bx, by, w, h, acc)
+          line_acc(ax, ay, bx, by, w, h, buf)
           ymin = int.min(ymin, float.to_int(float.floor(float.min(ay, by))))
           ymax = int.max(ymax, float.to_int(float.ceil(float.max(ay, by))) + 1)
+          xmin = int.min(xmin, col_lo(ax, bx, w))
+          xmax = int.max(xmax, col_hi(ax, bx, w))
         }
       } else ()
     }
     let (bx, by, bw, bh) = bbox_of(subs)
-    composite(w, h, acc, px, ymin, ymax, color, grad, invert(m), bx, by, bw, bh, alpha, evenodd)
+    composite(w, h, buf, pxo, xmin, xmax, ymin, ymax, color, grad, invert(m), bx, by, bw, bh, alpha, evenodd)
   } else ()
 }
 
@@ -759,17 +773,21 @@ fn stroke_subs(subs: List[Sub], width: Float, round: Bool) -> List[Sub] = {
   out
 }
 
-fn stroke_union(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], pieces: List[Sub], m: Mat, paint: Paint, alpha: Float, grads: List[(String, Grad)]) -> Unit = {
+fn stroke_union(w: Int, h: Int, mut buf: Bytes, pxo: Int, pieces: List[Sub], m: Mat, paint: Paint, alpha: Float, grads: List[(String, Grad)]) -> Unit = {
   // Each piece is accumulated on its own and merged with max, so pieces do
   // not need consistent winding.
-  var cov: List[Float] = list.repeat(0.0, w * h)
+  var cov = bytes.new(w * h * 4)
   var any = false
   var ymin = h
   var ymax = 0
+  var xmin = w + 2
+  var xmax = 0
   let stride = w + 2
   for p in pieces {
     var py0 = h
     var py1 = 0
+    var px0 = w + 2
+    var px1 = 0
     let n = list.len(p.xs)
     for i in 0..<n {
       let j = (i + 1) % n
@@ -777,49 +795,54 @@ fn stroke_union(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], piece
       let ay = apply_y(m, p.xs[i], p.ys[i])
       let bx = apply_x(m, p.xs[j], p.ys[j])
       let by = apply_y(m, p.xs[j], p.ys[j])
-      line_acc(ax, ay, bx, by, w, h, acc)
+      line_acc(ax, ay, bx, by, w, h, buf)
       py0 = int.min(py0, float.to_int(float.floor(float.min(ay, by))))
       py1 = int.max(py1, float.to_int(float.ceil(float.max(ay, by))) + 1)
+      px0 = int.min(px0, col_lo(ax, bx, w))
+      px1 = int.max(px1, col_hi(ax, bx, w))
     }
     for y in int.max(0, py0)..<int.min(h, py1) {
       var sum = 0.0
-      for x in 0..<stride {
+      for x in px0..<px1 {
         let i = y * stride + x
-        sum = sum + acc[i]
-        acc[i] = 0.0
+        sum = sum + getf(buf, i)
+        setf(buf, i, 0.0)
         if x < w then {
           let cv1 = float.min(1.0, float.abs(sum))
-          if cv1 > cov[y * w + x] then cov[y * w + x] = cv1 else ()
+          if cv1 > getf(cov, y * w + x) then setf(cov, y * w + x, cv1) else ()
         } else ()
       }
     }
     ymin = int.min(ymin, py0)
     ymax = int.max(ymax, py1)
+    xmin = int.min(xmin, px0)
+    xmax = int.max(xmax, px1)
     any = true
   }
   if any then {
     // write the merged coverage back as an exact accumulation: per row,
     // coverage differences so that the running sum reproduces `cov`
+    let xe = int.min(w, xmax)
     for y in int.max(0, ymin)..<int.min(h, ymax) {
       var prev = 0.0
-      for x in 0..<w {
-        let cv1 = cov[y * w + x]
-        acc[y * stride + x] = cv1 - prev
+      for x in xmin..<xe {
+        let cv1 = getf(cov, y * w + x)
+        setf(buf, y * stride + x, cv1 - prev)
         prev = cv1
       }
-      acc[y * stride + w] = 0.0 - prev
+      setf(buf, y * stride + xe, 0.0 - prev)
     }
     let (bx, by, bw, bh) = bbox_of(pieces)
-    composite(w, h, acc, px, ymin, ymax, paint_color(paint), paint_grad(paint, grads), invert(m), bx, by, bw, bh, alpha, false)
+    composite(w, h, buf, pxo, xmin, xe + 1, ymin, ymax, paint_color(paint), paint_grad(paint, grads), invert(m), bx, by, bw, bh, alpha, false)
   } else ()
 }
 
 // ── Document ──
 
-fn draw_shape(w: Int, h: Int, mut acc: List[Float], mut px: List[Float], subs: List[Sub], st: Style, grads: List[(String, Grad)]) -> Unit = {
-  if st.fill != NoPaint then fill_subs(w, h, acc, px, subs, st.m, st.fill, st.opacity * st.fill_opacity, st.evenodd, grads) else ()
+fn draw_shape(w: Int, h: Int, mut buf: Bytes, pxo: Int, subs: List[Sub], st: Style, grads: List[(String, Grad)]) -> Unit = {
+  if st.fill != NoPaint then fill_subs(w, h, buf, pxo, subs, st.m, st.fill, st.opacity * st.fill_opacity, st.evenodd, grads) else ()
   if st.stroke != NoPaint and st.stroke_width > 0.0 then
-    stroke_union(w, h, acc, px, stroke_subs(subs, st.stroke_width, st.round_cap), st.m, st.stroke, st.opacity * st.stroke_opacity, grads)
+    stroke_union(w, h, buf, pxo, stroke_subs(subs, st.stroke_width, st.round_cap), st.m, st.stroke, st.opacity * st.stroke_opacity, grads)
   else ()
 }
 
@@ -862,8 +885,11 @@ pub fn rasterize_svg(text: String, max_px: Int) -> Image = {
   let w = if aspect >= 1.0 then max_px else int.max(1, float.to_int(int.to_float(max_px) * aspect))
   let h = if aspect >= 1.0 then int.max(1, float.to_int(int.to_float(max_px) / aspect)) else max_px
   let s = int.to_float(w) / float.max(0.000001, vw)
-  var px: List[Float] = list.repeat(0.0, w * h * 4)
-  var acc: List[Float] = list.repeat(0.0, (w + 2) * h + 4)
+  // One buffer, one `mut` parameter everywhere: coverage accumulator first,
+  // then RGBA pixels at `pxo` (two mut params are copied per call on the
+  // wasm leg, almide/almide#3337).
+  let pxo = (w + 2) * h + 4
+  var buf = bytes.new((pxo + w * h * 4) * 4)
   let base = { ...root_style, m: { a: s, b: 0.0, c: 0.0, d: s, e: 0.0 - vx * s, f: 0.0 - vy * s } }
   // gradients (first pass)
   var grads: List[(String, Grad)] = []
@@ -914,12 +940,12 @@ pub fn rasterize_svg(text: String, max_px: Int) -> Image = {
     } else if not t.closing then {
       let st = styled(top, t)
       let scale = s * float.sqrt(float.abs(st.m.a * st.m.d - st.m.b * st.m.c)) / s
-      draw_shape(w, h, acc, px, shape_subs(t, scale), st, grads)
+      draw_shape(w, h, buf, pxo, shape_subs(t, scale), st, grads)
     } else ()
   }
   var out = bytes.new(w * h * 4)
   for i in 0..<(w * h * 4) {
-    bytes.set_at(out, i, float.to_int(clamp01(px[i]) * 255.0 + 0.5))
+    bytes.set_at(out, i, float.to_int(clamp01(getf(buf, pxo + i)) * 255.0 + 0.5))
   }
   { w: w, h: h, rgba: out }
 }

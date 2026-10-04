@@ -2,7 +2,7 @@
 // in headless Chrome with WebGPU, and exercises every feature through the
 // accessibility tree. Screenshots land in out/e2e/.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../lib/cdp.mjs";
@@ -210,6 +210,26 @@ try {
     await ev(`pg.click("Fix with AI")`);
     await until(`(pg) => pg.texts().some((t) => t.startsWith("Repaired (1)"))`, 90000);
     assert((await ev(`pg.value("Code editor")`)).includes("repaired"), "fix not applied");
+  });
+
+  await step("every example runs through the UI (Run → output → Visual)", async () => {
+    const manifest = JSON.parse(readFileSync(join(root, "apps/playground/assets/examples/manifest.json"), "utf8"));
+    const slow = [];
+    for (const cat of manifest.categories) {
+      if (cat.id === "gui") continue;
+      for (const ex of cat.examples) {
+        await page.goto(`${url}/tests/e2e/web.html`);
+        await ev(`pg.boot({ launch: ${JSON.stringify("https://x.test/?example=" + ex.id)} })`, 120000);
+        const t0 = Date.now();
+        await ev(`pg.click("Run")`);
+        const st = await until(`(pg) => pg.texts().find((t) => t.startsWith("Exited") || t.endsWith("error") || t === "Stopped")`, 60000).catch((e) => { throw new Error(`${ex.id}: ${e.message.slice(0, 120)}`); });
+        assert(st === "Exited 0", `${ex.id}: ${st}`);
+        assert((await ev("pg.errors()")).length === 0, `${ex.id}: host error ${await ev("pg.errors()")}`);
+        const ms = Date.now() - t0;
+        if (ms > 5000) slow.push(`${ex.id} ${ms} ms`);
+      }
+    }
+    assert(slow.length === 0, `slow: ${slow.join(", ")}`);
   });
 
   await step("user GUI: the Todo example runs in the Visual pane, takes input, stops", async () => {

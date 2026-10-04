@@ -102,6 +102,10 @@ run on main that deploys Pages, waits for a push (see Blockers).
 - almide/almide#3304 — generated `|c|` closure captures a user local `c`.
 - almide/almide#3306 — native: `f(mut a, mut b, b[1])` fails to borrow-check:
   bind the argument with `let` first (deflate.almd).
+- almide/almide#3337 — wasm: a `mut List` parameter, or two `mut Bytes`
+  parameters, are copied on every call and the copies leak (maze / svg-art
+  ran the playground out of memory). `snaidhm/src/vector.almd` keeps its
+  buffers in ONE f32 `Bytes` passed as the only `mut` parameter.
 - almide/almide#3307 — native: `other_module.var = x` inside a closure emits an
   unqualified name: setter fns in the owning module (state.almd).
 - stdlib `zlib.deflate` is an effect fn, so share (a click handler) uses the

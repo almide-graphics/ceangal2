@@ -10,13 +10,17 @@
   #unsupported { display: none; color: #c0caf5; font: 15px/1.5 system-ui, sans-serif; padding: 32px; max-width: 560px; }
 </style>
 <canvas id="app" aria-label="Almide Playground"></canvas>
+<p id="crashed" role="alert" style="display:none;position:fixed;left:16px;bottom:16px;margin:0;padding:12px 16px;border-radius:8px;background:#f7768e;color:#1a1b26;font:14px/1.4 system-ui,sans-serif;z-index:100">The playground stopped unexpectedly. <a href="" style="color:inherit;font-weight:600">Reload</a> — your tabs are saved.</p>
 <p id="unsupported">The Almide Playground needs WebGPU. Use a current version of Chrome, Edge, Safari or Firefox with WebGPU turned on.</p>
 <script type="module">
 import { start, UnsupportedError } from "./host.js";
 import { playgroundOptions } from "./boot.js";
 
 try {
-  window.ceangal = await start({ ...(await playgroundOptions()), canvas: document.getElementById("app"), onError: (e) => console.error(e) });
+  window.ceangal = await start({ ...(await playgroundOptions()), canvas: document.getElementById("app"), onError: (e) => {
+    console.error(e);
+    document.getElementById("crashed").style.display = "block";
+  } });
 } catch (e) {
   if (!(e instanceof UnsupportedError)) throw e;
   document.getElementById("app").remove();

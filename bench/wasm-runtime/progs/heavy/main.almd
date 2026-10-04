@@ -1,0 +1,23 @@
+// CPU-heavy mix: sieve, float loop, string building, list/map work.
+effect fn main() -> Unit = {
+  let n = 2000000
+  var sieve = list.repeat(true, n + 1)
+  var count = 0
+  for i in 2...n {
+    if sieve[i] then {
+      count = count + 1
+      var j = i * i
+      while j <= n { sieve[j] = false; j = j + i }
+    } else ()
+  }
+  println("primes: " + int.to_string(count))
+  var acc = 0.0
+  for k in 0..<3000000 { acc = acc + float.sqrt(int.to_float(k)) * 0.5 }
+  println("acc: " + float.to_string(acc))
+  var parts: List[String] = []
+  for k in 0..<50000 { list.push(parts, int.to_string(k * 7)) }
+  println("len: " + int.to_string(string.len(string.join(parts, ","))))
+  var m: Map[String, Int] = map.new()
+  for k in 0..<50000 { m = map.set(m, "k" + int.to_string(k % 997), k) }
+  println("keys: " + int.to_string(map.len(m)))
+}

@@ -1,0 +1,12 @@
+[package]
+name = "rtbench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmtime = { version = "*", default-features = false, features = ["runtime", "cranelift", "pulley", "std"] }
+wasmi = "*"
+anyhow = "1"
+
+[profile.release]
+debug = false
