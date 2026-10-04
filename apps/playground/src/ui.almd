@@ -10,27 +10,27 @@ import self.visual as visual
 import self.html as html
 import self.ai as ai
 
-// ── Theme ── the Almide palette (almide/playground's CSS variables).
+// ── Theme ── the Almide v2 palette (almide/playground's CSS variables).
 
-let BG = 0x131316          // --bg-deep: editor, active tab
-let PANEL = 0x1A1A1F       // --bg-surface: bars
-let RAISED = 0x212127      // --bg-elevated: menus, chips
-let BORDER = 0x2E2E38      // --border
-let TEXT = 0xEDEDEB        // --text
-let MUTED = 0xA0A0AB       // --text-secondary
-let FAINT = 0x6B6B78       // --text-muted
-let ACCENT = 0x7C5CBF      // --accent
-let ACCENT_LIGHT = 0x9B7DE0 // --accent-light
-let ON_ACCENT = 0xF0E8E9
+let BG = 0x0B1420          // --bg-deep: editor, active tab
+let PANEL = 0x101B29       // --bg-surface: bars
+let RAISED = 0x152233      // --bg-elevated: menus, chips
+let SUBTLE = 0x1A2A3D      // --bg-subtle: pressed bar buttons
+let BORDER = 0x22344A      // --border
+let TEXT = 0xF4F7F8        // --text
+let MUTED = 0xA3B3C2       // --text-secondary
+let FAINT = 0x6B7F93       // --text-muted
+let ACCENT = 0x0E7E86      // --accent (teal)
+let ACCENT_LIGHT = 0x14A2A2 // --accent-light
+let ON_ACCENT = 0xFFFFFF
 let STOP = 0xD94F5E        // --error
 let WARN = 0xE0B060        // --warn-text
-let BUTTON = 0x38384A
-let BUTTON_BORDER = 0x505060
-let BUTTON_TEXT = 0xE0E0E8
-let HEADER = 0xD8D8DC      // the light header bar
-let HEADER_TEXT = 0x1A1A1F
-let HEADER_SUB = 0x606068
-
+let BUTTON = 0x1F3A5F      // --navy
+let BUTTON_BORDER = 0x2B4F7A
+let BUTTON_TEXT = 0xE8EEF3
+let HEADER = 0xF7FAFA      // the light header bar
+let HEADER_TEXT = 0x2B2B2B
+let HEADER_SUB = 0x5A6B7D
 
 // Functions reached only from closures below; without a top-level reference
 // the wasm leg replaces the closure bodies with an exit(1) stub
@@ -80,8 +80,8 @@ pub fn code_theme() -> ed.Theme = {
   ...ed.dark_theme(),
   bg: c(BG), gutter_bg: c(BG), gutter_fg: c(FAINT), gutter_active: c(MUTED),
   caret: c(ACCENT_LIGHT),
-  selection: snaidhm.rgba(0.486, 0.361, 0.749, 0.35),
-  active_line: snaidhm.rgba(0.486, 0.361, 0.749, 0.07),
+  selection: snaidhm.rgba(0.078, 0.635, 0.635, 0.3),
+  active_line: snaidhm.rgba(0.078, 0.635, 0.635, 0.07),
   error: c(STOP), warning: c(WARN), placeholder: c(FAINT),
 }
 
@@ -145,7 +145,8 @@ fn mobile_bar() -> v.View = {
     |> v.bg(c(PANEL)) |> v.border(1.0, c(BORDER))
 }
 
-// The Almide mark (assets/brand/logo.rgba, made by tools/build_brand.py).
+// The Almide mark (assets/brand/logo.rgba, made by tools/build_brand.py),
+// shown as delivered: the brand guideline forbids recolouring the shell.
 fn logo() -> v.View =
   v.custom("logo", (x, y, w, h) => {
     let k = ceangal.pixel_scale()
@@ -200,7 +201,7 @@ fn ai_bar(narrow: Bool) -> v.View = {
 // Dims the playground behind the phone AI sheet; a tap closes the sheet.
 fn backdrop() -> v.View =
   v.empty() |> v.absolute() |> v.top(0.0) |> v.left(0.0) |> v.right(0.0) |> v.bottom(0.0)
-    |> v.bg(snaidhm.rgba(0.03, 0.03, 0.055, 0.6)) |> v.on_click(() => ai.toggle())
+    |> v.bg(snaidhm.rgba(0.02, 0.04, 0.063, 0.6)) |> v.on_click(() => ai.toggle())
 
 // ── File tabs ──
 

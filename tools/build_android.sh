@@ -85,14 +85,17 @@ cat > "$res/values/strings.xml" <<XML
 <resources><string name="app_name">$(esc "$APP_NAME")</string></resources>
 XML
 if [ -d "$icons" ]; then
-  # The whole icon is the background layer (its mark sits in the safe zone);
-  # the themed-icon (monochrome) layer is the bare mark.
+  # White ground, the mark in the safe zone, its silhouette for themed icons.
   for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
     mkdir -p "$res/mipmap-$dpi"
-    cp "$icons/bg-$dpi.png" "$res/mipmap-$dpi/ic_launcher_background.png"
+    cp "$icons/fg-$dpi.png" "$res/mipmap-$dpi/ic_launcher_foreground.png"
     cp "$icons/mono-$dpi.png" "$res/mipmap-$dpi/ic_launcher_monochrome.png"
   done
-  bg='@mipmap/ic_launcher_background'; fg='@android:color/transparent'; mono='@mipmap/ic_launcher_monochrome'
+  cat > "$res/values/colors.xml" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<resources><color name="icon_bg">#FFFFFF</color></resources>
+XML
+  bg='@color/icon_bg'; fg='@mipmap/ic_launcher_foreground'; mono='@mipmap/ic_launcher_monochrome'
 else
   cat > "$res/values/colors.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>

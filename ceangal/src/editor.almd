@@ -450,14 +450,33 @@ fn ensure_visible(e: Editor) -> Editor =
     let sx = if cx < e.scroll_x then float.max(0.0, cx - 20.0)
       else if cx > e.scroll_x + avail then cx - avail + 20.0
       else e.scroll_x
-    { ...e, scroll_x: sx, scroll_y: clamp_scroll(e, sy), scroll_to_cursor: false }
+    { ...e, scroll_x: clamp_scroll_x(e, sx), scroll_y: clamp_scroll(e, sy), scroll_to_cursor: false }
   }
 
 fn pad_y(e: Editor) -> Float = if e.single_line then 0.0 else 8.0
 
+// Scrolling stops at the content's edges (as CodeMirror does): the last
+// line at the bottom, the end of the longest line at the right.
 fn clamp_scroll(e: Editor, sy: Float) -> Float = {
   let content = int.to_float(list.len(e.lines)) * line_h(e) + pad_y(e) * 2.0
-  float.max(0.0, float.min(sy, content - e.view_h * 0.5))
+  float.max(0.0, float.min(sy, content - e.view_h))
+}
+
+// The width of the longest line (measured on the line with the most
+// characters; a line of wide CJK characters may be a little wider).
+fn content_w(e: Editor) -> Float = {
+  var best = 0
+  var at = 0
+  for i in 0..<list.len(e.lines) {
+    let n = list.len(e.lines[i])
+    if n > best then { best = n; at = i } else ()
+  }
+  x_of(e, { line: at, col: best })
+}
+
+fn clamp_scroll_x(e: Editor, sx: Float) -> Float = {
+  let avail = e.view_w - gutter_w(e) - pad_x(e) * 2.0
+  float.max(0.0, float.min(sx, content_w(e) - avail + 2.0))
 }
 
 // ── Input ──
@@ -553,7 +572,7 @@ fn touch(e: Editor, p: v.Pointer, now: Float) -> Editor = {
       let dt = float.max(1.0, now - t.lt)
       let v_now = (t.ly - p.y) / dt
       // a long single-line field scrolls sideways; everything else vertically
-      let sx = if e.single_line then float.max(0.0, t.sx0 - dx) else e.scroll_x
+      let sx = if e.single_line then clamp_scroll_x(e, t.sx0 - dx) else e.scroll_x
       { ...e, scroll_y: clamp_scroll(e, t.sy0 - dy), scroll_x: sx,
         touch: { ...t, mode: mode, ly: p.y, lt: now, v: v_now * 0.8 + t.v * 0.2 } }
     } else if mode == TOUCH_SELECT then {
@@ -580,8 +599,15 @@ fn fling(e: Editor, now: Float) -> (Editor, Bool) =
     ({ ...e, scroll_y: sy, fling_v: if stopped then 0.0 else v2, fling_t: now }, not stopped)
   }
 
-pub fn wheel(e: Editor, dx: Float, dy: Float) -> Editor =
-  { ...e, scroll_y: clamp_scroll(e, e.scroll_y + dy), scroll_x: float.max(0.0, e.scroll_x + dx), fling_v: 0.0 }
+// Wheel / trackpad: the dominant axis wins, so a vertical swipe does not
+// drift sideways (and the reverse).
+pub fn wheel(e: Editor, dx: Float, dy: Float) -> Editor = {
+  let ax = float.abs(dx)
+  let ay = float.abs(dy)
+  let mx = if ax > ay * 2.0 then dx else 0.0
+  let my = if ay > ax * 2.0 or ax <= ay then dy else 0.0
+  { ...e, scroll_y: clamp_scroll(e, e.scroll_y + my), scroll_x: clamp_scroll_x(e, e.scroll_x + mx), fling_v: 0.0 }
+}
 
 // ── Theme ──
 
