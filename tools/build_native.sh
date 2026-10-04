@@ -6,9 +6,12 @@
 # writes a build manifest with absolute paths next to the app's sources.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
+# Cargo on Windows wants native paths (git-bash gives /d/a/…).
+nroot="$(cygpath -m "$root" 2>/dev/null || echo "$root")"
 out="$root/out/playground"
 if [ "${1:-}" = "-o" ]; then out="$2"; shift 2; fi
-build="$root/out/build/playground"
+case "$out" in /*|[A-Za-z]:*) ;; *) out="$PWD/$out" ;; esac
+build="$root/out/build/playground-$(uname -s)"
 rm -rf "$build"; mkdir -p "$build"
 ln -s "$root/apps/playground/src" "$build/src"
 ln -s "$root/apps/playground/native" "$build/native"
@@ -18,11 +21,11 @@ name = "playground"
 version = "0.1.0"
 
 [dependencies]
-ceangal = { path = "$root/ceangal" }
-snaidhm = { path = "$root/snaidhm" }
+ceangal = { path = "$nroot/ceangal" }
+snaidhm = { path = "$nroot/snaidhm" }
 
 [native-deps]
-almide-compiler-service = { path = "$root/apps/playground/compiler" }
+almide-compiler-service = { path = "$nroot/apps/playground/compiler" }
 wasmi = "2"
 serde_json = "1"
 TOML

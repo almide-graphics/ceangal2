@@ -72,7 +72,8 @@ try {
     // A program whose native output differs between two runs (random, time)
     // is compared on success only.
     let want, deterministic = true;
-    try { want = native(p); deterministic = p.gui || native(p) === want; } catch (e) { failed++; console.log(`FAIL ${p.id} [native]: ${(e.stderr || e.message).toString().slice(0, 400)}`); continue; }
+    const usesChance = Object.values(p.files).some((c) => /\b(random\.|env\.|time\.(now|millis)|datetime\.now)/.test(c));
+    try { want = native(p); deterministic = p.gui || (!usesChance && native(p) === want); } catch (e) { failed++; console.log(`FAIL ${p.id} [native]: ${(e.stderr || e.message).toString().slice(0, 400)}`); continue; }
     if (p.marker && !want.endsWith(p.marker)) { failed++; console.log(`FAIL ${p.id} [native]: no "${p.marker}"`); continue; }
     const got = await page.eval(`runProgram(${JSON.stringify(p.files)})`, 180000);
     const stdout = got.stdout.trimEnd();

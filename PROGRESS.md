@@ -84,7 +84,13 @@ run on main that deploys Pages, waits for a push (see Blockers).
 - Native host: async results + waker, `ureq` HTTP with cancel, `rfd` file
   dialogs, headless virtual clock, `CEANGAL_A11Y_DUMP` for tests.
 - `tests/e2e/native.mjs`: 11 scenarios incl. the Todo window and all 29
-  fixtures/examples byte-identical with the CLI; CI job `native-macos`.
+  fixtures/examples byte-identical with the CLI. Passes on macOS and on Linux
+  (aarch64 Docker, lavapipe: `tools/docker/linux.Dockerfile`); CI jobs
+  `native-macos`, `native-linux`, `native-windows` (Windows not yet run:
+  relies on wgpu's DX12 WARP adapter for headless rendering).
+- AccessKit adapter in the windowed host (tree pushed after each frame,
+  click/focus actions → event 12); secrets in the platform keychain
+  (`keyring`; headless runs use a 0600 file); app id baked in at build.
 
 ## Blockers
 - Pushing to `main` was refused by the session's permission check; local
@@ -94,9 +100,8 @@ run on main that deploys Pages, waits for a push (see Blockers).
 ## Next
 1. After the push: CI green (including `pages-e2e` on the live site), link the
    site from README.
-2. M4 rest: AccessKit adapter (set `a11y::ACTIVE`), keychain-backed secrets,
-   Windows and Linux CI builds + native E2E there, a native AI test against a
-   mock server, a windowed smoke run on macOS.
+2. M4 rest: see the Windows CI result; a native AI test against a mock
+   server; AccessKit checked with VoiceOver / Narrator / Orca (Human TODO).
 
 ## Known issues / workarounds
 - almide/almide#3281 — `@export` outside the root module is dropped: apps carry
@@ -141,5 +146,9 @@ run on main that deploys Pages, waits for a push (see Blockers).
 - [ ] Flathub: app ID decision (e.g. `dev.almide.Playground`) and submission PR.
 - [ ] Install Xcode locally (only Command Line Tools present) if local iOS
       builds are wanted; CI uses GitHub macOS runners.
+- [ ] Native: check the API key lands in Keychain / Credential Manager /
+      Secret Service (the app asks the OS store; tests use a file instead).
+- [ ] Native: VoiceOver (macOS), Narrator (Windows), Orca (Linux) read the
+      playground through AccessKit.
 - [ ] Check the deployed web playground with a screen reader (VoiceOver) and
       on a phone (Safari iOS 26 / Chrome Android with WebGPU).

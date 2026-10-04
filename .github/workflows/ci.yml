@@ -85,6 +85,56 @@ jobs:
           name: e2e-native-macos
           path: out/e2e-native/*.png
 
+  native-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: software Vulkan (lavapipe) for headless rendering
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: native-playground-${{ runner.os }}-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
+      - run: tools/build_native.sh
+      - run: node tests/e2e/native.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-native-linux
+          path: out/e2e-native/*.png
+
+  # Headless rendering uses wgpu's DX12 software adapter (WARP).
+  native-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: native-playground-${{ runner.os }}-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
+      - run: tools/build_native.sh -o out/playground.exe
+      - run: node tests/e2e/native.mjs --bin out/playground.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-native-windows
+          path: out/e2e-native/*.png
+
   # The web playground: compiler wasm, app wasm, real-browser E2E, the old
   # playground's fixtures, and (on main) the GitHub Pages deploy.
   web:

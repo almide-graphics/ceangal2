@@ -11,8 +11,9 @@ import { deflateRawSync } from "node:zlib";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const exe = process.platform === "win32" ? ".exe" : "";
-const bin = process.argv.includes("--bin") ? process.argv[process.argv.indexOf("--bin") + 1] : join(root, `out/playground${exe}`);
-if (!existsSync(bin)) execFileSync(join(root, "tools/build_native.sh"), { stdio: "inherit" });
+const binArg = process.argv.includes("--bin") ? process.argv[process.argv.indexOf("--bin") + 1] : null;
+const bin = binArg ? (binArg.startsWith("/") || /^[A-Za-z]:/.test(binArg) ? binArg : join(process.cwd(), binArg)) : join(root, `out/playground${exe}`);
+if (!existsSync(bin)) execFileSync("bash", [join(root, "tools/build_native.sh")], { stdio: "inherit" });
 const out = join(root, "out/e2e-native");
 mkdirSync(out, { recursive: true });
 const SC = process.platform === "darwin" ? 8 : 2;   // Cmd on macOS, Ctrl elsewhere
@@ -33,7 +34,8 @@ function session(name, script, { launch = "", env = {} } = {}) {
     },
     encoding: "utf8", timeout: 300000,
   });
-  if (r.status !== 0) throw new Error(`${name}: exit ${r.status} ${r.stderr.slice(-800)}`);
+  if (r.error) throw new Error(`${name}: ${r.error.message}`);
+  if (r.status !== 0) throw new Error(`${name}: exit ${r.status} ${(r.stderr || "").slice(-800)}`);
   const nodes = existsSync(dump) ? readFileSync(dump, "utf8").split("\n").filter(Boolean).map((l) => {
     const [role, x, y, w, h, flags, label, value] = l.split("\t");
     return { role: +role, x: +x, y: +y, w: +w, h: +h, flags: +flags, label, value };
@@ -104,8 +106,9 @@ step("Rust and AST views", () => {
 step("export writes a runnable project zip", () => {
   const s = session("native-export", `wait; click ${at("Export")}; wait`);
   assert(s.downloads.length === 1, "no download");
-  const listing = execFileSync("python3", ["-c", "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); print('\\n'.join(z.namelist()))", s.downloads[0]], { encoding: "utf8" });
-  assert(listing.includes("almide-playground/src/main.almd"), listing);
+  const zip = readFileSync(s.downloads[0]);
+  assert(zip.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 3, 4])), "not a zip");
+  for (const f of ["almide-playground/almide.toml", "almide-playground/src/main.almd"]) assert(zip.includes(Buffer.from(f)), `zip lacks ${f}`);
 });
 
 step("user GUI: the Todo example runs as a window, takes input, stops", () => {
@@ -150,9 +153,13 @@ if (!process.argv.includes("--skip-fixtures")) step("fixtures and examples run n
     mkdirSync(join(dir, "src"));
     writeFileSync(join(dir, "almide.toml"), '[package]\nname = "fx"\nversion = "0.1.0"\n');
     for (const [n, c] of Object.entries(p.files)) writeFileSync(n.endsWith(".almd") ? join(dir, "src", n) : join(dir, n), c);
-    const run = () => execFileSync(join(root, "tools/almide"), ["run", "src/main.almd"], { cwd: dir, env: { ...process.env, PWD: dir }, encoding: "utf8", maxBuffer: 256 << 20 }).trimEnd();
+    const almideArgs = [join(root, "tools/almide"), "run", "src/main.almd"];
+    const run = () => execFileSync(process.platform === "win32" ? "bash" : almideArgs[0], process.platform === "win32" ? almideArgs : almideArgs.slice(1), { cwd: dir, env: { ...process.env, PWD: dir }, encoding: "utf8", maxBuffer: 256 << 20 }).trimEnd();
     const want = run();
-    const deterministic = run() === want;
+    // random / clock programs differ run to run (CLI seeding can repeat
+    // within a second, so two equal runs prove nothing)
+    const usesChance = Object.values(p.files).some((c) => /\b(random\.|env\.|time\.(now|millis)|datetime\.now)/.test(c));
+    const deterministic = !usesChance && run() === want;
     rmSync(dir, { recursive: true, force: true });
     if (deterministic && s.runLog.trimEnd() !== want) bad.push(`${p.id}: drift`);
   }
