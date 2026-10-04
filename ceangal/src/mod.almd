@@ -106,7 +106,6 @@ let A11Y_VALUE_MS = 250.0
 var a11y_values_at = -1000000.0
 var a11y_values_focus = "-"
 var a11y_cache: List[(String, String)] = []
-var a11y_catch_up = false
 
 pub fn run(a: App) -> Unit = {
   current = a
@@ -372,12 +371,12 @@ fn emit_a11y() -> Unit = {
     a11y_cache = fresh
     a11y_values_at = frame_time
     a11y_values_focus = focus_key
-    a11y_catch_up = false
-  } else if not a11y_catch_up then {
-    a11y_catch_up = true
+  } else {
+    // until the values are fresh again: a timer can fire a little early,
+    // so every stale frame asks for the next one (the host keeps the earliest)
     dirty = true
-    sys.request_frame_after(A11Y_VALUE_MS - elapsed)
-  } else ()
+    sys.request_frame_after(float.max(1.0, A11Y_VALUE_MS - elapsed))
+  }
 }
 
 fn a11y_action(id: Int, action: Int) -> Bool = {
