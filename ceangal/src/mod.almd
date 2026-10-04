@@ -10,6 +10,8 @@ import self.view as v
 import self.layout as lay
 import self.text as tx
 import self.host.sys as sys
+import self.host.text_input as text_input
+import self.host.clipboard as clip
 
 type App = {
   view: () -> v.View,
@@ -49,6 +51,19 @@ var frame_views: List[v.View] = []
 var frame_rects: List[lay.LayoutRect] = []
 var pressed = -1
 var hover_cursor = 0
+var last_x = 0.0
+var last_y = 0.0
+
+// Keyboard focus, by view key ("" = none), and the caret the focused text
+// input reported while painting (logical px; w < 0 = none).
+var focus_key = ""
+var caret_x = 0.0
+var caret_y = 0.0
+var caret_w = -1.0
+var caret_h = 0.0
+var ime_active = false
+var ime_rect: List[Float] = [0.0, 0.0, 0.0, 0.0]
+var platform_id = 0
 
 pub fn run(a: App) -> Unit = {
   current = a
@@ -59,6 +74,81 @@ pub fn run(a: App) -> Unit = {
 pub fn invalidate() -> Unit = {
   dirty = true
   sys.request_frame()
+}
+
+// ── Focus ──
+
+pub fn focus(key: String) -> Unit = {
+  if key != focus_key then {
+    let old = find_key(focus_key)
+    focus_key = key
+    if old >= 0 then frame_views[old].on_focus(false) else ()
+    let cur = find_key(key)
+    if cur >= 0 then frame_views[cur].on_focus(true) else ()
+    invalidate()
+  } else ()
+}
+
+pub fn focused() -> String = focus_key
+pub fn is_focused(key: String) -> Bool = key != "" and key == focus_key
+
+// The focused text input reports its caret while painting (logical px), so
+// the host can place the IME candidate window and scroll the soft keyboard.
+pub fn set_caret(x: Float, y: Float, w: Float, h: Float) -> Unit = {
+  caret_x = x
+  caret_y = y
+  caret_w = w
+  caret_h = h
+}
+
+// Cmd on Apple platforms, Ctrl elsewhere.
+pub fn is_shortcut(mods: Int) -> Bool = {
+  if platform_id == 0 then platform_id = sys.platform() else ()
+  let apple = platform_id == 2 or platform_id == 5
+  if apple then mods % 16 >= 8 else (mods / 2) % 2 == 1
+}
+
+pub fn has_shift(mods: Int) -> Bool = mods % 2 == 1
+pub fn has_alt(mods: Int) -> Bool = (mods / 4) % 2 == 1
+
+fn find_key(key: String) -> Int = {
+  var found = -1
+  if key != "" then {
+    for i in 0..<list.len(frame_views) {
+      if frame_views[i].key == key then found = i else ()
+    }
+  } else ()
+  found
+}
+
+// Move focus to the next (or previous) focusable view in paint order.
+fn cycle_focus(back: Bool) -> Unit = {
+  var keys: List[String] = []
+  for fv in frame_views { if fv.focusable and fv.key != "" then list.push(keys, fv.key) else () }
+  let n = list.len(keys)
+  if n > 0 then {
+    var at = -1
+    for i in 0..<n { if keys[i] == focus_key then at = i else () }
+    let next = if at < 0 then (if back then n - 1 else 0) else if back then (at + n - 1) % n else (at + 1) % n
+    focus(keys[next])
+  } else ()
+}
+
+fn update_ime() -> Unit = {
+  let fi = find_key(focus_key)
+  let want = fi >= 0 and frame_views[fi].text_input and caret_w >= 0.0
+  if want then {
+    let changed = not ime_active or ime_rect[0] != caret_x or ime_rect[1] != caret_y or ime_rect[3] != caret_h
+    if changed then {
+      if ime_active then text_input.ime_update(caret_x, caret_y, float.max(1.0, caret_w), caret_h)
+      else text_input.ime_begin(caret_x, caret_y, float.max(1.0, caret_w), caret_h)
+      ime_active = true
+      ime_rect = [caret_x, caret_y, caret_w, caret_h]
+    } else ()
+  } else if ime_active then {
+    text_input.ime_end()
+    ime_active = false
+  } else ()
 }
 
 pub fn viewport_width() -> Float = width
@@ -77,12 +167,13 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     0
   } else if kind == 3 then frame(x)
   else if kind == 4 then { if pointer(a, b, x, y, float.to_int(z), float.to_int(w)) then 1 else 0 }
-  else if kind == 6 then {
-    let handled = current.on_key(a, b, float.to_int(x))
-    if handled then invalidate() else ()
-    if handled then 1 else 0
-  } else if kind == 7 then {
-    let handled = current.on_text(a, event_string())
+  else if kind == 5 then { if wheel(x, y, z, w, b) then 1 else 0 }
+  else if kind == 6 then { if key(a, b, float.to_int(x)) then 1 else 0 }
+  else if kind == 7 then {
+    let t = event_string()
+    let fi = find_key(focus_key)
+    let by_view = fi >= 0 and frame_views[fi].on_text(a, t, b)
+    let handled = by_view or current.on_text(a, t)
     if handled then invalidate() else ()
     if handled then 1 else 0
   } else if kind == 10 then {
@@ -91,6 +182,44 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     0
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
   else 0
+
+fn key(phase: Int, code: Int, mods: Int) -> Bool = {
+  let fi = find_key(focus_key)
+  var handled = fi >= 0 and frame_views[fi].on_key(phase, code, mods)
+  if not handled then handled = current.on_key(phase, code, mods) else ()
+  if not handled and phase != 1 and code == 2 then {
+    cycle_focus(has_shift(mods))
+    handled = true
+  } else ()
+  if not handled and phase != 1 and code == 5 and focus_key != "" then {
+    focus("")
+    handled = true
+  } else ()
+  if handled then invalidate() else ()
+  handled
+}
+
+// Lines are 40 px for line-unit wheels.
+fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
+  let k = if unit == 0 then 40.0 else 1.0
+  var target = -1
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    if frame_views[i].wheel and inside(frame_rects[i], x, y) then target = i else ()
+  }
+  if target < 0 then false
+  else {
+    let r = frame_rects[target]
+    let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)
+    if handled then invalidate() else ()
+    handled
+  }
+}
+
+pub fn copy_text(s: String) -> Unit = {
+  let b = bytes.from_string(s)
+  clip.clipboard_write(bytes.data_ptr(b), bytes.len(b))
+}
 
 fn event_bytes() -> Bytes = {
   let n = sys.event_len()
@@ -119,9 +248,11 @@ fn render() -> Unit = {
   frame_views = flatten(root)
   frame_rects = rects
   tx.begin_frame()
+  caret_w = -1.0
   snaidhm.begin(float.to_int(float.ceil(width * scale)), float.to_int(float.ceil(height * scale)))
   paint(root, rects, 0)
   let _ = snaidhm.end(current.background)
+  update_ime()
 }
 
 // ── View → layout node ──
@@ -236,6 +367,12 @@ fn hit(x: Float, y: Float) -> Int = {
   found
 }
 
+// The laid-out rect of the view with `key` in the last frame (logical px).
+pub fn rect_of(key: String) -> lay.LayoutRect = {
+  let i = find_key(key)
+  if i >= 0 then frame_rects[i] else { x: 0.0, y: 0.0, w: 0.0, h: 0.0, clip_x: -1.0, clip_y: -1.0, clip_w: -1.0, clip_h: -1.0 }
+}
+
 // Topmost node at (x, y) with a cursor.
 fn cursor_at(x: Float, y: Float) -> Int = {
   var c = 0
@@ -251,7 +388,19 @@ fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> 
     let c = cursor_at(x, y)
     if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()
   } else ()
+  last_x = x
+  last_y = y
   let target = if pressed >= 0 and (phase == 1 or phase == 2 or phase == 3) then pressed else hit(x, y)
+  if phase == 0 then {
+    // Pressing anywhere moves focus to the focusable node under the pointer
+    // (or clears it).
+    var f = ""
+    let n = int.min(list.len(frame_views), list.len(frame_rects))
+    for i in 0..<n {
+      if frame_views[i].focusable and inside(frame_rects[i], x, y) then f = frame_views[i].key else ()
+    }
+    focus(f)
+  } else ()
   if target < 0 then false
   else {
     let fv = frame_views[target]

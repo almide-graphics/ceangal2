@@ -114,6 +114,26 @@ fn run_headless(out: &str) {
             "key" => { call(&ctx, EV_KEY, 0, n(0) as i64, n(1), 0.0, 0.0, 0.0); }
             "text" => { text_event(&ctx, 0, arg, 0); }
             "paste" => { text_event(&ctx, 3, arg, 0); }
+            "preedit" => { text_event(&ctx, 1, arg, arg.len() as i64); }
+            "preedit_end" => { text_event(&ctx, 2, "", 0); }
+            "bench" => {
+                // Scroll by `dy` and render, `n` times; report frame times.
+                let count = (n(0) as usize).max(1);
+                let dy = if nums.len() > 1 { n(1) } else { 37.0 };
+                let mut times = Vec::with_capacity(count);
+                for _ in 0..count {
+                    let t0 = std::time::Instant::now();
+                    call(&ctx, EV_WHEEL, 0, 1, w * 0.5, h * 0.5, 0.0, dy);
+                    call(&ctx, EV_FRAME, 0, 0, t, 0.0, 0.0, 0.0);
+                    if let Some(sh) = gpu::shared() { let _ = sh.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None }); }
+                    times.push(t0.elapsed().as_secs_f64() * 1000.0);
+                    t += 16.0;
+                }
+                times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                let avg = times.iter().sum::<f64>() / times.len() as f64;
+                let p95 = times[(times.len() * 95 / 100).min(times.len() - 1)];
+                println!("bench: frames={} avg_ms={:.3} p95_ms={:.3} max_ms={:.3}", times.len(), avg, p95, times[times.len() - 1]);
+            }
             "frames" => {
                 for _ in 0..(n(0) as i64).max(1) {
                     call(&ctx, EV_FRAME, 0, 0, t, 0.0, 0.0, 0.0);

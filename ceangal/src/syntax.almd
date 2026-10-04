@@ -1,0 +1,142 @@
+// Almide syntax highlighting: a line-at-a-time lexer over codepoints.
+//
+// Token rules follow the playground's CodeMirror mode (and the real lexer's
+// keyword set). State that crosses lines — nesting depth of (* … *) block
+// comments and an open """ heredoc — is carried in `LexState`, so the editor
+// can lex only the visible lines once it knows the state at their start.
+
+let T_TEXT = 0
+let T_KEYWORD = 1
+let T_STRING = 2
+let T_COMMENT = 3
+let T_NUMBER = 4
+let T_TYPE = 5
+let T_BUILTIN = 6
+let T_MODULE = 7
+let T_FUNCTION = 8
+let T_OPERATOR = 9
+let T_PUNCT = 10
+
+type LexState = { comment: Int, heredoc: Bool }
+
+// A run of codepoints [start, stop) with one token kind.
+type Span = { start: Int, stop: Int, kind: Int }
+
+pub fn initial() -> LexState = { comment: 0, heredoc: false }
+
+let KEYWORDS = ["module", "import", "type", "protocol", "for", "in", "fn", "let", "var", "mut",
+  "if", "then", "else", "match", "ok", "err", "some", "none", "todo",
+  "not", "and", "or", "strict", "pub", "effect", "test",
+  "guard", "break", "continue", "while", "local", "mod", "fan", "self", "as"]
+let BUILTINS = ["println", "eprintln", "assert", "assert_eq", "assert_ne", "unwrap_or", "true", "false"]
+let MODULES = ["string", "list", "map", "set", "int", "float", "math", "datetime", "error",
+  "value", "bytes", "matrix", "option", "result", "prim", "fs", "env", "process",
+  "io", "json", "random", "regex", "testing", "log", "path", "args", "http",
+  "net", "zlib", "base64", "hex", "html", "mem", "time", "encoding", "hash", "term"]
+
+fn is_digit(c: Int) -> Bool = c >= 48 and c <= 57
+fn is_upper(c: Int) -> Bool = c >= 65 and c <= 90
+fn is_lower(c: Int) -> Bool = (c >= 97 and c <= 122) or c == 95
+pub fn is_word(c: Int) -> Bool = is_digit(c) or is_upper(c) or is_lower(c) or c > 127
+
+fn at(cps: List[Int], i: Int) -> Int = if i >= 0 and i < list.len(cps) then cps[i] else 0
+
+fn word_of(cps: List[Int], a: Int, b: Int) -> String = {
+  var bs: List[Int] = []
+  for i in a..<b { list.push(bs, cps[i]) }
+  string.from_bytes(bs)
+}
+
+// Lex one line. Returns the spans and the state at the start of the next line.
+pub fn lex(cps: List[Int], st: LexState) -> (List[Span], LexState) = {
+  let n = list.len(cps)
+  var spans: List[Span] = []
+  var depth = st.comment
+  var heredoc = st.heredoc
+  var i = 0
+  while i < n {
+    let start = i
+    let c = cps[i]
+    if depth > 0 then {
+      while i < n and depth > 0 {
+        if at(cps, i) == 40 and at(cps, i + 1) == 42 then { depth = depth + 1; i = i + 2 }
+        else if at(cps, i) == 42 and at(cps, i + 1) == 41 then { depth = depth - 1; i = i + 2 }
+        else i = i + 1
+      }
+      list.push(spans, { start: start, stop: i, kind: T_COMMENT })
+    } else if heredoc then {
+      var closed = false
+      while i < n and not closed {
+        if at(cps, i) == 34 and at(cps, i + 1) == 34 and at(cps, i + 2) == 34 then { i = i + 3; closed = true }
+        else i = i + 1
+      }
+      if closed then heredoc = false else ()
+      list.push(spans, { start: start, stop: i, kind: T_STRING })
+    } else if c == 32 or c == 9 then {
+      while i < n and (at(cps, i) == 32 or at(cps, i) == 9) { i = i + 1 }
+      list.push(spans, { start: start, stop: i, kind: T_TEXT })
+    } else if c == 47 and at(cps, i + 1) == 47 then {
+      list.push(spans, { start: start, stop: n, kind: T_COMMENT })
+      i = n
+    } else if c == 40 and at(cps, i + 1) == 42 then {
+      depth = 1
+      i = i + 2
+      while i < n and depth > 0 {
+        if at(cps, i) == 40 and at(cps, i + 1) == 42 then { depth = depth + 1; i = i + 2 }
+        else if at(cps, i) == 42 and at(cps, i + 1) == 41 then { depth = depth - 1; i = i + 2 }
+        else i = i + 1
+      }
+      list.push(spans, { start: start, stop: i, kind: T_COMMENT })
+    } else if c == 34 and at(cps, i + 1) == 34 and at(cps, i + 2) == 34 then {
+      i = i + 3
+      heredoc = true
+      var closed = false
+      while i < n and not closed {
+        if at(cps, i) == 34 and at(cps, i + 1) == 34 and at(cps, i + 2) == 34 then { i = i + 3; closed = true }
+        else i = i + 1
+      }
+      if closed then heredoc = false else ()
+      list.push(spans, { start: start, stop: i, kind: T_STRING })
+    } else if c == 34 or c == 39 or (c == 114 and at(cps, i + 1) == 34) then {
+      let raw = c == 114
+      let q = if raw then 34 else c
+      i = i + (if raw then 2 else 1)
+      var closed = false
+      while i < n and not closed {
+        let d = cps[i]
+        if d == 92 and not raw then i = i + 2
+        else if d == q then { i = i + 1; closed = true }
+        else i = i + 1
+      }
+      list.push(spans, { start: start, stop: int.min(i, n), kind: T_STRING })
+      i = int.min(i, n)
+    } else if is_digit(c) then {
+      while i < n and (is_digit(at(cps, i)) or at(cps, i) == 95 or at(cps, i) == 46 and is_digit(at(cps, i + 1)) or at(cps, i) == 120 or (at(cps, i) >= 97 and at(cps, i) <= 102) or (at(cps, i) >= 65 and at(cps, i) <= 70)) { i = i + 1 }
+      list.push(spans, { start: start, stop: i, kind: T_NUMBER })
+    } else if is_upper(c) then {
+      while i < n and is_word(at(cps, i)) { i = i + 1 }
+      list.push(spans, { start: start, stop: i, kind: T_TYPE })
+    } else if is_lower(c) or c > 127 then {
+      while i < n and is_word(at(cps, i)) { i = i + 1 }
+      let w = word_of(cps, start, i)
+      var j = i
+      while j < n and at(cps, j) == 32 { j = j + 1 }
+      let kind =
+        if list.contains(KEYWORDS, w) then T_KEYWORD
+        else if list.contains(BUILTINS, w) then T_BUILTIN
+        else if at(cps, i) == 46 and list.contains(MODULES, w) then T_MODULE
+        else if at(cps, j) == 40 then T_FUNCTION
+        else T_TEXT
+      list.push(spans, { start: start, stop: i, kind: kind })
+    } else {
+      let two = c * 256 + at(cps, i + 1)
+      // -> => |> == != <= >= .. ??
+      let op2 = two == 45 * 256 + 62 or two == 61 * 256 + 62 or two == 124 * 256 + 62 or two == 61 * 256 + 61
+        or two == 33 * 256 + 61 or two == 60 * 256 + 61 or two == 62 * 256 + 61 or two == 46 * 256 + 46 or two == 63 * 256 + 63
+      i = i + (if op2 then 2 else 1)
+      let punct = c == 40 or c == 41 or c == 91 or c == 93 or c == 123 or c == 125 or c == 44 or c == 58 or c == 59
+      list.push(spans, { start: start, stop: i, kind: if punct then T_PUNCT else T_OPERATOR })
+    }
+  }
+  (spans, { comment: depth, heredoc: heredoc })
+}

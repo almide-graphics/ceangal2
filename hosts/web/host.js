@@ -559,10 +559,12 @@ class Host {
 
   imeBegin(x, y, w, h) {
     this.imeActive = true;
+    if (this.headless) return;
     this.imePlace(x, y, w, h);
     this.keySink().focus({ preventScroll: true });
   }
   imePlace(x, y, w, h) {
+    if (this.headless) return;
     const r = this.canvas.getBoundingClientRect();
     Object.assign(this.keySink().style, { left: `${r.left + x}px`, top: `${r.top + y}px`, height: `${Math.max(1, h)}px` });
   }

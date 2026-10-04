@@ -23,6 +23,21 @@ async function runScript(host, script) {
     else if (name === "key") host.key(n[0], n[1] || 0);
     else if (name === "text") host.text(arg, 0);
     else if (name === "paste") host.text(arg, 3);
+    else if (name === "preedit") host.withEvent(new TextEncoder().encode(arg), () => host.dispatch(7, 1, new TextEncoder().encode(arg).length));
+    else if (name === "preedit_end") host.withEvent(new Uint8Array(0), () => host.dispatch(7, 2, 0));
+    else if (name === "bench") {
+      const count = Math.max(1, n[0] || 60), dy = isNaN(n[1]) ? 37 : n[1];
+      const times = [];
+      for (let i = 0; i < count; i++) {
+        const t0 = performance.now();
+        host.dispatch(5, 0, 1, width / 2, height / 2, 0, dy);
+        host.dispatch(3, 0, 0, i * 16);
+        await host.device.queue.onSubmittedWorkDone();
+        times.push(performance.now() - t0);
+      }
+      times.sort((a, b) => a - b);
+      window.__bench = { frames: times.length, avg_ms: times.reduce((a, b) => a + b, 0) / times.length, p95_ms: times[Math.min(times.length - 1, Math.floor(times.length * 0.95))], max_ms: times[times.length - 1] };
+    }
     else if (name === "frames") { for (let i = 0; i < Math.max(1, n[0]); i++) host.dispatch(3, 0, 0, i * 16); }
     await host.settle();
   }
@@ -37,6 +52,6 @@ window.__run = async () => {
   if (errors.length) throw new Error(errors.join("\n"));
   let s = "";
   for (let i = 0; i < snap.rgba.length; i += 0x8000) s += String.fromCharCode.apply(null, snap.rgba.subarray(i, i + 0x8000));
-  return { width: snap.width, height: snap.height, rgba: btoa(s) };
+  return { width: snap.width, height: snap.height, rgba: btoa(s), bench: window.__bench || null };
 };
 </script>

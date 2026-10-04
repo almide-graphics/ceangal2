@@ -25,7 +25,20 @@ const update = process.argv.includes("--update");
 const almide = join(root, "tools/almide");
 const exe = process.platform === "win32" ? ".exe" : "";
 
+// Shortcut modifier for scripts: ctrl|meta, so it reads as the shortcut on
+// every platform (Apple checks meta, the rest ctrl).
+const SC = 10;
+
 const APPS = {
+  editor: {
+    dir: "apps/editor",
+    cases: [
+      { name: "editor-typing", w: 900, h: 560, script: "click 400 300; key 15 0; text  // 追記した; key 1 0; text let x = [1, 2]" },
+      { name: "editor-ime", w: 900, h: 560, script: "click 400 300; key 15 0; text  // ; preedit にほんご" },
+      { name: "editor-select-undo", w: 900, h: 560, script: `click 300 188; key 11 1; key 11 1; key 11 1; text Z; key 24 ${SC}; key 13 1` },
+      { name: "editor-10k-scrolled", w: 900, h: 560, script: "key 44 0; wheel 450 300 0 120000", bench: "bench 120 37" },
+    ],
+  },
   demo: {
     dir: "apps/demo",
     cases: [
@@ -43,27 +56,32 @@ function build(app) {
   const bin = join(out, `${name}${exe}`);
   if (!process.env.SKIP_BUILD) {
     execFileSync(almide, ["build", "src/main.almd", "--target", "wasm", "-o", wasm], { cwd: dir, stdio: "inherit" });
-    execFileSync(almide, ["build", "src/main.almd", "-o", bin], { cwd: dir, stdio: ["ignore", "ignore", "inherit"] });
+    execFileSync(almide, ["build", "src/main.almd", "--release", "-o", bin], { cwd: dir, stdio: ["ignore", "ignore", "inherit"] });
   }
   return { wasm, bin };
 }
 
 function renderNative(bin, c) {
   const png = join(out, `${c.name}.native.png`);
-  execFileSync(bin, [], {
-    env: { ...process.env, CEANGAL_HEADLESS: png, CEANGAL_SIZE: `${c.w}x${c.h}`, CEANGAL_SCALE: String(c.scale || 1), CEANGAL_SCRIPT: c.script, CEANGAL_ASSETS: join(root, "assets") },
-    stdio: ["ignore", "ignore", "inherit"],
-  });
-  return decodePng(readFileSync(png));
+  const script = c.bench ? `${c.script}; ${c.bench}` : c.script;
+  const stdout = execFileSync(bin, [], {
+    env: { ...process.env, CEANGAL_HEADLESS: png, CEANGAL_SIZE: `${c.w}x${c.h}`, CEANGAL_SCALE: String(c.scale || 1), CEANGAL_SCRIPT: script, CEANGAL_ASSETS: join(root, "assets") },
+    stdio: ["ignore", "pipe", "inherit"],
+  }).toString();
+  const m = stdout.match(/bench: frames=(\d+) avg_ms=([\d.]+) p95_ms=([\d.]+) max_ms=([\d.]+)/);
+  const img = decodePng(readFileSync(png));
+  if (m) img.bench = { frames: +m[1], avg_ms: +m[2], p95_ms: +m[3], max_ms: +m[4] };
+  return img;
 }
 
 async function renderWeb(page, base, wasmPath, c) {
   const rel = wasmPath.slice(root.length);
   const assets = Object.fromEntries(["ui.ttf", "ui-semibold.ttf", "mono.ttf", "cjk.ttf"].map((f) => [`fonts/${f}`, `/assets/fonts/${f}`]));
-  const url = `${base}/tests/pixel/page.html?wasm=${encodeURIComponent(rel)}&w=${c.w}&h=${c.h}&scale=${c.scale || 1}&script=${encodeURIComponent(c.script)}&assets=${encodeURIComponent(JSON.stringify(assets))}`;
+  const script = c.bench ? `${c.script}; ${c.bench}` : c.script;
+  const url = `${base}/tests/pixel/page.html?wasm=${encodeURIComponent(rel)}&w=${c.w}&h=${c.h}&scale=${c.scale || 1}&script=${encodeURIComponent(script)}&assets=${encodeURIComponent(JSON.stringify(assets))}`;
   await page.goto(url);
-  const r = await page.eval("window.__run()", 120000);
-  const img = { width: r.width, height: r.height, rgba: new Uint8Array(Buffer.from(r.rgba, "base64")) };
+  const r = await page.eval("window.__run()", 240000);
+  const img = { width: r.width, height: r.height, rgba: new Uint8Array(Buffer.from(r.rgba, "base64")), bench: r.bench };
   writeFileSync(join(out, `${c.name}.web.png`), encodePng(img));
   return img;
 }
@@ -97,6 +115,14 @@ try {
       }
       if (!ok) failed++;
       console.log(`${ok ? "ok  " : "FAIL"} ${c.name}: web vs native ${(cmp.mismatch * 100).toFixed(3)}% px differ, max diff ${cmp.maxDiff}${goldenNote}`);
+      // 60 fps budget: p95 frame (event + layout + paint + GPU) under 16.7 ms.
+      for (const [host, img] of [["native", native], ["web", web]]) {
+        if (!img.bench) continue;
+        const b = img.bench;
+        const fast = b.p95_ms < 16.7;
+        if (!fast) failed++;
+        console.log(`${fast ? "ok  " : "FAIL"} ${c.name} ${host} bench: ${b.frames} frames, avg ${b.avg_ms.toFixed(2)} ms, p95 ${b.p95_ms.toFixed(2)} ms, max ${b.max_ms.toFixed(2)} ms`);
+      }
     }
   }
 } finally {

@@ -1,0 +1,59 @@
+// Editor demo: the code editor widget on its own, plus a text field.
+// F5 loads a 10,000-line document (used by the M1 performance test).
+
+import ceangal
+import ceangal.view as v
+import ceangal.editor as ed
+import snaidhm
+
+let SAMPLE = r"""
+// Almide — 日本語のコメントも書ける
+import json
+
+type Point = { x: Int, y: Int }
+
+fn dist(a: Point, b: Point) -> Float = {
+  let dx = int.to_float(a.x - b.x)
+  let dy = int.to_float(a.y - b.y)
+  float.sqrt(dx * dx + dy * dy)
+}
+
+effect fn main() -> Unit = {
+  let ps = [{ x: 0, y: 0 }, { x: 3, y: 4 }]
+  println("distance: ${float.to_string(dist(ps[0], ps[1]))}")
+}
+"""
+
+var doc = ed.from_string(SAMPLE)
+var field = ed.text_field("", "Search…")
+
+fn big_doc() -> String = {
+  var parts: List[String] = []
+  for i in 0..<10000 {
+    list.push(parts, "let value_" + int.to_string(i) + " = compute(" + int.to_string(i) + ", \"row\")  // line " + int.to_string(i + 1))
+  }
+  string.join(parts, "\n")
+}
+
+fn view() -> v.View =
+  v.col([
+    v.row([
+      v.text("main.almd") |> v.font(13.0) |> v.color(snaidhm.hex(0xC0CAF5)),
+      v.spacer(),
+      ed.view("search", () => field, (e) => { field = e }, ed.dark_theme())
+        |> v.size(220.0, 30.0) |> v.rounded(6.0) |> v.clip(),
+    ]) |> v.h(44.0) |> v.px(12.0) |> v.align(v.Middle) |> v.bg(snaidhm.hex(0x16161E)),
+    ed.view("main", () => doc, (e) => { doc = e }, ed.dark_theme()) |> v.grow(1.0),
+  ]) |> v.fill()
+
+fn on_key(phase: Int, code: Int, mods: Int) -> Bool =
+  if phase == 0 and code == 44 then { doc = ed.set_text(doc, big_doc()); true } else false
+
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit = {
+  ceangal.focus("main")
+  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)) |> ceangal.on_key(on_key))
+}

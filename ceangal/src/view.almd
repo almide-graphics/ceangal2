@@ -77,6 +77,15 @@ type View = {
   clickable: Bool,
   on_pointer: (Pointer) -> Bool,
   pointer: Bool,
+  on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
+  wheel: Bool,
+  // Keyboard focus: a focusable node (it needs a key) receives key and text
+  // events while focused; `text_input` asks the host for IME / soft keyboard.
+  focusable: Bool,
+  text_input: Bool,
+  on_key: (Int, Int, Int) -> Bool,           // (phase, key, mods)
+  on_text: (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
+  on_focus: (Bool) -> Unit,
   paint: Painter,
   label: String,
   role: Int,
@@ -87,6 +96,9 @@ type View = {
 fn node(kind: Int, children: List[View], content: String) -> View = {
   kind: kind, children: children, content: content, style: default_style, key: "",
   on_click: () => (), clickable: false, on_pointer: (p) => false, pointer: false,
+  on_wheel: (x, y, dx, dy) => false, wheel: false,
+  focusable: false, text_input: false,
+  on_key: (phase, key, mods) => false, on_text: (kind, t, c) => false, on_focus: (f) => (),
   paint: (x, y, w, h) => (), label: "", role: 0,
 }
 
@@ -172,6 +184,12 @@ pub fn bold(v: View) -> View = { ...v, style: { ...v.style, bold: true } }
 
 pub fn on_click(v: View, f: () -> Unit) -> View = { ...v, on_click: f, clickable: true, style: { ...v.style, cursor: 2 } }
 pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View = { ...v, on_pointer: f, pointer: true }
+pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View = { ...v, on_wheel: f, wheel: true }
+pub fn focusable(v: View, k: String) -> View = { ...v, key: k, focusable: true }
+pub fn text_input(v: View, k: String) -> View = { ...v, key: k, focusable: true, text_input: true }
+pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }
+pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View = { ...v, on_text: f }
+pub fn on_focus(v: View, f: (Bool) -> Unit) -> View = { ...v, on_focus: f }
 pub fn cursor(v: View, kind: Int) -> View = { ...v, style: { ...v.style, cursor: kind } }
 pub fn key(v: View, k: String) -> View = { ...v, key: k }
 

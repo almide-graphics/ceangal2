@@ -41,7 +41,10 @@ var image_group_tex: List[Int] = []
 
 // ── Frame state ──
 
-var data = bytes.new(0)
+// Instance data for the frame, written in place at count * 80 bytes and
+// grown by doubling: bytes.append_* on the wasm leg copies the whole buffer
+// per call (almide/almide#3294).
+var data = bytes.new(80 * 1024)
 var count = 0
 var frame_w = 1
 var frame_h = 1
@@ -134,7 +137,6 @@ pub fn begin(width: Int, height: Int) -> Unit = {
   ensure_ready()
   frame_w = int.max(1, width)
   frame_h = int.max(1, height)
-  data = bytes.new(0)
   count = 0
   clip_x0 = 0.0
   clip_y0 = 0.0
@@ -150,26 +152,32 @@ pub fn instance_count() -> Int = count
 fn push(x: Float, y: Float, w: Float, h: Float, c: Color,
         u0: Float, v0: Float, u1: Float, v1: Float,
         radius: Float, kind: Float, param: Float) -> Unit = {
-  bytes.append_f32_le(data, x)
-  bytes.append_f32_le(data, y)
-  bytes.append_f32_le(data, w)
-  bytes.append_f32_le(data, h)
-  bytes.append_f32_le(data, c.r)
-  bytes.append_f32_le(data, c.g)
-  bytes.append_f32_le(data, c.b)
-  bytes.append_f32_le(data, c.a)
-  bytes.append_f32_le(data, u0)
-  bytes.append_f32_le(data, v0)
-  bytes.append_f32_le(data, u1)
-  bytes.append_f32_le(data, v1)
-  bytes.append_f32_le(data, radius)
-  bytes.append_f32_le(data, kind)
-  bytes.append_f32_le(data, param)
-  bytes.append_f32_le(data, 0.0)
-  bytes.append_f32_le(data, clip_x0)
-  bytes.append_f32_le(data, clip_y0)
-  bytes.append_f32_le(data, clip_x1)
-  bytes.append_f32_le(data, clip_y1)
+  let o = count * 80
+  if o + 80 > bytes.len(data) then {
+    var bigger = bytes.new(bytes.len(data) * 2)
+    bytes.copy_from(bigger, data, 0, 0, o)
+    data = bigger
+  } else ()
+  bytes.set_f32_le(data, o, x)
+  bytes.set_f32_le(data, o + 4, y)
+  bytes.set_f32_le(data, o + 8, w)
+  bytes.set_f32_le(data, o + 12, h)
+  bytes.set_f32_le(data, o + 16, c.r)
+  bytes.set_f32_le(data, o + 20, c.g)
+  bytes.set_f32_le(data, o + 24, c.b)
+  bytes.set_f32_le(data, o + 28, c.a)
+  bytes.set_f32_le(data, o + 32, u0)
+  bytes.set_f32_le(data, o + 36, v0)
+  bytes.set_f32_le(data, o + 40, u1)
+  bytes.set_f32_le(data, o + 44, v1)
+  bytes.set_f32_le(data, o + 48, radius)
+  bytes.set_f32_le(data, o + 52, kind)
+  bytes.set_f32_le(data, o + 56, param)
+  bytes.set_f32_le(data, o + 60, 0.0)
+  bytes.set_f32_le(data, o + 64, clip_x0)
+  bytes.set_f32_le(data, o + 68, clip_y0)
+  bytes.set_f32_le(data, o + 72, clip_x1)
+  bytes.set_f32_le(data, o + 76, clip_y1)
   count = count + 1
 }
 
@@ -252,13 +260,11 @@ pub fn end(clear: Color) -> Bool = {
       for _ in 0..<32 { if cap < count then cap = cap * 2 else () }
       grow_instances(cap)
     } else ()
-    var globals = bytes.new(0)
-    bytes.append_f32_le(globals, int.to_float(frame_w))
-    bytes.append_f32_le(globals, int.to_float(frame_h))
-    bytes.append_f32_le(globals, 0.0)
-    bytes.append_f32_le(globals, 0.0)
+    var globals = bytes.new(16)
+    bytes.set_f32_le(globals, 0, int.to_float(frame_w))
+    bytes.set_f32_le(globals, 4, int.to_float(frame_h))
     gpu.write_buffer(globals_buf, 0, bytes.data_ptr(globals), 16)
-    if count > 0 then gpu.write_buffer(inst_buf, 0, bytes.data_ptr(data), bytes.len(data)) else ()
+    if count > 0 then gpu.write_buffer(inst_buf, 0, bytes.data_ptr(data), count * 80) else ()
     let pass = gpu.pass_begin(target, gpu.LOAD_CLEAR, clear.r * clear.a, clear.g * clear.a, clear.b * clear.a, clear.a)
     gpu.pass_pipeline(pass, pipeline)
     gpu.pass_bind(pass, 0, group0)
