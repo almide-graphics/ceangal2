@@ -299,6 +299,7 @@ class Host {
         const body = Number(bn) > 0 ? self.bytes(bp, bn) : undefined;
         self.httpRun(Number(id), r, body);
       },
+      http_cancel: (id) => { self.httpAborts.get(Number(id))?.abort(); },
     };
 
     const file = {
@@ -646,8 +647,10 @@ class Host {
   }
 
   async httpRun(id, r, body) {
+    const abort = new AbortController();
+    (this.httpAborts ||= new Map()).set(id, abort);
     try {
-      const res = await fetch(r.url, { method: r.method, headers: r.headers, body });
+      const res = await fetch(r.url, { method: r.method, headers: r.headers, body, signal: abort.signal });
       if (res.body && res.body.getReader) {
         const reader = res.body.getReader();
         for (;;) {
@@ -660,7 +663,10 @@ class Host {
         this.deliver(id, res.status, new Uint8Array(await res.arrayBuffer()));
       }
     } catch (e) {
-      this.deliver(id, 0, enc.encode(String(e)));
+      // A cancelled request delivers nothing more (docs/abi.md §4.7).
+      if (!abort.signal.aborted) this.deliver(id, 0, enc.encode(String(e)));
+    } finally {
+      this.httpAborts.delete(id);
     }
   }
 

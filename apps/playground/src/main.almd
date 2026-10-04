@@ -5,12 +5,14 @@ import ceangal
 import snaidhm
 import self.state as st
 import self.ui as ui
+import self.ai as ai
 
 fn on_key(phase: Int, code: Int, mods: Int) -> Bool =
   if phase == 1 then false
   else if code == 1 and ceangal.is_shortcut(mods) then { st.run(); true }     // Cmd/Ctrl+Enter
   else if code == 26 and ceangal.is_shortcut(mods) then { st.share(); true } // Cmd/Ctrl+S: share link
   else if code == 5 and st.examples_open then { st.close_examples(); true }
+  else if code == 5 and ai.busy() then { ai.stop(); true }
   else if code == 5 and st.running then { st.stop(); true }
   else false
 
@@ -24,6 +26,6 @@ effect fn main() -> Unit = {
   ceangal.run(ceangal.app(ui.root)
     |> ceangal.background(snaidhm.hex(ui.BG))
     |> ceangal.on_key(on_key)
-    |> ceangal.on_frame((t) => st.tick(t))
-    |> ceangal.on_result((id, code, body) => st.on_result(id, code, body)))
+    |> ceangal.on_frame((t) => { let more = st.tick(t); ai.tick(); more })
+    |> ceangal.on_result((id, code, body) => if ai.on_result(id, code, body) then () else st.on_result(id, code, body)))
 }

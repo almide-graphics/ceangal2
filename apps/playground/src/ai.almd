@@ -1,0 +1,398 @@
+// The AI assistant (bring your own key): Anthropic / OpenAI / Gemini over
+// the host's `net` namespace, SSE streamed straight into the active tab, then
+// an automatic repair loop — run the code, send any error back, up to three
+// times. Behaviour follows the previous playground's ai.js.
+
+import ceangal
+import ceangal.editor as ed
+import ceangal.host.sys as sys
+import ceangal.host.net as net
+import ceangal.host.storage as storage
+import json
+import self.state as st
+
+type Model = { id: String, label: String, effort: Bool }
+type Msg = { role: String, content: String }
+
+let PROVIDERS = ["Claude", "OpenAI", "Gemini"]
+let MAX_REPAIRS = 3
+let REPAIR_INSTRUCTION = "\n\nFix the code and output ONLY the corrected .almd source. No explanations."
+
+pub fn models(p: Int) -> List[Model] =
+  if p == 0 then [
+    { id: "claude-opus-5-5", label: "Opus 5.5", effort: true },
+    { id: "claude-sonnet-5-5", label: "Sonnet 5.5", effort: true },
+    { id: "claude-haiku-4-5", label: "Haiku 4.5", effort: false },
+  ] else if p == 1 then [
+    { id: "gpt-4o", label: "GPT-4o", effort: false },
+    { id: "gpt-4o-mini", label: "GPT-4o mini", effort: false },
+  ] else [
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", effort: false },
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", effort: false },
+  ]
+
+fn key_placeholder(p: Int) -> String = if p == 0 then "sk-ant-…" else if p == 1 then "sk-…" else "AIza…"
+
+// ── State ──
+
+var open = false
+var provider = 0
+var model_ix = 0
+var key_field = ed.with_secret(ed.text_field("", key_placeholder(0)), true)
+var prompt_field = ed.text_field("", "Describe a program and press Enter")
+var log = ed.log()
+var phase = 0            // 0 idle, 1 streaming, 2 waiting for the run
+var req_id = -1
+var http_status = 0
+var pending: Bytes = bytes.new(0)   // undecoded tail of the SSE stream
+var error_body = ""
+var generated = ""
+var messages: List[Msg] = []
+var attempt = 0
+var runs_seen = 0
+var prev_code = ""
+var loaded = false
+
+pub fn busy() -> Bool = phase != 0
+
+// ── Persistence: provider, model, and the key in secret storage ──
+
+fn kv_get(k: String, secret: Bool) -> String = {
+  let kb = bytes.from_string(k)
+  let n = if secret then storage.secret_len(bytes.data_ptr(kb), bytes.len(kb)) else storage.storage_len(bytes.data_ptr(kb), bytes.len(kb))
+  if n <= 0 then ""
+  else {
+    var b = bytes.new(n)
+    let _ = if secret then storage.secret_read(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(b), n) else storage.storage_read(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(b), n)
+    bytes.to_string_lossy(b)
+  }
+}
+
+fn kv_set(k: String, v: String, secret: Bool) -> Unit = {
+  let kb = bytes.from_string(k)
+  let vb = bytes.from_string(v)
+  if secret then storage.secret_write(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(vb), bytes.len(vb))
+  else storage.storage_write(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(vb), bytes.len(vb))
+}
+
+fn key_name(p: Int) -> String = "ai-key-" + int.to_string(p)
+
+fn load_provider(p: Int) -> Unit = {
+  provider = p
+  key_field = ed.with_secret(ed.text_field(kv_get(key_name(p), true), key_placeholder(p)), true)
+  let saved = kv_get("ai-model-" + int.to_string(p), false)
+  var ix = 0
+  let ms = models(p)
+  for i in 0..<list.len(ms) { if ms[i].id == saved then ix = i else () }
+  model_ix = ix
+}
+
+fn ensure_loaded() -> Unit = if not loaded then {
+  loaded = true
+  let p = int.parse(kv_get("ai-provider", false)) ?? 0
+  load_provider(if p >= 0 and p <= 2 then p else 0)
+} else ()
+
+pub fn toggle() -> Unit = { ensure_loaded(); open = not open; if open then ceangal.focus("ai-prompt") else () }
+
+pub fn select_provider(p: Int) -> Unit = {
+  kv_set(key_name(provider), ed.to_string(key_field), true)
+  load_provider(p)
+  kv_set("ai-provider", int.to_string(p), false)
+}
+
+pub fn select_model(i: Int) -> Unit = {
+  model_ix = i
+  kv_set("ai-model-" + int.to_string(provider), models(provider)[i].id, false)
+}
+
+pub fn set_key_field(e: ed.Editor) -> Unit = {
+  let before = ed.to_string(key_field)
+  key_field = e
+  let after = ed.to_string(e)
+  if after != before then kv_set(key_name(provider), string.trim(after), true) else ()
+}
+
+pub fn set_prompt_field(e: ed.Editor) -> Unit = { prompt_field = e }
+pub fn set_log(e: ed.Editor) -> Unit = { log = e }
+
+pub fn has_key() -> Bool = { ensure_loaded(); string.trim(ed.to_string(key_field)) != "" }
+
+// ── Log (the AI output tab) ──
+
+fn note(s: String, style: Int) -> Unit = {
+  for l in string.split(s, "\n") { log = ed.append_line(log, l, style) }
+}
+
+// A short line diff around the changes (as in the previous playground).
+fn note_diff(before: String, after: String) -> Unit = {
+  let a = string.split(before, "\n")
+  let b = string.split(after, "\n")
+  var i = 0
+  var j = 0
+  var shown = 0
+  while (i < list.len(a) or j < list.len(b)) and shown < 80 {
+    if i < list.len(a) and j < list.len(b) and a[i] == b[j] then { i = i + 1; j = j + 1 }
+    else if j < list.len(b) and (i >= list.len(a) or not list.contains(a, b[j])) then { note("+ " + b[j], 3); j = j + 1; shown = shown + 1 }
+    else if i < list.len(a) and (j >= list.len(b) or not list.contains(b, a[i])) then { note("- " + a[i], 1); i = i + 1; shown = shown + 1 }
+    else { note("- " + a[i], 1); note("+ " + b[j], 3); i = i + 1; j = j + 1; shown = shown + 2 }
+  }
+}
+
+// ── Requests ──
+
+fn system_prompt() -> String = {
+  let k = bytes.from_string("ai/system.md")
+  let n = sys.asset_len(bytes.data_ptr(k), bytes.len(k))
+  if n <= 0 then "You write Almide (.almd) programs. Output only source code."
+  else {
+    var b = bytes.new(n)
+    let _ = sys.asset_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
+    bytes.to_string_lossy(b)
+  }
+}
+
+fn msg_values(ms: List[Msg]) -> List[Value] = {
+  var out: List[Value] = []
+  for m in ms { list.push(out, value.object([("role", value.str(m.role)), ("content", value.str(m.content))])) }
+  out
+}
+
+fn header(id: Int, name: String, v: String) -> Unit = {
+  let nb = bytes.from_string(name)
+  let vb = bytes.from_string(v)
+  net.http_header(id, bytes.data_ptr(nb), bytes.len(nb), bytes.data_ptr(vb), bytes.len(vb))
+}
+
+fn begin(url: String) -> Int = {
+  let mb = bytes.from_string("POST")
+  let ub = bytes.from_string(url)
+  net.http_begin(bytes.data_ptr(mb), bytes.len(mb), bytes.data_ptr(ub), bytes.len(ub))
+}
+
+fn start_stream() -> Unit = {
+  let key = string.trim(ed.to_string(key_field))
+  let m = models(provider)[model_ix]
+  generated = ""
+  pending = bytes.new(0)
+  error_body = ""
+  http_status = 0
+  st.set_active_text("")
+  let id =
+    if provider == 0 then {
+      let r = begin("https://api.anthropic.com/v1/messages")
+      header(r, "content-type", "application/json")
+      header(r, "x-api-key", key)
+      header(r, "anthropic-version", "2023-06-01")
+      header(r, "anthropic-dangerous-direct-browser-access", "true")
+      r
+    } else if provider == 1 then {
+      let r = begin("https://api.openai.com/v1/chat/completions")
+      header(r, "content-type", "application/json")
+      header(r, "authorization", "Bearer " + key)
+      r
+    } else {
+      let r = begin("https://generativelanguage.googleapis.com/v1beta/models/" + m.id + ":streamGenerateContent?alt=sse")
+      header(r, "content-type", "application/json")
+      header(r, "x-goog-api-key", key)
+      r
+    }
+  let sp = system_prompt()
+  let body =
+    if provider == 0 then {
+      var fields: List[(String, Value)] = [
+        ("model", value.str(m.id)), ("max_tokens", value.int(16000)), ("system", value.str(sp)),
+        ("stream", value.bool(true)), ("messages", value.array(msg_values(messages))),
+      ]
+      // low effort keeps adaptive thinking shallow so the first token lands fast
+      if m.effort then list.push(fields, ("output_config", value.object([("effort", value.str("low"))]))) else ()
+      value.object(fields)
+    } else if provider == 1 then
+      value.object([
+        ("model", value.str(m.id)), ("max_tokens", value.int(4096)), ("stream", value.bool(true)),
+        ("messages", value.array([value.object([("role", value.str("system")), ("content", value.str(sp))])] + msg_values(messages))),
+      ])
+    else {
+      var contents: List[Value] = []
+      for mm in messages {
+        let role = if mm.role == "assistant" then "model" else "user"
+        list.push(contents, value.object([("role", value.str(role)), ("parts", value.array([value.object([("text", value.str(mm.content))])]))]))
+      }
+      value.object([
+        ("system_instruction", value.object([("parts", value.array([value.object([("text", value.str(sp))])]))])),
+        ("contents", value.array(contents)),
+      ])
+    }
+  let bb = bytes.from_string(json.stringify(body))
+  net.http_send(id, bytes.data_ptr(bb), bytes.len(bb))
+  req_id = id
+  phase = 1
+}
+
+// ── SSE ──
+
+fn field_of(v: Value, k: String) -> Value? = match value.field(v, k) { ok(x) => some(x), err(_) => none }
+
+fn first_of(v: Value?) -> Value? = match v {
+  some(x) => match value.as_array(x) { ok(xs) => list.get(xs, 0), err(_) => none },
+  none => none,
+}
+
+fn str_of(v: Value?) -> String = match v {
+  some(x) => match value.as_string(x) { ok(s) => s, err(_) => "" },
+  none => "",
+}
+
+fn deep(v: Value?, k: String) -> Value? = match v { some(x) => field_of(x, k), none => none }
+
+// The text one SSE event carries, per provider.
+fn event_text(data: String) -> String = match json.parse(data) {
+  ok(v) =>
+    if provider == 0 then (if str_of(field_of(v, "type")) == "content_block_delta" then str_of(deep(field_of(v, "delta"), "text")) else "")
+    else if provider == 1 then str_of(deep(deep(first_of(field_of(v, "choices")), "delta"), "content"))
+    else {
+      var t = ""
+      match deep(deep(first_of(field_of(v, "candidates")), "content"), "parts") {
+        some(ps) => match value.as_array(ps) {
+          ok(parts) => { for p in parts { t = t + str_of(field_of(p, "text")) } },
+          err(_) => (),
+        },
+        none => (),
+      }
+      t
+    },
+  err(_) => "",
+}
+
+// Feed a body chunk: decode whole lines only (a UTF-8 sequence or a line may
+// straddle two chunks), and append any streamed text to the active tab.
+fn feed(chunk: Bytes) -> Unit = {
+  let all = bytes.concat(pending, chunk)
+  var last_nl = -1
+  for i in 0..<bytes.len(all) { if bytes.read_u8(all, i) == 10 then last_nl = i else () }
+  if last_nl < 0 then pending = all
+  else {
+    let text = bytes.to_string_lossy(bytes.slice(all, 0, last_nl + 1))
+    pending = bytes.slice(all, last_nl + 1, bytes.len(all))
+    var added = ""
+    for line in string.split(text, "\n") {
+      let l = string.trim_end(line)
+      if string.starts_with(l, "data: ") then {
+        let data = string.drop(l, 6)
+        if data != "[DONE]" then added = added + event_text(data) else ()
+      } else ()
+    }
+    if added != "" then { generated = generated + added; st.set_active_text(generated) } else ()
+  }
+}
+
+fn strip_fences(t: String) -> String = {
+  var lines = string.split(string.trim(t), "\n")
+  if list.len(lines) > 0 and string.starts_with(lines[0], "```") then lines = list.drop(lines, 1) else ()
+  if list.len(lines) > 0 and string.starts_with(string.trim(lines[list.len(lines) - 1]), "```") then lines = list.take(lines, list.len(lines) - 1) else ()
+  string.join(lines, "\n") + "\n"
+}
+
+// ── Flow ──
+
+fn finish(msg: String) -> Unit = { phase = 0; req_id = -1; st.set_status(msg) }
+
+pub fn generate() -> Unit = {
+  ensure_loaded()
+  if phase != 0 then stop()
+  else if not has_key() then { open = true; st.set_status("Enter your API key first"); ceangal.focus("ai-key") }
+  else {
+    let prompt = string.trim(ed.to_string(prompt_field))
+    if prompt == "" then { st.set_status("Describe what to generate"); ceangal.focus("ai-prompt") }
+    else {
+      prompt_field = ed.set_text(prompt_field, "")
+      log = ed.clear(log)
+      note("> " + prompt, 4)
+      messages = [{ role: "user", content: prompt }]
+      attempt = 0
+      prev_code = ""
+      st.set_status("Generating…")
+      st.set_out_tab(4)
+      start_stream()
+    }
+  }
+}
+
+// "Fix with AI" after a failed run: start the repair loop from the current code.
+pub fn fix_last_run() -> Unit = {
+  ensure_loaded()
+  if phase == 0 and has_key() and not st.last_run_ok and st.last_run_error != "" then {
+    let code = st.active_text()
+    log = ed.clear(log)
+    note(st.last_run_error, 1)
+    messages = [
+      { role: "user", content: "Write this Almide program:\n\n```\n" + code + "\n```" },
+      { role: "assistant", content: code },
+    ]
+    attempt = 0
+    st.set_out_tab(4)
+    repair(code, st.last_run_error)
+  } else ()
+}
+
+fn repair(code: String, error: String) -> Unit = {
+  attempt = attempt + 1
+  prev_code = code
+  note("Repair " + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS), 4)
+  list.push(messages, { role: "user", content: error + REPAIR_INSTRUCTION })
+  st.set_status("Repairing (" + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS) + ")…")
+  start_stream()
+}
+
+pub fn stop() -> Unit = if phase != 0 then {
+  if req_id >= 0 then net.http_cancel(req_id) else ()
+  note("Cancelled", 2)
+  finish("Cancelled")
+} else ()
+
+fn stream_done() -> Unit = {
+  if http_status < 200 or http_status >= 300 then {
+    note("API error " + int.to_string(http_status) + ": " + string.slice(error_body, 0, 600), 1)
+    finish(if http_status == 0 then "AI request failed" else "AI error " + int.to_string(http_status))
+  } else {
+    let code = strip_fences(generated)
+    st.set_active_text(code)
+    list.push(messages, { role: "assistant", content: code })
+    if prev_code != "" then note_diff(prev_code, code) else ()
+    phase = 2
+    req_id = -1
+    runs_seen = st.runs_finished
+    st.run_fresh()
+  }
+}
+
+// Results for our request (main forwards every event 10 here first).
+pub fn on_result(id: Int, code: Int, body: Bytes) -> Bool =
+  if id != req_id or phase != 1 then false
+  else {
+    if code >= 1000 then {
+      http_status = code - 1000
+      if http_status >= 200 and http_status < 300 then feed(body) else { error_body = error_body + bytes.to_string_lossy(body) }
+    } else {
+      if code == 0 then error_body = error_body + bytes.to_string_lossy(body) else ()
+      http_status = code
+      if code >= 200 and code < 300 then feed(bytes.from_string("\n")) else ()
+      stream_done()
+    }
+    true
+  }
+
+// Per frame: notice when the run we started has finished.
+pub fn tick() -> Unit = if phase == 2 and st.runs_finished != runs_seen then {
+  if st.last_run_ok then {
+    note(if attempt == 0 then "Compile & run OK" else "Fixed — compile & run OK", 3)
+    finish(if attempt == 0 then "Generated & running" else "Repaired (" + int.to_string(attempt) + ") & running")
+  } else if attempt < MAX_REPAIRS then {
+    note(st.last_run_error, 1)
+    repair(st.active_text(), st.last_run_error)
+  } else {
+    note(st.last_run_error, 1)
+    note("Failed after " + int.to_string(MAX_REPAIRS) + " attempts", 1)
+    finish("AI repair failed")
+  }
+} else ()

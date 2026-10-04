@@ -32,7 +32,7 @@ jobs:
         run: ../tools/almide test src/font_test.almd
       - name: playground units
         working-directory: apps/playground
-        run: ../../tools/almide test src/deflate_test.almd
+        run: ../../tools/almide test src/deflate_test.almd && ../../tools/almide test src/zip_test.almd
       - name: wasm check (every app)
         run: |
           for app in apps/*/; do

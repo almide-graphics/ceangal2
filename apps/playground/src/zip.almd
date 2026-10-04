@@ -1,0 +1,82 @@
+// A minimal ZIP writer (store method, UTF-8 names, fixed timestamps so the
+// same tabs always give the same bytes) — the previous playground's zip.js.
+
+fn crc_table() -> List[Int] = {
+  var t: List[Int] = []
+  for n in 0..<256 {
+    var c = n
+    for _ in 0..<8 { c = if int.band(c, 1) == 1 then int.bxor(3988292384, int.bshr(c, 1)) else int.bshr(c, 1) }
+    list.push(t, c)
+  }
+  t
+}
+
+pub fn crc32(b: Bytes) -> Int = {
+  let t = crc_table()
+  var c = 4294967295
+  for i in 0..<bytes.len(b) { c = int.bxor(t[int.band(int.bxor(c, bytes.read_u8(b, i)), 255)], int.bshr(c, 8)) }
+  int.bxor(c, 4294967295)
+}
+
+fn u16(mut out: List[Int], v: Int) -> Unit = { list.push(out, int.band(v, 255)); list.push(out, int.band(int.bshr(v, 8), 255)) }
+fn u32(mut out: List[Int], v: Int) -> Unit = { u16(out, int.band(v, 65535)); u16(out, int.band(int.bshr(v, 16), 65535)) }
+fn raw(mut out: List[Int], b: Bytes) -> Unit = { for i in 0..<bytes.len(b) { list.push(out, bytes.read_u8(b, i)) } }
+
+// 2026-01-01 00:00 in DOS format.
+let DOS_DATE = 23585
+
+pub fn build(entries: List[(String, String)]) -> Bytes = {
+  var out: List[Int] = []
+  var central: List[Int] = []
+  for (name, text) in entries {
+    let nb = bytes.from_string(name)
+    let data = bytes.from_string(text)
+    let crc = crc32(data)
+    let offset = list.len(out)
+    u32(out, 67324752)            // local file header
+    u16(out, 20)
+    u16(out, 2048)                // UTF-8 names
+    u16(out, 0)                   // store
+    u16(out, 0)
+    u16(out, DOS_DATE)
+    u32(out, crc)
+    u32(out, bytes.len(data))
+    u32(out, bytes.len(data))
+    u16(out, bytes.len(nb))
+    u16(out, 0)
+    raw(out, nb)
+    raw(out, data)
+    u32(central, 33639248)        // central directory header
+    u16(central, 20)
+    u16(central, 20)
+    u16(central, 2048)
+    u16(central, 0)
+    u16(central, 0)
+    u16(central, DOS_DATE)
+    u32(central, crc)
+    u32(central, bytes.len(data))
+    u32(central, bytes.len(data))
+    u16(central, bytes.len(nb))
+    u16(central, 0)
+    u16(central, 0)
+    u16(central, 0)
+    u16(central, 0)
+    u32(central, 0)
+    u32(central, offset)
+    raw(central, nb)
+  }
+  let start = list.len(out)
+  let size = list.len(central)
+  out = out + central
+  u32(out, 101010256)             // end of central directory
+  u16(out, 0)
+  u16(out, 0)
+  u16(out, list.len(entries))
+  u16(out, list.len(entries))
+  u32(out, size)
+  u32(out, start)
+  u16(out, 0)
+  var r = bytes.new(list.len(out))
+  for i in 0..<list.len(out) { bytes.set_at(r, i, out[i]) }
+  r
+}

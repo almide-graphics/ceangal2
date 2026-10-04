@@ -4,9 +4,10 @@ Read at the start of every session; update at the end.
 
 ## Current milestone
 
-**M2 — the playground on the web** (M0 and M1 done). The web build is
-feature-complete except AI (BYOK) and export. Pages deploys from CI once the
-first green run on main lands.
+**M2 — the playground on the web** (M0 and M1 done). Every feature of the
+old playground is in, AI and export included, and passes locally. Left for
+M2: the first green CI run on main, which deploys Pages (blocked: pushing to
+main needs the user — see Blockers).
 
 ## Done
 
@@ -36,7 +37,14 @@ first green run on main lands.
   Visual (PPM, SVG via `snaidhm/src/vector.almd`, simple HTML) / Rust / AST,
   examples menu, share links (`#code=` raw deflate, pure `src/deflate.almd`),
   persistence, launch params (`?example=`, `?embed=1`, `?hide=`, `?autorun=1`),
-  narrow (phone) layout.
+  narrow (phone) layout, export as a runnable zip (`src/zip.almd`).
+- AI assistant (BYOK, `src/ai.almd`): Claude / OpenAI / Gemini, SSE streamed
+  into the active tab over the `net` ABI, three-attempt repair loop with a diff
+  log (AI tab), "Fix with AI" after a failed run, key in secret storage and
+  shown masked (`ed.with_secret`). System prompt: `assets/ai/system.md`.
+- Native host: async results (`sys::post_result` / `finish_async`, event-loop
+  waker, headless `wait`), real HTTP (`ureq`, streamed, `http_cancel`), file
+  dialogs (`rfd`; headless `CEANGAL_DOWNLOADS` / `CEANGAL_OPEN_FILE`).
 - Compiler service: `apps/playground/compiler` (the almide crate at v0.66.0,
   wasm-bindgen) in a Worker (`hosts/web/runner-worker.js`) with a WASI shim.
 - Accessibility: ceangal emits a flat a11y tree (role, label, value, focus)
@@ -44,23 +52,26 @@ first green run on main lands.
   drive the app through it.
 - `tools/build_web.sh` → `dist/web`. `tests/wasm_stubs.mjs` fails the build if a
   closure body was compiled to an `exit(1)` stub (see #3296 below).
-- Tests: `tests/e2e/web.mjs` (13 steps: boot, run, check, compile error, stop,
-  examples, visual, Rust/AST, tabs, share, share link, embed, phone layout) and
+- Tests: `tests/e2e/web.mjs` (16 steps: boot, run, check, compile error, stop,
+  examples, visual, Rust/AST, tabs, export zip, share, share link, embed, phone
+  layout, AI generate + repair against a mocked provider, AI stop + fix) and
   `tests/e2e/fixtures.mjs` (11 old-playground fixtures + 18 examples, native
   CLI vs the in-browser compiler: 22 byte-identical, 7 random ones run OK).
 - CI: `web` job (macOS, real Chrome WebGPU) builds everything, runs both E2E
   suites, uploads screenshots, and deploys `dist/web` to Pages on main.
 
+## Blockers
+- Pushing to `main` was refused by the session's permission check; local
+  commits wait for the user to push. Pages also needs Settings → Pages →
+  Source "GitHub Actions" once.
+
 ## Next
-1. Push, get CI green, enable Pages (Settings → Pages → GitHub Actions) and
-   check the deployed URL in a real browser.
-2. M2 rest: AI assistant (BYOK; Anthropic / OpenAI / Gemini over the `net`
-   namespace with SSE, repair loop on diagnostics), export project as zip,
-   link to the deployed site in README.
-3. M3: user GUI on the web — bundled ceangal/snaidhm packages for user code,
+1. After the push: CI green, check the deployed URL in a real browser, link
+   it from README.
+2. M3: user GUI on the web — bundled ceangal/snaidhm packages for user code,
    Worker + OffscreenCanvas host, the Todo demo editable and runnable in the
    playground, E2E.
-4. M4: desktop native runner (compiler crate linked, wasm runtime: Pulley vs
+3. M4: desktop native runner (compiler crate linked, wasm runtime: Pulley vs
    wasmi ADR), AccessKit adapter (set `a11y::ACTIVE`), file dialogs.
 
 ## Known issues / workarounds
@@ -92,6 +103,7 @@ first green run on main lands.
   its output pane from the viewport instead.
 - `clip()` is rectangular; no kerning; a11y tree is flat (parent 0).
 - Native runner is a stub (status "native runner pending (M4)").
+- Native `secret_*` is a 0600 file, not yet the platform keychain (M4/M5).
 
 ## Human TODO
 - [ ] Apple Developer Program membership (iOS + macOS App Store), team ID,

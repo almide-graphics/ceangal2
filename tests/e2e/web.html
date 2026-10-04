@@ -52,5 +52,36 @@ window.pg = {
     return { width: snap.width, height: snap.height, rgba: btoa(s) };
   },
 };
+// AI provider mock: each call to an AI API pops the next scripted reply
+// (a list of text deltas, sent as Anthropic-style SSE in awkward chunks that
+// split lines and UTF-8 sequences), or hangs until aborted when it is "hang".
+const realFetch = window.fetch.bind(window);
+window.aiCalls = [];
+window.pg.mockAI = (replies) => {
+  const queue = [...replies];
+  window.fetch = (url, init = {}) => {
+    if (!/api\.anthropic\.com|api\.openai\.com|googleapis\.com/.test(String(url))) return realFetch(url, init);
+    window.aiCalls.push({ url: String(url), headers: init.headers, body: JSON.parse(new TextDecoder().decode(init.body)) });
+    const reply = queue.shift();
+    if (reply === "hang") return new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+    if (reply && reply.status) return Promise.resolve(new Response(reply.body, { status: reply.status }));
+    const sse = (reply || []).map((t) => `event: content_block_delta\ndata: ${JSON.stringify({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: t } })}\n\n`).join("") + "data: [DONE]\n\n";
+    const bytes = new TextEncoder().encode(sse);
+    let i = 0;
+    const stream = new ReadableStream({ pull(ctrl) { if (i >= bytes.length) return ctrl.close(); const n = 7 + (i % 13); ctrl.enqueue(bytes.slice(i, i + n)); i += n; } });
+    return Promise.resolve(new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+  };
+};
+// Downloads (file_save) are captured instead of saved.
+window.downloads = [];
+const realCreate = URL.createObjectURL.bind(URL);
+URL.createObjectURL = (blob) => { window.downloads.push(blob); return realCreate(blob); };
+window.pg.lastDownload = async () => {
+  const b = window.downloads.at(-1);
+  if (!b) return null;
+  const u8 = new Uint8Array(await b.arrayBuffer());
+  let s = ""; for (const x of u8) s += String.fromCharCode(x);
+  return btoa(s);
+};
 window.__ready = true;
 </script>

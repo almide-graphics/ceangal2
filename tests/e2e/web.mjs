@@ -114,6 +114,16 @@ try {
     await shot("tabs");
   });
 
+  await step("export downloads a runnable project zip", async () => {
+    await ev(`pg.click("Export")`);
+    const b64 = await ev(`pg.lastDownload()`);
+    assert(b64, "no download");
+    const zipPath = join(out, "export.zip");
+    writeFileSync(zipPath, Buffer.from(b64, "base64"));
+    const listing = execFileSync("python3", ["-c", "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print('\\n'.join(z.namelist()))", zipPath], { encoding: "utf8" });
+    for (const f of ["almide-playground/almide.toml", "almide-playground/src/main.almd"]) assert(listing.includes(f), `zip lacks ${f}: ${listing}`);
+  });
+
   await step("share copies a link", async () => {
     await ev(`pg.click("Share")`);
     await until(`(pg) => pg.texts().some((t) => t.startsWith("Share link copied"))`);
@@ -151,6 +161,55 @@ try {
     await ev(`pg.click("Output")`);
     await until(`(pg) => !!pg.find("Program output")`);
     await shot("mobile-output");
+  });
+
+  await step("AI: generate, run, repair once, key kept in secret storage", async () => {
+    await page.goto(`${url}/tests/e2e/web.html`);
+    await ev(`pg.boot()`, 120000);
+    const fence = "`".repeat(3);
+    await ev(`pg.mockAI(${JSON.stringify([
+      [fence + "almide\neffect fn main() -> Unit = {\n  let n: Int = \"oops\"\n", "  println(int.to_string(n))\n}\n" + fence],
+      ["effect fn main() -> Unit = {\n  let n = 7 * 6\n  println(\"fixed ✓ \" + int.to_string(n))\n}\n"],
+    ])})`);
+    await ev(`pg.click("AI assistant")`);
+    await ev(`pg.click("API key")`);
+    await ev(`pg.type("sk-ant-test")`);
+    await ev(`pg.click("Prompt")`);
+    await ev(`pg.type("print the answer")`);
+    await ev(`pg.key(1)`);
+    await until(`(pg) => pg.texts().some((t) => t.startsWith("Repaired (1)"))`, 90000);
+    const out = await ev(`pg.value("Program output")`) ?? "";
+    const calls = await ev(`window.aiCalls`);
+    assert(calls.length === 2, `expected 2 AI calls, got ${calls.length}`);
+    assert(calls[0].headers["x-api-key"] === "sk-ant-test", "key header");
+    assert(calls[0].body.system.includes("Almide"), "system prompt");
+    assert(calls[0].body.messages[0].content === "print the answer", "prompt");
+    assert(/Compile error/.test(calls[1].body.messages.at(-1).content), "repair carries the compile error");
+    assert(!calls[1].body.messages[1].content.includes(fence), "fences stripped from history");
+    const code = await ev(`pg.value("Code editor")`);
+    assert(code.includes("fixed ✓"), `code is ${JSON.stringify(code)}`);
+    assert(await ev(`atob(localStorage.getItem("almide-playground:secret:ai-key-0") || "") === "sk-ant-test"`), "key not in secret storage");
+    assert(!(await ev(`JSON.stringify(pg.nodes()).includes("sk-ant-test")`)), "key leaked into the a11y tree");
+    await ev(`pg.click("AI")`);   // the log tab
+    assert((await ev(`pg.value("AI log")`)).includes("Fixed"), "repair log");
+    await shot("ai");
+    void out;
+  });
+
+  await step("AI: stop while streaming, then fix a failed run", async () => {
+    await ev(`pg.mockAI(${JSON.stringify(["hang", ['effect fn main() -> Unit = println("repaired")\n']])})`);
+    await ev(`pg.click("Prompt")`);
+    await ev(`pg.type("anything")`);
+    await ev(`pg.key(1)`);
+    await until(`(pg) => !!pg.find("■ Stop")`);
+    await ev(`pg.click("■ Stop")`);
+    await until(`(pg) => pg.texts().includes("Cancelled")`);
+    await setCode('effect fn main() -> Unit = println(undefined_thing)\n');
+    await ev(`pg.click("Run")`);
+    await until(`(pg) => !!pg.find("Fix with AI")`, 60000);
+    await ev(`pg.click("Fix with AI")`);
+    await until(`(pg) => pg.texts().some((t) => t.startsWith("Repaired (1)"))`, 90000);
+    assert((await ev(`pg.value("Code editor")`)).includes("repaired"), "fix not applied");
   });
 
   const errs = await ev("pg.errors()");

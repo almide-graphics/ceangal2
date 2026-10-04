@@ -6,23 +6,12 @@
 
 #![allow(dead_code)]
 
-use std::cell::RefCell;
-
-thread_local! {
-    static NEXT: RefCell<i64> = const { RefCell::new(1_000_000) };
-    pub static RESULTS: RefCell<Vec<(i64, i64, Vec<u8>)>> = const { RefCell::new(Vec::new()) };
-}
-
 fn pending(msg: &str) -> i64 {
-    let id = NEXT.with(|n| { let mut n = n.borrow_mut(); *n += 1; *n });
+    let id = crate::sys::next_request_id();
     let body = format!("{{\"phase\":\"native\",\"error\":\"{msg}\"}}").into_bytes();
-    RESULTS.with(|r| r.borrow_mut().push((id, 500, body)));
+    crate::sys::begin_async();
+    crate::sys::finish_async(id, 500, Some(body));
     id
-}
-
-/// Results ready for delivery as event 10 (drained by the host loop).
-pub fn take_results() -> Vec<(i64, i64, Vec<u8>)> {
-    RESULTS.with(|r| std::mem::take(&mut *r.borrow_mut()))
 }
 
 const VERSION: &str = "native runner pending (M4)";

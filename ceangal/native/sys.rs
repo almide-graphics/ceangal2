@@ -65,6 +65,55 @@ pub(crate) fn fill(src: &[u8], ptr: i64, len: i64) -> i64 {
     n as i64
 }
 
+// ── async results (event 10) ──
+//
+// Work that finishes off the UI thread (HTTP, the playground's runner, file
+// dialogs) posts its results here; the host loop delivers them as event 10.
+// The waker nudges a sleeping event loop; `in_flight` lets headless runs wait.
+
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::{Mutex, OnceLock};
+
+static RESULTS: Mutex<Vec<(i64, i64, Vec<u8>)>> = Mutex::new(Vec::new());
+static IN_FLIGHT: AtomicI64 = AtomicI64::new(0);
+static NEXT_ID: AtomicI64 = AtomicI64::new(1);
+static WAKER: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// A fresh request id, unique across every namespace.
+pub fn next_request_id() -> i64 {
+    NEXT_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Mark one piece of async work as started; pair with `finish_async`.
+pub fn begin_async() {
+    IN_FLIGHT.fetch_add(1, Ordering::SeqCst);
+}
+
+/// Queue an intermediate result (e.g. a streamed chunk). Any thread.
+pub fn post_result(id: i64, status: i64, body: Vec<u8>) {
+    RESULTS.lock().unwrap().push((id, status, body));
+    if let Some(w) = WAKER.get() { w(); }
+}
+
+/// Queue the final result (if any) and end the work started by `begin_async`.
+pub fn finish_async(id: i64, status: i64, body: Option<Vec<u8>>) {
+    if let Some(b) = body { RESULTS.lock().unwrap().push((id, status, b)); }
+    IN_FLIGHT.fetch_sub(1, Ordering::SeqCst);
+    if let Some(w) = WAKER.get() { w(); }
+}
+
+pub fn in_flight() -> i64 {
+    IN_FLIGHT.load(Ordering::SeqCst)
+}
+
+pub fn take_results() -> Vec<(i64, i64, Vec<u8>)> {
+    std::mem::take(&mut *RESULTS.lock().unwrap())
+}
+
+pub fn set_waker(f: Box<dyn Fn() + Send + Sync>) {
+    let _ = WAKER.set(f);
+}
+
 pub fn set_event_data(data: &[u8]) {
     STATE.with(|s| {
         let mut s = s.borrow_mut();

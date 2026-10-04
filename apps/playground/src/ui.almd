@@ -8,6 +8,7 @@ import snaidhm
 import self.state as st
 import self.visual as visual
 import self.html as html
+import self.ai as ai
 
 // ── Theme ──
 
@@ -46,6 +47,15 @@ let keep_show_ast = st.show_ast
 let keep_toggle_examples = st.toggle_examples
 let keep_toggle_mobile_output = st.toggle_mobile_output
 let keep_pixel_scale = ceangal.pixel_scale
+let keep_export_zip = st.export_zip
+let keep_ai_toggle = ai.toggle
+let keep_ai_select_provider = ai.select_provider
+let keep_ai_select_model = ai.select_model
+let keep_ai_set_key_field = ai.set_key_field
+let keep_ai_set_prompt_field = ai.set_prompt_field
+let keep_ai_generate = ai.generate
+let keep_ai_fix_last_run = ai.fix_last_run
+let keep_ai_set_log = ai.set_log
 
 fn c(n: Int) -> snaidhm.Color = snaidhm.hex(n)
 
@@ -73,12 +83,44 @@ fn header(narrow: Bool) -> v.View = {
   if not st.embed then {
     list.push(items, button("Examples", st.examples_open, () => st.toggle_examples()))
     list.push(items, button("Share", false, () => st.share()))
+    if not narrow then list.push(items, button("Export", false, () => st.export_zip())) else ()
+    list.push(items, button("AI", ai.open, () => ai.toggle()) |> v.label("AI assistant"))
   } else ()
   if narrow then list.push(items, button(if st.mobile_output then "Code" else "Output", false, () => st.toggle_mobile_output())) else ()
   list.push(items, run_btn)
   v.row(items) |> v.gap(if narrow then 6.0 else 10.0) |> v.align(v.Middle) |> v.h(48.0) |> v.px(if narrow then 10.0 else 14.0) |> v.bg(c(PANEL))
 }
 
+
+// ── AI bar ──
+
+fn chip(s: String, on: Bool, f: () -> Unit) -> v.View =
+  label(s, 12.0, if on then BG else MUTED)
+    |> v.px(9.0) |> v.py(4.0) |> v.rounded(5.0)
+    |> v.bg(if on then c(ACCENT) else c(RAISED))
+    |> v.on_click(f) |> v.role(3) |> v.label(s)
+
+fn provider_chip(i: Int) -> v.View = chip(ai.PROVIDERS[i], ai.provider == i, () => ai.select_provider(i))
+
+fn model_chip(i: Int, m: ai.Model) -> v.View = chip(m.label, ai.model_ix == i, () => ai.select_model(i))
+
+fn ai_bar(narrow: Bool) -> v.View = {
+  var chips: List[v.View] = []
+  for i in 0..<3 { list.push(chips, provider_chip(i)) }
+  list.push(chips, v.empty() |> v.w(1.0) |> v.h(18.0) |> v.bg(c(BORDER)))
+  let ms = ai.models(ai.provider)
+  for i in 0..<list.len(ms) { list.push(chips, model_chip(i, ms[i])) }
+  let key = ed.field("ai-key", () => ai.key_field, (e) => ai.set_key_field(e), ed.dark_theme())
+    |> v.size(if narrow then 150.0 else 190.0, 30.0) |> v.rounded(5.0) |> v.clip() |> v.label("API key")
+  let prompt = ed.field("ai-prompt", () => ai.prompt_field, (e) => ai.set_prompt_field(e), ed.dark_theme())
+    |> v.h(30.0) |> v.grow(1.0) |> v.min_w(200.0) |> v.rounded(5.0) |> v.clip() |> v.label("Prompt")
+    |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { ai.generate(); true } else false)
+  let go = button(if ai.busy() then "■ Stop" else "Generate", ai.busy(), () => ai.generate())
+  v.col([
+    v.wrap_row(chips) |> v.gap(6.0),
+    v.wrap_row([key, prompt, go]) |> v.gap(8.0),
+  ]) |> v.gap(8.0) |> v.px(14.0) |> v.py(10.0) |> v.bg(c(PANEL)) |> v.role(2) |> v.label("AI panel")
+}
 
 // ── File tabs ──
 
@@ -166,10 +208,12 @@ fn output_pane() -> v.View = {
     if st.out_tab == 0 then ed.view("output", () => st.out, (e) => st.set_out(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Program output")
     else if st.out_tab == 1 then picture_view()
     else if st.out_tab == 2 then ed.view("rust", () => st.rust_view, (e) => st.set_rust_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Generated Rust")
-    else ed.view("ast", () => st.ast_view, (e) => st.set_ast_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Syntax tree")
+    else if st.out_tab == 3 then ed.view("ast", () => st.ast_view, (e) => st.set_ast_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Syntax tree")
+    else ed.view("ai-log", () => ai.log, (e) => ai.set_log(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("AI log")
   var tabs: List[v.View] = [out_tab(0, "Output"), out_tab(1, "Visual")]
   if not list.contains(st.hidden, "rust") then list.push(tabs, out_tab(2, "Rust")) else ()
   if not list.contains(st.hidden, "ast") then list.push(tabs, out_tab(3, "AST")) else ()
+  if ai.open or st.out_tab == 4 then list.push(tabs, out_tab(4, "AI")) else ()
   v.col([
     v.row(tabs) |> v.h(32.0) |> v.bg(c(PANEL)),
     body,
@@ -184,10 +228,17 @@ fn status_bar(narrow: Bool) -> v.View = {
   if st.compile_ms >= 0 then right = "compiled in " + int.to_string(st.compile_ms) + " ms" + (if right == "" then "" else " · " + right) else ()
   v.row([
     label(st.status, 12.0, MUTED) |> v.shrink(1.0),
+    fix_button(),
     v.spacer(),
     label(right, 12.0, FAINT),
   ]) |> v.gap(8.0) |> v.align(v.Middle) |> v.h(26.0) |> v.px(12.0) |> v.bg(c(PANEL)) |> v.clip()
 }
+
+// After a failed run, offer the AI repair loop (when a key is set).
+fn fix_button() -> v.View =
+  if not st.running and not st.last_run_ok and st.last_run_error != "" and not ai.busy() and ai.has_key() then
+    label("Fix with AI", 12.0, ACCENT) |> v.px(6.0) |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
+  else v.empty()
 
 // ── Examples menu ──
 
@@ -219,6 +270,7 @@ pub fn root() -> v.View = {
     ]) |> v.grow(1.0)
   var parts: List[v.View] = []
   if not (st.embed and list.contains(st.hidden, "header")) then list.push(parts, header(narrow)) else ()
+  if ai.open and not st.embed then list.push(parts, ai_bar(narrow)) else ()
   list.push(parts, tab_bar())
   list.push(parts, body |> v.grow(1.0))
   list.push(parts, status_bar(narrow))

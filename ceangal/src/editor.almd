@@ -47,6 +47,7 @@ type Editor = {
   scroll_to_cursor: Bool,
   line_style: List[Int],  // per-line color index into Theme.styles (plain text only)
   gutter: Bool,
+  secret: Bool,           // shows • per character; copy / cut / a11y value are withheld
 }
 
 let GUTTER_PAD = 12.0
@@ -91,6 +92,7 @@ pub fn from_string(s: String) -> Editor = {
   scroll_to_cursor: false,
   line_style: [],
   gutter: true,
+  secret: false,
 }
 
 pub fn text_field(s: String, placeholder: String) -> Editor =
@@ -101,6 +103,10 @@ pub fn with_syntax(e: Editor, on: Bool) -> Editor = { ...e, syntax: on }
 pub fn with_read_only(e: Editor, on: Bool) -> Editor = { ...e, read_only: on }
 pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor = { ...e, diags: ds }
 pub fn with_gutter(e: Editor, on: Bool) -> Editor = { ...e, gutter: on }
+pub fn with_secret(e: Editor, on: Bool) -> Editor = { ...e, secret: on }
+
+// What is drawn for a line: the text, or one bullet per character.
+fn shown(e: Editor, cps: List[Int]) -> List[Int] = if e.secret then list.repeat(8226, list.len(cps)) else cps
 
 // A read-only log (the playground's output panel): plain text, per-line style.
 pub fn log() -> Editor = { ...from_string(""), syntax: false, read_only: true, gutter: false, font_size: 12.5 }
@@ -149,7 +155,7 @@ pub fn to_string(e: Editor) -> String = {
 
 // The lines on screen (plus a few around them), for assistive technology:
 // a 10k-line buffer must not be re-joined every frame.
-pub fn visible_text(e: Editor) -> String = {
+pub fn visible_text(e: Editor) -> String = if e.secret then "" else {
   let lh = line_h(e)
   let first = int.max(0, float.to_int(float.floor(e.scroll_y / lh)) - 5)
   let last = int.min(list.len(e.lines) - 1, float.to_int(float.ceil((e.scroll_y + float.max(e.view_h, lh * 40.0)) / lh)) + 5)
@@ -380,7 +386,7 @@ fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
 
 // x of each column boundary of a line (length cols+1), logical px.
 fn col_xs(e: Editor, cps: List[Int]) -> List[Float] = {
-  let gs = tx.shape(cps, e.font_size, not e.single_line, false)
+  let gs = tx.shape(shown(e, cps), e.font_size, not e.single_line, false)
   var xs: List[Float] = [0.0]
   for g in gs { list.push(xs, g.x + g.advance) }
   xs
@@ -467,9 +473,9 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool) =
       else if code == 20 and sc then some(select_all(e))
       else if code == 24 and sc then some(if shift then redo(e) else undo(e))
       else if code == 25 and sc then some(redo(e))
-      else if code == 21 and sc then { if has_selection(e) then ui.copy_text(selected_text(e)) else (); some(e) }
+      else if code == 21 and sc then { if has_selection(e) and not e.secret then ui.copy_text(selected_text(e)) else (); some(e) }
       else if code == 23 and sc then {
-        if has_selection(e) then { ui.copy_text(selected_text(e)); some(replace_selection(e, [], 0)) } else some(e)
+        if has_selection(e) and not e.secret then { ui.copy_text(selected_text(e)); some(replace_selection(e, [], 0)) } else some(e)
       }
       else none
     match r {
@@ -525,7 +531,7 @@ pub fn dark_theme() -> Theme = {
   colors: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xBB9AF7), snaidhm.hex(0x9ECE6A), snaidhm.hex(0x565F89), snaidhm.hex(0xFF9E64),
            snaidhm.hex(0x2AC3DE), snaidhm.hex(0x7AA2F7), snaidhm.hex(0xE0AF68), snaidhm.hex(0x7DCFFF), snaidhm.hex(0x89DDFF), snaidhm.hex(0x9AA5CE)],
   error: snaidhm.hex(0xF7768E), warning: snaidhm.hex(0xE0AF68), placeholder: snaidhm.hex(0x565F89),
-  styles: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xF7768E), snaidhm.hex(0x565F89), snaidhm.hex(0x9ECE6A)],
+  styles: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xF7768E), snaidhm.hex(0x565F89), snaidhm.hex(0x9ECE6A), snaidhm.hex(0x7AA2F7)],
 }
 
 pub fn light_theme() -> Theme = {
@@ -534,7 +540,7 @@ pub fn light_theme() -> Theme = {
   colors: [snaidhm.hex(0x1F2937), snaidhm.hex(0x7C3AED), snaidhm.hex(0x15803D), snaidhm.hex(0x9CA3AF), snaidhm.hex(0xC2410C),
            snaidhm.hex(0x0E7490), snaidhm.hex(0x2563EB), snaidhm.hex(0xB45309), snaidhm.hex(0x0369A1), snaidhm.hex(0x475569), snaidhm.hex(0x6B7280)],
   error: snaidhm.hex(0xDC2626), warning: snaidhm.hex(0xD97706), placeholder: snaidhm.hex(0x9CA3AF),
-  styles: [snaidhm.hex(0x1F2937), snaidhm.hex(0xDC2626), snaidhm.hex(0x9CA3AF), snaidhm.hex(0x15803D)],
+  styles: [snaidhm.hex(0x1F2937), snaidhm.hex(0xDC2626), snaidhm.hex(0x9CA3AF), snaidhm.hex(0x15803D), snaidhm.hex(0x2563EB)],
 }
 
 // ── Paint ──
@@ -584,7 +590,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   snaidhm.push_clip((x + gw) * k, y * k, (w - gw) * k, h * k)
   for l in first...last {
     let ly = if e.single_line then y + (h - lh) * 0.5 else y + py + int.to_float(l) * lh - e.scroll_y
-    var cps = e.lines[l]
+    var cps = shown(e, e.lines[l])
     let on_cursor_line = l == e.cur.line
     let pre_n = if on_cursor_line then list.len(e.preedit) else 0
     if pre_n > 0 then cps = list.take(cps, e.cur.col) + e.preedit + list.drop(cps, e.cur.col) else ()

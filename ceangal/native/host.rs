@@ -45,6 +45,33 @@ fn call(ctx: &Rc<RefCell<GpuContext>>, kind: i64, a: i64, b: i64, x: f64, y: f64
     gpu::enter(ctx, || dispatch(kind, a, b, x, y, z, w))
 }
 
+/// Hand every queued async result to the guest as event 10.
+fn deliver_results(ctx: &Rc<RefCell<GpuContext>>) -> bool {
+    let results = crate::sys::take_results();
+    let any = !results.is_empty();
+    for (id, status, body) in results {
+        crate::sys::set_event_data(&body);
+        call(ctx, EV_RESULT, id, status, 0.0, 0.0, 0.0, 0.0);
+    }
+    crate::sys::set_event_data(&[]);
+    any
+}
+
+/// Headless: deliver results until no async work is in flight (or timeout).
+fn wait_idle(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, timeout_s: f64) {
+    let start = std::time::Instant::now();
+    loop {
+        deliver_results(ctx);
+        settle(ctx, t);
+        if crate::sys::in_flight() == 0 && !deliver_results(ctx) { break; }
+        if start.elapsed().as_secs_f64() > timeout_s {
+            eprintln!("ceangal: wait timed out with {} request(s) in flight", crate::sys::in_flight());
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+}
+
 fn text_event(ctx: &Rc<RefCell<GpuContext>>, kind: i64, text: &str, cursor: i64) -> i64 {
     crate::sys::set_event_data(text.as_bytes());
     let r = call(ctx, EV_TEXT, kind, cursor, 0.0, 0.0, 0.0, 0.0);
@@ -67,6 +94,8 @@ fn settle(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64) {
         let mut s = s.borrow_mut();
         if s.frame_deadline.take().is_some() { s.frame_requested = true; }
     });
+    crate::file::perform(false);
+    deliver_results(ctx);
     // Render until the guest stops asking for frames (bounded: animations).
     for _ in 0..8 {
         let wanted = crate::sys::take_frame_request();
@@ -145,6 +174,8 @@ fn run_headless(out: &str) {
                     t += 16.0;
                 }
             }
+            // Block until every request in flight has delivered its result.
+            "wait" => wait_idle(&ctx, &mut t, if nums.is_empty() { 120.0 } else { n(0) }),
             "snap" => {
                 settle(&ctx, &mut t);
                 snapshot(&ctx, arg);
@@ -153,7 +184,7 @@ fn run_headless(out: &str) {
         }
         settle(&ctx, &mut t);
     }
-    settle(&ctx, &mut t);
+    wait_idle(&ctx, &mut t, 120.0);
     snapshot(&ctx, out);
 }
 
@@ -257,6 +288,7 @@ impl Windowed {
                 );
             }
         }
+        crate::file::perform(true);
         if let Some(text) = crate::clipboard::take_write() {
             if let Some(cb) = self.clipboard.as_mut() {
                 let _ = cb.set_text(text);
@@ -268,7 +300,13 @@ impl Windowed {
     }
 }
 
-impl ApplicationHandler for Windowed {
+impl ApplicationHandler<()> for Windowed {
+    /// Async results arrived (sys::post_result woke the loop).
+    fn user_event(&mut self, _el: &ActiveEventLoop, _: ()) {
+        deliver_results(&self.ctx);
+        self.apply_requests();
+    }
+
     fn resumed(&mut self, el: &ActiveEventLoop) {
         if self.window.is_some() {
             self.call(EV_LIFECYCLE, 1, 0, 0.0, 0.0, 0.0, 0.0);
@@ -416,7 +454,9 @@ impl ApplicationHandler for Windowed {
 }
 
 fn run_windowed() {
-    let event_loop = EventLoop::new().expect("event loop");
+    let event_loop = EventLoop::<()>::with_user_event().build().expect("event loop");
+    let proxy = event_loop.create_proxy();
+    crate::sys::set_waker(Box::new(move || { let _ = proxy.send_event(()); }));
     let mut app = Windowed {
         window: None,
         ctx: Rc::new(RefCell::new(GpuContext::new())),

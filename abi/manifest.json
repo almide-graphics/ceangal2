@@ -518,6 +518,13 @@
     "Int"
    ],
    "ret": "Unit"
+  },
+  {
+   "name": "http_cancel",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
   }
  ],
  "runner": [

@@ -195,7 +195,8 @@ event data buffer.
   `http_header(id, name_ptr, name_len, value_ptr, value_len)`,
   `http_send(id, body_ptr, body_len)`. Streaming bodies arrive as several
   event-10s with `status = 1000 + http status` per chunk and the final one
-  with the plain status.
+  with the plain status (`0` and the error text if the request failed).
+  `http_cancel(id)` aborts a request; nothing more is delivered for it.
 * `file_open(kind) -> Int` (system picker; `kind` 0 text), `file_save(name_ptr,
   name_len, ptr, len) -> Int`.
 

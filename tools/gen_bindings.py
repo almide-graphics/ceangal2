@@ -93,6 +93,7 @@ NAMESPACES = {
         ("http_begin", [("method_ptr", I), ("method_len", I), ("url_ptr", I), ("url_len", I)], I),
         ("http_header", [("id", I), ("name_ptr", I), ("name_len", I), ("value_ptr", I), ("value_len", I)], U),
         ("http_send", [("id", I), ("body_ptr", I), ("body_len", I)], U),
+        ("http_cancel", [("id", I)], U),
     ]),
     # App-specific: the playground's compiler service (apps/playground/docs/runner.md).
     "runner": ("apps/playground/src/host/runner.almd", "crate::runner", [

@@ -1,0 +1,14 @@
+import self.zip as zip
+
+test "crc32 of a known string" {
+  assert_eq(zip.crc32(bytes.from_string("The quick brown fox jumps over the lazy dog")), 1095738169)
+}
+
+test "zip layout" {
+  let z = zip.build([("a/b.txt", "hi"), ("c.almd", "日本")])
+  assert_eq(bytes.read_u8(z, 0), 80)
+  assert_eq(bytes.read_u8(z, 1), 75)
+  // EOCD at the end: 22 bytes, signature PK\5\6
+  assert_eq(bytes.read_u8(z, bytes.len(z) - 22), 80)
+  assert_eq(bytes.read_u8(z, bytes.len(z) - 19), 6)
+}

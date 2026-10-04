@@ -15,3 +15,7 @@ fn http_header(id: Int, name_ptr: Int, name_len: Int, value_ptr: Int, value_len:
 @extern(wasm, "net", "http_send")
 @extern(rust, "crate::net", "http_send")
 fn http_send(id: Int, body_ptr: Int, body_len: Int) -> Unit = _
+
+@extern(wasm, "net", "http_cancel")
+@extern(rust, "crate::net", "http_cancel")
+fn http_cancel(id: Int) -> Unit = _

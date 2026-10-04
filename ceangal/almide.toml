@@ -10,3 +10,5 @@ snaidhm = { path = "../snaidhm" }
 winit = "0.30"
 png = "0.18"
 arboard = "3"
+ureq = "2"
+rfd = "0.15"

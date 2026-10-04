@@ -13,6 +13,8 @@ import base64
 import self.host.runner as runner
 import self.visual as visual
 import self.deflate as deflate
+import self.zip as zip
+import ceangal.host.file as file
 
 let ENTRY = "main.almd"
 let STORAGE_KEY = "files-v2"
@@ -27,7 +29,7 @@ type Tab = { name: String, ed: ed.Editor }
 var tabs: List[Tab] = []
 var active = 0
 var out = ed.log()
-var out_tab = 0          // 0 output, 1 visual, 2 rust, 3 ast
+var out_tab = 0          // 0 output, 1 visual, 2 rust, 3 ast, 4 ai
 var rust_view = ed.with_read_only(ed.from_string(""), true)
 var ast_view = ed.with_syntax(ed.with_read_only(ed.from_string(""), true), false)
 var running = false
@@ -56,6 +58,11 @@ var last_tab_index = -1
 var base_url = WEB_URL
 var embed = false
 var hidden: List[String] = []
+// The last finished run, for the AI repair loop (ai.almd polls `runs_finished`).
+var runs_finished = 0
+var last_run_ok = false
+var last_run_error = ""
+var stderr_text: List[String] = []
 
 // ── Tabs ──
 
@@ -174,6 +181,7 @@ fn append_out(line: String, style: Int) -> Unit = {
 fn clear_output() -> Unit = {
   out = ed.clear(out)
   stdout_text = []
+  stderr_text = []
   if picture_tex != 0 then { snaidhm.release_image(picture_tex); picture_tex = 0 } else ()
   picture = visual.empty()
 }
@@ -294,16 +302,21 @@ fn apply_diagnostics(body: String) -> Unit = {
 
 fn finish_run(ok_run: Bool, body: String) -> Unit = {
   running = false
+  runs_finished = runs_finished + 1
   if ok_run then {
     let code = field_int(body, "exitCode")
     run_ms = float.to_int(field_float(body, "runMs"))
     compile_ms = float.to_int(field_float(body, "compileMs"))
     if code == 0 then status = "Exited 0" else { status = "Exited " + int.to_string(code); append_out("exit " + int.to_string(code), 1) }
+    last_run_ok = code == 0
+    last_run_error = if code == 0 then "" else string.join(stderr_text, "\n") + "\nexit code " + int.to_string(code)
     picture = visual.detect(string.join(stdout_text, "\n"))
     if picture.kind != visual.NoVisual then out_tab = 1 else ()
   } else {
     let phase = field_str(body, "phase")
     let err_text = field_str(body, "error")
+    last_run_ok = false
+    last_run_error = (if phase == "runtime" then "Runtime error:\n" else "Compile error:\n") + err_text
     if phase == "stopped" then status = "Stopped"
     else {
       for l in string.lines(err_text) { append_out(l, 1) }
@@ -317,7 +330,7 @@ pub fn on_result(id: Int, code: Int, body: Bytes) -> Unit = {
   let text = bytes.to_string_lossy(body)
   if id == run_id then {
     if code == 100 then { append_out(text, 0); list.push(stdout_text, text) }
-    else if code == 101 then append_out(text, 1)
+    else if code == 101 then { append_out(text, 1); list.push(stderr_text, text) }
     else if code == 102 then { status = "Running…"; compile_ms = int.parse(text) ?? -1 }
     else if code == 200 then finish_run(true, text)
     else if code == 500 then finish_run(false, text)
@@ -519,4 +532,25 @@ pub fn set_ast_view(e: ed.Editor) -> Unit = { ast_view = e }
 pub fn picture_texture() -> Int = {
   if picture_tex == 0 then picture_tex = snaidhm.create_image(picture.w, picture.h, picture.rgba) else ()
   picture_tex
+}
+
+// ── For the AI assistant ──
+
+pub fn active_text() -> String = ed.to_string(current())
+pub fn set_active_text(s: String) -> Unit = set_current(ed.set_text(current(), s))
+pub fn run_fresh() -> Unit = { if running then stop() else (); run() }
+pub fn set_status(s: String) -> Unit = { status = s }
+
+// ── Export: a runnable project (almide.toml, src/*.almd, data at the root) ──
+
+pub fn export_zip() -> Unit = {
+  var entries: List[(String, String)] = [("almide-playground/almide.toml", "[package]\nname = \"playground_export\"\nversion = \"0.1.0\"\n")]
+  for (n, t) in files() {
+    let path = if string.ends_with(n, ".almd") then "src/" + n else n
+    list.push(entries, ("almide-playground/" + path, t))
+  }
+  let z = zip.build(entries)
+  let name = bytes.from_string("almide-playground.zip")
+  let _ = file.file_save(bytes.data_ptr(name), bytes.len(name), bytes.data_ptr(z), bytes.len(z))
+  status = "Exported almide-playground.zip — unzip and `almide run src/main.almd`"
 }
