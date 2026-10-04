@@ -116,17 +116,28 @@ class E2E: XCTestCase {
     func type(_ text: String) {
         let kb = app.keyboards.firstMatch
         XCTAssertTrue(kb.waitForExistence(timeout: 10), "no on-screen keyboard")
+        // a fresh simulator's first keyboard can show an introduction panel
+        for name in ["Continue", "Not Now", "OK"] {
+            let b = app.buttons[name]
+            if b.exists { b.tap(); Thread.sleep(forTimeInterval: 0.5) }
+        }
         for (i, ch) in text.enumerated() {
             if !kb.exists { shot("fail-keyboard-gone"); XCTFail("the keyboard went away after \(i) keys; labels: \(labels(tree()))") }
             let s = String(ch)
             if s == " " { kb.keys["space"].tap(); continue }
             var key = kb.keys[s]
-            if !key.exists {
+            var tries = 0
+            while !key.waitForExistence(timeout: 1) && tries < 3 {
                 // the other case: Shift switches the letters
-                kb.buttons["shift"].firstMatch.tap()
+                let shift = kb.buttons["shift"].exists ? kb.buttons["shift"] : kb.keys["shift"]
+                if shift.exists { shift.tap() }
                 key = kb.keys[s]
+                tries += 1
             }
-            XCTAssertTrue(key.waitForExistence(timeout: 3), "no key \"\(s)\" on the keyboard")
+            if !key.exists {
+                shot("fail-key-\(s)")
+                XCTFail("no key \"\(s)\" on the keyboard; keys: \(kb.keys.allElementsBoundByIndex.map(\.label).joined(separator: " "))")
+            }
             key.tap()
         }
         let ret = kb.buttons["Return"].exists ? kb.buttons["Return"] : kb.keys["Return"]
