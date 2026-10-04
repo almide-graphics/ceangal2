@@ -1,0 +1,509 @@
+{
+ "gpu": [
+  {
+   "name": "surface_format",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "create_shader",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "create_render_pipeline",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "create_buffer",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "write_buffer",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "create_texture",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "write_texture",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "create_sampler",
+   "params": [
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "bind_begin",
+   "params": [],
+   "ret": "Unit"
+  },
+  {
+   "name": "bind_buffer",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "bind_texture",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "bind_sampler",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "bind_create",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "frame_begin",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "target_width",
+   "params": [
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "target_height",
+   "params": [
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "pass_begin",
+   "params": [
+    "Int",
+    "Int",
+    "Float",
+    "Float",
+    "Float",
+    "Float"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "pass_pipeline",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "pass_bind",
+   "params": [
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "pass_scissor",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "pass_draw",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "pass_end",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "frame_submit",
+   "params": [],
+   "ret": "Unit"
+  },
+  {
+   "name": "release",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "external_texture",
+   "params": [
+    "Int"
+   ],
+   "ret": "Int"
+  }
+ ],
+ "sys": [
+  {
+   "name": "abi_version",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "run",
+   "params": [],
+   "ret": "Unit"
+  },
+  {
+   "name": "request_frame",
+   "params": [],
+   "ret": "Unit"
+  },
+  {
+   "name": "now_ms",
+   "params": [],
+   "ret": "Float"
+  },
+  {
+   "name": "log",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "event_len",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "event_read",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "platform",
+   "params": [],
+   "ret": "Int"
+  },
+  {
+   "name": "set_cursor",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "set_title",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "open_url",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "asset_len",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "asset_read",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "exit",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "text_input": [
+  {
+   "name": "ime_begin",
+   "params": [
+    "Float",
+    "Float",
+    "Float",
+    "Float"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "ime_update",
+   "params": [
+    "Float",
+    "Float",
+    "Float",
+    "Float"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "ime_end",
+   "params": [],
+   "ret": "Unit"
+  }
+ ],
+ "a11y": [
+  {
+   "name": "a11y_begin",
+   "params": [],
+   "ret": "Unit"
+  },
+  {
+   "name": "a11y_node",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Float",
+    "Float",
+    "Float",
+    "Float",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "a11y_value",
+   "params": [
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "a11y_commit",
+   "params": [
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "clipboard": [
+  {
+   "name": "clipboard_write",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "storage": [
+  {
+   "name": "storage_len",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "storage_read",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "storage_write",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "storage_remove",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "secret_len",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "secret_read",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "secret_write",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "secret_remove",
+   "params": [
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "net": [
+  {
+   "name": "http_begin",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "http_header",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  },
+  {
+   "name": "http_send",
+   "params": [
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Unit"
+  }
+ ],
+ "file": [
+  {
+   "name": "file_open",
+   "params": [
+    "Int"
+   ],
+   "ret": "Int"
+  },
+  {
+   "name": "file_save",
+   "params": [
+    "Int",
+    "Int",
+    "Int",
+    "Int"
+   ],
+   "ret": "Int"
+  }
+ ]
+}

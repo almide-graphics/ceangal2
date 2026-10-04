@@ -1,0 +1,12 @@
+[package]
+name = "ceangal"
+version = "0.1.0"
+description = "UI framework for Almide (ceangal2): one ABI, every platform"
+
+[dependencies]
+snaidhm = { path = "../snaidhm" }
+
+[native-deps]
+winit = "0.30"
+png = "0.18"
+arboard = "3"

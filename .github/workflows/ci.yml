@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  abi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: bindings are generated from the manifest
+        run: python3 tools/gen_bindings.py && git diff --exit-code
+      - run: node tests/abi_conformance.mjs
+
+  almide-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: layout engine (Yoga-derived)
+        working-directory: ceangal
+        run: ../tools/almide test src/layout_test.almd
+      - name: wasm check (every app)
+        run: |
+          for app in apps/*/; do
+            (cd "$app" && ../../tools/almide check --target wasm src/main.almd)
+          done
+
+  pixel-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            apps/*/.almide
+          key: almide-native-${{ runner.os }}-${{ hashFiles('.almide-version', '**/almide.toml') }}
+      - name: web vs native pixels
+        run: node tests/pixel/run.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pixel-macos
+          path: out/pixel/*.png

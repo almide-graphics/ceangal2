@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ceangal pixel harness</title>
+<body>
+<script type="module">
+import { start } from "/hosts/web/host.js";
+
+const q = new URLSearchParams(location.search);
+const width = Number(q.get("w") || 800), height = Number(q.get("h") || 600), scale = Number(q.get("scale") || 1);
+const assets = JSON.parse(q.get("assets") || "{}");
+
+// Same script vocabulary as the native headless host (ceangal/native/host.rs).
+async function runScript(host, script) {
+  for (const cmd of script.split(";").map((s) => s.trim()).filter(Boolean)) {
+    const sp = cmd.indexOf(" ");
+    const name = sp < 0 ? cmd : cmd.slice(0, sp), arg = sp < 0 ? "" : cmd.slice(sp + 1);
+    const n = arg.split(/\s+/).map(Number);
+    if (name === "click") host.click(n[0], n[1]);
+    else if (name === "down") host.dispatch(4, 0, 0, n[0], n[1], 1, 0);
+    else if (name === "move") host.dispatch(4, 1, 0, n[0], n[1], 1, 0);
+    else if (name === "up") host.dispatch(4, 2, 0, n[0], n[1], 0, 0);
+    else if (name === "wheel") host.dispatch(5, 0, 1, n[0], n[1], n[2], n[3]);
+    else if (name === "key") host.key(n[0], n[1] || 0);
+    else if (name === "text") host.text(arg, 0);
+    else if (name === "paste") host.text(arg, 3);
+    else if (name === "frames") { for (let i = 0; i < Math.max(1, n[0]); i++) host.dispatch(3, 0, 0, i * 16); }
+    await host.settle();
+  }
+}
+
+window.__run = async () => {
+  const errors = [];
+  const host = await start({ canvas: null, wasm: q.get("wasm"), assets, headless: { width, height, scale }, onError: (e) => errors.push(String(e)) });
+  await host.settle();
+  await runScript(host, q.get("script") || "");
+  const snap = await host.snapshot();
+  if (errors.length) throw new Error(errors.join("\n"));
+  let s = "";
+  for (let i = 0; i < snap.rgba.length; i += 0x8000) s += String.fromCharCode.apply(null, snap.rgba.subarray(i, i + 0x8000));
+  return { width: snap.width, height: snap.height, rgba: btoa(s) };
+};
+</script>

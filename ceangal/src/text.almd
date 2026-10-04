@@ -1,0 +1,17 @@
+// Text measurement and drawing.
+//
+// M0 placeholder metrics: monospace-like advance of 0.6 em, line height
+// 1.3 em, nothing drawn. M1 replaces this with the font engine (TTF parse,
+// glyph rasterisation into snaidhm's atlas, CJK fallback).
+
+import snaidhm
+import self.layout as lay
+
+// Sizes are layout.Size: a second record type with the same fields makes the
+// native leg emit the wrong struct (almide/almide#3283).
+type Extent = lay.Size
+
+pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
+  { w: int.to_float(string.len(s)) * size * 0.6, h: size * 1.3 }
+
+pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, c: snaidhm.Color) -> Unit = ()

@@ -1,0 +1,273 @@
+// snaidhm — the renderer every ceangal2 pixel goes through.
+//
+// Immediate-mode per frame: begin(), then fill/stroke/shadow/glyph/image
+// calls append 80-byte instances (shader.almd), then end() uploads them once
+// and draws them in a single pass, split only where the bound image texture
+// changes. Coordinates are physical pixels, top-left origin.
+
+import self.gpu
+import self.shader
+
+type Color = { r: Float, g: Float, b: Float, a: Float }
+
+pub fn rgba(r: Float, g: Float, b: Float, a: Float) -> Color = { r: r, g: g, b: b, a: a }
+
+// 0xRRGGBB, opaque.
+pub fn hex(n: Int) -> Color = {
+  r: int.to_float((n / 65536) % 256) / 255.0,
+  g: int.to_float((n / 256) % 256) / 255.0,
+  b: int.to_float(n % 256) / 255.0,
+  a: 1.0,
+}
+
+pub fn with_alpha(c: Color, a: Float) -> Color = { r: c.r, g: c.g, b: c.b, a: a }
+
+let ATLAS_SIZE = 2048
+
+// ── GPU state (created on first begin) ──
+
+var ready = false
+var pipeline = 0
+var globals_buf = 0
+var inst_buf = 0
+var inst_cap = 0          // instances the buffer holds
+var atlas_tex = 0
+var linear_sampler = 0
+var white_tex = 0
+var group0 = 0
+var group1_white = 0
+var image_groups: List[Int] = []     // texture handle -> bind group, parallel lists
+var image_group_tex: List[Int] = []
+
+// ── Frame state ──
+
+var data = bytes.new(0)
+var count = 0
+var frame_w = 1
+var frame_h = 1
+var clip_x0 = 0.0
+var clip_y0 = 0.0
+var clip_x1 = 0.0
+var clip_y1 = 0.0
+var clip_stack: List[Float] = []
+// Batches: image texture per run of instances (0 = the white texture).
+var batch_tex: List[Int] = []
+var batch_start: List[Int] = []
+
+fn ensure_ready() -> Unit = {
+  if not ready then {
+    let src = bytes.from_string(shader.WGSL)
+    let sh = gpu.create_shader(bytes.data_ptr(src), bytes.len(src))
+    let vs = bytes.from_string("vs_main")
+    let fs = bytes.from_string("fs_main")
+    pipeline = gpu.create_render_pipeline(sh, bytes.data_ptr(vs), bytes.len(vs),
+      bytes.data_ptr(fs), bytes.len(fs), gpu.surface_format(), gpu.BLEND_PREMUL)
+    globals_buf = gpu.create_buffer(16, gpu.BUF_UNIFORM + gpu.BUF_COPY_DST)
+    atlas_tex = gpu.create_texture(ATLAS_SIZE, ATLAS_SIZE, gpu.FORMAT_R8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
+    linear_sampler = gpu.create_sampler(gpu.FILTER_LINEAR)
+    white_tex = gpu.create_texture(1, 1, gpu.FORMAT_RGBA8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
+    let white = bytes.from_list([255, 255, 255, 255])
+    gpu.write_texture(white_tex, 0, 0, 1, 1, bytes.data_ptr(white), 4, 4)
+    group1_white = image_group(white_tex)
+    grow_instances(1024)
+    ready = true
+  } else ()
+}
+
+fn grow_instances(n: Int) -> Unit = {
+  if inst_buf != 0 then gpu.release(inst_buf) else ()
+  if group0 != 0 then gpu.release(group0) else ()
+  inst_cap = n
+  inst_buf = gpu.create_buffer(n * shader.FLOATS_PER_INSTANCE * 4, gpu.BUF_STORAGE + gpu.BUF_COPY_DST)
+  gpu.bind_begin()
+  gpu.bind_buffer(0, globals_buf)
+  gpu.bind_buffer(1, inst_buf)
+  gpu.bind_texture(2, atlas_tex)
+  gpu.bind_sampler(3, linear_sampler)
+  group0 = gpu.bind_create(pipeline, 0)
+}
+
+fn image_group(tex: Int) -> Int = {
+  var found = 0
+  for i in 0..<list.len(image_group_tex) {
+    if image_group_tex[i] == tex then found = image_groups[i] else ()
+  }
+  if found != 0 then found
+  else {
+    gpu.bind_begin()
+    gpu.bind_texture(0, tex)
+    gpu.bind_sampler(1, linear_sampler)
+    let g = gpu.bind_create(pipeline, 1)
+    list.push(image_group_tex, tex)
+    list.push(image_groups, g)
+    g
+  }
+}
+
+// Forget a texture's bind group (call before releasing an image texture).
+pub fn forget_image(tex: Int) -> Unit = {
+  var keep_tex: List[Int] = []
+  var keep_group: List[Int] = []
+  for i in 0..<list.len(image_group_tex) {
+    if image_group_tex[i] == tex then gpu.release(image_groups[i])
+    else {
+      list.push(keep_tex, image_group_tex[i])
+      list.push(keep_group, image_groups[i])
+    }
+  }
+  image_group_tex = keep_tex
+  image_groups = keep_group
+}
+
+pub fn atlas() -> Int = { ensure_ready(); atlas_tex }
+pub fn atlas_size() -> Int = ATLAS_SIZE
+
+// ── Frame ──
+
+pub fn begin(width: Int, height: Int) -> Unit = {
+  ensure_ready()
+  frame_w = int.max(1, width)
+  frame_h = int.max(1, height)
+  data = bytes.new(0)
+  count = 0
+  clip_x0 = 0.0
+  clip_y0 = 0.0
+  clip_x1 = int.to_float(frame_w)
+  clip_y1 = int.to_float(frame_h)
+  clip_stack = []
+  batch_tex = [0]
+  batch_start = [0]
+}
+
+pub fn instance_count() -> Int = count
+
+fn push(x: Float, y: Float, w: Float, h: Float, c: Color,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        radius: Float, kind: Float, param: Float) -> Unit = {
+  bytes.append_f32_le(data, x)
+  bytes.append_f32_le(data, y)
+  bytes.append_f32_le(data, w)
+  bytes.append_f32_le(data, h)
+  bytes.append_f32_le(data, c.r)
+  bytes.append_f32_le(data, c.g)
+  bytes.append_f32_le(data, c.b)
+  bytes.append_f32_le(data, c.a)
+  bytes.append_f32_le(data, u0)
+  bytes.append_f32_le(data, v0)
+  bytes.append_f32_le(data, u1)
+  bytes.append_f32_le(data, v1)
+  bytes.append_f32_le(data, radius)
+  bytes.append_f32_le(data, kind)
+  bytes.append_f32_le(data, param)
+  bytes.append_f32_le(data, 0.0)
+  bytes.append_f32_le(data, clip_x0)
+  bytes.append_f32_le(data, clip_y0)
+  bytes.append_f32_le(data, clip_x1)
+  bytes.append_f32_le(data, clip_y1)
+  count = count + 1
+}
+
+fn visible(x: Float, y: Float, w: Float, h: Float, pad: Float) -> Bool =
+  x - pad < clip_x1 and y - pad < clip_y1 and x + w + pad > clip_x0 and y + h + pad > clip_y0
+
+pub fn fill(x: Float, y: Float, w: Float, h: Float, radius: Float, c: Color) -> Unit =
+  if c.a > 0.0 and visible(x, y, w, h, 1.0) then
+    push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_FILL, 0.0)
+  else ()
+
+pub fn stroke(x: Float, y: Float, w: Float, h: Float, radius: Float, width: Float, c: Color) -> Unit =
+  if c.a > 0.0 and width > 0.0 and visible(x, y, w, h, 1.0) then
+    push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_STROKE, width)
+  else ()
+
+pub fn shadow(x: Float, y: Float, w: Float, h: Float, radius: Float, blur: Float, c: Color) -> Unit =
+  if c.a > 0.0 and visible(x, y, w, h, blur * 3.0 + 1.0) then
+    push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_SHADOW, blur)
+  else ()
+
+// A glyph quad sampling the coverage atlas at texel rect (ax, ay, aw, ah).
+pub fn glyph(x: Float, y: Float, w: Float, h: Float, ax: Int, ay: Int, aw: Int, ah: Int, c: Color) -> Unit =
+  if c.a > 0.0 and visible(x, y, w, h, 0.0) then {
+    let s = int.to_float(ATLAS_SIZE)
+    push(x, y, w, h, c,
+      int.to_float(ax) / s, int.to_float(ay) / s,
+      int.to_float(ax + aw) / s, int.to_float(ay + ah) / s,
+      0.0, shader.KIND_GLYPH, 0.0)
+  } else ()
+
+// An RGBA texture drawn into (x, y, w, h) with rounded corners and opacity.
+pub fn image(tex: Int, x: Float, y: Float, w: Float, h: Float, radius: Float, opacity: Float) -> Unit =
+  if tex != 0 and opacity > 0.0 and visible(x, y, w, h, 0.0) then {
+    let last = list.len(batch_tex) - 1
+    if batch_tex[last] != tex then {
+      if batch_start[last] == count then batch_tex[last] = tex
+      else {
+        list.push(batch_tex, tex)
+        list.push(batch_start, count)
+      }
+    } else ()
+    push(x, y, w, h, rgba(1.0, 1.0, 1.0, opacity), 0.0, 0.0, 1.0, 1.0, radius, shader.KIND_IMAGE, 0.0)
+  } else ()
+
+// ── Clipping (intersecting, stack-shaped) ──
+
+pub fn push_clip(x: Float, y: Float, w: Float, h: Float) -> Unit = {
+  list.push(clip_stack, clip_x0)
+  list.push(clip_stack, clip_y0)
+  list.push(clip_stack, clip_x1)
+  list.push(clip_stack, clip_y1)
+  clip_x0 = float.max(clip_x0, x)
+  clip_y0 = float.max(clip_y0, y)
+  clip_x1 = float.max(clip_x0, float.min(clip_x1, x + w))
+  clip_y1 = float.max(clip_y0, float.min(clip_y1, y + h))
+}
+
+pub fn pop_clip() -> Unit = {
+  let n = list.len(clip_stack)
+  if n >= 4 then {
+    clip_x0 = clip_stack[n - 4]
+    clip_y0 = clip_stack[n - 3]
+    clip_x1 = clip_stack[n - 2]
+    clip_y1 = clip_stack[n - 1]
+    clip_stack = list.take(clip_stack, n - 4)
+  } else ()
+}
+
+// ── Submit ──
+
+// Draw everything recorded since begin() onto this frame's target, cleared
+// to `clear`. Returns false when the host had no target (minimised window).
+pub fn end(clear: Color) -> Bool = {
+  let target = gpu.frame_begin()
+  if target == 0 then false
+  else {
+    if count > inst_cap then {
+      var cap = inst_cap
+      for _ in 0..<32 { if cap < count then cap = cap * 2 else () }
+      grow_instances(cap)
+    } else ()
+    var globals = bytes.new(0)
+    bytes.append_f32_le(globals, int.to_float(frame_w))
+    bytes.append_f32_le(globals, int.to_float(frame_h))
+    bytes.append_f32_le(globals, 0.0)
+    bytes.append_f32_le(globals, 0.0)
+    gpu.write_buffer(globals_buf, 0, bytes.data_ptr(globals), 16)
+    if count > 0 then gpu.write_buffer(inst_buf, 0, bytes.data_ptr(data), bytes.len(data)) else ()
+    let pass = gpu.pass_begin(target, gpu.LOAD_CLEAR, clear.r * clear.a, clear.g * clear.a, clear.b * clear.a, clear.a)
+    gpu.pass_pipeline(pass, pipeline)
+    gpu.pass_bind(pass, 0, group0)
+    let nb = list.len(batch_tex)
+    for i in 0..<nb {
+      let start = batch_start[i]
+      let stop = if i + 1 < nb then batch_start[i + 1] else count
+      if stop > start then {
+        let g = if batch_tex[i] == 0 then group1_white else image_group(batch_tex[i])
+        gpu.pass_bind(pass, 1, g)
+        gpu.pass_draw(pass, 6, stop - start, 0, start)
+      } else ()
+    }
+    gpu.pass_end(pass)
+    gpu.frame_submit()
+    true
+  }
+}

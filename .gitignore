@@ -1,0 +1,8 @@
+.tools/
+.almide/
+target/
+node_modules/
+/out/
+*.wasm
+!hosts/web/vendor/*.wasm
+.DS_Store

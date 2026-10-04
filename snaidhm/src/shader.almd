@@ -1,0 +1,121 @@
+// The one WGSL program snaidhm draws everything with.
+//
+// Every primitive is an instanced quad pulled from a storage buffer by
+// instance_index (no vertex buffers, so the pipeline needs no vertex layout
+// and the gpu ABI stays small). Instance layout — 20 f32, 80 bytes:
+//
+//   rect  : x, y, w, h            (physical px, top-left origin)
+//   color : r, g, b, a            (straight alpha; premultiplied in the shader)
+//   uv    : u0, v0, u1, v1        (glyph atlas / image texture coordinates)
+//   p     : radius, kind, param, _
+//   clip  : x0, y0, x1, y1        (physical px; fragments outside are dropped)
+//
+// kind: 0 fill, 1 stroke (param = width), 2 glyph (atlas coverage),
+//       3 image (group 1 texture, color.a = opacity), 4 shadow (param = blur)
+
+let FLOATS_PER_INSTANCE = 20
+
+let KIND_FILL = 0.0
+let KIND_STROKE = 1.0
+let KIND_GLYPH = 2.0
+let KIND_IMAGE = 3.0
+let KIND_SHADOW = 4.0
+
+let WGSL = r"""
+struct Globals {
+  viewport: vec2<f32>,
+  pad: vec2<f32>,
+};
+
+struct Inst {
+  rect: vec4<f32>,
+  color: vec4<f32>,
+  uv: vec4<f32>,
+  p: vec4<f32>,
+  clip: vec4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> g: Globals;
+@group(0) @binding(1) var<storage, read> insts: array<Inst>;
+@group(0) @binding(2) var atlas: texture_2d<f32>;
+@group(0) @binding(3) var atlas_sampler: sampler;
+@group(1) @binding(0) var image: texture_2d<f32>;
+@group(1) @binding(1) var image_sampler: sampler;
+
+struct VOut {
+  @builtin(position) pos: vec4<f32>,
+  @location(0) local: vec2<f32>,
+  @location(1) uv: vec2<f32>,
+  @location(2) world: vec2<f32>,
+  @location(3) @interpolate(flat) idx: u32,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VOut {
+  let inst = insts[ii];
+  var corners = array<vec2<f32>, 6>(
+    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
+    vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0));
+  let c = corners[vi];
+  var grow = 1.0;
+  if (inst.p.y == 4.0) {
+    grow = inst.p.z * 3.0 + 1.0;
+  }
+  if (inst.p.y == 2.0 || inst.p.y == 3.0) {
+    grow = 0.0;
+  }
+  let origin = inst.rect.xy - vec2<f32>(grow, grow);
+  let size = inst.rect.zw + vec2<f32>(2.0 * grow, 2.0 * grow);
+  let pos = origin + c * size;
+  var out: VOut;
+  out.pos = vec4<f32>(pos.x / g.viewport.x * 2.0 - 1.0, 1.0 - pos.y / g.viewport.y * 2.0, 0.0, 1.0);
+  out.local = pos - inst.rect.xy;
+  out.uv = mix(inst.uv.xy, inst.uv.zw, c);
+  out.world = pos;
+  out.idx = ii;
+  return out;
+}
+
+fn sd_round_box(p: vec2<f32>, half: vec2<f32>, r: f32) -> f32 {
+  let rr = min(r, min(half.x, half.y));
+  let q = abs(p) - half + vec2<f32>(rr, rr);
+  return length(max(q, vec2<f32>(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - rr;
+}
+
+fn erf_approx(x: f32) -> f32 {
+  let s = sign(x);
+  let a = abs(x);
+  let t = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+  let r = t * t;
+  return s - s / (r * r);
+}
+
+@fragment
+fn fs_main(in: VOut) -> @location(0) vec4<f32> {
+  let inst = insts[in.idx];
+  if (in.world.x < inst.clip.x || in.world.y < inst.clip.y || in.world.x >= inst.clip.z || in.world.y >= inst.clip.w) {
+    discard;
+  }
+  let kind = inst.p.y;
+  let half = inst.rect.zw * 0.5;
+  let d = sd_round_box(in.local - half, half, inst.p.x);
+  let atlas_cov = textureSampleLevel(atlas, atlas_sampler, in.uv, 0.0).r;
+  let texel = textureSampleLevel(image, image_sampler, in.uv, 0.0);
+  var cov = 0.0;
+  if (kind == 0.0) {
+    cov = clamp(0.5 - d, 0.0, 1.0);
+  } else if (kind == 1.0) {
+    cov = clamp(0.5 - d, 0.0, 1.0) * clamp(0.5 + d + inst.p.z, 0.0, 1.0);
+  } else if (kind == 2.0) {
+    cov = atlas_cov;
+  } else if (kind == 3.0) {
+    let a = texel.a * inst.color.a * clamp(0.5 - d, 0.0, 1.0);
+    return vec4<f32>(texel.rgb * (a / max(texel.a, 0.00001)), a);
+  } else {
+    let sigma = max(inst.p.z, 0.5);
+    cov = 0.5 - 0.5 * erf_approx(d / (sigma * 1.41421356));
+  }
+  let a = inst.color.a * cov;
+  return vec4<f32>(inst.color.rgb * a, a);
+}
+"""

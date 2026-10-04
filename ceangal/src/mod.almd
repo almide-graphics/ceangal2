@@ -1,0 +1,266 @@
+// ceangal — app runtime: event dispatch, layout, paint, hit testing.
+//
+// An app is a record of closures. `run` stores it and enters the host loop;
+// the host then calls `dispatch` (docs/abi.md §2) for every event. Each
+// handled event marks the UI dirty; the next frame event rebuilds the view
+// tree, lays it out and paints it through snaidhm.
+
+import snaidhm
+import self.view as v
+import self.layout as lay
+import self.text as tx
+import self.host.sys as sys
+
+type App = {
+  view: () -> v.View,
+  background: snaidhm.Color,
+  on_key: (Int, Int, Int) -> Bool,     // (phase, key, mods) -> handled
+  on_text: (Int, String) -> Bool,      // (kind, text) -> handled
+  on_frame: (Float) -> Bool,           // (time ms) -> wants another frame
+  on_result: (Int, Int, Bytes) -> Unit, // async request (id, status, body)
+}
+
+pub fn app(view: () -> v.View) -> App = {
+  view: view,
+  background: snaidhm.hex(0xFFFFFF),
+  on_key: (phase, key, mods) => false,
+  on_text: (kind, s) => false,
+  on_frame: (t) => false,
+  on_result: (id, status, body) => (),
+}
+
+pub fn background(a: App, c: snaidhm.Color) -> App = { ...a, background: c }
+pub fn on_key(a: App, f: (Int, Int, Int) -> Bool) -> App = { ...a, on_key: f }
+pub fn on_text(a: App, f: (Int, String) -> Bool) -> App = { ...a, on_text: f }
+pub fn on_frame(a: App, f: (Float) -> Bool) -> App = { ...a, on_frame: f }
+pub fn on_result(a: App, f: (Int, Int, Bytes) -> Unit) -> App = { ...a, on_result: f }
+
+// ── Runtime state ──
+
+var current: App = app(() => v.empty())
+var width = 1.0
+var height = 1.0
+var scale = 1.0
+var dirty = true
+var started = false
+
+// The last laid-out frame, in paint order, for hit testing.
+var frame_views: List[v.View] = []
+var frame_rects: List[lay.LayoutRect] = []
+var pressed = -1
+var hover_cursor = 0
+
+pub fn run(a: App) -> Unit = {
+  current = a
+  sys.run()
+}
+
+// Ask for a new frame (state changed outside an event handler).
+pub fn invalidate() -> Unit = {
+  dirty = true
+  sys.request_frame()
+}
+
+pub fn viewport_width() -> Float = width
+pub fn viewport_height() -> Float = height
+pub fn pixel_scale() -> Float = scale
+
+// ── Dispatch (docs/abi.md §2) ──
+
+pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  if kind == 1 or kind == 2 then {
+    width = x
+    height = y
+    scale = if z > 0.0 then z else 1.0
+    started = true
+    invalidate()
+    0
+  } else if kind == 3 then frame(x)
+  else if kind == 4 then { if pointer(a, b, x, y, float.to_int(z), float.to_int(w)) then 1 else 0 }
+  else if kind == 6 then {
+    let handled = current.on_key(a, b, float.to_int(x))
+    if handled then invalidate() else ()
+    if handled then 1 else 0
+  } else if kind == 7 then {
+    let handled = current.on_text(a, event_string())
+    if handled then invalidate() else ()
+    if handled then 1 else 0
+  } else if kind == 10 then {
+    current.on_result(a, b, event_bytes())
+    invalidate()
+    0
+  } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
+  else 0
+
+fn event_bytes() -> Bytes = {
+  let n = sys.event_len()
+  var buf = bytes.new(n)
+  if n > 0 then { let _ = sys.event_read(bytes.data_ptr(buf), n) } else ()
+  buf
+}
+
+fn event_string() -> String = bytes.to_string_lossy(event_bytes())
+
+// ── Frame ──
+
+fn frame(t: Float) -> Int = {
+  let animating = current.on_frame(t)
+  if dirty or animating then {
+    dirty = false
+    render()
+  } else ()
+  if animating then 1 else 0
+}
+
+fn render() -> Unit = {
+  let root = current.view() |> v.w(width) |> v.h(height)
+  let node = to_node(root)
+  let rects = lay.layout(node, width, height)
+  frame_views = flatten(root)
+  frame_rects = rects
+  snaidhm.begin(float.to_int(float.ceil(width * scale)), float.to_int(float.ceil(height * scale)))
+  paint(root, rects, 0)
+  let _ = snaidhm.end(current.background)
+}
+
+// ── View → layout node ──
+
+fn edges(t: Float, r: Float, b: Float, l: Float) -> lay.Edges = { top: t, right: r, bottom: b, left: l }
+
+fn to_node(view: v.View) -> lay.Node = {
+  let s = view.style
+  let base = lay.node_defaults()
+  let intrinsic = if view.kind == v.TEXT then tx.measure(view.content, s.font_size, s.mono) else { w: lay.UNDEFINED, h: lay.UNDEFINED }
+  let width = if s.width != v.UNDEF then s.width else intrinsic.w
+  let height = if s.height != v.UNDEF then s.height else intrinsic.h
+  {
+    ...base,
+    direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
+    justify: s.justify,
+    align_items: s.align,
+    align_self: s.align_self,
+    gap_main: s.gap,
+    grow: s.grow,
+    shrink: s.shrink,
+    padding: edges(s.pt, s.pr, s.pb, s.pl),
+    margin: edges(s.mt, s.mr, s.mb, s.ml),
+    width: width,
+    height: height,
+    min_width: s.min_width,
+    min_height: s.min_height,
+    max_width: s.max_width,
+    max_height: s.max_height,
+    width_pct: s.width_pct,
+    height_pct: s.height_pct,
+    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
+    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
+    pos_top: s.pos_top,
+    pos_right: s.pos_right,
+    pos_bottom: s.pos_bottom,
+    pos_left: s.pos_left,
+    children: list.map(view.children, to_node),
+  }
+}
+
+// The views in the order lay.layout emits rects: self, in-flow children
+// (recursively), then absolutely positioned children.
+fn flatten(view: v.View) -> List[v.View] = {
+  var out: List[v.View] = [view]
+  for c in view.children {
+    if not c.style.absolute then out = out + flatten(c) else ()
+  }
+  for c in view.children {
+    if c.style.absolute then out = out + flatten(c) else ()
+  }
+  out
+}
+
+
+// ── Paint ──
+
+// Paint `view` whose rect is rects[idx]; returns the index after its subtree.
+fn paint(view: v.View, rects: List[lay.LayoutRect], idx: Int) -> Int = {
+  let r = rects[idx]
+  let s = view.style
+  let k = scale
+  let x = r.x * k
+  let y = r.y * k
+  let w = r.w * k
+  let h = r.h * k
+  let has_clip = r.clip_w >= 0.0
+  if has_clip then snaidhm.push_clip(r.clip_x * k, r.clip_y * k, r.clip_w * k, r.clip_h * k) else ()
+  if s.shadow_color.a > 0.0 then
+    snaidhm.shadow(x, y + s.shadow_dy * k, w, h, s.radius * k, s.shadow_blur * k, s.shadow_color)
+  else ()
+  snaidhm.fill(x, y, w, h, s.radius * k, snaidhm.with_alpha(s.bg, s.bg.a * s.opacity))
+  if s.border_width > 0.0 then
+    snaidhm.stroke(x, y, w, h, s.radius * k, s.border_width * k, s.border_color)
+  else ()
+  if view.kind == v.TEXT then tx.draw(view.content, x, y, w, h, s.font_size * k, s.mono, s.fg) else ()
+  if view.kind == v.CUSTOM then view.paint(r.x, r.y, r.w, r.h) else ()
+  if has_clip then snaidhm.pop_clip() else ()
+  var next = idx + 1
+  for c in view.children {
+    if not c.style.absolute then next = paint(c, rects, next) else ()
+  }
+  for c in view.children {
+    if c.style.absolute then next = paint(c, rects, next) else ()
+  }
+  next
+}
+
+// ── Pointer ──
+
+fn inside(r: lay.LayoutRect, x: Float, y: Float) -> Bool = {
+  let in_rect = x >= r.x and y >= r.y and x < r.x + r.w and y < r.y + r.h
+  let in_clip = r.clip_w < 0.0 or (x >= r.clip_x and y >= r.clip_y and x < r.clip_x + r.clip_w and y < r.clip_y + r.clip_h)
+  in_rect and in_clip
+}
+
+// Topmost node at (x, y) that takes pointer input (or -1).
+fn hit(x: Float, y: Float) -> Int = {
+  var found = -1
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    let fv = frame_views[i]
+    if (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then found = i else ()
+  }
+  found
+}
+
+// Topmost node at (x, y) with a cursor.
+fn cursor_at(x: Float, y: Float) -> Int = {
+  var c = 0
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    if frame_views[i].style.cursor != 0 and inside(frame_rects[i], x, y) then c = frame_views[i].style.cursor else ()
+  }
+  c
+}
+
+fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
+  if phase == 1 then {
+    let c = cursor_at(x, y)
+    if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()
+  } else ()
+  let target = if pressed >= 0 and (phase == 1 or phase == 2 or phase == 3) then pressed else hit(x, y)
+  if target < 0 then false
+  else {
+    let fv = frame_views[target]
+    let r = frame_rects[target]
+    var handled = false
+    if fv.pointer then {
+      handled = fv.on_pointer({ phase: phase, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: buttons, mods: mods, id: id })
+    } else ()
+    if phase == 0 then { pressed = target } else ()
+    if phase == 2 or phase == 3 then {
+      if phase == 2 and fv.clickable and inside(r, x, y) then {
+        fv.on_click()
+        handled = true
+      } else ()
+      pressed = -1
+    } else ()
+    if handled then invalidate() else ()
+    handled or fv.clickable
+  }
+}

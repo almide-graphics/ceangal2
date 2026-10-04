@@ -1,0 +1,47 @@
+// M0 demo: cards, borders, shadows, clipping and a click toggling state.
+// The same source runs in the browser (hosts/web) and natively (ceangal/native).
+
+import ceangal
+import ceangal.view as v
+import snaidhm
+
+var selected = 1
+
+fn card(i: Int) -> v.View = {
+  let on = i == selected
+  v.col([
+    v.empty() |> v.h(28.0) |> v.rounded(6.0) |> v.bg(if on then snaidhm.hex(0x3B82F6) else snaidhm.hex(0xCBD5E1)),
+    v.empty() |> v.h(10.0) |> v.w_pct(70.0) |> v.rounded(5.0) |> v.bg(snaidhm.hex(0xE2E8F0)),
+    v.empty() |> v.h(10.0) |> v.w_pct(45.0) |> v.rounded(5.0) |> v.bg(snaidhm.hex(0xE2E8F0)),
+  ])
+    |> v.gap(10.0) |> v.padding(16.0) |> v.grow(1.0)
+    |> v.bg(snaidhm.hex(0xFFFFFF)) |> v.rounded(14.0)
+    |> v.border(if on then 2.0 else 1.0, if on then snaidhm.hex(0x3B82F6) else snaidhm.hex(0xE2E8F0))
+    |> v.shadow(12.0, 4.0, snaidhm.rgba(0.06, 0.09, 0.16, 0.18))
+    |> v.on_click(() => { selected = i })
+}
+
+fn view() -> v.View =
+  v.col([
+    v.row([
+      v.empty() |> v.size(36.0, 36.0) |> v.rounded(18.0) |> v.bg(snaidhm.hex(0x0F172A)),
+      v.empty() |> v.h(14.0) |> v.w(160.0) |> v.rounded(7.0) |> v.bg(snaidhm.hex(0x334155)),
+      v.spacer(),
+      v.empty() |> v.size(88.0, 32.0) |> v.rounded(16.0) |> v.bg(snaidhm.hex(0x10B981)),
+    ]) |> v.gap(12.0) |> v.align(v.Middle),
+    v.row([card(0), card(1), card(2)]) |> v.gap(16.0),
+    v.col([
+      v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xFDE68A)),
+      v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xFCA5A5)),
+      v.empty() |> v.h(48.0) |> v.bg(snaidhm.hex(0xA5B4FC)),
+    ]) |> v.h(100.0) |> v.clip() |> v.rounded(12.0),
+  ]) |> v.gap(24.0) |> v.padding(32.0)
+
+// The one line every ceangal app carries: wasm exports only root-module
+// functions (almide/almide#3281), so the dispatcher is re-exported here.
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit =
+  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0xF1F5F9)))
