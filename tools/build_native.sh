@@ -17,6 +17,10 @@ build="$root/out/build/playground-${CEANGAL_BUILD_TAG:-$(uname -s)}"
 rm -rf "$build"; mkdir -p "$build"
 ln -s "$root/apps/playground/src" "$build/src"
 ln -s "$root/apps/playground/native" "$build/native"
+# almide/almide#3346: cdylib builds (Android) omit flate2 for zlib users;
+# bin builds add it themselves, and a second key is a Cargo error.
+cdylib_deps=""
+[[ " $* " == *" --cdylib "* ]] && cdylib_deps='flate2 = "1"'
 cat > "$build/almide.toml" <<TOML
 [package]
 name = "playground"
@@ -30,8 +34,7 @@ snaidhm = { path = "$nroot/snaidhm" }
 almide-compiler-service = { path = "$nroot/apps/playground/compiler" }
 wasmi = "2"
 serde_json = "1"
-# almide/almide#3346: cdylib builds omit flate2 for zlib users (Android).
-flate2 = "1"
+$cdylib_deps
 TOML
 mkdir -p "$(dirname "$out")"
 # Baked into the binary: data directory and keychain entries live under it.

@@ -34,7 +34,7 @@ pub fn shared() -> Option<&'static Shared> {
     SHARED
         .get_or_init(|| {
             let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-            init_with(instance, None)
+            init_with(instance, None).map_err(|e| eprintln!("snaidhm: {e}; rendering disabled")).ok()
         })
         .as_ref()
 }
@@ -48,7 +48,9 @@ pub fn shared_ready() -> bool {
 /// surface the adapter must be able to present to. The windowed host calls
 /// this before anything else touches [`shared`].
 pub fn init_shared(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> Option<&'static Shared> {
-    SHARED.get_or_init(|| init_with(instance, surface)).as_ref()
+    SHARED
+        .get_or_init(|| init_with(instance, surface).map_err(|e| eprintln!("snaidhm: {e}; rendering disabled")).ok())
+        .as_ref()
 }
 
 /// Like [`init_shared`], but leaves the device unset when this instance has
@@ -58,25 +60,24 @@ pub fn try_init_shared(instance: wgpu::Instance, surface: &wgpu::Surface<'_>) ->
         return true;
     }
     match init_with(instance, Some(surface)) {
-        Some(sh) => { let _ = SHARED.set(Some(sh)); true }
-        None => false,
+        Ok(sh) => { let _ = SHARED.set(Some(sh)); true }
+        Err(_) => false,
     }
 }
 
-fn init_with(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> Option<Shared> {
+fn init_with(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> Result<Shared, String> {
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::LowPower,
         compatible_surface: surface,
         force_fallback_adapter: false,
         apply_limit_buckets: false,
     }));
-    let adapter = match adapter {
-        Ok(a) => a,
-        Err(e) => {
-            eprintln!("snaidhm: no GPU adapter ({e}); rendering disabled");
-            return None;
-        }
-    };
+    let adapter = adapter.map_err(|e| format!("no GPU adapter ({e})"))?;
+    // The shader pulls instances from a storage buffer in the vertex stage:
+    // Vulkan, Metal, DX12 or GLES 3.1+. GLES 3.0-class adapters cannot.
+    if adapter.limits().max_storage_buffers_per_shader_stage == 0 {
+        return Err(format!("{} has no storage buffers (needs Vulkan or GLES 3.1+)", adapter.get_info().name));
+    }
     let limits = wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
     let desc = wgpu::DeviceDescriptor {
         label: Some("snaidhm"),
@@ -84,13 +85,8 @@ fn init_with(instance: wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> O
         required_limits: limits,
         ..Default::default()
     };
-    match pollster::block_on(adapter.request_device(&desc)) {
-        Ok((device, queue)) => Some(Shared { instance, adapter, device, queue }),
-        Err(e) => {
-            eprintln!("snaidhm: no GPU device ({e}); rendering disabled");
-            None
-        }
-    }
+    let (device, queue) = pollster::block_on(adapter.request_device(&desc)).map_err(|e| format!("no GPU device ({e})"))?;
+    Ok(Shared { instance, adapter, device, queue })
 }
 
 // ── Formats and enums (docs/abi.md §4.2) ─────────────────────────────────

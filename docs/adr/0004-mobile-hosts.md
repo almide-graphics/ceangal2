@@ -44,6 +44,13 @@ target-specific.
   surface cannot share one `ANativeWindow` (`eglCreateWindowSurface` →
   `BadAlloc`). Mobile drops the surface in `suspended` and makes a new one in
   `resumed`.
+  - Minimum GPU: Vulkan, or GLES 3.1 with vertex-stage storage buffers,
+    because the snaidhm shader pulls instances from a storage buffer.
+    Android 10+ 64-bit devices must have Vulkan 1.1, so this excludes almost
+    no real phones.
+  - The Android emulator's `-gpu host` mode on macOS is GLES 3.0-class and
+    gets an error message instead of a picture. Use
+    `-gpu swiftshader_indirect` (what the E2E runs) or a device.
 - **Thread locals on Android.** Rust's Android std implements `thread_local!`
   with one pthread key per static. Bionic has ~128 keys, and generated Almide
   code has hundreds of thread locals (almide/almide#3347). The Android build
