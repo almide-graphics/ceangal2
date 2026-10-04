@@ -26,8 +26,11 @@ jar="$ANDROID_HOME/platforms/android-$api/android.jar"
 
 # shellcheck disable=SC1090
 source "$root/apps/$app/app.env"
+# Icon: PNG layers from tools/build_brand.py (store/<app>/android/), or a
+# vector path (store/<app>/icon.env) for the demo apps.
+icons="$root/store/$app/android"
 # shellcheck disable=SC1090
-source "$root/store/$app/icon.env"
+[ -d "$icons" ] || source "$root/store/$app/icon.env"
 out="$root/out/android"
 work="$out/$app"
 rm -rf "$work"; mkdir -p "$work"
@@ -73,7 +76,7 @@ for abi in "${abis[@]}"; do
   "$tc/llvm-strip" --strip-unneeded "$so"
 done
 
-# ── resources: label + adaptive icon (vector, from store/<app>/icon.env) ──
+# ── resources: label + adaptive icon ──
 res="$work/res"
 mkdir -p "$res/values" "$res/drawable" "$res/mipmap-anydpi-v26"
 esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e "s/'/\\\\'/g" <<<"$1"; }
@@ -81,24 +84,36 @@ cat > "$res/values/strings.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <resources><string name="app_name">$(esc "$APP_NAME")</string></resources>
 XML
-cat > "$res/values/colors.xml" <<XML
+if [ -d "$icons" ]; then
+  # The whole icon is the background layer (its mark sits in the safe zone);
+  # the themed-icon (monochrome) layer is the bare mark.
+  for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+    mkdir -p "$res/mipmap-$dpi"
+    cp "$icons/bg-$dpi.png" "$res/mipmap-$dpi/ic_launcher_background.png"
+    cp "$icons/mono-$dpi.png" "$res/mipmap-$dpi/ic_launcher_monochrome.png"
+  done
+  bg='@mipmap/ic_launcher_background'; fg='@android:color/transparent'; mono='@mipmap/ic_launcher_monochrome'
+else
+  cat > "$res/values/colors.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <resources><color name="icon_bg">$ICON_BG</color></resources>
 XML
-cat > "$res/drawable/ic_launcher_foreground.xml" <<XML
+  cat > "$res/drawable/ic_launcher_foreground.xml" <<XML
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
   <path android:fillColor="$ICON_FG" android:pathData="$ICON_PATH"/>
 </vector>
 XML
+  bg='@color/icon_bg'; fg='@drawable/ic_launcher_foreground'; mono='@drawable/ic_launcher_foreground'
+fi
 for name in ic_launcher ic_launcher_round; do
   cat > "$res/mipmap-anydpi-v26/$name.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-  <background android:drawable="@color/icon_bg"/>
-  <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-  <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
+  <background android:drawable="$bg"/>
+  <foreground android:drawable="$fg"/>
+  <monochrome android:drawable="$mono"/>
 </adaptive-icon>
 XML
 done

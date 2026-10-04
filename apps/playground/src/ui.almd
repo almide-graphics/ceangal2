@@ -10,18 +10,26 @@ import self.visual as visual
 import self.html as html
 import self.ai as ai
 
-// ── Theme ──
+// ── Theme ── the Almide palette (almide/playground's CSS variables).
 
-let BG = 0x1A1B26
-let PANEL = 0x16161E
-let RAISED = 0x24283B
-let BORDER = 0x2A2E42
-let TEXT = 0xC0CAF5
-let MUTED = 0x737AA2
-let FAINT = 0x565F89
-let ACCENT = 0x7AA2F7
-let GO = 0x9ECE6A
-let STOP = 0xF7768E
+let BG = 0x131316          // --bg-deep: editor, active tab
+let PANEL = 0x1A1A1F       // --bg-surface: bars
+let RAISED = 0x212127      // --bg-elevated: menus, chips
+let BORDER = 0x2E2E38      // --border
+let TEXT = 0xEDEDEB        // --text
+let MUTED = 0xA0A0AB       // --text-secondary
+let FAINT = 0x6B6B78       // --text-muted
+let ACCENT = 0x7C5CBF      // --accent
+let ACCENT_LIGHT = 0x9B7DE0 // --accent-light
+let ON_ACCENT = 0xF0E8E9
+let STOP = 0xD94F5E        // --error
+let WARN = 0xE0B060        // --warn-text
+let BUTTON = 0x38384A
+let BUTTON_BORDER = 0x505060
+let BUTTON_TEXT = 0xE0E0E8
+let HEADER = 0xD8D8DC      // the light header bar
+let HEADER_TEXT = 0x1A1A1F
+let HEADER_SUB = 0x606068
 
 
 // Functions reached only from closures below; without a top-level reference
@@ -34,6 +42,7 @@ let keep_commit_rename = st.commit_rename
 let keep_current = st.current
 let keep_load_example = st.load_example
 let keep_picture_texture = st.picture_texture
+let keep_logo_texture = st.logo_texture
 let keep_run = st.run
 let keep_select_tab = st.select_tab
 let keep_set_ast_view = st.set_ast_view
@@ -46,6 +55,7 @@ let keep_share = st.share
 let keep_show_ast = st.show_ast
 let keep_toggle_examples = st.toggle_examples
 let keep_toggle_mobile_output = st.toggle_mobile_output
+let keep_show_code = st.show_code
 let keep_pixel_scale = ceangal.pixel_scale
 let keep_export_zip = st.export_zip
 let keep_gui_place = st.gui_place
@@ -65,41 +75,89 @@ fn c(n: Int) -> snaidhm.Color = snaidhm.hex(n)
 
 fn label(s: String, size: Float, col: Int) -> v.View = v.text(s) |> v.font(size) |> v.color(c(col))
 
+// The code views' theme: Almide's syntax colours on the playground surface.
+pub fn code_theme() -> ed.Theme = {
+  ...ed.dark_theme(),
+  bg: c(BG), gutter_bg: c(BG), gutter_fg: c(FAINT), gutter_active: c(MUTED),
+  caret: c(ACCENT_LIGHT),
+  selection: snaidhm.rgba(0.486, 0.361, 0.749, 0.35),
+  active_line: snaidhm.rgba(0.486, 0.361, 0.749, 0.07),
+  error: c(STOP), warning: c(WARN), placeholder: c(FAINT),
+}
+
 fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
-  label(s, 13.0, if on then BG else TEXT)
-    |> v.px(12.0) |> v.py(6.0) |> v.rounded(6.0)
-    |> v.bg(if on then c(ACCENT) else c(RAISED))
+  label(s, 12.5, if on then ON_ACCENT else BUTTON_TEXT)
+    |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
+    |> v.bg(if on then c(ACCENT) else c(BUTTON))
+    |> v.border(1.0, c(if on then ACCENT_LIGHT else BUTTON_BORDER))
     |> v.on_click(f) |> v.role(3) |> v.label(s)
 
 // ── Header ──
 
 fn header(narrow: Bool) -> v.View = {
   let run_label = if st.running then "■ Stop" else "▶ Run"
-  let run_btn = label(run_label, 13.0, BG) |> v.bold()
-    |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
-    |> v.bg(c(if st.running then STOP else GO))
-    |> v.on_click(() => st.run()) |> v.role(3) |> v.label(if st.running then "Stop" else "Run")
-  var items: List[v.View] = [
-    v.empty() |> v.size(18.0, 18.0) |> v.rounded(5.0) |> v.bg(c(ACCENT)),
-  ]
-  if not narrow then list.push(items, label("Almide Playground", 15.0, TEXT) |> v.bold()) else ()
+  var items: List[v.View] = [logo()]
+  list.push(items, label("Almide", if narrow then 15.0 else 17.0, HEADER_TEXT) |> v.bold())
+  if not narrow then list.push(items, label("Playground", 12.0, HEADER_SUB)) else ()
   list.push(items, v.spacer())
   if not st.embed then {
     list.push(items, button("Examples", st.examples_open, () => st.toggle_examples()))
-    list.push(items, button("Share", false, () => st.share()))
-    if not narrow then list.push(items, button("Export", false, () => st.export_zip())) else ()
-    list.push(items, button("AI", ai.open, () => ai.toggle()) |> v.label("AI assistant"))
+    // Phones: Export is a desktop errand; Share, AI and Run move to the
+    // thumb-reach bar at the bottom.
+    if not narrow then {
+      list.push(items, button("Export", false, () => st.export_zip()))
+      list.push(items, button("Share", false, () => st.share()))
+      list.push(items, ai_button(ai.open))
+    } else ()
   } else ()
-  if narrow then list.push(items, button(if st.mobile_output then "Code" else "Output", false, () => st.toggle_mobile_output())) else ()
-  list.push(items, run_btn)
-  v.row(items) |> v.gap(if narrow then 6.0 else 10.0) |> v.align(v.Middle) |> v.h(48.0) |> v.px(if narrow then 10.0 else 14.0) |> v.bg(c(PANEL))
+  if not narrow then list.push(items, run_button(run_label, false)) else ()
+  v.row(items) |> v.gap(if narrow then 8.0 else 10.0) |> v.align(v.Middle)
+    |> v.h(if narrow then 48.0 else 54.0) |> v.px(if narrow then 12.0 else 22.0) |> v.bg(c(HEADER))
 }
+
+fn run_button(text: String, big: Bool) -> v.View =
+  label(text, if big then 15.0 else 12.5, ON_ACCENT) |> v.bold()
+    |> v.px(if big then 16.0 else 18.0) |> v.py(if big then 12.0 else 7.0) |> v.rounded(if big then 8.0 else 6.0)
+    |> v.bg(c(if st.running then STOP else ACCENT))
+    |> v.border(1.0, c(if st.running then STOP else ACCENT_LIGHT))
+    |> v.on_click(() => st.run()) |> v.role(3) |> v.label(if st.running then "Stop" else "Run")
+
+// The AI button: outlined in the accent colour, filled while open.
+fn ai_button(on: Bool) -> v.View =
+  label("AI", 12.5, if on then ON_ACCENT else ACCENT_LIGHT)
+    |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
+    |> v.bg(c(if on then ACCENT else RAISED)) |> v.border(1.0, c(ACCENT))
+    |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("AI assistant")
+
+// Phones: one pane at a time; this bar flips between them and runs (Run
+// flips to the output by itself, loading an example flips back to the code).
+fn mobile_bar() -> v.View = {
+  let bar_button = (text: String, name: String, f: () -> Unit) =>
+    label(text, 14.0, MUTED) |> v.px(16.0) |> v.py(12.0) |> v.rounded(8.0)
+      |> v.bg(c(RAISED)) |> v.border(1.0, c(BORDER)) |> v.center()
+      |> v.on_click(f) |> v.role(3) |> v.label(name)
+  var items: List[v.View] = []
+  if not st.embed then list.push(items, bar_button("AI", "AI assistant", () => ai.toggle())) else ()
+  list.push(items, bar_button(if st.mobile_output then "Code" else "Output", if st.mobile_output then "Code" else "Output", () => st.toggle_mobile_output()) |> v.min_w(92.0))
+  if not st.embed then list.push(items, bar_button("Share", "Share", () => st.share())) else ()
+  list.push(items, run_button(if st.running then "■ Stop" else "▶ Run", true) |> v.grow(1.0) |> v.center())
+  v.row(items) |> v.gap(8.0) |> v.align(v.Middle) |> v.px(12.0) |> v.py(10.0)
+    |> v.bg(c(PANEL)) |> v.border(1.0, c(BORDER))
+}
+
+// The Almide mark (assets/brand/logo.rgba, made by tools/build_brand.py).
+fn logo() -> v.View =
+  v.custom("logo", (x, y, w, h) => {
+    let k = ceangal.pixel_scale()
+    let tex = st.logo_texture()
+    if tex != 0 then snaidhm.image(tex, x * k, y * k, w * k, h * k, 0.0, 1.0) else ()
+  }) |> v.size(28.0, 28.0) |> v.role(13) |> v.label("Almide")
 
 
 // ── AI bar ──
 
 fn chip(s: String, on: Bool, f: () -> Unit) -> v.View =
-  label(s, 12.0, if on then BG else MUTED)
+  label(s, 12.0, if on then ON_ACCENT else MUTED)
     |> v.px(9.0) |> v.py(4.0) |> v.rounded(5.0)
     |> v.bg(if on then c(ACCENT) else c(RAISED))
     |> v.on_click(f) |> v.role(3) |> v.label(s)
@@ -114,17 +172,35 @@ fn ai_bar(narrow: Bool) -> v.View = {
   list.push(chips, v.empty() |> v.w(1.0) |> v.h(18.0) |> v.bg(c(BORDER)))
   let ms = ai.models(ai.provider)
   for i in 0..<list.len(ms) { list.push(chips, model_chip(i, ms[i])) }
-  let key = ed.field("ai-key", () => ai.key_field, (e) => ai.set_key_field(e), ed.dark_theme())
+  let key = ed.field("ai-key", () => ai.key_field, (e) => ai.set_key_field(e), code_theme())
     |> v.size(if narrow then 150.0 else 190.0, 30.0) |> v.rounded(5.0) |> v.clip() |> v.label("API key")
-  let prompt = ed.field("ai-prompt", () => ai.prompt_field, (e) => ai.set_prompt_field(e), ed.dark_theme())
+  let prompt = ed.field("ai-prompt", () => ai.prompt_field, (e) => ai.set_prompt_field(e), code_theme())
     |> v.h(30.0) |> v.grow(1.0) |> v.min_w(200.0) |> v.rounded(5.0) |> v.clip() |> v.label("Prompt")
     |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { ai.generate(); true } else false)
   let go = button(if ai.busy() then "■ Stop" else "Generate", ai.busy(), () => ai.generate())
-  v.col([
-    v.wrap_row(chips) |> v.gap(6.0),
-    v.wrap_row([key, prompt, go]) |> v.gap(8.0),
-  ]) |> v.gap(8.0) |> v.px(14.0) |> v.py(10.0) |> v.bg(c(PANEL)) |> v.role(2) |> v.label("AI panel")
+  if narrow then
+    v.col([
+      v.row([label("Generate with AI", 14.0, TEXT) |> v.bold(), v.spacer(),
+             label("×", 18.0, FAINT) |> v.px(8.0) |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("Close AI")]) |> v.align(v.Middle),
+      v.wrap_row(chips) |> v.gap(6.0),
+      key |> v.w(ceangal.viewport_width() - 52.0),
+      prompt |> v.w(ceangal.viewport_width() - 52.0),
+      go |> v.center(),
+    ]) |> v.gap(10.0) |> v.padding(16.0) |> v.bg(c(RAISED)) |> v.rounded(14.0)
+      |> v.border(1.0, c(BORDER)) |> v.shadow(50.0, 18.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.55))
+      |> v.absolute() |> v.left(10.0) |> v.right(10.0) |> v.bottom(10.0)
+      |> v.role(2) |> v.label("AI panel")
+  else
+    v.col([
+      v.wrap_row(chips) |> v.gap(6.0),
+      v.wrap_row([key, prompt, go]) |> v.gap(8.0),
+    ]) |> v.gap(8.0) |> v.px(14.0) |> v.py(10.0) |> v.bg(c(PANEL)) |> v.role(2) |> v.label("AI panel")
 }
+
+// Dims the playground behind the phone AI sheet; a tap closes the sheet.
+fn backdrop() -> v.View =
+  v.empty() |> v.absolute() |> v.top(0.0) |> v.left(0.0) |> v.right(0.0) |> v.bottom(0.0)
+    |> v.bg(snaidhm.rgba(0.03, 0.03, 0.055, 0.6)) |> v.on_click(() => ai.toggle())
 
 // ── File tabs ──
 
@@ -133,7 +209,7 @@ fn tab_view(i: Int) -> v.View = {
   let on = i == st.active
   let errs = list.len(list.filter(t.ed.diags, (d) => d.severity == 0))
   if st.renaming == i then
-    ed.field("rename", () => st.rename_field, (e) => st.set_rename_field(e), ed.dark_theme())
+    ed.field("rename", () => st.rename_field, (e) => st.set_rename_field(e), code_theme())
       |> v.size(150.0, 28.0) |> v.rounded(5.0) |> v.clip()
       |> v.on_key((phase, code, mods) => {
         if phase != 1 and code == 1 then { st.commit_rename(); true }
@@ -163,7 +239,7 @@ fn tab_bar() -> v.View = {
 
 fn editor_pane() -> v.View = {
   var parts: List[v.View] = [
-    ed.view("editor", () => st.current(), (e) => st.set_current(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Code editor"),
+    ed.view("editor", () => st.current(), (e) => st.set_current(e), code_theme()) |> v.grow(1.0) |> v.label("Code editor"),
   ]
   if st.problems > 0 then
     list.push(parts, v.row([
@@ -232,11 +308,11 @@ fn picture_view() -> v.View = {
 
 fn output_pane() -> v.View = {
   let body =
-    if st.out_tab == 0 then ed.view("output", () => st.out, (e) => st.set_out(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Program output")
+    if st.out_tab == 0 then ed.view("output", () => st.out, (e) => st.set_out(e), code_theme()) |> v.grow(1.0) |> v.label("Program output")
     else if st.out_tab == 1 then picture_view()
-    else if st.out_tab == 2 then ed.view("rust", () => st.rust_view, (e) => st.set_rust_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Generated Rust")
-    else if st.out_tab == 3 then ed.view("ast", () => st.ast_view, (e) => st.set_ast_view(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("Syntax tree")
-    else ed.view("ai-log", () => ai.log, (e) => ai.set_log(e), ed.dark_theme()) |> v.grow(1.0) |> v.label("AI log")
+    else if st.out_tab == 2 then ed.view("rust", () => st.rust_view, (e) => st.set_rust_view(e), code_theme()) |> v.grow(1.0) |> v.label("Generated Rust")
+    else if st.out_tab == 3 then ed.view("ast", () => st.ast_view, (e) => st.set_ast_view(e), code_theme()) |> v.grow(1.0) |> v.label("Syntax tree")
+    else ed.view("ai-log", () => ai.log, (e) => ai.set_log(e), code_theme()) |> v.grow(1.0) |> v.label("AI log")
   var tabs: List[v.View] = [out_tab(0, "Output"), out_tab(1, "Visual")]
   if not list.contains(st.hidden, "rust") then list.push(tabs, out_tab(2, "Rust")) else ()
   if not list.contains(st.hidden, "ast") then list.push(tabs, out_tab(3, "AST")) else ()
@@ -264,30 +340,31 @@ fn status_bar(narrow: Bool) -> v.View = {
 // After a failed run, offer the AI repair loop (when a key is set).
 fn fix_button() -> v.View =
   if not st.running and not st.last_run_ok and st.last_run_error != "" and not ai.busy() and ai.has_key() then
-    label("Fix with AI", 12.0, ACCENT) |> v.px(6.0) |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
+    label("Fix with AI", 12.0, ACCENT_LIGHT) |> v.px(6.0) |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
   else v.empty()
 
 // ── Examples menu ──
 
-fn examples_menu() -> v.View = {
+fn examples_menu(narrow: Bool) -> v.View = {
   var rows: List[v.View] = []
   for cat in st.categories {
     list.push(rows, label(cat.title, 11.0, FAINT) |> v.bold() |> v.pad(10.0, 12.0, 4.0, 12.0))
     for e in cat.examples {
       let id = e.id
-      list.push(rows, label(e.title, 13.0, TEXT) |> v.px(12.0) |> v.py(6.0) |> v.rounded(4.0)
+      list.push(rows, label(e.title, 13.0, TEXT) |> v.px(if narrow then 16.0 else 12.0) |> v.py(if narrow then 12.0 else 6.0) |> v.rounded(4.0)
         |> v.on_click(() => { let _ = st.load_example(id) }) |> v.role(11) |> v.label(e.title))
     }
   }
   v.col(rows) |> v.w(260.0) |> v.py(6.0) |> v.bg(c(RAISED)) |> v.rounded(8.0)
     |> v.border(1.0, c(BORDER)) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
-    |> v.absolute() |> v.top(52.0) |> v.right(110.0) |> v.clip()
+    |> v.absolute() |> v.top(if narrow then 52.0 else 58.0) |> v.right(if narrow then 10.0 else 260.0) |> v.clip()
 }
 
 // ── Root ──
 
 pub fn root() -> v.View = {
   let narrow = ceangal.viewport_width() < 760.0
+  st.set_code_font(if narrow then 15.0 else 13.0)
   // Hide the program window unless the Visual pane is on screen (it is
   // placed again when gui_view paints).
   let gui_shown = st.gui_running and st.out_tab == 1 and (not narrow or st.mobile_output) and not st.examples_open
@@ -301,10 +378,15 @@ pub fn root() -> v.View = {
     ]) |> v.grow(1.0)
   var parts: List[v.View] = []
   if not (st.embed and list.contains(st.hidden, "header")) then list.push(parts, header(narrow)) else ()
-  if ai.open and not st.embed then list.push(parts, ai_bar(narrow)) else ()
+  if ai.open and not st.embed and not narrow then list.push(parts, ai_bar(narrow)) else ()
   list.push(parts, tab_bar())
   list.push(parts, body |> v.grow(1.0))
-  list.push(parts, status_bar(narrow))
-  if st.examples_open then list.push(parts, examples_menu()) else ()
+  // phones: the status line gives way to the action bar
+  list.push(parts, if narrow then mobile_bar() else status_bar(narrow))
+  if st.examples_open then list.push(parts, examples_menu(narrow)) else ()
+  if ai.open and not st.embed and narrow then {
+    list.push(parts, backdrop())
+    list.push(parts, ai_bar(narrow))
+  } else ()
   v.col(parts) |> v.bg(c(BG))
 }

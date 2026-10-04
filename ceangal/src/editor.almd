@@ -11,6 +11,7 @@
 // shaped and drawn, so cost per frame does not grow with document length.
 
 import snaidhm
+import math
 import self as ui
 import self.view as v
 import self.text as tx
@@ -48,7 +49,24 @@ type Editor = {
   line_style: List[Int],  // per-line color index into Theme.styles (plain text only)
   gutter: Bool,
   secret: Bool,           // shows • per character; copy / cut / a11y value are withheld
+  touch: Touch,           // the finger on the view, if any
+  fling_v: Float,         // momentum after a touch scroll (px/ms, + = down); 0 = none
+  fling_t: Float,         // when the momentum was last advanced (ms)
 }
+
+// A touch gesture: pending until it moves (scroll) or is held first (select);
+// a touch that ends without moving is a tap.
+type Touch = { id: Int, x0: Float, y0: Float, sx0: Float, sy0: Float, t0: Float, mode: Int, ly: Float, lt: Float, v: Float }
+
+let TOUCH_NONE = 0
+let TOUCH_PENDING = 1
+let TOUCH_SCROLL = 2
+let TOUCH_SELECT = 3
+let TOUCH_SLOP = 8.0       // px a finger may wander and still tap
+let LONG_PRESS_MS = 450.0
+let FLING_DECAY_MS = 325.0 // velocity halves roughly every 225 ms, as on iOS
+
+fn no_touch() -> Touch = { id: 0, x0: 0.0, y0: 0.0, sx0: 0.0, sy0: 0.0, t0: 0.0, mode: TOUCH_NONE, ly: 0.0, lt: 0.0, v: 0.0 }
 
 let GUTTER_PAD = 12.0
 let TEXT_PAD = 10.0
@@ -93,6 +111,9 @@ pub fn from_string(s: String) -> Editor = {
   line_style: [],
   gutter: true,
   secret: false,
+  touch: no_touch(),
+  fling_v: 0.0,
+  fling_t: 0.0,
 }
 
 pub fn text_field(s: String, placeholder: String) -> Editor =
@@ -500,20 +521,67 @@ pub fn text(e: Editor, kind: Int, s: String, cursor: Int) -> Editor =
     else ensure_visible(replace_selection({ ...e, preedit: no_cps() }, cps, if kind == 3 then 0 else 1))
   }
 
-// Pointer: place the cursor / extend the selection by drag; double-click
-// selection is left to the platform-neutral rule "shift+click extends".
-pub fn pointer(e: Editor, p: v.Pointer) -> Editor = {
-  let lh = line_h(e)
-  let gx = gutter_w(e) + pad_x(e)
-  let line = int.max(0, int.min(list.len(e.lines) - 1, float.to_int(float.floor((p.y + e.scroll_y - pad_y(e)) / lh))))
-  let col = col_at_x(e, line, p.x - gx + e.scroll_x)
-  if p.phase == 0 then { ...move_to(e, { line: line, col: col }, ui.has_shift(p.mods)), want_x: -1.0 }
-  else if p.phase == 1 and p.buttons % 2 == 1 then { ...move_to(e, { line: line, col: col }, true), want_x: -1.0 }
-  else e
+// The text position under a point of the view.
+fn pos_at(e: Editor, x: Float, y: Float) -> Pos = {
+  let line = int.max(0, int.min(list.len(e.lines) - 1, float.to_int(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e)))))
+  { line: line, col: col_at_x(e, line, x - gutter_w(e) - pad_x(e) + e.scroll_x) }
 }
 
+// Mouse: press places the cursor, drag extends the selection (shift+click
+// extends too). Touch (pointer id >= 1): drag scrolls with momentum, a tap
+// places the cursor, press-and-hold then drag selects.
+pub fn pointer(e: Editor, p: v.Pointer) -> Editor =
+  if p.id >= 1 then touch(e, p, ui.clock_ms())
+  else if p.phase == 0 then { ...move_to(e, pos_at(e, p.x, p.y), ui.has_shift(p.mods)), want_x: -1.0, fling_v: 0.0 }
+  else if p.phase == 1 and p.buttons % 2 == 1 then { ...move_to(e, pos_at(e, p.x, p.y), true), want_x: -1.0 }
+  else e
+
+fn touch(e: Editor, p: v.Pointer, now: Float) -> Editor = {
+  let t = e.touch
+  if p.phase == 0 then
+    { ...e, fling_v: 0.0, touch: { id: p.id, x0: p.x, y0: p.y, sx0: e.scroll_x, sy0: e.scroll_y, t0: now, mode: TOUCH_PENDING, ly: p.y, lt: now, v: 0.0 } }
+  else if t.id != p.id then e
+  else if p.phase == 1 then {
+    let dx = p.x - t.x0
+    let dy = p.y - t.y0
+    let moved = float.abs(dx) > TOUCH_SLOP or float.abs(dy) > TOUCH_SLOP
+    let mode = if t.mode != TOUCH_PENDING then t.mode
+      else if moved and now - t.t0 >= LONG_PRESS_MS then TOUCH_SELECT
+      else if moved then TOUCH_SCROLL
+      else TOUCH_PENDING
+    if mode == TOUCH_SCROLL then {
+      let dt = float.max(1.0, now - t.lt)
+      let v_now = (t.ly - p.y) / dt
+      // a long single-line field scrolls sideways; everything else vertically
+      let sx = if e.single_line then float.max(0.0, t.sx0 - dx) else e.scroll_x
+      { ...e, scroll_y: clamp_scroll(e, t.sy0 - dy), scroll_x: sx,
+        touch: { ...t, mode: mode, ly: p.y, lt: now, v: v_now * 0.8 + t.v * 0.2 } }
+    } else if mode == TOUCH_SELECT then {
+      let started = if t.mode == TOUCH_SELECT then e else move_to(e, pos_at(e, t.x0, t.y0), false)
+      { ...move_to(started, pos_at(e, p.x, p.y), true), want_x: -1.0, touch: { ...t, mode: mode } }
+    } else e
+  } else {
+    // up (2) or cancel (3)
+    let tap = p.phase == 2 and t.mode == TOUCH_PENDING
+    let flick = t.mode == TOUCH_SCROLL and now - t.lt < 80.0 and float.abs(t.v) > 0.25
+    let e2 = if tap then { ...move_to(e, pos_at(e, p.x, p.y), false), want_x: -1.0 } else e
+    { ...e2, touch: no_touch(), fling_v: if flick then t.v else 0.0, fling_t: now }
+  }
+}
+
+// Advance the momentum of a flick; true while it is still moving.
+fn fling(e: Editor, now: Float) -> (Editor, Bool) =
+  if e.fling_v == 0.0 then (e, false)
+  else {
+    let dt = float.min(64.0, float.max(0.0, now - e.fling_t))
+    let sy = clamp_scroll(e, e.scroll_y + e.fling_v * dt)
+    let v2 = e.fling_v * math.exp(0.0 - dt / FLING_DECAY_MS)
+    let stopped = float.abs(v2) < 0.02 or sy != e.scroll_y + e.fling_v * dt
+    ({ ...e, scroll_y: sy, fling_v: if stopped then 0.0 else v2, fling_t: now }, not stopped)
+  }
+
 pub fn wheel(e: Editor, dx: Float, dy: Float) -> Editor =
-  { ...e, scroll_y: clamp_scroll(e, e.scroll_y + dy), scroll_x: float.max(0.0, e.scroll_x + dx) }
+  { ...e, scroll_y: clamp_scroll(e, e.scroll_y + dy), scroll_x: float.max(0.0, e.scroll_x + dx), fling_v: 0.0 }
 
 // ── Theme ──
 
@@ -691,6 +759,7 @@ fn preedit_cols(e: Editor) -> Int = {
 // reachability roots: otherwise the wasm leg can drop them from its function
 // table when `view` is called from a named fn of the app (almide/almide#3296).
 let keep_paint = paint
+let keep_fling = fling
 let keep_visible = ensure_visible
 let keep_pointer = pointer
 let keep_wheel = wheel
@@ -712,6 +781,11 @@ fn with_role(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme, r
   v.custom(key, (x, y, w, h) => {
     let e = get()
     if e.view_w != w or e.view_h != h then set(ensure_visible({ ...e, view_w: w, view_h: h })) else ()
+    if e.fling_v != 0.0 then {
+      let (e2, moving) = fling(get(), ui.clock_ms())
+      set(e2)
+      if moving then ui.invalidate() else ()
+    } else ()
     paint(get(), ui.is_focused(key), th, x, y, w, h)
   })
     |> v.text_input(key)

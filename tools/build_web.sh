@@ -26,5 +26,7 @@ cp "$root/out/compiler-pkg/almide_compiler_service.js" "$root/out/compiler-pkg/a
 cp -R "$root/assets/fonts" "$out/assets/fonts"
 cp -R "$root/apps/playground/assets/examples" "$out/assets/examples"
 cp -R "$root/apps/playground/assets/ai" "$out/assets/ai"
+cp -R "$root/apps/playground/assets/brand" "$out/assets/brand"
+cp "$root/apps/playground/web/manifest.webmanifest" "$root"/store/playground/web/*.png "$out/"
 touch "$out/.nojekyll"
 echo "dist/web: $(du -sh "$out" | cut -f1)"

@@ -61,6 +61,10 @@ var pressed = -1
 var hover_cursor = 0
 var last_x = 0.0
 var last_y = 0.0
+// Where the current touch went down: a touch moves focus only when it ends
+// near there (a tap), so scrolling does not raise the soft keyboard.
+var press_x = 0.0
+var press_y = 0.0
 
 // Keyboard focus, by view key ("" = none), and the caret the focused text
 // input reported while painting (logical px; w < 0 = none).
@@ -172,6 +176,7 @@ pub fn viewport_width() -> Float = float.max(1.0, width - safe_l - safe_r)
 pub fn viewport_height() -> Float = float.max(1.0, height - safe_t - safe_b)
 pub fn is_dark() -> Bool = dark_mode
 pub fn pixel_scale() -> Float = scale
+pub fn clock_ms() -> Float = sys.now_ms()
 
 // ── Dispatch (docs/abi.md §2) ──
 
@@ -484,9 +489,11 @@ fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> 
   last_x = x
   last_y = y
   let target = if pressed >= 0 and (phase == 1 or phase == 2 or phase == 3) then pressed else hit(x, y)
-  if phase == 0 then {
-    // Pressing anywhere moves focus to the focusable node under the pointer
-    // (or clears it).
+  if phase == 0 then { press_x = x; press_y = y } else ()
+  let tap_end = phase == 2 and float.abs(x - press_x) <= 10.0 and float.abs(y - press_y) <= 10.0
+  if (phase == 0 and id == 0) or (tap_end and id >= 1) then {
+    // Pressing (a mouse) or tapping (a finger) moves focus to the focusable
+    // node under the pointer, or clears it.
     var f = ""
     let n = int.min(list.len(frame_views), list.len(frame_rects))
     for i in 0..<n {

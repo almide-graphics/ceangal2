@@ -67,8 +67,23 @@ var stderr_text: List[String] = []
 
 // ── Tabs ──
 
+// Code font size: 13 px, 15 px in the phone layout (fingers, and iOS zooms
+// into anything smaller than 16 px on the web).
+var font_px = 13.0
+
 fn editor_for(name: String, text: String) -> ed.Editor =
-  ed.with_syntax(ed.from_string(text), string.ends_with(name, ".almd"))
+  ed.with_font_size(ed.with_syntax(ed.from_string(text), string.ends_with(name, ".almd")), font_px)
+
+pub fn set_code_font(size: Float) -> Unit =
+  if size != font_px then {
+    font_px = size
+    var ts: List[Tab] = []
+    for t in tabs { list.push(ts, { ...t, ed: ed.with_font_size(t.ed, size) }) }
+    tabs = ts
+    out = ed.with_font_size(out, size - 0.5)
+    rust_view = ed.with_font_size(rust_view, size)
+    ast_view = ed.with_font_size(ast_view, size)
+  } else ()
 
 pub fn set_files(files: List[(String, String)]) -> Unit = {
   var ts: List[Tab] = []
@@ -352,6 +367,14 @@ type Category = { title: String, examples: List[Example] }
 
 var categories: List[Category] = []
 
+fn asset_bytes(name: String) -> Bytes = {
+  let key = bytes.from_string(name)
+  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
+  var b = bytes.new(if n < 0 then 0 else n)
+  if n > 0 then { let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(b), n) } else ()
+  b
+}
+
 fn asset_text(name: String) -> String? = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
@@ -398,6 +421,8 @@ pub fn load_example(id: String) -> Bool = {
     }
   }
   examples_open = false
+  // the phone layout flips back to the code to show what was loaded
+  mobile_output = false
   found
 }
 
@@ -528,11 +553,28 @@ pub effect fn boot() -> Unit = {
 pub fn toggle_examples() -> Unit = { examples_open = not examples_open }
 pub fn close_examples() -> Unit = { examples_open = false }
 pub fn toggle_mobile_output() -> Unit = { mobile_output = not mobile_output }
+pub fn show_code() -> Unit = { mobile_output = false }
 pub fn set_rename_field(e: ed.Editor) -> Unit = { rename_field = e }
 pub fn set_out_tab(i: Int) -> Unit = { out_tab = i }
 pub fn set_out(e: ed.Editor) -> Unit = { out = e }
 pub fn set_rust_view(e: ed.Editor) -> Unit = { rust_view = e }
 pub fn set_ast_view(e: ed.Editor) -> Unit = { ast_view = e }
+// The header's Almide mark: raw RGBA (u16 width, u16 height, pixels) from
+// tools/build_brand.py, uploaded once.
+var logo_tex = -1
+
+pub fn logo_texture() -> Int = {
+  if logo_tex < 0 then {
+    let d = asset_bytes("brand/logo.rgba")
+    logo_tex = if bytes.len(d) > 4 then {
+      let w = bytes.get_or(d, 0, 0) * 256 + bytes.get_or(d, 1, 0)
+      let h = bytes.get_or(d, 2, 0) * 256 + bytes.get_or(d, 3, 0)
+      snaidhm.create_image(w, h, bytes.slice(d, 4, bytes.len(d)))
+    } else 0
+  } else ()
+  logo_tex
+}
+
 pub fn picture_texture() -> Int = {
   if picture_tex == 0 then picture_tex = snaidhm.create_image(picture.w, picture.h, picture.rgba) else ()
   picture_tex

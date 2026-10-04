@@ -10,6 +10,7 @@ export async function playgroundAssets(base = "assets/") {
   assets["examples/manifest.json"] = manifest;
   assets["examples/default.almd"] = `${base}examples/default.almd`;
   assets["ai/system.md"] = `${base}ai/system.md`;
+  assets["brand/logo.rgba"] = `${base}brand/logo.rgba`;
   for (const cat of JSON.parse(new TextDecoder().decode(manifest)).categories)
     for (const ex of cat.examples)
       for (const f of ex.files) assets[`examples/${ex.id}/${f}`] = `${base}examples/${ex.id}/${f}`;

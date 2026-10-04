@@ -321,6 +321,9 @@ pub fn generate() -> Unit = {
     else {
       prompt_field = ed.set_text(prompt_field, "")
       log = ed.clear(log)
+      // Phone layout: close the sheet and show the editor, so the code is
+      // seen streaming in.
+      if ceangal.viewport_width() < 760.0 then { open = false; st.show_code() } else ()
       note("> " + prompt, 4)
       messages = [{ role: "user", content: prompt }]
       attempt = 0
