@@ -32,6 +32,17 @@ pub const EV_FOCUS: i64 = 8;
 pub const EV_LIFECYCLE: i64 = 9;
 pub const EV_RESULT: i64 = 10;
 pub const EV_APPEARANCE: i64 = 11;
+pub const EV_A11Y: i64 = 12;
+
+/// Wake-ups for the windowed loop: async results, or AccessKit.
+pub enum UserEvent {
+    Wake,
+    A11y(accesskit_winit::Event),
+}
+
+impl From<accesskit_winit::Event> for UserEvent {
+    fn from(e: accesskit_winit::Event) -> Self { UserEvent::A11y(e) }
+}
 
 pub fn run() {
     match std::env::var("CEANGAL_HEADLESS") {
@@ -213,6 +224,9 @@ use winit::window::{CursorIcon, Window, WindowId};
 
 struct Windowed {
     window: Option<Arc<Window>>,
+    a11y: Option<accesskit_winit::Adapter>,
+    proxy: winit::event_loop::EventLoopProxy<UserEvent>,
+    title: String,
     ctx: Rc<RefCell<GpuContext>>,
     scale: f64,
     mods: ModifiersState,
@@ -276,6 +290,14 @@ fn cursor_icon(kind: i64) -> CursorIcon {
 }
 
 impl Windowed {
+    /// Give AccessKit the latest committed tree (when it is listening).
+    fn push_a11y(&mut self, force: bool) {
+        if !(crate::a11y::take_changed() || force) { return }
+        let scale = self.scale;
+        let title = self.title.clone();
+        if let Some(a) = self.a11y.as_mut() { a.update_if_active(|| crate::a11y::tree_update(scale, &title)); }
+    }
+
     fn call(&self, kind: i64, a: i64, b: i64, x: f64, y: f64, z: f64, w: f64) -> i64 {
         call(&self.ctx, kind, a, b, x, y, z, w)
     }
@@ -315,10 +337,27 @@ impl Windowed {
     }
 }
 
-impl ApplicationHandler<()> for Windowed {
-    /// Async results arrived (sys::post_result woke the loop).
-    fn user_event(&mut self, _el: &ActiveEventLoop, _: ()) {
-        deliver_results(&self.ctx);
+impl ApplicationHandler<UserEvent> for Windowed {
+    /// Async results arrived (sys::post_result woke the loop), or AccessKit
+    /// asked for the tree / an action.
+    fn user_event(&mut self, _el: &ActiveEventLoop, ev: UserEvent) {
+        match ev {
+            UserEvent::Wake => { deliver_results(&self.ctx); }
+            UserEvent::A11y(e) => match e.window_event {
+                accesskit_winit::WindowEvent::InitialTreeRequested => {
+                    crate::a11y::set_active(true);
+                    // render once so ceangal builds the tree, then hand it over
+                    self.call(EV_FRAME, 0, 0, crate::sys::now_ms(), 0.0, 0.0, 0.0);
+                    self.push_a11y(true);
+                }
+                accesskit_winit::WindowEvent::ActionRequested(req) => {
+                    if let Some(code) = crate::a11y::action_code(req.action) {
+                        self.call(EV_A11Y, req.target_node.0 as i64, code, 0.0, 0.0, 0.0, 0.0);
+                    }
+                }
+                accesskit_winit::WindowEvent::AccessibilityDeactivated => crate::a11y::set_active(false),
+            },
+        }
         self.apply_requests();
     }
 
@@ -328,10 +367,15 @@ impl ApplicationHandler<()> for Windowed {
             return;
         }
         let title = std::env::var("CEANGAL_TITLE").unwrap_or_else(|_| "ceangal".into());
+        self.title = title.clone();
+        // AccessKit must attach before the window is first shown.
         let attrs = Window::default_attributes()
             .with_title(title)
+            .with_visible(false)
             .with_inner_size(winit::dpi::LogicalSize::new(1100.0, 760.0));
         let window = Arc::new(el.create_window(attrs).expect("create window"));
+        self.a11y = Some(accesskit_winit::Adapter::with_event_loop_proxy(el, &window, self.proxy.clone()));
+        window.set_visible(true);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance.create_surface(window.clone()).expect("create surface");
         gpu::init_shared(instance, Some(&surface));
@@ -346,6 +390,7 @@ impl ApplicationHandler<()> for Windowed {
     }
 
     fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if let (Some(a), Some(w)) = (self.a11y.as_mut(), self.window.as_ref()) { a.process_event(w, &event); }
         match event {
             WindowEvent::CloseRequested => {
                 self.call(EV_LIFECYCLE, 3, 0, 0.0, 0.0, 0.0, 0.0);
@@ -369,6 +414,7 @@ impl ApplicationHandler<()> for Windowed {
             WindowEvent::RedrawRequested => {
                 let t = crate::sys::now_ms();
                 self.animating = self.call(EV_FRAME, 0, 0, t, 0.0, 0.0, 0.0) == 1;
+                self.push_a11y(false);
             }
             WindowEvent::ModifiersChanged(m) => self.mods = m.state(),
             WindowEvent::CursorMoved { position, .. } => {
@@ -456,6 +502,13 @@ impl ApplicationHandler<()> for Windowed {
     }
 
     fn about_to_wait(&mut self, el: &ActiveEventLoop) {
+        // Smoke tests: CEANGAL_EXIT_AFTER_MS ends a windowed run cleanly.
+        if let Some(ms) = std::env::var("CEANGAL_EXIT_AFTER_MS").ok().and_then(|v| v.parse::<f64>().ok()) {
+            if crate::sys::now_ms() >= ms { el.exit(); return; }
+            el.set_control_flow(ControlFlow::WaitUntil(std::time::Instant::now() + std::time::Duration::from_millis(50)));
+            self.apply_requests();
+            return;
+        }
         let deadline = crate::sys::due_deadline();
         self.apply_requests();
         match deadline {
@@ -469,11 +522,15 @@ impl ApplicationHandler<()> for Windowed {
 }
 
 fn run_windowed() {
-    let event_loop = EventLoop::<()>::with_user_event().build().expect("event loop");
+    let event_loop = EventLoop::<UserEvent>::with_user_event().build().expect("event loop");
     let proxy = event_loop.create_proxy();
-    crate::sys::set_waker(Box::new(move || { let _ = proxy.send_event(()); }));
+    let waker = proxy.clone();
+    crate::sys::set_waker(Box::new(move || { let _ = waker.send_event(UserEvent::Wake); }));
     let mut app = Windowed {
         window: None,
+        a11y: None,
+        proxy,
+        title: String::new(),
         ctx: Rc::new(RefCell::new(GpuContext::new())),
         scale: 1.0,
         mods: ModifiersState::empty(),

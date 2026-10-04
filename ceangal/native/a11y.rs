@@ -79,3 +79,53 @@ pub fn dump_if_requested() {
     )).collect());
     let _ = std::fs::write(path, text);
 }
+
+// ── AccessKit (windowed hosts) ──
+//
+// The committed tree as an AccessKit update: a window root with every node
+// as a child (the tree is flat, docs/adr/0002). Bounds are physical pixels.
+
+const ROOT: u64 = u64::MAX;
+
+fn role_of(r: i64) -> accesskit::Role {
+    use accesskit::Role::*;
+    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, _ => GenericContainer }
+}
+
+pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
+    use accesskit::{Action, Node, NodeId, Rect, Toggled, TreeId, TreeInfo, TreeUpdate};
+    TREE.with(|t| {
+        let t = t.borrow();
+        let mut nodes = Vec::with_capacity(t.committed.len() + 1);
+        let mut root = Node::new(accesskit::Role::Window);
+        root.set_label(title.to_string());
+        root.set_children(t.committed.iter().map(|n| NodeId(n.id as u64)).collect::<Vec<_>>());
+        nodes.push((NodeId(ROOT), root));
+        for n in &t.committed {
+            let mut node = Node::new(role_of(n.role));
+            let (x, y, w, h) = n.rect;
+            node.set_bounds(Rect { x0: x * scale, y0: y * scale, x1: (x + w) * scale, y1: (y + h) * scale });
+            if !n.label.is_empty() { node.set_label(n.label.clone()); }
+            if let Some(v) = &n.value { node.set_value(v.clone()); }
+            if n.flags & 1 != 0 { node.add_action(Action::Focus); }
+            if matches!(n.role, 3 | 8 | 11 | 12) { node.add_action(Action::Click); }
+            if n.flags & 8 != 0 { node.set_toggled(Toggled::True); } else if n.role == 12 { node.set_toggled(Toggled::False); }
+            if n.flags & 16 != 0 { node.set_disabled(); }
+            nodes.push((NodeId(n.id as u64), node));
+        }
+        let focus = if t.focus > 0 && t.committed.iter().any(|n| n.id == t.focus) { NodeId(t.focus as u64) } else { NodeId(ROOT) };
+        TreeUpdate { nodes, tree: Some(TreeInfo::new(NodeId(ROOT))), tree_id: TreeId::ROOT, focus }
+    })
+}
+
+/// Take "the tree changed since the last update" (set by a11y_commit).
+pub fn take_changed() -> bool {
+    TREE.with(|t| std::mem::replace(&mut t.borrow_mut().changed, false))
+}
+
+pub fn set_active(on: bool) { ACTIVE.with(|a| a.set(on)); }
+
+/// An AccessKit action as an ABI event-12 action code (docs/abi.md §4.4).
+pub fn action_code(a: accesskit::Action) -> Option<i64> {
+    match a { accesskit::Action::Click => Some(1), accesskit::Action::Focus => Some(2), _ => None }
+}
