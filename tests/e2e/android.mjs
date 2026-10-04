@@ -108,6 +108,10 @@ async function settled(read, what) {
 }
 
 async function tapGui(label) {
+  // on a small screen the soft keyboard can leave the node below the
+  // program's visible window: put the keyboard away first, as a user would
+  const first = guiTree().find((g) => g.label === label), w0 = tree() && node(tree(), "Program window");
+  if (first && w0 && first.y + first.h > w0.h) { adb("shell", "input", "keyevent", "4"); await sleep(800); }
   const { t, win, n } = await settled(() => {
     const t = tree();
     const win = t && node(t, "Program window");

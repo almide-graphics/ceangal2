@@ -299,8 +299,11 @@ struct Windowed {
     touches: Vec<Option<u64>>,
     dark: bool,
     insets: (f64, f64, f64, f64),
-    /// iOS: re-read the insets until then (ms), while the keyboard animates.
+    /// Mobile: re-read the insets often until then (ms), while the keyboard
+    /// animates, and now and then while it may be up (Android's Back and
+    /// iOS's dismiss key close it without telling the app).
     kb_poll_until: f64,
+    ime_on: bool,
 }
 
 /// The surface covers the whole window. On iOS `inner_size` is the safe
@@ -478,6 +481,7 @@ impl Windowed {
         if let Some(req) = crate::text_input::take_change() {
             window.set_ime_allowed(req.active);
             self.kb_poll_until = crate::sys::now_ms() + 1000.0;
+            self.ime_on = req.active;
             if req.active {
                 let (x, y, w, h) = req.rect;
                 window.set_ime_cursor_area(
@@ -743,11 +747,22 @@ impl ApplicationHandler<UserEvent> for Windowed {
         }
         let deadline = crate::sys::due_deadline();
         self.apply_requests();
-        // iOS: the keyboard moves in and out without a resize
-        if cfg!(target_os = "ios") && crate::sys::now_ms() < self.kb_poll_until {
+        // Mobile: the keyboard moves in and out without a resize
+        if cfg!(any(target_os = "ios", target_os = "android")) && (self.ime_on || crate::sys::now_ms() < self.kb_poll_until) {
+            let before = self.insets;
             self.send_appearance(false);
-            if let Some(w) = &self.window { w.request_redraw(); }
-            el.set_control_flow(ControlFlow::WaitUntil(std::time::Instant::now() + std::time::Duration::from_millis(30)));
+            if self.insets != before {
+                self.kb_poll_until = crate::sys::now_ms() + 1000.0;
+                if let Some(w) = &self.window { w.request_redraw(); }
+            }
+            let fast = crate::sys::now_ms() < self.kb_poll_until;
+            let step = std::time::Duration::from_millis(if fast { 30 } else { 250 });
+            let wake = std::time::Instant::now() + step;
+            let wake = match deadline {
+                Some(at) => wake.min(std::time::Instant::now() + std::time::Duration::from_secs_f64(((at - crate::sys::now_ms()) / 1000.0).max(0.0))),
+                None => wake,
+            };
+            el.set_control_flow(ControlFlow::WaitUntil(wake));
             return;
         }
         match deadline {
@@ -787,6 +802,7 @@ fn run_windowed() {
         dark: false,
         insets: (0.0, 0.0, 0.0, 0.0),
         kb_poll_until: 0.0,
+        ime_on: false,
     };
     event_loop.run_app(&mut app).expect("event loop");
 }

@@ -41,8 +41,10 @@ target-specific.
   `$HOME/Library/Application Support`. UIKit reports the on-screen keyboard
   only through notifications: `ceangal_platform` observes
   `UIKeyboardWillChangeFrameNotification` (objc2 + block2) and the host adds
-  the keyboard's height to the bottom inset, re-reading it for a second after
-  it asks for the keyboard (it moves without a resize). Secrets are generic
+  the keyboard's height to the bottom inset. On both phones the keyboard can
+  close without telling the app (Android's Back goes to the IME; iOS's
+  dismiss key), so while it may be up the host re-reads the insets every
+  250 ms, and every 30 ms for a second after they change. Secrets are generic
   passwords in the app's keychain (security-framework).
 - **The soft keyboard opens on a tap.** On phones and tablets ceangal asks for
   the on-screen keyboard only after a finger tapped a text field, not when
