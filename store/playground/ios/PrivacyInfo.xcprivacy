@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Privacy manifest for the iOS and macOS apps (see store/playground/data-declarations.md). -->
+<plist version="1.0">
+<dict>
+  <key>NSPrivacyTracking</key>
+  <false/>
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array>
+    <!-- The optional AI assistant sends the user's prompt and code to the
+         provider the user chose, with the user's own key. -->
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+  </array>
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <!-- stat() on the app's own files (storage, the user's projects) -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+    <!-- monotonic clock for frame timing and run durations -->
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>35F9.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

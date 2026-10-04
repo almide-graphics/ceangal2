@@ -49,6 +49,8 @@ lipo -info "$bundle/Contents/MacOS/$app"
 for d in $APP_ASSETS; do cp -Rn "$root/$d/." "$bundle/Contents/Resources/assets/"; done
 icns="$root/store/$app/macos/AppIcon.icns"
 [ -f "$icns" ] && cp "$icns" "$bundle/Contents/Resources/AppIcon.icns"
+# the privacy manifest (required for App Store apps)
+cp "$root/store/$app/ios/PrivacyInfo.xcprivacy" "$bundle/Contents/Resources/" 2>/dev/null || true
 
 cat > "$bundle/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

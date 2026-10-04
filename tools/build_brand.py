@@ -87,7 +87,8 @@ def save(img, *parts):
 
 
 def main():
-    for d in ("android", "windows", "linux", "web", "macos", "ios"):
+    # generated folders only (ios/ also holds the hand-written privacy manifest)
+    for d in ("android", "windows", "linux", "web", "macos"):
         shutil.rmtree(os.path.join(OUT, d), ignore_errors=True)
 
     master = full_icon(1024)
