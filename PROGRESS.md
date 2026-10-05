@@ -4,6 +4,13 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- bidi を UAX #9 に沿って作り直し (ADR 0016): 埋め込み・上書き・
+  isolate (LRE…PDF, LRI/RLI/FSI…PDI, LRM/RLM/ALM)、isolating run
+  sequence、W1/W7・N1/N2・I1/I2・L1。python-bidi (unicode-bidi) を正解に
+  ランダム 1000 行のテストを CI に追加 (3000 行で不一致 1 件、仕様上
+  こちらが正しいと判断)。RTL 文字の左端のキャレットが文字に重なる
+  問題も修正。Almide の native codegen が bidi 制御文字入りリテラルを
+  通さないバグを almide/almide#3438 として報告。
 - web ビルドに wasm-opt -Oz を導入 (ADR 0015)。Binaryen version_133 を
   tools/wasm-opt で固定・SHA-256 検証して自動取得。wasm が約 28% 縮小
   (gallery 230→167 KB)。予算を最適化後のサイズで測るよう変更し、
@@ -346,6 +353,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (Binaryen version_133, SHA-256 checked), explicit feature list, stub
   check on Almide's own bytes first, skipped by `ceangal dev`. Budgets on
   the optimized module: 170 / 152 / 150 KB (were 225 / 204 / 202).
+- Bidi per UAX #9 (ADR 0016): explicit embeddings / overrides /
+  isolates, isolating run sequences, W1 W7 N1 N2 I1 I2 L1; 1000-line
+  oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
+  `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
+  edge; isolate typed in apps/gallery/tests/rtl.test.
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -384,7 +396,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Text (goal order): bidi isolates / embeddings, UAX #14 line breaking.
+0. Text (goal order): UAX #14 line breaking. (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
@@ -402,6 +414,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- almide/almide#3438 — bidi control characters in a string literal break
+  native builds (rustc `text_direction_codepoint_in_literal`): build them
+  with `string.from_codepoint`; tests use code point lists.
 - almide/almide#3424 — a failing test in the ceangal package shows as a
   rustc error (`almide_rt_ceangal_v0_dispatch` not found): run
   `almide test --target wasm` to see the assertion.

@@ -184,11 +184,13 @@ the caret with the arrows across the screen. The Indic scripts are shaped with
 their fonts' OpenType tables: conjuncts, half forms, reph,
 pre-base vowel signs and stacked marks come out as HarfBuzz would draw
 them, in labels and in text fields. A line with right-to-left text is
-shown in visual order: the paragraph takes the direction of its first
-letter, numbers stay left to right, brackets mirror. Fallback fonts load
-the first time a character needs them (on the web, after the app
-starts). Not yet: Oriya, Sinhala, Myanmar, Khmer, and right alignment of
-right-to-left fields.
+shown in visual order by the Unicode Bidirectional Algorithm: the
+paragraph takes the direction of its first letter, numbers stay left to
+right, brackets mirror, and the direction controls work (wrap a name or
+a path in U+2066…U+2069 to isolate it). `ed.with_align_end` starts
+right-to-left lines at a field's right edge. Fallback fonts load the
+first time a character needs them (on the web, after the app starts).
+Not yet: Oriya, Sinhala, Myanmar, Khmer.
 
 ## Input
 

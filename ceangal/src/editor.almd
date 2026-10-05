@@ -988,7 +988,11 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
         if focused and on_cursor_line then {
           let cc = e.cur.col + (if pre_n > 0 then preedit_cols(e) else 0)
           if (cc >= c0 and cc < c1) or (last_seg and cc >= c0) then {
-            let cx = gx(cc)
+            // on the left edge of a right-to-left character, the caret is
+            // drawn to the left of it (not over the character)
+            let ci = cc - off
+            let on_left = not g.ordered and ci > 0 and ci - 1 < list.len(g.left) and float.abs(g.caret[int.min(ci, list.len(g.caret) - 1)] - g.left[ci - 1]) < 0.01
+            let cx = gx(cc) - (if on_left then 2.0 * k else 0.0)
             snaidhm.fill(cx, (ly + 3.0) * k, 2.0 * k, (lh - 6.0) * k, 0.0, th.caret)
             ui.set_caret(cx / k, ly, 2.0, lh)
           } else ()

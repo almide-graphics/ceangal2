@@ -83,7 +83,7 @@ fn script_font(cp: Int) -> Int =
 // outside an emoji (inside one, the colour font draws them), the byte-order
 // mark.
 fn invisible(cp: Int) -> Bool =
-  (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2064)
+  (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2069) or cp == 0x061C
     or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
     or (cp >= 0xE0100 and cp <= 0xE01EF)
 

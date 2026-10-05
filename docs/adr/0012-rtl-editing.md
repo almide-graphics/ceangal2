@@ -50,7 +50,8 @@ a field read backwards, and Arabic stayed unjoined.
   2026-10-06, `text.shape_line` shapes a right-to-left segment in logical
   order and lays its clusters out from the right, so a ZWJ sequence, a
   flag or a Hebrew letter with its points stays whole. The
-  ADR 0009 limits still apply: no explicit embeddings or isolates.
+  ADR 0009 limits applied: no explicit embeddings or isolates (lifted
+  in ADR 0016).
 - `apps/gallery/tests/rtl.test` types Hebrew and Arabic, moves with the
   arrows, inserts mid-word and deletes a lam-alef's alef, on the web and
   the native build.

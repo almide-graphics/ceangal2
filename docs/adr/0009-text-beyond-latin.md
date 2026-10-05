@@ -26,6 +26,7 @@ right-to-left text read backwards.
   inside right-to-left text, neutrals taking the direction of their
   surroundings, runs reversed by level, brackets mirrored. No explicit
   embeddings or isolates (LRE/RLI…): they are dropped as invisible.
+  (Since ADR 0016 they are followed, checked against unicode-bidi.)
 - Labels and text (`ceangal.text.width`, `draw`) go through joining and
   reordering. The editor keeps logical order, because its caret and
   selection are computed on the stored text.

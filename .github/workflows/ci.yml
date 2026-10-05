@@ -29,7 +29,7 @@ jobs:
       - name: layout engine (Yoga-derived)
         working-directory: ceangal
         run: ../tools/almide test src/layout_test.almd
-      - name: bidi levels and display order
+      - name: bidi levels and display order (tests/bidi/cases.txt, from unicode-bidi)
         working-directory: ceangal
         run: ../tools/almide test src/bidi_test.almd
       - name: Arabic shaping matches HarfBuzz (tests/shaping/arabic.txt)

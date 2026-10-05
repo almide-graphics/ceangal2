@@ -13,6 +13,11 @@ type " مرحبا لا"
 see "Hello, שלaום مرحبا لا"
 key Backspace
 see "Hello, שלaום مرحبا ل"
+# An isolate (LRI … PDI) keeps an English phrase with its number in order
+# inside the right-to-left line; the controls draw nothing.
+type " ⁦ok 12⁩!"
+see "Hello, שלaום مرحبا ل ⁦ok 12⁩!"
+shot "rtl-isolate.png"
 shot "rtl.png"
 # A field with_align_end: right-to-left text sits at the right edge, so a
 # tap in the middle of the field lands after the (logical) end of a short word.

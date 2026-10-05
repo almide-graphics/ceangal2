@@ -6,6 +6,10 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Bidi embeddings, overrides and isolates** (LRE…PDF, LRI/RLI/FSI…PDI,
+  LRM/RLM/ALM): followed as UAX #9 does, with isolating run sequences;
+  1000 random lines match unicode-bidi's order. The caret on a
+  right-to-left character's left edge no longer covers it. (ADR 0016)
 - **Smaller web builds**: the app's wasm goes through a pinned `wasm-opt
   -Oz` (about 28% smaller; the gallery 230 → 167 KB). `ceangal dev` skips
   it. Size budgets now measure the optimized module. (ADR 0015)
