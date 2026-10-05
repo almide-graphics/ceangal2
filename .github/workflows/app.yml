@@ -27,6 +27,10 @@ on:
         description: an accessible label the web smoke test clicks (optional)
         type: string
         default: ""
+      framework:
+        description: a ceangal2 branch or tag to build with instead of the one ceangal.toml names
+        type: string
+        default: ""
 
 jobs:
   web:
@@ -41,7 +45,9 @@ jobs:
         shell: bash
         run: |
           ver="$(python3 -c "import tomllib,sys; print(tomllib.load(open(sys.argv[1],'rb')).get('framework',{}).get('version',''))" "app/${{ inputs.app }}/ceangal.toml")"
-          git clone --quiet --depth 1 ${ver:+--branch "v$ver"} https://github.com/almide-graphics/ceangal2 sdk
+          ref="${{ inputs.framework }}"
+          [ -n "$ref" ] || ref="${ver:+v$ver}"
+          git clone --quiet --depth 1 ${ref:+--branch "$ref"} https://github.com/almide-graphics/ceangal2 sdk
           echo "CEANGAL_SDK=$GITHUB_WORKSPACE/sdk" >> "$GITHUB_ENV"
           app="$GITHUB_WORKSPACE/app/${{ inputs.app }}"
           echo "APP=$app" >> "$GITHUB_ENV"
