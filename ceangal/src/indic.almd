@@ -169,13 +169,17 @@ fn plan_for(f: font.Font, script: Int) -> Plan = {
 
 // A consonant's position from the forms the font has for it (HarfBuzz's
 // consonant_position_from_face).
-fn consonant_position(f: font.Font, pl: Plan, gid: Int, virama: Int) -> Int = {
-  let w = (es: List[otl.Entry], gs: List[Int]) => otl.would_substitute(f, pl.lay, es, gs)
-  if w(pl.blwf, [virama, gid]) or w(pl.blwf, [gid, virama]) or w(pl.vatu, [virama, gid]) or w(pl.vatu, [gid, virama]) then POS_BELOW_C
-  else if w(pl.pstf, [virama, gid]) or w(pl.pstf, [gid, virama]) then POS_POST_C
-  else if w(pl.pref, [virama, gid]) or w(pl.pref, [gid, virama]) then POS_POST_C
+fn consonant_position(f: font.Font, pl: Plan, gid: Int, virama: Int) -> Int =
+  if forms(f, pl, pl.blwf, gid, virama) or forms(f, pl, pl.vatu, gid, virama) then POS_BELOW_C
+  else if forms(f, pl, pl.pstf, gid, virama) or forms(f, pl, pl.pref, gid, virama) then POS_POST_C
   else POS_BASE_C
-}
+
+// Whether the feature's lookups form something from the consonant with a
+// virama on either side. A function, not a lambda: a lambda parameter typed
+// List[otl.Entry] breaks the build of an app with its own `Entry` type
+// (almide/almide#3433).
+fn forms(f: font.Font, pl: Plan, es: List[otl.Entry], gid: Int, virama: Int) -> Bool =
+  otl.would_substitute(f, pl.lay, es, [virama, gid]) or otl.would_substitute(f, pl.lay, es, [gid, virama])
 
 // ── Syllables ──
 
