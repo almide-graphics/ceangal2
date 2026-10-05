@@ -88,6 +88,8 @@ let keep_ai_toggle_settings = ai.toggle_settings
 let keep_ai_new_chat = ai.new_chat
 let keep_ai_toggle_entry = ai.toggle_entry
 let keep_ai_suggest = ai.suggest
+let keep_ai_undo = ai.undo
+let keep_ai_set_mode = ai.set_mode
 
 fn c(n: Int) -> snaidhm.Color = snaidhm.hex(n)
 
@@ -355,9 +357,17 @@ fn settings_card(width: Float) -> v.View = {
 }
 
 fn entry_view(i: Int, e: ai.Entry, width: Float) -> v.View =
-  if e.kind == 0 then
-    para(e.text, 13.0, pal.text, width * 0.8 - 52.0)
-      |> v.px(12.0) |> v.py(8.0) |> v.rounded(10.0) |> v.bg(c(pal.raised)) |> v.align_self(v.Bottom)
+  if e.kind == 0 then {
+    // the request, what it worked on, and Undo (the files as before it)
+    var meta: List[v.View] = [label(e.detail, 11.0, pal.faint) |> v.shrink(1.0)]
+    if not ai.busy() and list.len(e.files) > 0 then
+      list.push(meta, label("Undo", 11.0, pal.accent_light) |> v.bold() |> v.on_click(() => ai.undo(i)) |> v.role(3) |> v.label("Undo " + e.text))
+    else ()
+    v.col([
+      para(e.text, 13.0, pal.text, width * 0.8 - 52.0),
+      v.row(meta) |> v.gap(10.0) |> v.align(v.Middle),
+    ]) |> v.gap(5.0) |> v.px(12.0) |> v.py(8.0) |> v.rounded(10.0) |> v.bg(c(pal.raised)) |> v.align_self(v.Bottom)
+  }
   else {
     let colour = if e.kind == 2 then pal.accent_light else if e.kind == 3 then pal.stop else if e.kind == 5 then pal.warn else pal.muted
     let mark = if e.kind == 1 then "…" else if e.kind == 2 then "✓" else if e.kind == 3 then "✕" else if e.kind == 4 then "↻" else "!"
@@ -386,7 +396,7 @@ fn entry_view(i: Int, e: ai.Entry, width: Float) -> v.View =
 fn conversation(width: Float) -> v.View = {
   var items: List[v.View] = []
   if list.len(ai.entries) == 0 then {
-    list.push(items, para("Describe a program and the assistant writes it, runs it, and fixes what fails. Ask again to change it.", 13.0, pal.muted, width - 28.0))
+    list.push(items, para("Ask for a new program or a change to this one. The assistant sees every file, runs what it writes and fixes what fails; each request can be undone.", 13.0, pal.muted, width - 28.0))
     let tries = ["A maze generator that prints the maze", "Fireworks drawn as an SVG", "FizzBuzz with pattern matching"]
     for t in tries {
       list.push(items, label(t, 12.5, pal.text) |> v.px(12.0) |> v.py(8.0) |> v.rounded(8.0)
@@ -399,16 +409,35 @@ fn conversation(width: Float) -> v.View = {
     |> v.role(2) |> v.label("AI conversation")
 }
 
+// New program / edit: what the next request does, and what it sees.
+fn mode_switch() -> v.View = {
+  let fresh = ai.writes_new()
+  let seg = (text: String, on: Bool, f: () -> Unit) =>
+    label(text, 12.0, if on then pal.text else pal.faint)
+      |> v.px(10.0) |> v.h(26.0) |> v.center() |> v.rounded(6.0)
+      |> v.bg(if on then c(pal.bg) else snaidhm.rgba(0.0, 0.0, 0.0, 0.0))
+      |> v.border(1.0, c(if on then pal.border else pal.panel))
+      |> v.on_click(f) |> v.role(3) |> v.label(text)
+  v.row([
+    seg("Edit project", not fresh, () => ai.set_mode(false)),
+    seg("New program", fresh, () => ai.set_mode(true)),
+  ]) |> v.gap(2.0) |> v.padding(2.0) |> v.rounded(8.0) |> v.bg(c(pal.raised)) |> v.role(2) |> v.label("AI mode")
+}
+
 fn prompt_box(width: Float) -> v.View = {
   let busy = ai.busy()
-  let field = ed.field("ai-prompt", () => ai.prompt_field, (e) => ai.set_prompt_field(e), code_theme())
+  let field = ed.field("ai-prompt", () => { ...ai.prompt_field, placeholder: ai.placeholder() }, (e) => ai.set_prompt_field(e), code_theme())
     |> v.h(38.0) |> v.grow(1.0) |> v.rounded(8.0) |> v.clip() |> v.label("Prompt")
     |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { ai.generate(); true } else false)
   let send =
     icon(if busy then "stop" else "send", 16.0, pal.on_accent) |> v.size(38.0, 38.0) |> v.rounded(8.0) |> v.center()
       |> v.bg(c(if busy then pal.stop else pal.accent))
       |> v.on_click(() => ai.generate()) |> v.role(3) |> v.label(if busy then "Stop AI" else "Generate")
-  v.row([field, send]) |> v.gap(8.0) |> v.align(v.Middle) |> v.padding(10.0) |> v.border(1.0, c(pal.border)) |> v.bg(c(pal.panel))
+  v.col([
+    mode_switch(),
+    v.row([field, send]) |> v.gap(8.0) |> v.align(v.Middle),
+    para(ai.scope(), 11.0, pal.faint, width - 24.0),
+  ]) |> v.gap(8.0) |> v.padding(10.0) |> v.border(1.0, c(pal.border)) |> v.bg(c(pal.panel))
 }
 
 fn ai_panel(narrow: Bool, width: Float) -> v.View = {
@@ -418,7 +447,8 @@ fn ai_panel(narrow: Bool, width: Float) -> v.View = {
     v.spacer(),
     label(ai.model_label(), 12.0, pal.faint) |> v.px(6.0) |> v.on_click(() => ai.toggle_settings()) |> v.role(3) |> v.label("Model " + ai.model_label()),
     icon_button("gear", pal.muted, "AI settings", () => ai.toggle_settings()),
-    icon_button("new", pal.muted, "New conversation", () => ai.new_chat()),
+    v.row([icon("new", 13.0, pal.muted), label("New session", 12.0, pal.muted)]) |> v.gap(4.0) |> v.align(v.Middle)
+      |> v.px(8.0) |> v.h(30.0) |> v.rounded(6.0) |> v.on_click(() => ai.new_chat()) |> v.role(3) |> v.label("New session"),
     icon_button("close", pal.muted, "Close AI", () => ai.close()),
   ]) |> v.gap(4.0) |> v.align(v.Middle) |> v.px(12.0) |> v.h(44.0) |> v.border(1.0, c(pal.border))
   var parts: List[v.View] = [head]

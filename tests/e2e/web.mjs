@@ -212,6 +212,7 @@ try {
     await ev(`pg.type("sk-ant-test")`);
     await ev(`pg.click("Done")`);
     assert(!(await ev(`!!pg.find("AI key and model")`)), "the key card closes");
+    await ev(`pg.click("New program")`);
     await ev(`pg.type("print the answer")`);
     await ev(`pg.key(1)`);
     await until(`(pg) => pg.texts().some((t) => t.startsWith("Repaired (1)"))`, 90000);
@@ -220,7 +221,8 @@ try {
     assert(calls.length === 2, `expected 2 AI calls, got ${calls.length}`);
     assert(calls[0].headers["x-api-key"] === "sk-ant-test", "key header");
     assert(calls[0].body.system.includes("Almide"), "system prompt");
-    assert(calls[0].body.messages[0].content === "print the answer", "prompt");
+    // a fresh session on the untouched default program writes a new one
+    assert(calls[0].body.messages[0].content.startsWith("print the answer\n") && calls[0].body.messages[0].content.includes("=== name.almd ==="), "prompt");
     assert(/Compile error/.test(calls[1].body.messages.at(-1).content), "repair carries the compile error");
     assert(!calls[1].body.messages[1].content.includes(fence), "fences stripped from history");
     const code = await ev(`pg.value("Code editor")`);
@@ -230,23 +232,52 @@ try {
     // the conversation: the request, the error, the fix with its diff, the run
     const t = await ev(`pg.texts()`);
     for (const want of ["print the answer", "Fixed — compiled and ran"]) assert(t.includes(want), `conversation lacks ${want}: ${JSON.stringify(t)}`);
-    assert(t.some((x) => x.startsWith("Fix 1/3 · +")), `no fix line: ${JSON.stringify(t)}`);
+    assert(t.some((x) => x.startsWith("Fix 1/3 · main.almd +")), `no fix line: ${JSON.stringify(t)}`);
+    assert(t.includes("New program"), "the request says it wrote a new program");
     await shot("ai");
     void out;
   });
 
-  await step("AI: a follow-up changes the program on screen", async () => {
+  await step("AI: a follow-up edits the project, with every file, and Undo restores it", async () => {
+    // after the first program the session edits by default
+    assert((await ev(`pg.texts()`)).some((t) => t.startsWith("Sees and edits main.almd")), "scope line");
     await ev(`pg.mockAI(${JSON.stringify([["effect fn main() -> Unit = println(\"forty-three\")\n"]])})`);
     await ev(`pg.click("Prompt")`);
     await ev(`pg.type("print forty-three instead")`);
     await ev(`pg.key(1)`);
-    await until(`(pg) => pg.texts().some((t) => t.startsWith("Changed the program")) && pg.texts().filter((t) => t === "Compiled and ran" || t === "Fixed — compiled and ran").length >= 2`, 90000);
+    await until(`(pg) => pg.texts().some((t) => t.startsWith("main.almd +")) && pg.texts().filter((t) => t === "Compiled and ran" || t === "Fixed — compiled and ran").length >= 2`, 90000);
     const calls = await ev(`window.aiCalls`);
     const msg = calls.at(-1).body.messages;
-    assert(msg.length === 1 && msg[0].content.includes("Here is my current Almide program") && msg[0].content.includes("fixed ✓"), "the follow-up carries the current code");
-    await ev(`pg.click("New conversation")`);
-    assert(!(await ev(`pg.texts()`)).includes("print the answer"), "New clears the conversation");
+    assert(msg.length === 1 && msg[0].content.includes("=== main.almd ===") && msg[0].content.includes("fixed ✓") && msg[0].content.includes("Change the project: print forty-three instead"), "the edit carries the project");
     await shot("ai-followup");
+    await ev(`pg.click("Undo print forty-three instead")`);
+    await until(`(pg) => (pg.value("Code editor") || "").includes("fixed ✓")`);
+    await ev(`pg.click("New session")`);
+    assert(!(await ev(`pg.texts()`)).includes("print the answer"), "New session clears the conversation");
+  });
+
+  await step("AI: a project of several files: the reply writes each, new files become tabs", async () => {
+    await ev(`pg.click("Examples")`);
+    await ev(`pg.clickIn("Examples menu", "Modules (multi-file)")`);
+    await until(`(pg) => !!pg.find("stats.almd")`);
+    if (!(await ev(`!!pg.find("AI panel")`))) await ev(`pg.click("AI assistant")`);
+    await ev(`pg.click("Edit project")`);
+    await ev(`pg.mockAI(${JSON.stringify([[
+      "=== stats.almd ===\nfn mean(xs: List[Float]) -> Float = 1.5\n",
+      "=== fmt.almd ===\nfn show(x: Float) -> String = \"mean is \" + float.to_string(x)\n",
+      "=== main.almd ===\nimport self.stats\nimport self.fmt\n\neffect fn main() -> Unit = println(fmt.show(stats.mean([1.0])))\n",
+    ]])})`);
+    await ev(`pg.click("Prompt")`);
+    await ev(`pg.type("format the mean in its own module")`);
+    await ev(`pg.key(1)`);
+    await until(`(pg) => pg.texts().includes("Compiled and ran") && !!pg.find("fmt.almd")`, 90000)
+      .catch(async (e) => { throw new Error(e.message.slice(0, 120) + " | output: " + (await ev(`pg.value("Program output")`)) + " | editor: " + JSON.stringify(await ev(`pg.value("Code editor")`)) + " | repair request: " + JSON.stringify((await ev(`window.aiCalls`)).at(-3)?.body.messages.at(-1).content.slice(0, 600))); });
+    const sent = (await ev(`window.aiCalls`)).at(-1).body.messages[0].content;
+    assert(sent.includes("=== main.almd ===") && sent.includes("=== stats.almd ==="), "every file goes with an edit");
+    assert((await ev(`pg.value("Program output")`)).includes("mean is 1.5"), "the three files ran together");
+    await shot("ai-files");
+    await ev(`pg.click("Undo format the mean in its own module")`);
+    await until(`(pg) => !pg.find("fmt.almd")`);
   });
 
   await step("AI: a failed request leaves the code as it was", async () => {

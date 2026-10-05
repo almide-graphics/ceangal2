@@ -1,7 +1,12 @@
 // The AI assistant (bring your own key): Anthropic / OpenAI / Gemini over
-// the host's `net` namespace, SSE streamed straight into the active tab, then
-// an automatic repair loop — run the code, send any error back, up to three
-// times. Behaviour follows the previous playground's ai.js.
+// the host's `net` namespace, SSE streamed into the project's tabs, then an
+// automatic repair loop — run the project, send any error back, up to three
+// times.
+//
+// A session is one conversation. Each request either writes a new program
+// (the project is replaced) or edits the project; either way the AI sees
+// every file and answers with the files it writes, each after a
+// `=== name.almd ===` line, and every request can be undone.
 
 import ceangal
 import ceangal.editor as ed
@@ -16,11 +21,13 @@ type Msg = { role: String, content: String }
 // One line of the AI panel's conversation. kind: 0 the user's request,
 // 1 writing (updated while streaming), 2 ran fine, 3 an error, 4 a repair
 // (detail: its diff), 5 a note (cancelled, request failed).
-type Entry = { kind: Int, text: String, detail: String }
+// A request (kind 0) keeps the files as they were before it, for Undo.
+type Entry = { kind: Int, text: String, detail: String, files: List[(String, String)] }
 
 let PROVIDERS = ["Claude", "OpenAI", "Gemini"]
 let MAX_REPAIRS = 3
-let REPAIR_INSTRUCTION = "\n\nFix the code and output ONLY the corrected .almd source. No explanations."
+let FORMAT = "Reply with each file you write: a line `=== name.almd ===`, then the file's whole content. main.almd holds `main`. Leave out files you do not change. No explanations, no code fences."
+let REPAIR_INSTRUCTION = "\n\nFix it. " + FORMAT
 
 pub fn models(p: Int) -> List[Model] =
   if p == 0 then [
@@ -56,9 +63,11 @@ var error_body = ""
 var generated = ""
 var messages: List[Msg] = []
 var attempt = 0
-var runs_seen = 0
-var prev_code = ""
-var before_stream = ""       // the editor's text when the request went out
+var my_run = -1             // the run this request started
+var before_stream: List[(String, String)] = []   // the files when this stream started
+var replacing = false        // this stream writes a new program (the project is replaced)
+var started = false          // text has arrived on this stream
+var mode = -1                // -1 automatic, 0 edit the project, 1 a new program
 var loaded = false
 
 pub fn busy() -> Bool = phase != 0
@@ -120,8 +129,36 @@ pub fn toggle_settings() -> Unit = {
 }
 pub fn model_label() -> String = { ensure_loaded(); models(provider)[model_ix].label }
 
-// A new conversation: the next request starts from scratch.
-pub fn new_chat() -> Unit = if phase == 0 then { entries = []; expanded = []; turns = 0; ceangal.focus("ai-prompt") } else ()
+// A new session: the conversation starts over (the files stay as they are).
+pub fn new_chat() -> Unit = if phase == 0 then { entries = []; expanded = []; turns = 0; mode = -1; ceangal.focus("ai-prompt") } else ()
+
+// Whether the next request writes a new program: the user's pick, else a new
+// program when the session is fresh and the project is still an untouched
+// example, else an edit.
+pub fn writes_new() -> Bool = if mode >= 0 then mode == 1 else turns == 0 and st.untouched()
+pub fn set_mode(new_program: Bool) -> Unit = { mode = if new_program then 1 else 0; ceangal.focus("ai-prompt") }
+
+fn names(fs: List[(String, String)]) -> String = {
+  var ns: List[String] = []
+  for (n, _) in fs { list.push(ns, n) }
+  string.join(ns, ", ")
+}
+
+// What the next request will see and write, in a line.
+pub fn scope() -> String =
+  if writes_new() then "Writes a new program in place of " + names(st.files()) + " (Undo brings it back)"
+  else "Sees and edits " + names(st.files())
+
+pub fn placeholder() -> String = if writes_new() then "Describe a new program…" else "Describe a change…"
+
+// Undo request `i`: the files as they were before it.
+pub fn undo(i: Int) -> Unit = if phase == 0 then match list.get(entries, i) {
+  some(e) => if e.kind == 0 and list.len(e.files) > 0 then {
+    st.set_files(e.files)
+    note(5, "Undid “" + e.text + "”", "")
+  } else (),
+  none => (),
+} else ()
 
 pub fn toggle_entry(i: Int) -> Unit =
   if list.contains(expanded, i) then expanded = list.filter(expanded, (j) => j != i)
@@ -157,18 +194,26 @@ pub fn has_key() -> Bool = { ensure_loaded(); string.trim(ed.to_string(key_field
 // ── The conversation ──
 
 fn note(kind: Int, text: String, detail: String) -> Unit = {
-  list.push(entries, { kind: kind, text: text, detail: detail })
+  list.push(entries, { kind: kind, text: text, detail: detail, files: [] })
   ceangal.scroll_to_end("ai-log")
 }
 
 // While streaming, the last entry counts the lines written so far.
 fn writing(text: String) -> Unit = {
   let n = list.len(entries)
-  if n > 0 and entries[n - 1].kind == 1 then { entries[n - 1] = { kind: 1, text: text, detail: "" }; ceangal.scroll_to_end("ai-log") }
+  if n > 0 and entries[n - 1].kind == 1 then { entries[n - 1] = { kind: 1, text: text, detail: "", files: [] }; ceangal.scroll_to_end("ai-log") }
   else note(1, text, "")
 }
 
-fn first_line(s: String) -> String = match list.get(string.split(string.trim(s), "\n"), 0) { some(l) => l, none => "" }
+// The line that says what went wrong: the first one that is not just a
+// heading such as "Compile error:".
+fn first_line(s: String) -> String = {
+  let ls = list.filter(string.split(string.trim(s), "\n"), (l) => string.trim(l) != "")
+  match list.find(ls, (l) => not string.ends_with(string.trim(l), ":")) {
+    some(l) => string.trim(l),
+    none => match list.get(ls, 0) { some(l) => l, none => "" },
+  }
+}
 
 fn lines_of(s: String) -> Int = list.len(string.split(string.trim(s), "\n"))
 
@@ -191,6 +236,87 @@ fn diff(before: String, after: String) -> (String, Int, Int) = {
     else { list.push(out, "- " + a[i]); list.push(out, "+ " + b[j]); plus = plus + 1; minus = minus + 1; i = i + 1; j = j + 1 }
   }
   (string.join(list.take(out, 80), "\n"), plus, minus)
+}
+
+// ── Files in requests and replies ──
+
+fn project_block(fs: List[(String, String)]) -> String = {
+  var out = "The project's files:\n"
+  for (n, t) in fs { out = out + "\n=== " + n + " ===\n" + t + (if string.ends_with(t, "\n") then "" else "\n") }
+  out
+}
+
+fn marker_name(line: String) -> String? = {
+  let l = string.trim(line)
+  if string.starts_with(l, "=== ") and string.ends_with(l, " ===") and string.len(l) > 8 then {
+    let n = string.trim(string.slice(l, 4, string.len(l) - 4))
+    if n != "" and not string.contains(n, " ") and not string.contains(n, "/") then some(n) else none
+  } else none
+}
+
+fn is_fence(line: String) -> Bool = string.starts_with(string.trim(line), "```")
+
+// The files in a reply: blocks after `=== name ===` lines; a reply without
+// them is one file, `fallback`. Code fences are dropped.
+fn split_files(t: String, fallback: String) -> List[(String, String)] = {
+  var out: List[(String, String)] = []
+  var name = ""
+  var buf: List[String] = []
+  var any = false
+  for line in string.split(t, "\n") {
+    match marker_name(line) {
+      some(n) => {
+        if name != "" then list.push(out, (name, string.join(buf, "\n"))) else ()
+        name = n
+        buf = []
+        any = true
+      },
+      none => if not is_fence(line) then list.push(buf, line) else (),
+    }
+  }
+  if any then { if name != "" then list.push(out, (name, string.join(buf, "\n"))) else () }
+  else list.push(out, (fallback, string.join(buf, "\n")))
+  var tidy: List[(String, String)] = []
+  for (n, c) in out { list.push(tidy, (n, string.trim(c) + "\n")) }
+  tidy
+}
+
+// Where a reply without file markers goes: main.almd for a new program, the
+// only file, or the file on screen.
+fn fallback_file() -> String =
+  if replacing or list.len(before_stream) <= 1 then st.ENTRY else st.active_name()
+
+// Put what has streamed so far into the tabs (a new program first empties
+// the project).
+fn apply_reply(t: String) -> List[(String, String)] = {
+  let fs = split_files(t, fallback_file())
+  if replacing and not started then st.set_files([(st.ENTRY, "")]) else ()
+  started = true
+  for (n, c) in fs { st.set_file(n, c) }
+  fs
+}
+
+// The diff of a reply against the files before it, as one summary line and
+// the details.
+fn summary(before: List[(String, String)], wrote: List[(String, String)]) -> (String, String) = {
+  var parts: List[String] = []
+  var detail: List[String] = []
+  for (n, c) in wrote {
+    var old = ""
+    var had = false
+    for (bn, bt) in before { if bn == n then { old = bt; had = true } else () }
+    if not had or replacing then {
+      list.push(parts, (if had then "rewrote " else "wrote ") + n + " (" + n_lines(lines_of(c)) + ")")
+    } else {
+      let (d, plus, minus) = diff(old, c)
+      if plus + minus > 0 then {
+        list.push(parts, n + " +" + int.to_string(plus) + " −" + int.to_string(minus))
+        list.push(detail, "── " + n + "\n" + d)
+      } else ()
+    }
+  }
+  let line = if list.len(parts) == 0 then "no changes" else string.join(parts, ", ")
+  (line, string.join(detail, "\n"))
 }
 
 // ── Requests ──
@@ -247,7 +373,8 @@ fn start_stream() -> Unit = {
   http_status = 0
   // The code stays on screen until the first streamed text replaces it, and
   // comes back if the request fails or is stopped.
-  before_stream = st.active_text()
+  before_stream = st.files()
+  started = false
   let id =
     if provider == 0 then {
       let r = begin(endpoint("https://api.anthropic.com/v1/messages"))
@@ -354,18 +481,12 @@ fn feed(chunk: Bytes) -> Unit = {
     }
     if added != "" then {
       generated = generated + added
-      st.set_active_text(generated)
+      let _ = apply_reply(generated)
       writing(if attempt == 0 then "Writing… " + n_lines(lines_of(generated)) else "Fixing… " + n_lines(lines_of(generated)))
     } else ()
   }
 }
 
-fn strip_fences(t: String) -> String = {
-  var lines = string.split(string.trim(t), "\n")
-  if list.len(lines) > 0 and string.starts_with(lines[0], "```") then lines = list.drop(lines, 1) else ()
-  if list.len(lines) > 0 and string.starts_with(string.trim(lines[list.len(lines) - 1]), "```") then lines = list.take(lines, list.len(lines) - 1) else ()
-  string.join(lines, "\n") + "\n"
-}
 
 // ── Flow ──
 
@@ -384,41 +505,42 @@ pub fn generate() -> Unit = {
       // Phone layout: close the sheet and show the editor, so the code is
       // seen streaming in.
       if ceangal.viewport_width() < 760.0 then { open = false; st.show_code() } else ()
-      note(0, prompt, "")
-      // A follow-up changes the program on screen; the first request writes one.
-      let code = st.active_text()
-      messages =
-        if turns > 0 and string.trim(code) != "" then [{ role: "user", content: "Here is my current Almide program:\n\n```\n" + code + "```\n\n" + prompt + "\n\nOutput ONLY the whole updated .almd source." }]
-        else [{ role: "user", content: prompt }]
+      let fresh = writes_new()
+      let fs = st.files()
+      list.push(entries, { kind: 0, text: prompt, detail: if fresh then "New program" else "Edit · " + names(fs), files: fs })
+      ceangal.scroll_to_end("ai-log")
+      // A new program needs only the request; an edit carries every file.
+      messages = [{ role: "user", content:
+        if fresh then prompt + "\n\n" + FORMAT
+        else project_block(fs) + "\nChange the project: " + prompt + "\n\n" + FORMAT }]
+      replacing = fresh
       attempt = 0
-      prev_code = if turns > 0 then code else ""
       st.set_status("Generating…")
       start_stream()
     }
   }
 }
 
-// "Fix with AI" after a failed run: start the repair loop from the current code.
+// "Fix with AI" after a failed run: start the repair loop from the project.
 pub fn fix_last_run() -> Unit = {
   ensure_loaded()
   if not has_key() then { open = true; settings_open = true; st.set_status("Add an API key to fix with AI"); ceangal.focus("ai-key") }
-  else if phase == 0 and has_key() and not st.last_run_ok and st.last_run_error != "" then {
-    let code = st.active_text()
+  else if phase == 0 and not st.last_run_ok and st.last_run_error != "" then {
     if ceangal.viewport_width() >= 760.0 then open = true else ()
-    note(0, "Fix the last run", "")
+    let fs = st.files()
+    list.push(entries, { kind: 0, text: "Fix the last run", detail: "Edit · " + names(fs), files: fs })
     note(3, first_line(st.last_run_error), st.last_run_error)
-    messages = [
-      { role: "user", content: "Write this Almide program:\n\n```\n" + code + "\n```" },
-      { role: "assistant", content: code },
-    ]
-    attempt = 0
-    repair(code, st.last_run_error)
+    messages = [{ role: "user", content: project_block(fs) + "\nRunning the project fails:\n\n" + st.last_run_error + REPAIR_INSTRUCTION }]
+    replacing = false
+    attempt = 1
+    st.set_status("Repairing (1/" + int.to_string(MAX_REPAIRS) + ")…")
+    start_stream()
   } else ()
 }
 
-fn repair(code: String, error: String) -> Unit = {
+fn repair(error: String) -> Unit = {
   attempt = attempt + 1
-  prev_code = code
+  replacing = false
   list.push(messages, { role: "user", content: error + REPAIR_INSTRUCTION })
   st.set_status("Repairing (" + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS) + ")…")
   start_stream()
@@ -432,7 +554,7 @@ pub fn stop() -> Unit = if phase != 0 then {
   finish("Cancelled")
 } else ()
 
-fn restore() -> Unit = if st.active_text() != before_stream then st.set_active_text(before_stream) else ()
+fn restore() -> Unit = if started then st.set_files(before_stream) else ()
 
 fn drop_writing() -> Unit = {
   let n = list.len(entries)
@@ -460,20 +582,19 @@ fn stream_done() -> Unit = {
     note(5, why + " Your code is unchanged.", api_message(string.slice(error_body, 0, 2000)))
     finish(if http_status == 0 then "AI request failed" else "AI error " + int.to_string(http_status))
   } else {
-    let code = strip_fences(generated)
-    st.set_active_text(code)
-    list.push(messages, { role: "assistant", content: code })
-    if attempt > 0 then {
-      let (d, plus, minus) = diff(prev_code, code)
-      note(4, "Fix " + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS) + " · +" + int.to_string(plus) + " −" + int.to_string(minus), d)
-    } else if prev_code != "" then {
-      let (d, plus, minus) = diff(prev_code, code)
-      note(4, "Changed the program · +" + int.to_string(plus) + " −" + int.to_string(minus), d)
-    } else note(4, "Wrote " + n_lines(lines_of(code)), "")
+    let wrote = apply_reply(generated)
+    // the reply as the conversation's next turn (fences dropped)
+    var reply = ""
+    for (n, c) in wrote { reply = reply + "=== " + n + " ===\n" + c }
+    list.push(messages, { role: "assistant", content: reply })
+    let (line, detail) = summary(before_stream, wrote)
+    note(4, (if attempt > 0 then "Fix " + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS) + " · " else "") + line, detail)
     phase = 2
     req_id = -1
-    runs_seen = st.runs_finished
+    // Stopping a run still going reports it finished at once: wait for the
+    // run started here, by its id.
     st.run_fresh()
+    my_run = st.run_id
   }
 }
 
@@ -494,18 +615,20 @@ pub fn on_result(id: Int, code: Int, body: Bytes) -> Bool =
   }
 
 // Per frame: notice when the run we started has finished.
-pub fn tick() -> Unit = if phase == 2 and st.runs_finished != runs_seen then {
+pub fn tick() -> Unit = if phase == 2 and st.finished_run == my_run and not st.running then {
   if st.last_run_ok then {
     note(2, if attempt == 0 then "Compiled and ran" else "Fixed — compiled and ran", "")
     turns = turns + 1
+    mode = -1
     finish(if attempt == 0 then "Generated & running" else "Repaired (" + int.to_string(attempt) + ") & running")
   } else if attempt < MAX_REPAIRS then {
     note(3, first_line(st.last_run_error), st.last_run_error)
-    repair(st.active_text(), st.last_run_error)
+    repair(st.last_run_error)
   } else {
     note(3, first_line(st.last_run_error), st.last_run_error)
     note(5, "Gave up after " + int.to_string(MAX_REPAIRS) + " fixes", "")
     turns = turns + 1
+    mode = -1
     finish("AI repair failed")
   }
 } else ()

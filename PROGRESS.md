@@ -165,6 +165,18 @@ item, the first green CI run on main that deploys Pages, waits for a push
   provider / model card shows until a key is set (and stays until Done),
   then behind ⚙. Suggestions on an empty conversation. "✦ Fix with AI" is
   a pill in the status bar after a failed run (asks for a key if needed).
+- Sessions, modes and files: a session is one conversation (New session
+  starts over). Each request is "Edit project" or "New program" (a switch
+  above the prompt; a fresh session on an untouched example starts as New,
+  otherwise Edit), and a line under the prompt says what it sees and
+  writes. Requests carry every file; replies are `=== name.almd ===` blocks
+  streamed into their tabs (new files become tabs; a reply without markers
+  goes to main.almd / the file on screen). Every request has Undo (the files
+  as before it). Summaries per file: "stats.almd +1 −25, wrote fmt.almd".
+- The code stays on screen until the first streamed text and comes back when
+  a request fails or is stopped. The repair loop waits for its own run by
+  id (stopping an earlier run reported "stopped" at once and was taken for
+  the AI's result).
 - Readable API errors (401/403 key refused, 429, unreachable).
 - ceangal: `scroll_to_end(key)`, `a11y_hidden`, and a scroll view whose
   content fits no longer scrolls by its bottom padding.
