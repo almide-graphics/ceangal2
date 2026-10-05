@@ -163,6 +163,10 @@ async function launch(pkg, { clear = true, data = null } = {}) {
 adb("shell", "setprop", "debug.ceangal.a11y", "1");
 adb("shell", "setprop", "debug.ceangal.gui_a11y", "1");
 adb("shell", "setprop", "debug.ceangal.run_log", "1");
+// A fresh emulator image may still count as "in setup": then Home is
+// skipped and the background / foreground step never leaves the app.
+adb("shell", "settings", "put", "secure", "user_setup_complete", "1");
+adb("shell", "settings", "put", "global", "device_provisioned", "1");
 const apps = process.argv.slice(2).length ? process.argv.slice(2) : ["todo", "playground"].filter((a) => existsSync(join(root, `out/android/${a}.apk`)));
 
 for (const app of apps) {
