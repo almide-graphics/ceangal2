@@ -89,7 +89,7 @@ const ROOT: u64 = u64::MAX;
 
 fn role_of(r: i64) -> accesskit::Role {
     use accesskit::Role::*;
-    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, 15 => Switch, 16 => Slider, 17 => Dialog, 18 => RadioButton, 19 => RadioGroup, 20 => ProgressIndicator, _ => GenericContainer }
+    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, 15 => Switch, 16 => Slider, 17 => Dialog, 18 => RadioButton, 19 => RadioGroup, 20 => ProgressIndicator, 21 => ComboBox, 22 => ListBox, 23 => ListBoxOption, 24 => Menu, 25 => MenuItem, _ => GenericContainer }
 }
 
 pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
@@ -115,11 +115,16 @@ pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
                 if let Some(v) = &n.value { node.set_value(v.clone()); }
             }
             if n.flags & 1 != 0 { node.add_action(Action::Focus); }
-            if matches!(n.role, 3 | 8 | 11 | 12 | 15 | 18) { node.add_action(Action::Click); }
+            if matches!(n.role, 3 | 8 | 11 | 12 | 15 | 18 | 21 | 23 | 25) { node.add_action(Action::Click); }
             if n.role == 16 { node.add_action(Action::Increment); node.add_action(Action::Decrement); }
             if n.flags & 8 != 0 { node.set_toggled(Toggled::True); } else if matches!(n.role, 12 | 15 | 18) { node.set_toggled(Toggled::False); }
             if n.flags & 4 != 0 { node.set_selected(true); }
             if n.flags & 16 != 0 { node.set_disabled(); }
+            // a control with a popup (dropdown, menu button): open or not
+            if n.flags & 32 != 0 {
+                node.set_expanded(n.flags & 64 != 0);
+                node.set_has_popup(if n.role == 21 { accesskit::HasPopup::Listbox } else { accesskit::HasPopup::Menu });
+            }
             nodes.push((NodeId(n.id as u64), node));
         }
         let focus = if t.focus > 0 && t.committed.iter().any(|n| n.id == t.focus) { NodeId(t.focus as u64) } else { NodeId(ROOT) };

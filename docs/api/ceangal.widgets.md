@@ -5,8 +5,8 @@
 _Standard controls: buttons, checkboxes, switches, sliders, dialogs…._
 
 Standard controls on top of ceangal.view: buttons, checkboxes, switches,
-radio groups, segmented controls, sliders, progress bars, text fields,
-cards, list rows and dialogs, styled by one Theme.
+radio groups, segmented controls, dropdowns, menus, sliders, progress
+bars, text fields, cards, list rows and dialogs, styled by one Theme.
 
   import ceangal.widgets as w
   let th = w.system()       // light or dark, following the system
@@ -205,6 +205,27 @@ pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on
 ```
 
 One choice out of two to five, as joined buttons (a tab bar, a view switcher).
+
+## Popups: dropdowns and menus
+
+### `dropdown`
+
+```almide
+pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View
+```
+
+One choice out of a list, shown as the current one; the list opens under
+it. Keyboard: Enter, Space or Alt+Down opens it, Up / Down then move and
+Enter picks; while it is closed, Up / Down change the choice directly.
+
+### `menu_button`
+
+```almide
+pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) -> v.View
+```
+
+A button that opens a menu of actions under it: each entry a title and
+what it does. Keyboard as for a dropdown.
 
 ## Values
 

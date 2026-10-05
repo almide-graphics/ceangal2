@@ -1,0 +1,26 @@
+# A dropdown and a menu: their lists float over what follows, a click picks
+# an entry, the keyboard opens, moves and picks, Escape and a click outside
+# close them.
+tap "Country"
+see "Egypt"
+tap "Egypt"
+see "status: country Egypt"
+not "Brazil"
+key Down
+see "status: country Brazil"
+key Enter
+key Down
+key Enter
+see "status: country Norway"
+tap "Actions"
+see "Rename"
+shot "menu.png"
+key Escape
+not "Rename"
+tap "Actions"
+tap "Archive"
+see "status: archived"
+tap "Actions"
+tap "Wi-Fi"
+not "Duplicate"
+see "status: archived"

@@ -173,8 +173,8 @@ Retained tree, rebuilt by ceangal after layout:
 `a11y_active() -> Int` is 1 while something consumes the tree (the web ARIA
 overlay always; native once an assistive technology connects); ceangal skips
 building the tree while it is 0.
-Roles `1 window, 2 group, 3 button, 4 text, 5 text field, 6 list, 7 list item, 8 tab, 9 tab list, 10 heading, 11 link, 12 checkbox, 13 image, 14 code editor, 15 switch, 16 slider, 17 dialog, 18 radio button, 19 radio group, 20 progress bar`.
-Flags `1 focusable, 2 focused, 4 selected, 8 checked, 16 disabled`.
+Roles `1 window, 2 group, 3 button, 4 text, 5 text field, 6 list, 7 list item, 8 tab, 9 tab list, 10 heading, 11 link, 12 checkbox, 13 image, 14 code editor, 15 switch, 16 slider, 17 dialog, 18 radio button, 19 radio group, 20 progress bar, 21 combo box, 22 list box, 23 option, 24 menu, 25 menu item`.
+Flags `1 focusable, 2 focused, 4 selected, 8 checked, 16 disabled, 32 opens a popup, 64 popup open`.
 Actions (event 12) `1 click, 2 focus, 3 increment, 4 decrement, 5 scroll into view`.
 
 ### 4.5 `clipboard`

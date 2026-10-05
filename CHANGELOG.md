@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Dropdown and menu** (`w.dropdown`, `w.menu_button`): lists that float
+  over the window, by pointer, keyboard and screen reader (combo box,
+  list box, menu roles; expanded state). Underneath: `v.overlay()` and
+  `ceangal.open_popup` / `close_popup` / `popup_open` for popups of your
+  own. (ADR 0013)
 - **Android file picker**: `ceangal.open_text_file()` opens the system
   picker (a small framework activity takes its result for the
   NativeActivity).

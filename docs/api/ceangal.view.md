@@ -33,6 +33,7 @@ type Style = {
   grow: Float, shrink: Float, gap: Float,
   justify: Int, align: Int, align_self: Int,
   absolute: Bool,
+  overlay: Bool,
   pos_top: Float, pos_right: Float, pos_bottom: Float, pos_left: Float,
   clip: Bool,
   wrap: Bool,
@@ -402,6 +403,16 @@ pub fn absolute(v: View) -> View
 Out of the flow: placed in the parent by top / bottom / left / right
 (both of a pair given and no size: it spans between them).
 
+### `overlay`
+
+```almide
+pub fn overlay(v: View) -> View
+```
+
+Over everything: placed like `absolute` (in its parent, by top / left…),
+but drawn after the whole window, given pointer input first, and not
+clipped by its ancestors. For popups: a dropdown's list, a menu.
+
 ### `top`
 
 ```almide
@@ -687,3 +698,11 @@ pub fn disabled(v: View, on: Bool) -> View
 
 Announced as unavailable. It only marks the view: leave out its handlers
 too (the ceangal.widgets controls do).
+
+### `expanded`
+
+```almide
+pub fn expanded(v: View, open: Bool) -> View
+```
+
+Announced as opening a popup, and whether it is open (a dropdown, a menu button).

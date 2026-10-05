@@ -1,6 +1,6 @@
 // Standard controls on top of ceangal.view: buttons, checkboxes, switches,
-// radio groups, segmented controls, sliders, progress bars, text fields,
-// cards, list rows and dialogs, styled by one Theme.
+// radio groups, segmented controls, dropdowns, menus, sliders, progress
+// bars, text fields, cards, list rows and dialogs, styled by one Theme.
 //
 //   import ceangal.widgets as w
 //   let th = w.system()       // light or dark, following the system
@@ -240,6 +240,110 @@ pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on
   }
   v.row(segs) |> v.gap(2.0) |> v.padding(3.0) |> v.rounded(th.radius) |> v.bg(th.surface)
     |> v.border(1.0, th.border) |> v.role(9) |> v.label(label)
+}
+
+// ── Popups: dropdowns and menus ──
+
+let POPUP_GAP = 4.0
+let TRIGGER_H = 40.0
+
+// The entries of a popup, floating under (or, near the bottom of the
+// window, over) its control: the highlighted one (keyboard) or the one under
+// the pointer filled, the chosen one ticked.
+fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
+  var rows: List[v.View] = []
+  for i in 0..<list.len(items) {
+    let ik = key + ":" + int.to_string(i)
+    let lit = ui.popup_highlight() == i or ui.is_hovered(ik)
+    let pick = () => on_pick(i)
+    list.push(rows, v.row([
+        v.text(if i == chosen then "✓" else " ") |> v.font(13.0) |> v.color(if lit then th.on_accent else th.accent) |> v.w(14.0) |> v.a11y_hidden(),
+        v.text(items[i]) |> v.font(th.font_size) |> v.color(if lit then th.on_accent else th.text) |> v.a11y_hidden(),
+      ]) |> v.gap(6.0) |> v.align(v.Middle) |> v.px(10.0) |> v.py(7.0) |> v.rounded(th.radius - 3.0)
+      |> v.bg(if lit then th.accent else clear())
+      // a click picks it and leaves the focus on the control
+      |> v.key(ik) |> v.on_click(pick) |> v.keeps_focus()
+      |> v.role(item_role) |> v.label(items[i]) |> v.selected(i == chosen))
+  }
+  // above the control when the list would run past the window's bottom
+  let r = ui.rect_of(key)
+  let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
+  let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
+  let placed = if up then v.bottom(v.col(rows), TRIGGER_H + POPUP_GAP) else v.top(v.col(rows), TRIGGER_H + POPUP_GAP)
+  placed |> v.gap(2.0) |> v.padding(4.0) |> v.rounded(th.radius) |> v.bg(th.surface)
+    |> v.border(1.0, th.border) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.3))
+    |> v.overlay() |> v.left(0.0) |> v.w_pct(100.0) |> v.min_w(160.0)
+    |> v.role(list_role) |> v.label(name)
+}
+
+// Keys while a popup is open: Up / Down move the highlight, Enter or Space
+// picks it, Escape closes (Tab moves focus, which closes it too).
+fn popup_keys(key: String, n: Int, code: Int, on_pick: (Int) -> Unit) -> Bool = {
+  let hi = ui.popup_highlight()
+  if code == 13 then { ui.set_popup_highlight(if hi < 0 then 0 else int.min(n - 1, hi + 1)); true }
+  else if code == 12 then { ui.set_popup_highlight(int.max(0, hi - 1)); true }
+  else if code == 14 then { ui.set_popup_highlight(0); true }
+  else if code == 15 then { ui.set_popup_highlight(n - 1); true }
+  else if code == 1 or code == 60 then { if hi >= 0 and hi < n then on_pick(hi) else ui.close_popup(); true }
+  else if code == 5 then { ui.close_popup(); true }
+  else false
+}
+
+// The control's face: its text and a ▼, as a field-like button.
+fn trigger_face(th: Theme, key: String, text: String) -> v.View =
+  v.row([
+    v.text(text) |> v.font(th.font_size) |> v.color(th.text) |> v.grow(1.0) |> v.a11y_hidden(),
+    v.text("▼") |> v.font(9.0) |> v.color(th.dim) |> v.a11y_hidden(),
+  ]) |> v.gap(10.0) |> v.align(v.Middle) |> v.px(14.0) |> v.h(TRIGGER_H) |> v.rounded(th.radius)
+    |> v.bg(live(th, th.surface, key)) |> ring(th, key, th.border) |> v.focusable(key)
+
+// One choice out of a list, shown as the current one; the list opens under
+// it. Keyboard: Enter, Space or Alt+Down opens it, Up / Down then move and
+// Enter picks; while it is closed, Up / Down change the choice directly.
+pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+  let key = "dropdown:" + label
+  let n = list.len(options)
+  let open = ui.popup_open(key)
+  let current = if index >= 0 and index < n then options[index] else ""
+  let pick = (i: Int) => {
+    ui.close_popup()
+    on_select(i)
+  }
+  let toggle = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, index)
+  let face = trigger_face(th, key, current) |> v.on_click(toggle)
+    |> v.on_key((phase, code, mods) =>
+      if phase == 1 then false
+      else if ui.popup_open(key) then popup_keys(key, n, code, pick)
+      else if code == 1 or code == 60 or (code == 13 and ui.has_alt(mods)) then { ui.open_popup(key, index); true }
+      else if code == 13 and index + 1 < n then { on_select(index + 1); true }
+      else if code == 12 and index > 0 then { on_select(index - 1); true }
+      else false)
+    |> v.role(21) |> v.label(label) |> v.value(() => current) |> v.expanded(open)
+  let anchor = if open then v.box(face |> v.grow(1.0)) |> v.with_child(popup(th, key, label, options, index, 22, 23, pick)) else v.box(face |> v.grow(1.0))
+  v.row([v.text(label) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden(), anchor |> v.grow(1.0)])
+    |> v.gap(12.0) |> v.align(v.Middle)
+}
+
+// A button that opens a menu of actions under it: each entry a title and
+// what it does. Keyboard as for a dropdown.
+pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) -> v.View = {
+  let key = "menu:" + title
+  let n = list.len(items)
+  let open = ui.popup_open(key)
+  let run = (i: Int) => {
+    ui.close_popup()
+    let f = items[i].1
+    f()
+  }
+  let toggle = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, -1)
+  let face = trigger_face(th, key, title) |> v.on_click(toggle)
+    |> v.on_key((phase, code, mods) =>
+      if phase == 1 then false
+      else if ui.popup_open(key) then popup_keys(key, n, code, run)
+      else if code == 1 or code == 60 or code == 13 then { ui.open_popup(key, 0); true }
+      else false)
+    |> v.role(3) |> v.label(title) |> v.expanded(open)
+  if open then v.box(face) |> v.with_child(popup(th, key, title, list.map(items, (it) => it.0), -1, 24, 25, run)) else v.box(face)
 }
 
 // ── Values ──

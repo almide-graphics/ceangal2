@@ -284,6 +284,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (`snaidhm/src/colr.almd`), UTS #51 sequences from generated emoji data,
   the font's ccmp through `otl`; caret stops / Backspace by cluster
   (`text.stops`, `backspace_to`; apps/gallery/tests/emoji.test).
+- Dropdown / menu (ADR 0013): `v.overlay()` (painted last, hit first,
+  ancestor clips dropped), one popup at a time in the runtime (a press
+  outside closes it and its release does nothing), `w.dropdown`,
+  `w.menu_button`, roles 21–25 + expanded flags on every host
+  (apps/gallery/tests/popups.test).
 - Android file picker: a framework Java activity (ceangal/android, javac +
   d8 into the app's dex) takes ACTION_OPEN_DOCUMENT's result and calls
   native code; the services E2E cancels with Back, then picks the file it
@@ -329,7 +334,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: a dropdown / menu control. Done: Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
+0. Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,

@@ -20,6 +20,7 @@ type Style = {
   grow: Float, shrink: Float, gap: Float,
   justify: Int, align: Int, align_self: Int,
   absolute: Bool,
+  overlay: Bool,
   pos_top: Float, pos_right: Float, pos_bottom: Float, pos_left: Float,
   clip: Bool,
   wrap: Bool,
@@ -51,6 +52,7 @@ let default_style: Style = {
   grow: 0.0, shrink: 0.0, gap: 0.0,
   justify: 0, align: 3, align_self: -1,
   absolute: false,
+  overlay: false,
   pos_top: UNDEF, pos_right: UNDEF, pos_bottom: UNDEF, pos_left: UNDEF,
   clip: false,
   wrap: false,
@@ -212,6 +214,10 @@ pub fn center(v: View) -> View = { ...v, style: { ...v.style, justify: 2, align:
 // Out of the flow: placed in the parent by top / bottom / left / right
 // (both of a pair given and no size: it spans between them).
 pub fn absolute(v: View) -> View = { ...v, style: { ...v.style, absolute: true } }
+// Over everything: placed like `absolute` (in its parent, by top / left…),
+// but drawn after the whole window, given pointer input first, and not
+// clipped by its ancestors. For popups: a dropdown's list, a menu.
+pub fn overlay(v: View) -> View = { ...v, style: { ...v.style, absolute: true, overlay: true } }
 // With absolute: distance from the parent's top edge.
 pub fn top(v: View, t: Float) -> View = { ...v, style: { ...v.style, pos_top: t } }
 // With absolute: distance from the parent's bottom edge.
@@ -312,3 +318,5 @@ pub fn selected(v: View, on: Bool) -> View = with_state(v, 4, on)
 // Announced as unavailable. It only marks the view: leave out its handlers
 // too (the ceangal.widgets controls do).
 pub fn disabled(v: View, on: Bool) -> View = with_state(v, 16, on)
+// Announced as opening a popup, and whether it is open (a dropdown, a menu button).
+pub fn expanded(v: View, open: Bool) -> View = with_state(with_state(v, 32, true), 64, open)

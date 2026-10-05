@@ -16,6 +16,8 @@ var tab = 0
 var volume = 40.0
 var name = ed.text_field("", "Your name")
 var confirming = false
+var country = 0
+let COUNTRIES = ["Japan", "India", "Egypt", "Brazil", "Norway"]
 
 fn say(s: String) -> Unit = { status = s }
 fn set_dark(on: Bool) -> Unit = { dark = on; say(if on then "dark" else "light") }
@@ -25,6 +27,7 @@ fn set_size(i: Int) -> Unit = { size = i; say("size " + int.to_string(i)) }
 fn set_tab(i: Int) -> Unit = { tab = i; say("tab " + int.to_string(i)) }
 fn set_volume(x: Float) -> Unit = { volume = x; say("volume " + int.to_string(float.to_int(x))) }
 fn set_name(e: ed.Editor) -> Unit = { name = e }
+fn set_country(i: Int) -> Unit = { country = i; say("country " + COUNTRIES[i]) }
 fn open_dialog() -> Unit = { confirming = true; say("asking") }
 fn close_dialog(s: String) -> Unit = { confirming = false; say(s) }
 
@@ -37,6 +40,7 @@ let keep_set_size = set_size
 let keep_set_tab = set_tab
 let keep_set_volume = set_volume
 let keep_set_name = set_name
+let keep_set_country = set_country
 let keep_open_dialog = open_dialog
 let keep_close_dialog = close_dialog
 
@@ -68,6 +72,9 @@ fn controls(th: w.Theme) -> v.View =
       w.switch(th, "Wi-Fi", wifi, (on) => set_wifi(on)),
       w.switch(th, "Dark theme", dark, (on) => set_dark(on)),
       w.radio_group(th, "Size", ["Small", "Medium", "Large"], size, (i) => set_size(i)),
+      // their lists float over the cards below
+      w.dropdown(th, "Country", COUNTRIES, country, (i) => set_country(i)),
+      w.menu_button(th, "Actions", [("Duplicate", () => say("duplicated")), ("Rename", () => say("renamed")), ("Archive", () => say("archived"))]),
     ]),
     w.card(th, [
       w.heading(th, "Values"),

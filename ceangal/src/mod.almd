@@ -84,6 +84,17 @@ var started = false
 // The last laid-out frame, in paint order, for hit testing.
 var frame_views: List[v.View] = []
 var frame_rects: List[lay.LayoutRect] = []
+// Which frame nodes are inside an overlay (v.overlay: drawn last, hit first).
+var frame_over: List[Bool] = []
+// Overlays met while painting, painted after the rest: (view, frame index).
+var overlays: List[(v.View, Int)] = []
+
+// The open popup (a dropdown's list, a menu): its control's key ("" =
+// none) and the highlighted entry.
+var popup_key = ""
+var popup_hi = -1
+// The press that closed a popup: its release does nothing either.
+var press_swallowed = false
 var pressed = -1
 // The key of the view under the mouse (the topmost with a key and a click
 // or pointer handler), and of the one being pressed: is_hovered / is_pressed.
@@ -146,10 +157,37 @@ pub fn invalidate() -> Unit = {
   sys.request_frame()
 }
 
+// ── Popups ──
+
+// Open the popup of the control with `key` (one at a time), with entry
+// `index` highlighted (-1 = none). A press outside the popup and its
+// control closes it.
+pub fn open_popup(key: String, index: Int) -> Unit = {
+  popup_key = key
+  popup_hi = index
+  invalidate()
+}
+
+// Close the open popup.
+pub fn close_popup() -> Unit = {
+  if popup_key != "" then { popup_key = ""; popup_hi = -1; invalidate() } else ()
+}
+
+// Whether the control with `key` has its popup open.
+pub fn popup_open(key: String) -> Bool = key != "" and key == popup_key
+
+// The highlighted entry of the open popup (-1 = none).
+pub fn popup_highlight() -> Int = popup_hi
+
+// Highlight entry `index` of the open popup.
+pub fn set_popup_highlight(index: Int) -> Unit = { popup_hi = index; invalidate() }
+
 // ── Focus ──
 
 // Give keyboard focus to the focusable view with `key` ("" = none).
 pub fn focus(key: String) -> Unit = {
+  // focus leaving a control closes its popup
+  if popup_key != "" and key != popup_key then close_popup() else ()
   if key != focus_key then {
     let old = find_key(focus_key)
     focus_key = key
@@ -420,12 +458,21 @@ fn render() -> Unit = {
   let node = to_node(root)
   let laid = lay.layout(node, width, height)
   frame_views = flatten(root)
-  let rects = apply_scrolls(frame_views, laid)
+  frame_over = overlay_marks(frame_views)
+  let rects = free_overlays(frame_views, frame_over, apply_scrolls(frame_views, laid))
   frame_rects = rects
   tx.begin_frame()
   caret_w = -1.0
   snaidhm.begin(float.to_int(float.ceil(width * scale)), float.to_int(float.ceil(height * scale)))
+  overlays = []
   paint(root, rects, 0)
+  // overlays last (and the overlays inside them after them)
+  var o = 0
+  while o < list.len(overlays) {
+    let (ov, at) = overlays[o]
+    let _ = paint(ov, rects, at)
+    o = o + 1
+  }
   let _ = snaidhm.end(current.background)
   update_ime()
   if a11y.a11y_active() == 1 then emit_a11y() else ()
@@ -697,6 +744,43 @@ fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
 
 // The views in the order lay.layout emits rects: self, in-flow children
 // (recursively), then absolutely positioned children.
+// For each node of the frame, whether it is in an overlay's subtree.
+fn overlay_marks(views: List[v.View]) -> List[Bool] = {
+  var out = list.repeat(false, list.len(views))
+  var i = 0
+  while i < list.len(views) {
+    if views[i].style.overlay then {
+      let n = subtree_len(views[i])
+      for k in i..<int.min(i + n, list.len(views)) { out[k] = true }
+    } else ()
+    i = i + 1
+  }
+  out
+}
+
+// Overlays are not clipped by their ancestors: in an overlay's subtree, the
+// clip it inherited is dropped (clips of its own stay).
+fn free_overlays(views: List[v.View], over: List[Bool], rects: List[lay.LayoutRect]) -> List[lay.LayoutRect] =
+  if not list.contains(over, true) then rects
+  else {
+    var out = rects
+    var i = 0
+    while i < list.len(views) and i < list.len(out) {
+      if views[i].style.overlay then {
+        let r = out[i]
+        let n = subtree_len(views[i])
+        for k in i..<int.min(i + n, list.len(out)) {
+          let c = out[k]
+          if c.clip_x == r.clip_x and c.clip_y == r.clip_y and c.clip_w == r.clip_w and c.clip_h == r.clip_h then
+            out[k] = { ...c, clip_x: -1.0, clip_y: -1.0, clip_w: -1.0, clip_h: -1.0 }
+          else ()
+        }
+      } else ()
+      i = i + 1
+    }
+    out
+  }
+
 fn flatten(view: v.View) -> List[v.View] = {
   var out: List[v.View] = [view]
   for c in view.children {
@@ -741,7 +825,9 @@ fn paint(view: v.View, rects: List[lay.LayoutRect], idx: Int) -> Int = {
     if not c.style.absolute then next = paint(c, rects, next) else ()
   }
   for c in view.children {
-    if c.style.absolute then next = paint(c, rects, next) else ()
+    if c.style.overlay then { list.push(overlays, (c, next)); next = next + subtree_len(c) }
+    else if c.style.absolute then next = paint(c, rects, next)
+    else ()
   }
   next
 }
@@ -754,15 +840,20 @@ fn inside(r: lay.LayoutRect, x: Float, y: Float) -> Bool = {
   in_rect and in_clip
 }
 
-// Topmost node at (x, y) that takes pointer input (or -1).
+fn in_overlay(i: Int) -> Bool = i < list.len(frame_over) and frame_over[i]
+
+// Topmost node at (x, y) that takes pointer input (or -1): overlays first.
 fn hit(x: Float, y: Float) -> Int = {
   var found = -1
+  var over = -1
   let n = int.min(list.len(frame_views), list.len(frame_rects))
   for i in 0..<n {
     let fv = frame_views[i]
-    if (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then found = i else ()
+    if (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then {
+      if in_overlay(i) then over = i else found = i
+    } else ()
   }
-  found
+  if over >= 0 then over else found
 }
 
 // The laid-out rect of the view with `key` in the last frame (logical px).
@@ -774,12 +865,18 @@ pub fn rect_of(key: String) -> lay.LayoutRect = {
 // Topmost node at (x, y) with a cursor.
 fn hover_at(x: Float, y: Float) -> String = {
   var k = ""
+  var ko = ""
+  var over = false
   let n = int.min(list.len(frame_views), list.len(frame_rects))
   for i in 0..<n {
     let fv = frame_views[i]
-    if fv.key != "" and (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then k = fv.key else ()
+    if (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then {
+      if in_overlay(i) then { over = true; if fv.key != "" then ko = fv.key else () }
+      else if fv.key != "" then k = fv.key
+      else ()
+    } else ()
   }
-  k
+  if over then ko else k
 }
 
 // The mouse is over the clickable view with `key` (never on touch screens).
@@ -789,11 +886,14 @@ pub fn is_pressed(key: String) -> Bool = key != "" and key == pressed_key
 
 fn cursor_at(x: Float, y: Float) -> Int = {
   var c = 0
+  var over = -1
   let n = int.min(list.len(frame_views), list.len(frame_rects))
   for i in 0..<n {
-    if frame_views[i].style.cursor != 0 and inside(frame_rects[i], x, y) then c = frame_views[i].style.cursor else ()
+    if frame_views[i].style.cursor != 0 and inside(frame_rects[i], x, y) then {
+      if in_overlay(i) then over = frame_views[i].style.cursor else c = frame_views[i].style.cursor
+    } else ()
   }
-  c
+  if over >= 0 then over else c
 }
 
 fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
@@ -811,18 +911,26 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
   } else ()
   last_x = x
   last_y = y
-  let target = if pressed >= 0 and (phase == 1 or phase == 2 or phase == 3) then pressed else hit(x, y)
+  let target0 = if pressed >= 0 and (phase == 1 or phase == 2 or phase == 3) then pressed else hit(x, y)
+  // a press outside the open popup and its control closes it, and does nothing else
+  let outside = phase == 0 and popup_key != "" and not (target0 >= 0 and (in_overlay(target0) or frame_views[target0].key == popup_key))
+  if outside then { close_popup(); press_swallowed = true } else if phase == 0 then press_swallowed = false else ()
+  let swallowed = outside or (press_swallowed and (phase == 1 or phase == 2 or phase == 3))
+  if phase == 2 or phase == 3 then press_swallowed = false else ()
+  let target = if swallowed then -1 else target0
   if phase == 0 then { press_x = x; press_y = y } else ()
   let tap_end = phase == 2 and float.abs(x - press_x) <= 10.0 and float.abs(y - press_y) <= 10.0
-  if (phase == 0 and id == 0) or (tap_end and id >= 1) then {
+  if not swallowed and ((phase == 0 and id == 0) or (tap_end and id >= 1)) then {
     // Pressing (a mouse) or tapping (a finger) moves focus to the focusable
     // node under the pointer, or clears it.
     var f = ""
     var text = false
     var keep = false
+    // over an overlay, only its nodes count (not what is under it)
+    let over_target = target >= 0 and in_overlay(target)
     let n = int.min(list.len(frame_views), list.len(frame_rects))
     for i in 0..<n {
-      if inside(frame_rects[i], x, y) then {
+      if inside(frame_rects[i], x, y) and (in_overlay(i) or not over_target) then {
         if frame_views[i].focusable then { f = frame_views[i].key; text = frame_views[i].text_input } else ()
         if frame_views[i].keeps_focus then keep = true else ()
       } else ()

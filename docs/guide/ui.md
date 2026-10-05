@@ -82,6 +82,8 @@ fn view() -> v.View = {
     w.switch(th, "Notifications", notify, (on) => set_notify(on)),
     w.checkbox(th, "Remember me", remember, (on) => set_remember(on)),
     w.radio_group(th, "Size", ["Small", "Medium", "Large"], size, (i) => set_size(i)),
+    w.dropdown(th, "Country", ["Japan", "India", "Egypt"], country, (i) => set_country(i)),
+    w.menu_button(th, "Actions", [("Duplicate", () => duplicate()), ("Archive", () => archive())]),
     w.slider(th, "Volume", volume, 0.0, 100.0, 5.0, (x) => set_volume(x)),
     w.text_field(th, "name", "Name", () => name, (e) => set_name(e)),
     v.row([w.secondary_button(th, "Cancel", () => cancel()), w.button(th, "Save", () => save())]) |> v.gap(10.0),
@@ -92,14 +94,18 @@ fn view() -> v.View = {
 | | |
 |---|---|
 | `button`, `secondary_button`, `danger_button`, `text_button`, `button_enabled` | actions |
-| `checkbox`, `switch`, `radio_group`, `segmented` | choices |
+| `checkbox`, `switch`, `radio_group`, `segmented`, `dropdown` | choices |
+| `menu_button` | a menu of actions |
 | `slider`, `progress` | values |
 | `text_field` | text entry (holds an `ed.Editor`) |
 | `title`, `heading`, `body`, `caption`, `link` | text |
 | `card`, `divider`, `list_item`, `dialog` | containers |
 
 Every control can be reached with Tab and activated with Enter or Space;
-arrows move radio groups, segments and sliders. Each shows a focus ring,
+arrows move radio groups, segments and sliders. A dropdown or menu opens
+its list over everything below (Enter, Space or Alt+Down; Up / Down and
+Enter inside it; Escape or a click elsewhere closes it), and a closed
+dropdown changes its choice with Up / Down. Each shows a focus ring,
 reacts to hover and press, and tells screen readers its role, label and
 state (checked, selected, unavailable, a slider's value). Controls hold
 no state of their own: pass the current value in and update it in the
@@ -110,8 +116,12 @@ readers need anyway).
 [apps/gallery](../../apps/gallery/src/main.almd) shows every control,
 and [`ceangal.widgets`](../api/ceangal.widgets.md) lists them all. For
 your own controls, `ceangal.is_hovered(key)` and `ceangal.is_pressed(key)`
-give the pointer state, and `v.checked`, `v.selected` and `v.disabled`
-the state screen readers announce.
+give the pointer state, and `v.checked`, `v.selected`, `v.disabled` and
+`v.expanded` the state screen readers announce. A popup of your own is a
+view with `v.overlay()` (placed like `v.absolute()`, drawn over everything
+and given the pointer first, not clipped by its ancestors), shown while
+`ceangal.popup_open(key)`; `open_popup` / `close_popup` switch it, and a
+press outside closes it.
 
 ## Layout
 

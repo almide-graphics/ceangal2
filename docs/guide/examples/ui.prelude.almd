@@ -11,6 +11,10 @@ var remember = false
 fn set_remember(on: Bool) -> Unit = { remember = on }
 var size = 1
 fn set_size(i: Int) -> Unit = { size = i }
+var country = 0
+fn set_country(i: Int) -> Unit = { country = i }
+fn duplicate() -> Unit = ()
+fn archive() -> Unit = ()
 var volume = 50.0
 fn set_volume(x: Float) -> Unit = { volume = x }
 var name = ed.text_field("", "Your name")

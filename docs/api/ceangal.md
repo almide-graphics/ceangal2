@@ -126,6 +126,50 @@ pub fn invalidate() -> Unit
 
 Ask for a new frame (state changed outside an event handler).
 
+## Popups
+
+### `open_popup`
+
+```almide
+pub fn open_popup(key: String, index: Int) -> Unit
+```
+
+Open the popup of the control with `key` (one at a time), with entry
+`index` highlighted (-1 = none). A press outside the popup and its
+control closes it.
+
+### `close_popup`
+
+```almide
+pub fn close_popup() -> Unit
+```
+
+Close the open popup.
+
+### `popup_open`
+
+```almide
+pub fn popup_open(key: String) -> Bool
+```
+
+Whether the control with `key` has its popup open.
+
+### `popup_highlight`
+
+```almide
+pub fn popup_highlight() -> Int
+```
+
+The highlighted entry of the open popup (-1 = none).
+
+### `set_popup_highlight`
+
+```almide
+pub fn set_popup_highlight(index: Int) -> Unit
+```
+
+Highlight entry `index` of the open popup.
+
 ## Focus
 
 ### `focus`
