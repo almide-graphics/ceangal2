@@ -249,10 +249,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: tag a release (`v0.1.0`) so `[framework] version` resolves —
-   until then apps use `path` or `$CEANGAL_SDK`; `ceangal dev` (rebuild on
-   change) and `ceangal test`; move the playground into its own repository
-   once the reusable workflow has run green for an outside app.
+0. Framework: `ceangal dev` (rebuild on change) and `ceangal test`. (Done
+   2026-10-05: release v0.1.0; almide-graphics/ceangal-hello builds all six
+   platforms with `app.yml@v0.1.0`; the old ceangal, snaidhm and
+   ceangal-native repositories are archived with a pointer here. The
+   playground stays in this repository, as the goal's layout says.)
 1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
    2026-10-05).
 2. M6: store screenshots for iOS from the simulator build (the generator
