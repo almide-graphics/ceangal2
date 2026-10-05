@@ -59,8 +59,27 @@ let WORKFLOW = "name: app
 on: [push, pull_request]
 jobs:
   app:
-    uses: almide-graphics/ceangal2/.github/workflows/app.yml@v0.1.0
+    uses: almide-graphics/ceangal2/.github/workflows/app.yml@v__VERSION__
     secrets: inherit
+"
+
+let README = "# __NAME__
+
+An app made with [ceangal](https://github.com/almide-graphics/ceangal2): one
+Almide source for the web, iOS, macOS, Android, Windows and Linux.
+
+```sh
+ceangal dev            # the web build at http://localhost:8000, reloaded on save
+ceangal dev macos      # the desktop app, restarted on save (or linux / windows)
+ceangal run ios        # the simulator (or android: an emulator or a device)
+ceangal build android  # web native macos ios ios-sim android linux windows
+ceangal doctor         # what each platform needs on this machine
+```
+
+- `src/main.almd`: the app ([UI guide](https://github.com/almide-graphics/ceangal2/blob/main/docs/guide/ui.md))
+- `ceangal.toml`: its identity and settings ([reference](https://github.com/almide-graphics/ceangal2/blob/main/docs/guide/ceangal-toml.md))
+- `.github/workflows/app.yml`: CI builds every platform on each push
+- Store icons, listing and signing: [stores](https://github.com/almide-graphics/ceangal2/blob/main/docs/guide/stores.md)
 "
 
 // almide.toml is written by every `ceangal` command for editors and
@@ -82,7 +101,7 @@ fn title_of(base: String) -> String = {
 // Creates `dir`; `id` and `name` default from its last path segment. A
 // framework checkout found via $CEANGAL_SDK is used by path, otherwise the
 // app pins this CLI's framework version.
-pub effect fn create(dir: String, id_given: String, name_given: String) -> Result[String, String] = {
+pub effect fn create(dir: String, id_given: String, name_given: String, version: String) -> Result[String, String] = {
   if fs.exists(dir + "/ceangal.toml") then err(dir + " already has a ceangal.toml")
   else {
     let base = match list.last(string.split(dir, "/")) { some(s) => s, none => "app" }
@@ -91,14 +110,15 @@ pub effect fn create(dir: String, id_given: String, name_given: String) -> Resul
     let name = if name_given != "" then name_given else title_of(base)
     let framework = match env.get("CEANGAL_SDK") {
       some(p) => "path = \"" + p + "\"",
-      none => "version = \"0.1.0\"",
+      none => "version = \"" + version + "\"",
     }
     fs.mkdir_p(dir + "/src")!
     fs.mkdir_p(dir + "/.github/workflows")!
     fs.write(dir + "/ceangal.toml", fill(MANIFEST, id, name, key, framework))!
     fs.write(dir + "/src/main.almd", fill(MAIN, id, name, key, framework))!
-    fs.write(dir + "/.github/workflows/app.yml", WORKFLOW)!
+    fs.write(dir + "/.github/workflows/app.yml", string.replace(WORKFLOW, "__VERSION__", version))!
+    fs.write(dir + "/README.md", fill(README, id, name, key, framework))!
     fs.write(dir + "/.gitignore", GITIGNORE)!
-    ok("Created " + name + " (" + id + ") in " + dir + "\n\n  cd " + dir + "\n  ceangal run macos     # or web, linux, windows, ios, android")
+    ok("Created " + name + " (" + id + ") in " + dir + "\n\n  cd " + dir + "\n  ceangal dev           # http://localhost:8000, rebuilt and reloaded on save\n  ceangal run macos     # or web, linux, windows, ios, android")
   }
 }

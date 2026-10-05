@@ -18,7 +18,7 @@ pub fn sh_run(cmd: &str, args: &[String], dir: &str, keys: &[String], vals: &[St
 
 /// Windows: `bash` is Git's (the tools are bash scripts); a bare `bash` would
 /// find System32\bash.exe first, WSL's launcher. `$CEANGAL_BASH` overrides.
-fn program(cmd: &str) -> String {
+pub fn program(cmd: &str) -> String {
     if !cfg!(windows) || cmd != "bash" { return cmd.to_string() }
     if let Ok(b) = std::env::var("CEANGAL_BASH") { return b }
     for base in ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)", "LOCALAPPDATA"] {

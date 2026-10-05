@@ -349,7 +349,8 @@ jobs:
 
   # The framework as an app author meets it: the ceangal CLI makes a new
   # app outside this repository, builds it for the web (opened in headless
-  # Chrome, clicked) and as a sandboxed Mac app (started once).
+  # Chrome, clicked) and as a sandboxed Mac app (started once), and
+  # `ceangal dev` rebuilds it on edits (tests/e2e/dev.mjs).
   framework:
     runs-on: macos-15
     steps:
@@ -376,6 +377,15 @@ jobs:
         run: |
           MAC_ARCHS=arm64 tools/ceangal build macos --app "$RUNNER_TEMP/hello-app"
           CEANGAL_EXIT_AFTER_MS=3000 "$RUNNER_TEMP/hello-app/build/macos/Hello App.app/Contents/MacOS/hello"
+      - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
+        run: node tests/e2e/dev.mjs
+      - name: ceangal dev (macos) — an edit restarts the app
+        run: node tests/e2e/dev.mjs --desktop
+      - name: ceangal --version, ceangal doctor
+        run: |
+          tools/ceangal --version | grep -Eq '^ceangal [0-9]+\.[0-9]+\.[0-9]+$'
+          tools/ceangal doctor web --app apps/todo
+          tools/ceangal doctor --app apps/todo
       - name: errors name the problem
         run: |
           ! tools/ceangal info --app /nonexistent 2>err.txt && grep -q "no such directory" err.txt

@@ -7,6 +7,9 @@
 //   ceangal icons [--app DIR]
 //   ceangal env [--pwsh] [--app DIR]       the app's settings as shell exports
 //   ceangal info [--app DIR]
+//   ceangal dev [web|macos|linux|windows] [--port N] [--app DIR]
+//   ceangal doctor [target…] [--app DIR]
+//   ceangal --version
 
 import fs
 import env
@@ -14,17 +17,25 @@ import process
 import self.sh
 import self.manifest as mf
 import self.template
+import self.dev
+
+// The framework release this CLI belongs to: `ceangal new` pins apps to it.
+let VERSION = "0.2.0"
 
 let USAGE = "usage: ceangal <command> [options]
 
   new <dir> [--id ID] [--name NAME]   create an app
+  dev [target] [--port N]             build, watch, rebuild: web (default, reloads
+                                      the page) or macos / linux / windows (restarts)
   build <target>                      web native macos ios ios-sim android linux windows
   run <target>                        web macos linux windows ios android
+  doctor [target…]                    what each target needs, and what is missing
   icons                               every platform's icons from icon.png
   env [--pwsh]                        the app's settings as shell exports
   info                                what ceangal.toml says
 
-  --app DIR   the app's directory (default: the current one)"
+  --app DIR   the app's directory (default: the current one)
+  --version   this CLI's (and the framework release's) version"
 
 type Opts = { words: List[String], app: String, flags: List[String], values: List[(String, String)] }
 
@@ -36,7 +47,7 @@ fn parse_args(args: List[String]) -> Opts = {
   var i = 0
   while i < list.len(args) {
     let a = args[i]
-    if (a == "--app" or a == "--id" or a == "--name") and i + 1 < list.len(args) then {
+    if (a == "--app" or a == "--id" or a == "--name" or a == "--port") and i + 1 < list.len(args) then {
       if a == "--app" then app = args[i + 1] else list.push(values, (a, args[i + 1]))
       i = i + 2
     } else if string.starts_with(a, "--") then { list.push(flags, a); i = i + 1 }
@@ -186,6 +197,18 @@ effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
       some(t) => if cmd == "build" then build(app, sdk, t) else run(app, sdk, t),
       none => err("usage: ceangal " + cmd + " <target>"),
     }
+    else if cmd == "dev" then {
+      let target = match list.get(o.words, 1) { some(t) => t, none => "web" }
+      let port = match int.parse(value_of(o, "--port")) { ok(n) => n, err(_) => 8000 }
+      if target == "web" then dev.web(app, sdk, env_pairs(app, sdk), port)
+      else if target == "macos" or target == "linux" or target == "windows" or target == "native" then {
+        let exe = app.out + "/native/" + app.key + (if sh.os() == "windows" then ".exe" else "")
+        let sep = if sh.os() == "windows" then ";" else ":"
+        dev.desktop(app, sdk, env_pairs(app, sdk), exe, string.join(app.assets + [sdk + "/assets"], sep))
+      }
+      else err("ceangal dev runs web, macos, linux or windows (\"" + target + "\" is not one); for phones: ceangal run ios / android")
+    }
+    else if cmd == "doctor" then check(script(app, sdk, "doctor.sh", list.drop(o.words, 1)), "doctor")
     else if cmd == "icons" then check(tool(app, sdk, "python3", [sdk + "/tools/app_icons.py"] + o.flags), "making the icons")
     else err("unknown command \"" + cmd + "\"\n" + USAGE)
     }
@@ -193,11 +216,12 @@ effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
 }
 
 effect fn command(o: Opts) -> Result[Unit, String] = match list.get(o.words, 0) {
-  none => ok(println(USAGE)),
+  none => ok(println(if list.contains(o.flags, "--version") then "ceangal " + VERSION else USAGE)),
   some(cmd) =>
     if cmd == "help" or list.contains(o.flags, "--help") then ok(println(USAGE))
+    else if cmd == "version" then ok(println("ceangal " + VERSION))
     else if cmd == "new" then match list.get(o.words, 1) {
-      some(dir) => { let msg = template.create(dir, value_of(o, "--id"), value_of(o, "--name"))!; ok(println(msg)) },
+      some(dir) => { let msg = template.create(dir, value_of(o, "--id"), value_of(o, "--name"), VERSION)!; ok(println(msg)) },
       none => err("usage: ceangal new <dir> [--id ID] [--name NAME]"),
     }
     else with_app(o, cmd),
