@@ -36,7 +36,24 @@ it by path. Inside this repository, set `CEANGAL_SDK` to the checkout before
 `new` so the app uses it instead of a release.) An app is described by
 `ceangal.toml` — identity, icon, assets, permissions, extra Rust — see
 [docs/adr/0006](docs/adr/0006-framework-cli.md). Its CI is one line:
-`uses: almide-graphics/ceangal2/.github/workflows/app.yml@main`.
+`uses: almide-graphics/ceangal2/.github/workflows/app.yml@v0.1.0`.
+[ceangal-hello](https://github.com/almide-graphics/ceangal-hello) is that
+app in its own repository, built for every platform by that workflow.
+
+## Repositories
+
+- **This repository** is the framework and its reference apps: `ceangal/`,
+  `snaidhm/`, the hosts, the CLI and tools, and the Almide Playground
+  (`apps/playground`), which is built and released from here.
+  ceangal and snaidhm stay together here while Almide git dependencies
+  cannot name a package in a subdirectory (almide/almide#3381); a release
+  is a tag (`v0.1.0`) that apps pin in `ceangal.toml`.
+- **Apps** live in their own repositories, like
+  [ceangal-hello](https://github.com/almide-graphics/ceangal-hello).
+- The earlier [ceangal](https://github.com/almide-graphics/ceangal),
+  [snaidhm](https://github.com/almide-graphics/snaidhm) and
+  [ceangal-native](https://github.com/almide-graphics/ceangal-native) are
+  archived; this repository replaces them.
 
 ## Build and run
 

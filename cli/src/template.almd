@@ -59,7 +59,7 @@ let WORKFLOW = "name: app
 on: [push, pull_request]
 jobs:
   app:
-    uses: almide-graphics/ceangal2/.github/workflows/app.yml@main
+    uses: almide-graphics/ceangal2/.github/workflows/app.yml@v0.1.0
     secrets: inherit
 "
 
