@@ -11,6 +11,7 @@ import self.color as col
 
 type Color = col.Color
 
+// A colour from red, green, blue and alpha, each 0–1.
 pub fn rgba(r: Float, g: Float, b: Float, a: Float) -> Color = { r: r, g: g, b: b, a: a }
 
 // 0xRRGGBB, opaque.
@@ -21,6 +22,7 @@ pub fn hex(n: Int) -> Color = {
   a: 1.0,
 }
 
+// `c` with alpha `a`.
 pub fn with_alpha(c: Color, a: Float) -> Color = { r: c.r, g: c.g, b: c.b, a: a }
 
 let ATLAS_SIZE = 2048
@@ -123,7 +125,9 @@ pub fn forget_image(tex: Int) -> Unit = {
   image_groups = keep_group
 }
 
+// The glyph coverage atlas texture (created on first use).
 pub fn atlas() -> Int = { ensure_ready(); atlas_tex }
+// The atlas's width and height in texels.
 pub fn atlas_size() -> Int = ATLAS_SIZE
 
 // An RGBA8 (straight alpha) image texture for `image`. Release with
@@ -135,6 +139,7 @@ pub fn create_image(w: Int, h: Int, rgba: Bytes) -> Int = {
   tex
 }
 
+// Free an image texture from create_image.
 pub fn release_image(tex: Int) -> Unit = {
   forget_image(tex)
   gpu.release(tex)
@@ -148,6 +153,7 @@ pub fn upload_coverage(x: Int, y: Int, w: Int, h: Int, pixels: Bytes) -> Unit = 
 
 // ── Frame ──
 
+// Start a frame `width` × `height` physical px: clears what was recorded.
 pub fn begin(width: Int, height: Int) -> Unit = {
   ensure_ready()
   frame_w = int.max(1, width)
@@ -162,6 +168,7 @@ pub fn begin(width: Int, height: Int) -> Unit = {
   batch_start = [0]
 }
 
+// The shapes recorded since begin (for tests and budgets).
 pub fn instance_count() -> Int = count
 
 fn push(x: Float, y: Float, w: Float, h: Float, c: Color,
@@ -199,16 +206,19 @@ fn push(x: Float, y: Float, w: Float, h: Float, c: Color,
 fn visible(x: Float, y: Float, w: Float, h: Float, pad: Float) -> Bool =
   x - pad < clip_x1 and y - pad < clip_y1 and x + w + pad > clip_x0 and y + h + pad > clip_y0
 
+// A filled rectangle with rounded corners (radius 0 = square), physical px.
 pub fn fill(x: Float, y: Float, w: Float, h: Float, radius: Float, c: Color) -> Unit =
   if c.a > 0.0 and visible(x, y, w, h, 1.0) then
     push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_FILL, 0.0)
   else ()
 
+// A rounded rectangle's outline, `width` px wide.
 pub fn stroke(x: Float, y: Float, w: Float, h: Float, radius: Float, width: Float, c: Color) -> Unit =
   if c.a > 0.0 and width > 0.0 and visible(x, y, w, h, 1.0) then
     push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_STROKE, width)
   else ()
 
+// A soft shadow of a rounded rectangle, blurred by `blur` px.
 pub fn shadow(x: Float, y: Float, w: Float, h: Float, radius: Float, blur: Float, c: Color) -> Unit =
   if c.a > 0.0 and visible(x, y, w, h, blur * 3.0 + 1.0) then
     push(x, y, w, h, c, 0.0, 0.0, 0.0, 0.0, radius, shader.KIND_SHADOW, blur)
@@ -240,6 +250,7 @@ pub fn image(tex: Int, x: Float, y: Float, w: Float, h: Float, radius: Float, op
 
 // ── Clipping (intersecting, stack-shaped) ──
 
+// Clip what follows to this rect (intersected with the current clip).
 pub fn push_clip(x: Float, y: Float, w: Float, h: Float) -> Unit = {
   list.push(clip_stack, clip_x0)
   list.push(clip_stack, clip_y0)
@@ -251,6 +262,7 @@ pub fn push_clip(x: Float, y: Float, w: Float, h: Float) -> Unit = {
   clip_y1 = float.max(clip_y0, float.min(clip_y1, y + h))
 }
 
+// Back to the clip before the last push_clip.
 pub fn pop_clip() -> Unit = {
   let n = list.len(clip_stack)
   if n >= 4 then {

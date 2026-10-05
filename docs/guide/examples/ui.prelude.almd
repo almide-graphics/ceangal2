@@ -1,0 +1,30 @@
+// What the snippets in ui.md refer to without defining (an app's state,
+// handlers and colours), for tools/check_doc_examples.py. A name a snippet
+// defines itself is left out of its check.
+let WHITE = snaidhm.hex(0xFFFFFF)
+let ACCENT = snaidhm.hex(0x7AA2F7)
+var count = 0
+var added = 0
+var notify = false
+fn set_notify(on: Bool) -> Unit = { notify = on }
+var remember = false
+fn set_remember(on: Bool) -> Unit = { remember = on }
+var size = 1
+fn set_size(i: Int) -> Unit = { size = i }
+var volume = 50.0
+fn set_volume(x: Float) -> Unit = { volume = x }
+var name = ed.text_field("", "Your name")
+fn set_name(e: ed.Editor) -> Unit = { name = e }
+var field = ed.text_field("", "What needs doing?")
+fn set_field(e: ed.Editor) -> Unit = { field = e }
+var theme = ed.dark_theme()
+fn save() -> Unit = ()
+fn cancel() -> Unit = ()
+fn add() -> Unit = { added = added + 1 }
+fn remove(id: Int) -> Unit = ()
+fn phone_layout() -> v.View = v.empty()
+fn wide_layout() -> v.View = v.empty()
+var rows: List[v.View] = []
+var id = 1
+var title = "Milk"
+fn view() -> v.View = v.empty()

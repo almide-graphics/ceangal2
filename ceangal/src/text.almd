@@ -56,6 +56,7 @@ fn chain(mono: Bool, bold: Bool) -> List[Int] =
 
 // ── UTF-8 ──
 
+// The Unicode code points of `s` (decoded from UTF-8).
 pub fn codepoints(s: String) -> List[Int] = {
   let b = bytes.from_string(s)
   let n = bytes.len(b)
@@ -84,6 +85,8 @@ pub fn codepoints(s: String) -> List[Int] = {
 // and advance (px).
 type Glyph = { slot: Int, gid: Int, x: Float, advance: Float }
 
+// Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
+// mono → CJK → UI for code) and x positions.
 pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph] = {
   let ch = chain(mono, bold)
   var out: List[Glyph] = []
@@ -113,20 +116,24 @@ pub fn ascent(size: Float, mono: Bool) -> Float = {
   f.ascender * size / f.units_per_em
 }
 
+// The height of a line at `size`.
 pub fn line_height(size: Float, mono: Bool) -> Float = {
   let f = font_at(if mono then FONT_MONO else FONT_UI)
   float.ceil((f.ascender - f.descender + f.line_gap) * size / f.units_per_em)
 }
 
+// The width of `s` on one line at `size`.
 pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float = {
   let gs = shape(codepoints(s), size, mono, bold)
   let n = list.len(gs)
   if n == 0 then 0.0 else gs[n - 1].x + gs[n - 1].advance
 }
 
+// The size of `s` drawn on one line.
 pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
   { w: float.ceil(width(s, size, mono, false)), h: line_height(size, mono) }
 
+// measure, with the bold font when `bold`.
 pub fn measure_style(s: String, size: Float, mono: Bool, bold: Bool) -> Extent =
   { w: float.ceil(width(s, size, mono, bold)), h: line_height(size, mono) }
 
@@ -194,6 +201,7 @@ fn glyph_entry(slot: Int, gid: Int, px: Float) -> Cached? = {
 pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, c: snaidhm.Color) -> Unit =
   draw_style(s, x, y, w, h, size, mono, false, c)
 
+// draw, with the bold font when `bold`.
 pub fn draw_style(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit = {
   let lh = line_height(size, mono)
   let baseline = float.round(y + (h - lh) * 0.5 + ascent(size, mono))

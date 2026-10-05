@@ -27,6 +27,7 @@ pub fn set(key: String, value: String) -> Unit = {
   host.storage_write(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), bytes.len(b))
 }
 
+// Delete the value under `key`.
 pub fn remove(key: String) -> Unit = {
   let k = bytes.from_string(key)
   host.storage_remove(bytes.data_ptr(k), bytes.len(k))
@@ -44,12 +45,14 @@ pub fn secret_get(key: String) -> String? = {
   }
 }
 
+// Save a secret under `key` in the credential store.
 pub fn secret_set(key: String, value: String) -> Unit = {
   let k = bytes.from_string(key)
   let b = bytes.from_string(value)
   host.secret_write(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), bytes.len(b))
 }
 
+// Delete the secret under `key`.
 pub fn secret_remove(key: String) -> Unit = {
   let k = bytes.from_string(key)
   host.secret_remove(bytes.data_ptr(k), bytes.len(k))

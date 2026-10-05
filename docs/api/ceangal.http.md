@@ -33,9 +33,13 @@ pub fn request(method: String, url: String, headers: List[(String, String)], bod
 Start a request: method ("GET", "POST", …), URL, headers, body ("" for
 none). The id it returns comes back with the answer.
 
+### `get`
+
 ```almide
 pub fn get(url: String) -> Int
 ```
+
+GET `url`.
 
 ### `post_json`
 
@@ -61,6 +65,10 @@ pub fn is_chunk(status: Int) -> Bool
 
 A piece of a streamed response (more follow, then the final status).
 
+### `chunk_status`
+
 ```almide
 pub fn chunk_status(status: Int) -> Int
 ```
+
+The HTTP status of a streamed piece (the status itself otherwise).

@@ -85,17 +85,78 @@ a touch that ends without moving is a tap.
 
 ## Construction
 
+### `from_string`
+
 ```almide
 pub fn from_string(s: String) -> Editor
+```
+
+An editor holding `s` (multi-line, syntax highlighting on, caret at the start).
+
+### `text_field`
+
+```almide
 pub fn text_field(s: String, placeholder: String) -> Editor
+```
+
+A one-line editor for a form field: Enter does not add a line, and
+`placeholder` shows while it is empty.
+
+### `with_font_size`
+
+```almide
 pub fn with_font_size(e: Editor, size: Float) -> Editor
+```
+
+Text size in logical px.
+
+### `with_syntax`
+
+```almide
 pub fn with_syntax(e: Editor, on: Bool) -> Editor
+```
+
+Almide syntax highlighting on or off.
+
+### `with_read_only`
+
+```almide
 pub fn with_read_only(e: Editor, on: Bool) -> Editor
+```
+
+The text can be selected and copied but not changed.
+
+### `with_diagnostics`
+
+```almide
 pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor
+```
+
+Squiggles under these ranges (compiler errors and warnings).
+
+### `with_gutter`
+
+```almide
 pub fn with_gutter(e: Editor, on: Bool) -> Editor
+```
+
+Line numbers on the left.
+
+### `with_secret`
+
+```almide
 pub fn with_secret(e: Editor, on: Bool) -> Editor
+```
+
+Show a bullet per character (passwords, API keys); copying is off.
+
+### `with_wrap`
+
+```almide
 pub fn with_wrap(e: Editor, on: Bool) -> Editor
 ```
+
+Soft-wrap long lines at the view's width instead of scrolling sideways.
 
 ### `log`
 
@@ -114,10 +175,21 @@ pub fn append_line(e: Editor, s: String, style: Int) -> Editor
 Append one line with a style (0 normal, 1 error, 2 dim, 3 success);
 follows the tail while the view is scrolled to the bottom.
 
+### `clear`
+
 ```almide
 pub fn clear(e: Editor) -> Editor
+```
+
+Empty the text (undo history and settings kept).
+
+### `to_string`
+
+```almide
 pub fn to_string(e: Editor) -> String
 ```
+
+The whole text, lines joined with "\n".
 
 ### `visible_text`
 
@@ -128,28 +200,89 @@ pub fn visible_text(e: Editor) -> String
 The lines on screen (plus a few around them), for assistive technology:
 a 10k-line buffer must not be re-joined every frame.
 
+### `line_count`
+
 ```almide
 pub fn line_count(e: Editor) -> Int
+```
+
+The number of lines.
+
+### `cursor`
+
+```almide
 pub fn cursor(e: Editor) -> Pos
 ```
 
+The caret's position (line and column, from 0).
+
 ## Positions
+
+### `has_selection`
 
 ```almide
 pub fn has_selection(e: Editor) -> Bool
+```
+
+Some text is selected.
+
+### `selected_text`
+
+```almide
 pub fn selected_text(e: Editor) -> String
+```
+
+The selected text ("" when none).
+
+### `set_cursor`
+
+```almide
 pub fn set_cursor(e: Editor, line: Int, col: Int) -> Editor
+```
+
+Move the caret to (line, col), clearing the selection.
+
+### `select_all`
+
+```almide
 pub fn select_all(e: Editor) -> Editor
 ```
 
+Select the whole text.
+
 ## Editing
+
+### `insert`
 
 ```almide
 pub fn insert(e: Editor, s: String) -> Editor
+```
+
+Insert `s` at the caret (replacing the selection), as typing would.
+
+### `set_text`
+
+```almide
 pub fn set_text(e: Editor, s: String) -> Editor
+```
+
+Replace the whole text (an undoable edit; the caret goes to the end).
+
+### `undo`
+
+```almide
 pub fn undo(e: Editor) -> Editor
+```
+
+Undo the last edit.
+
+### `redo`
+
+```almide
 pub fn redo(e: Editor) -> Editor
 ```
+
+Redo what undo undid.
 
 ## Metrics (logical px)
 
@@ -173,9 +306,14 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool)
 
 Key handling; returns (state, handled).
 
+### `text`
+
 ```almide
 pub fn text(e: Editor, kind: Int, s: String, cursor: Int) -> Editor
 ```
+
+Text input: kind 0 commit, 1 IME preedit (shown at the caret, not yet
+text), 2 preedit end, 3 paste; `cursor` is the preedit's caret (bytes).
 
 ### `pointer`
 
@@ -217,9 +355,13 @@ pub fn dark_theme() -> Theme
 
 Tokyo-night-like, matching the playground's previous CodeMirror theme.
 
+### `light_theme`
+
 ```almide
 pub fn light_theme() -> Theme
 ```
+
+Colours for a light background.
 
 ## Paint
 

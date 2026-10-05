@@ -32,9 +32,13 @@ pub fn set(key: String, value: String) -> Unit
 
 Save `value` under `key`, replacing what was there.
 
+### `remove`
+
 ```almide
 pub fn remove(key: String) -> Unit
 ```
+
+Delete the value under `key`.
 
 ### `secret_get`
 
@@ -44,7 +48,18 @@ pub fn secret_get(key: String) -> String?
 
 A secret saved under `key` (in the credential store), none when there is none.
 
+### `secret_set`
+
 ```almide
 pub fn secret_set(key: String, value: String) -> Unit
+```
+
+Save a secret under `key` in the credential store.
+
+### `secret_remove`
+
+```almide
 pub fn secret_remove(key: String) -> Unit
 ```
+
+Delete the secret under `key`.

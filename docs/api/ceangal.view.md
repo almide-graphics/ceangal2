@@ -103,11 +103,29 @@ type View = {
 
 ## Constructors
 
+### `text`
+
 ```almide
 pub fn text(content: String) -> View
+```
+
+One line of text in the style's font, size and colour.
+
+### `col`
+
+```almide
 pub fn col(children: List[View]) -> View
+```
+
+Children stacked top to bottom.
+
+### `row`
+
+```almide
 pub fn row(children: List[View]) -> View
 ```
+
+Children side by side, left to right.
 
 ### `wrap_row`
 
@@ -117,9 +135,13 @@ pub fn wrap_row(children: List[View]) -> View
 
 A row whose children flow onto further lines when they do not fit.
 
+### `box`
+
 ```almide
 pub fn box(child: View) -> View
 ```
+
+A container of one child (to give it padding, a background, a border).
 
 ### `with_child`
 
@@ -130,46 +152,198 @@ pub fn with_child(v: View, child: View) -> View
 The view with one more child after its others (on top of them, when it
 is absolute).
 
+### `empty`
+
 ```almide
 pub fn empty() -> View
+```
+
+A box with nothing in it: a swatch, a divider, a placeholder.
+
+### `spacer`
+
+```almide
 pub fn spacer() -> View
+```
+
+Takes the free space along a row or column, pushing what follows to the end.
+
+### `custom`
+
+```almide
 pub fn custom(key: String, paint: Painter) -> View
 ```
 
+A view that paints itself: `paint(x, y, w, h)` gets its laid-out rect in
+logical px each frame (draw with snaidhm, in physical px: × ceangal.pixel_scale()).
+
 ## Size
+
+### `w`
 
 ```almide
 pub fn w(v: View, width: Float) -> View
+```
+
+Width in logical px.
+
+### `h`
+
+```almide
 pub fn h(v: View, height: Float) -> View
+```
+
+Height in logical px.
+
+### `size`
+
+```almide
 pub fn size(v: View, width: Float, height: Float) -> View
+```
+
+Width and height in logical px.
+
+### `w_pct`
+
+```almide
 pub fn w_pct(v: View, pct: Float) -> View
+```
+
+Width as a percentage of the parent's inner width.
+
+### `h_pct`
+
+```almide
 pub fn h_pct(v: View, pct: Float) -> View
+```
+
+Height as a percentage of the parent's inner height.
+
+### `fill`
+
+```almide
 pub fn fill(v: View) -> View
+```
+
+All of the parent's inner width and height.
+
+### `min_w`
+
+```almide
 pub fn min_w(v: View, x: Float) -> View
+```
+
+At least this wide (logical px), whatever flex does.
+
+### `min_h`
+
+```almide
 pub fn min_h(v: View, x: Float) -> View
+```
+
+At least this tall.
+
+### `max_w`
+
+```almide
 pub fn max_w(v: View, x: Float) -> View
+```
+
+At most this wide.
+
+### `max_h`
+
+```almide
 pub fn max_h(v: View, x: Float) -> View
 ```
 
+At most this tall.
+
 ## Spacing
+
+### `padding`
 
 ```almide
 pub fn padding(v: View, all: Float) -> View
+```
+
+Space inside the view on all four sides.
+
+### `px`
+
+```almide
 pub fn px(v: View, x: Float) -> View
+```
+
+Space inside on the left and right.
+
+### `py`
+
+```almide
 pub fn py(v: View, y: Float) -> View
+```
+
+Space inside at the top and bottom.
+
+### `pad`
+
+```almide
 pub fn pad(v: View, top: Float, right: Float, bottom: Float, left: Float) -> View
+```
+
+Space inside, per side.
+
+### `margin`
+
+```almide
 pub fn margin(v: View, all: Float) -> View
+```
+
+Space outside the view on all four sides.
+
+### `mx`
+
+```almide
 pub fn mx(v: View, x: Float) -> View
+```
+
+Space outside on the left and right.
+
+### `my`
+
+```almide
 pub fn my(v: View, y: Float) -> View
+```
+
+Space outside at the top and bottom.
+
+### `gap`
+
+```almide
 pub fn gap(v: View, g: Float) -> View
 ```
 
+Space between a row's or column's children.
+
 ## Flex
+
+### `grow`
 
 ```almide
 pub fn grow(v: View, g: Float) -> View
+```
+
+How much of the free space along the parent's axis this view takes
+(relative to its siblings' grow; 0 = none).
+
+### `shrink`
+
+```almide
 pub fn shrink(v: View, s: Float) -> View
 ```
+
+How much this view gives up when its siblings do not fit (0 = never
+smaller than its content).
 
 ### `Justify`
 
@@ -183,49 +357,194 @@ on the wasm leg yet — almide/almide#3286.)
 
 ```almide
 type Align = | Top | Bottom | Middle | Stretch
+```
+
+### `justify`
+
+```almide
 pub fn justify(v: View, j: Justify) -> View
+```
+
+Where a row's or column's children sit along its axis.
+
+### `align`
+
+```almide
 pub fn align(v: View, a: Align) -> View
+```
+
+Where a row's or column's children sit across its axis (Stretch fills it).
+
+### `align_self`
+
+```almide
 pub fn align_self(v: View, a: Align) -> View
+```
+
+This view's own alignment across its parent's axis.
+
+### `center`
+
+```almide
 pub fn center(v: View) -> View
 ```
 
+Children centred both ways.
+
 ## Position
+
+### `absolute`
 
 ```almide
 pub fn absolute(v: View) -> View
+```
+
+Out of the flow: placed in the parent by top / bottom / left / right
+(both of a pair given and no size: it spans between them).
+
+### `top`
+
+```almide
 pub fn top(v: View, t: Float) -> View
+```
+
+With absolute: distance from the parent's top edge.
+
+### `bottom`
+
+```almide
 pub fn bottom(v: View, b: Float) -> View
+```
+
+With absolute: distance from the parent's bottom edge.
+
+### `left`
+
+```almide
 pub fn left(v: View, l: Float) -> View
+```
+
+With absolute: distance from the parent's left edge.
+
+### `right`
+
+```almide
 pub fn right(v: View, r: Float) -> View
+```
+
+With absolute: distance from the parent's right edge.
+
+### `clip`
+
+```almide
 pub fn clip(v: View) -> View
 ```
 
+Children do not draw outside this view's rect.
+
 ## Paint
+
+### `bg`
 
 ```almide
 pub fn bg(v: View, c: Color) -> View
+```
+
+The background colour.
+
+### `color`
+
+```almide
 pub fn color(v: View, c: Color) -> View
+```
+
+The text colour.
+
+### `rounded`
+
+```almide
 pub fn rounded(v: View, r: Float) -> View
+```
+
+Corner radius in logical px.
+
+### `opacity`
+
+```almide
 pub fn opacity(v: View, o: Float) -> View
+```
+
+0 (invisible) to 1, for the view and its children.
+
+### `border`
+
+```almide
 pub fn border(v: View, width: Float, c: Color) -> View
+```
+
+A border `width` logical px wide, inside the view's rect.
+
+### `shadow`
+
+```almide
 pub fn shadow(v: View, blur: Float, dy: Float, c: Color) -> View
 ```
 
+A drop shadow: blur radius, vertical offset and colour.
+
 ## Text
+
+### `font`
 
 ```almide
 pub fn font(v: View, size: Float) -> View
+```
+
+Text size in logical px.
+
+### `mono`
+
+```almide
 pub fn mono(v: View) -> View
+```
+
+The monospace font.
+
+### `bold`
+
+```almide
 pub fn bold(v: View) -> View
 ```
 
+The semibold font.
+
 ## Interaction
+
+### `on_click`
 
 ```almide
 pub fn on_click(v: View, f: () -> Unit) -> View
+```
+
+Run `f` on a click or tap (press and release on the view); the pointer
+becomes a hand over it. Give it a role and label for screen readers.
+
+### `on_pointer`
+
+```almide
 pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View
+```
+
+Every pointer event over the view (and, once pressed, until release):
+return true to take it (drags, sliders). Positions are relative to the view.
+
+### `on_wheel`
+
+```almide
 pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View
 ```
+
+Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
 
 ### `scroll_y`
 
@@ -236,23 +555,95 @@ pub fn scroll_y(v: View, key: String) -> View
 Make a view scroll its content vertically when it is taller than the view
 (give it a height or max height). `key` keeps the offset across frames.
 
+### `focusable`
+
 ```almide
 pub fn focusable(v: View, k: String) -> View
+```
+
+Can hold keyboard focus, under key `k` (Tab moves between such views;
+on_key receives keys while focused).
+
+### `text_input`
+
+```almide
 pub fn text_input(v: View, k: String) -> View
+```
+
+Focusable and takes text: the host shows the IME and, on phones, the
+soft keyboard (on_text receives the text).
+
+### `keeps_focus`
+
+```almide
 pub fn keeps_focus(v: View) -> View
+```
+
+Taps inside leave focus where it is (a key bar above the soft keyboard).
+
+### `on_key`
+
+```almide
 pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View
+```
+
+Keys while this view has focus: f(phase, code, mods), true = handled
+(phase 0 down, 1 up, 2 repeat; codes in docs/abi.md §2.2).
+
+### `on_text`
+
+```almide
 pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View
+```
+
+Text while this view has focus: f(kind, text, preedit cursor), true =
+handled (kind 0 commit, 1 IME preedit, 2 preedit end, 3 paste).
+
+### `on_focus`
+
+```almide
 pub fn on_focus(v: View, f: (Bool) -> Unit) -> View
+```
+
+Called with true when the view gains focus, false when it loses it.
+
+### `cursor`
+
+```almide
 pub fn cursor(v: View, kind: Int) -> View
+```
+
+The mouse cursor over the view: 0 arrow, 1 text, 2 hand, 3 grab,
+4 left-right resize, 5 up-down resize.
+
+### `key`
+
+```almide
 pub fn key(v: View, k: String) -> View
 ```
 
+Name the view: focus, scroll offsets, rect_of and hover go by keys.
+
 ## Accessibility
+
+### `label`
 
 ```almide
 pub fn label(v: View, l: String) -> View
+```
+
+What a screen reader says for the view (and what tests click by).
+
+### `role`
+
+```almide
 pub fn role(v: View, r: Int) -> View
 ```
+
+What a screen reader calls the view: 3 button, 4 text, 5 text field,
+6 list, 7 list item, 8 tab, 9 tab list, 10 heading, 11 link, 12 checkbox,
+13 image, 14 code editor, 15 switch, 16 slider, 17 dialog, 18 radio button,
+19 radio group, 20 progress bar.
 
 ### `a11y_hidden`
 
@@ -263,9 +654,14 @@ pub fn a11y_hidden(v: View) -> View
 Leave the view out of the accessibility tree (a parent speaks for it, as
 the words of a wrapped paragraph).
 
+### `value`
+
 ```almide
 pub fn value(v: View, f: () -> String) -> View
 ```
+
+The value a screen reader reads (a field's text, a slider's number);
+called once per committed frame, so keep it cheap.
 
 ### `checked`
 

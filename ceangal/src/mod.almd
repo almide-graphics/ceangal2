@@ -162,6 +162,8 @@ pub fn focus(key: String) -> Unit = {
 
 // The focused view's key ("" = none).
 pub fn focused() -> String = focus_key
+
+// The view with `key` has focus.
 pub fn is_focused(key: String) -> Bool = key != "" and key == focus_key
 
 // The focused text input reports its caret while painting (logical px), so

@@ -144,9 +144,13 @@ pub fn focused() -> String
 
 The focused view's key ("" = none).
 
+### `is_focused`
+
 ```almide
 pub fn is_focused(key: String) -> Bool
 ```
+
+The view with `key` has focus.
 
 ### `set_caret`
 
@@ -165,17 +169,14 @@ pub fn is_shortcut(mods: Int) -> Bool
 
 Cmd on Apple platforms, Ctrl elsewhere.
 
-### `has_shift`
+### `has_shift`, `has_alt`
 
 ```almide
 pub fn has_shift(mods: Int) -> Bool
+pub fn has_alt(mods: Int) -> Bool
 ```
 
 The modifier bits of a key event.
-
-```almide
-pub fn has_alt(mods: Int) -> Bool
-```
 
 ### `soft_keyboard`
 
@@ -187,17 +188,14 @@ The on-screen keyboard is up (phones and tablets, a text input focused by
 a tap, and the keyboard not put away with Back / the dismiss key): apps
 can show a key bar above it.
 
-### `viewport_width`
+### `viewport_width`, `viewport_height`
 
 ```almide
 pub fn viewport_width() -> Float
+pub fn viewport_height() -> Float
 ```
 
 The area the app is laid out in (inside the safe-area insets).
-
-```almide
-pub fn viewport_height() -> Float
-```
 
 ### `is_dark`
 

@@ -38,6 +38,7 @@ type Theme = {
   editor: ed.Theme,         // text fields
 }
 
+// Dark surfaces, light text (the playground's dark palette).
 pub fn dark() -> Theme = {
   bg: snaidhm.hex(0x1A1B26), surface: snaidhm.hex(0x24283B), raised: snaidhm.hex(0x2F3549),
   text: snaidhm.hex(0xE6E8F0), dim: snaidhm.hex(0x8A90A8), accent: snaidhm.hex(0x7AA2F7),
@@ -45,6 +46,7 @@ pub fn dark() -> Theme = {
   danger: snaidhm.hex(0xF7768E), radius: 8.0, font_size: 15.0, editor: ed.dark_theme(),
 }
 
+// Light surfaces, dark text.
 pub fn light() -> Theme = {
   bg: snaidhm.hex(0xF7F8FA), surface: snaidhm.hex(0xFFFFFF), raised: snaidhm.hex(0xEEF0F4),
   text: snaidhm.hex(0x1A1B26), dim: snaidhm.hex(0x6B7280), accent: snaidhm.hex(0x2563EB),
@@ -83,6 +85,7 @@ fn activates(view: v.View, f: () -> Unit) -> v.View =
 pub fn title(th: Theme, s: String) -> v.View = v.text(s) |> v.font(26.0) |> v.bold() |> v.color(th.text) |> v.role(10)
 // A section's heading.
 pub fn heading(th: Theme, s: String) -> v.View = v.text(s) |> v.font(18.0) |> v.bold() |> v.color(th.text) |> v.role(10)
+// Ordinary text at the theme's size.
 pub fn body(th: Theme, s: String) -> v.View = v.text(s) |> v.font(th.font_size) |> v.color(th.text)
 // Secondary text: hints, counts, timestamps.
 pub fn caption(th: Theme, s: String) -> v.View = v.text(s) |> v.font(13.0) |> v.color(th.dim)

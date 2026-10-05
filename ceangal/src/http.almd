@@ -32,6 +32,7 @@ pub fn request(method: String, url: String, headers: List[(String, String)], bod
   id
 }
 
+// GET `url`.
 pub fn get(url: String) -> Int = request("GET", url, [], "")
 
 // POST `body` as JSON.
@@ -42,4 +43,5 @@ pub fn cancel(id: Int) -> Unit = net.http_cancel(id)
 
 // A piece of a streamed response (more follow, then the final status).
 pub fn is_chunk(status: Int) -> Bool = status >= 1000
+// The HTTP status of a streamed piece (the status itself otherwise).
 pub fn chunk_status(status: Int) -> Int = if status >= 1000 then status - 1000 else status

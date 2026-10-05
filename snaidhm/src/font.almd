@@ -58,6 +58,7 @@ fn find_table(b: Bytes, t: Int) -> Int = {
   off
 }
 
+// A TrueType font from its file's bytes (`ok` is false when it cannot be read).
 pub fn parse(b: Bytes) -> Font =
   if bytes.len(b) < 12 then empty_font()
   else {
@@ -104,6 +105,7 @@ pub fn parse(b: Bytes) -> Font =
 
 // ── Character map ──
 
+// The glyph for code point `cp` (0 = the font has none).
 pub fn glyph_index(f: Font, cp: Int) -> Int =
   if not f.ok then 0
   else if f.cmap12 != 0 then cmap12_lookup(f.data, f.cmap12, cp)
@@ -158,6 +160,7 @@ fn cmap12_lookup(b: Bytes, sub: Int, cp: Int) -> Int = {
 
 // ── Metrics ──
 
+// How far the pen moves after glyph `gid`, in font units.
 pub fn advance(f: Font, gid: Int) -> Float =
   if not f.ok then 0.0
   else {
@@ -175,6 +178,7 @@ fn glyph_range(f: Font, gid: Int) -> (Int, Int) =
   if f.index_to_loc == 0 then (u16(f.data, f.loca + gid * 2) * 2, u16(f.data, f.loca + gid * 2 + 2) * 2)
   else (u32(f.data, f.loca + gid * 4), u32(f.data, f.loca + gid * 4 + 4))
 
+// Glyph `gid`'s outline (composite glyphs flattened).
 pub fn outline(f: Font, gid: Int) -> Outline = {
   var o: Outline = { xs: [], ys: [], on: [], ends: [] }
   if f.ok and gid >= 0 and gid < f.num_glyphs then append_glyph(f, gid, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, o, 0) else ()

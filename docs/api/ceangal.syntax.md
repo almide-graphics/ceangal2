@@ -27,10 +27,21 @@ type Span = { start: Int, stop: Int, kind: Int }
 
 A run of codepoints [start, stop) with one token kind.
 
+### `initial`
+
 ```almide
 pub fn initial() -> LexState
+```
+
+The lexer state at the start of a file.
+
+### `is_word`
+
+```almide
 pub fn is_word(c: Int) -> Bool
 ```
+
+Part of an identifier (letters, digits, _, any non-ASCII).
 
 ### `lex`
 

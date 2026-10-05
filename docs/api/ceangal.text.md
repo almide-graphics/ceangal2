@@ -28,9 +28,13 @@ native leg emit the wrong struct (almide/almide#3283).
 
 ## UTF-8
 
+### `codepoints`
+
 ```almide
 pub fn codepoints(s: String) -> List[Int]
 ```
+
+The Unicode code points of `s` (decoded from UTF-8).
 
 ## Shaping (cmap + advances + fallback)
 
@@ -43,9 +47,14 @@ type Glyph = { slot: Int, gid: Int, x: Float, advance: Float }
 One positioned glyph: font slot, glyph id, pen x (px from the run start)
 and advance (px).
 
+### `shape`
+
 ```almide
 pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
 ```
+
+Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
+mono → CJK → UI for code) and x positions.
 
 ### `ascent`
 
@@ -55,12 +64,37 @@ pub fn ascent(size: Float, mono: Bool) -> Float
 
 Line metrics of the primary font at `size`: ascent and full line height.
 
+### `line_height`
+
 ```almide
 pub fn line_height(size: Float, mono: Bool) -> Float
+```
+
+The height of a line at `size`.
+
+### `width`
+
+```almide
 pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float
+```
+
+The width of `s` on one line at `size`.
+
+### `measure`
+
+```almide
 pub fn measure(s: String, size: Float, mono: Bool) -> Extent
+```
+
+The size of `s` drawn on one line.
+
+### `measure_style`
+
+```almide
 pub fn measure_style(s: String, size: Float, mono: Bool, bold: Bool) -> Extent
 ```
+
+measure, with the bold font when `bold`.
 
 ## Glyph atlas cache
 
@@ -87,9 +121,13 @@ pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono
 Draw `s` on one line inside (x, y, w, h) — physical pixels, vertically
 centred — at `size` physical px.
 
+### `draw_style`
+
 ```almide
 pub fn draw_style(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit
 ```
+
+draw, with the bold font when `bold`.
 
 ### `draw_run`
 

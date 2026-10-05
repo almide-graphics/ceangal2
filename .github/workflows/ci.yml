@@ -38,6 +38,8 @@ jobs:
       - name: the ceangal CLI
         working-directory: cli
         run: ../tools/almide check
+      - name: the guide's code examples compile (docs/guide)
+        run: python3 tools/check_doc_examples.py
       - name: wasm check (every app)
         run: |
           for app in apps/*/; do

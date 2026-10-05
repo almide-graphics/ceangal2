@@ -117,47 +117,77 @@ fn node(kind: Int, children: List[View], content: String) -> View = {
 
 // ── Constructors ──
 
+// One line of text in the style's font, size and colour.
 pub fn text(content: String) -> View = node(TEXT, [], content)
+// Children stacked top to bottom.
 pub fn col(children: List[View]) -> View = node(COL, children, "")
+// Children side by side, left to right.
 pub fn row(children: List[View]) -> View = node(ROW, children, "")
 // A row whose children flow onto further lines when they do not fit.
 pub fn wrap_row(children: List[View]) -> View = { ...node(ROW, children, ""), style: { ...default_style, wrap: true, align: 0 } }
+// A container of one child (to give it padding, a background, a border).
 pub fn box(child: View) -> View = node(COL, [child], "")
 // The view with one more child after its others (on top of them, when it
 // is absolute).
 pub fn with_child(v: View, child: View) -> View = { ...v, children: v.children + [child] }
+// A box with nothing in it: a swatch, a divider, a placeholder.
 pub fn empty() -> View = node(BOX, [], "")
+// Takes the free space along a row or column, pushing what follows to the end.
 pub fn spacer() -> View = node(BOX, [], "") |> grow(1.0)
+// A view that paints itself: `paint(x, y, w, h)` gets its laid-out rect in
+// logical px each frame (draw with snaidhm, in physical px: × ceangal.pixel_scale()).
 pub fn custom(key: String, paint: Painter) -> View = { ...node(CUSTOM, [], ""), key: key, paint: paint }
 
 // ── Size ──
 
+// Width in logical px.
 pub fn w(v: View, width: Float) -> View = { ...v, style: { ...v.style, width: width } }
+// Height in logical px.
 pub fn h(v: View, height: Float) -> View = { ...v, style: { ...v.style, height: height } }
+// Width and height in logical px.
 pub fn size(v: View, width: Float, height: Float) -> View = { ...v, style: { ...v.style, width: width, height: height } }
+// Width as a percentage of the parent's inner width.
 pub fn w_pct(v: View, pct: Float) -> View = { ...v, style: { ...v.style, width_pct: pct } }
+// Height as a percentage of the parent's inner height.
 pub fn h_pct(v: View, pct: Float) -> View = { ...v, style: { ...v.style, height_pct: pct } }
+// All of the parent's inner width and height.
 pub fn fill(v: View) -> View = { ...v, style: { ...v.style, width_pct: 100.0, height_pct: 100.0 } }
+// At least this wide (logical px), whatever flex does.
 pub fn min_w(v: View, x: Float) -> View = { ...v, style: { ...v.style, min_width: x } }
+// At least this tall.
 pub fn min_h(v: View, x: Float) -> View = { ...v, style: { ...v.style, min_height: x } }
+// At most this wide.
 pub fn max_w(v: View, x: Float) -> View = { ...v, style: { ...v.style, max_width: x } }
+// At most this tall.
 pub fn max_h(v: View, x: Float) -> View = { ...v, style: { ...v.style, max_height: x } }
 
 // ── Spacing ──
 
+// Space inside the view on all four sides.
 pub fn padding(v: View, all: Float) -> View = { ...v, style: { ...v.style, pt: all, pr: all, pb: all, pl: all } }
+// Space inside on the left and right.
 pub fn px(v: View, x: Float) -> View = { ...v, style: { ...v.style, pl: x, pr: x } }
+// Space inside at the top and bottom.
 pub fn py(v: View, y: Float) -> View = { ...v, style: { ...v.style, pt: y, pb: y } }
+// Space inside, per side.
 pub fn pad(v: View, top: Float, right: Float, bottom: Float, left: Float) -> View =
   { ...v, style: { ...v.style, pt: top, pr: right, pb: bottom, pl: left } }
+// Space outside the view on all four sides.
 pub fn margin(v: View, all: Float) -> View = { ...v, style: { ...v.style, mt: all, mr: all, mb: all, ml: all } }
+// Space outside on the left and right.
 pub fn mx(v: View, x: Float) -> View = { ...v, style: { ...v.style, ml: x, mr: x } }
+// Space outside at the top and bottom.
 pub fn my(v: View, y: Float) -> View = { ...v, style: { ...v.style, mt: y, mb: y } }
+// Space between a row's or column's children.
 pub fn gap(v: View, g: Float) -> View = { ...v, style: { ...v.style, gap: g } }
 
 // ── Flex ──
 
+// How much of the free space along the parent's axis this view takes
+// (relative to its siblings' grow; 0 = none).
 pub fn grow(v: View, g: Float) -> View = { ...v, style: { ...v.style, grow: g } }
+// How much this view gives up when its siblings do not fit (0 = never
+// smaller than its content).
 pub fn shrink(v: View, s: Float) -> View = { ...v, style: { ...v.style, shrink: s } }
 // Main-axis distribution and cross-axis alignment. (Variants rather than Int
 // constants: a dependency's top-level `let` cannot be referenced from an app
@@ -168,61 +198,106 @@ type Align = | Top | Bottom | Middle | Stretch
 fn justify_code(j: Justify) -> Int = match j { Start => 0, End => 1, Center => 2, Between => 3, Around => 4, Evenly => 5 }
 fn align_code(a: Align) -> Int = match a { Top => 0, Bottom => 1, Middle => 2, Stretch => 3 }
 
+// Where a row's or column's children sit along its axis.
 pub fn justify(v: View, j: Justify) -> View = { ...v, style: { ...v.style, justify: justify_code(j) } }
+// Where a row's or column's children sit across its axis (Stretch fills it).
 pub fn align(v: View, a: Align) -> View = { ...v, style: { ...v.style, align: align_code(a) } }
+// This view's own alignment across its parent's axis.
 pub fn align_self(v: View, a: Align) -> View = { ...v, style: { ...v.style, align_self: align_code(a) } }
+// Children centred both ways.
 pub fn center(v: View) -> View = { ...v, style: { ...v.style, justify: 2, align: 2 } }
 
 // ── Position ──
 
+// Out of the flow: placed in the parent by top / bottom / left / right
+// (both of a pair given and no size: it spans between them).
 pub fn absolute(v: View) -> View = { ...v, style: { ...v.style, absolute: true } }
+// With absolute: distance from the parent's top edge.
 pub fn top(v: View, t: Float) -> View = { ...v, style: { ...v.style, pos_top: t } }
+// With absolute: distance from the parent's bottom edge.
 pub fn bottom(v: View, b: Float) -> View = { ...v, style: { ...v.style, pos_bottom: b } }
+// With absolute: distance from the parent's left edge.
 pub fn left(v: View, l: Float) -> View = { ...v, style: { ...v.style, pos_left: l } }
+// With absolute: distance from the parent's right edge.
 pub fn right(v: View, r: Float) -> View = { ...v, style: { ...v.style, pos_right: r } }
+// Children do not draw outside this view's rect.
 pub fn clip(v: View) -> View = { ...v, style: { ...v.style, clip: true } }
 
 // ── Paint ──
 
+// The background colour.
 pub fn bg(v: View, c: Color) -> View = { ...v, style: { ...v.style, bg: c } }
+// The text colour.
 pub fn color(v: View, c: Color) -> View = { ...v, style: { ...v.style, fg: c } }
+// Corner radius in logical px.
 pub fn rounded(v: View, r: Float) -> View = { ...v, style: { ...v.style, radius: r } }
+// 0 (invisible) to 1, for the view and its children.
 pub fn opacity(v: View, o: Float) -> View = { ...v, style: { ...v.style, opacity: o } }
+// A border `width` logical px wide, inside the view's rect.
 pub fn border(v: View, width: Float, c: Color) -> View = { ...v, style: { ...v.style, border_width: width, border_color: c } }
+// A drop shadow: blur radius, vertical offset and colour.
 pub fn shadow(v: View, blur: Float, dy: Float, c: Color) -> View =
   { ...v, style: { ...v.style, shadow_blur: blur, shadow_dy: dy, shadow_color: c } }
 
 // ── Text ──
 
+// Text size in logical px.
 pub fn font(v: View, size: Float) -> View = { ...v, style: { ...v.style, font_size: size } }
+// The monospace font.
 pub fn mono(v: View) -> View = { ...v, style: { ...v.style, mono: true } }
+// The semibold font.
 pub fn bold(v: View) -> View = { ...v, style: { ...v.style, bold: true } }
 
 // ── Interaction ──
 
+// Run `f` on a click or tap (press and release on the view); the pointer
+// becomes a hand over it. Give it a role and label for screen readers.
 pub fn on_click(v: View, f: () -> Unit) -> View = { ...v, on_click: f, clickable: true, style: { ...v.style, cursor: 2 } }
+// Every pointer event over the view (and, once pressed, until release):
+// return true to take it (drags, sliders). Positions are relative to the view.
 pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View = { ...v, on_pointer: f, pointer: true }
+// Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
 pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View = { ...v, on_wheel: f, wheel: true }
 
 // Make a view scroll its content vertically when it is taller than the view
 // (give it a height or max height). `key` keeps the offset across frames.
 pub fn scroll_y(v: View, key: String) -> View = { ...v, key: key, scroller: true, style: { ...v.style, clip: true } }
+// Can hold keyboard focus, under key `k` (Tab moves between such views;
+// on_key receives keys while focused).
 pub fn focusable(v: View, k: String) -> View = { ...v, key: k, focusable: true }
+// Focusable and takes text: the host shows the IME and, on phones, the
+// soft keyboard (on_text receives the text).
 pub fn text_input(v: View, k: String) -> View = { ...v, key: k, focusable: true, text_input: true }
+// Taps inside leave focus where it is (a key bar above the soft keyboard).
 pub fn keeps_focus(v: View) -> View = { ...v, keeps_focus: true }
+// Keys while this view has focus: f(phase, code, mods), true = handled
+// (phase 0 down, 1 up, 2 repeat; codes in docs/abi.md §2.2).
 pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }
+// Text while this view has focus: f(kind, text, preedit cursor), true =
+// handled (kind 0 commit, 1 IME preedit, 2 preedit end, 3 paste).
 pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View = { ...v, on_text: f }
+// Called with true when the view gains focus, false when it loses it.
 pub fn on_focus(v: View, f: (Bool) -> Unit) -> View = { ...v, on_focus: f }
+// The mouse cursor over the view: 0 arrow, 1 text, 2 hand, 3 grab,
+// 4 left-right resize, 5 up-down resize.
 pub fn cursor(v: View, kind: Int) -> View = { ...v, style: { ...v.style, cursor: kind } }
+// Name the view: focus, scroll offsets, rect_of and hover go by keys.
 pub fn key(v: View, k: String) -> View = { ...v, key: k }
 
 // ── Accessibility ──
 
+// What a screen reader says for the view (and what tests click by).
 pub fn label(v: View, l: String) -> View = { ...v, label: l }
+// What a screen reader calls the view: 3 button, 4 text, 5 text field,
+// 6 list, 7 list item, 8 tab, 9 tab list, 10 heading, 11 link, 12 checkbox,
+// 13 image, 14 code editor, 15 switch, 16 slider, 17 dialog, 18 radio button,
+// 19 radio group, 20 progress bar.
 pub fn role(v: View, r: Int) -> View = { ...v, role: r }
 // Leave the view out of the accessibility tree (a parent speaks for it, as
 // the words of a wrapped paragraph).
 pub fn a11y_hidden(v: View) -> View = { ...v, role: -1 }
+// The value a screen reader reads (a field's text, a slider's number);
+// called once per committed frame, so keep it cheap.
 pub fn value(v: View, f: () -> String) -> View = { ...v, value: f }
 
 fn with_state(v: View, bit: Int, on: Bool) -> View = {

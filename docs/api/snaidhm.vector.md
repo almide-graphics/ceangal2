@@ -37,6 +37,9 @@ the wrong struct for literals (almide/almide#3283).
 
 ```almide
 type Attr = { name: String, value: String }
+```
+
+```almide
 type Tag = { name: String, attrs: List[Attr], closing: Bool, self_closing: Bool }
 ```
 

@@ -17,8 +17,15 @@ import snaidhm
 
 ```almide
 type Color = col.Color
+```
+
+### `rgba`
+
+```almide
 pub fn rgba(r: Float, g: Float, b: Float, a: Float) -> Color
 ```
+
+A colour from red, green, blue and alpha, each 0–1.
 
 ### `hex`
 
@@ -28,9 +35,13 @@ pub fn hex(n: Int) -> Color
 
 0xRRGGBB, opaque.
 
+### `with_alpha`
+
 ```almide
 pub fn with_alpha(c: Color, a: Float) -> Color
 ```
+
+`c` with alpha `a`.
 
 ## GPU state (created on first begin)
 
@@ -44,10 +55,21 @@ pub fn forget_image(tex: Int) -> Unit
 
 Forget a texture's bind group (call before releasing an image texture).
 
+### `atlas`
+
 ```almide
 pub fn atlas() -> Int
+```
+
+The glyph coverage atlas texture (created on first use).
+
+### `atlas_size`
+
+```almide
 pub fn atlas_size() -> Int
 ```
+
+The atlas's width and height in texels.
 
 ### `create_image`
 
@@ -58,9 +80,13 @@ pub fn create_image(w: Int, h: Int, rgba: Bytes) -> Int
 An RGBA8 (straight alpha) image texture for `image`. Release with
 `release_image` when done.
 
+### `release_image`
+
 ```almide
 pub fn release_image(tex: Int) -> Unit
 ```
+
+Free an image texture from create_image.
 
 ### `upload_coverage`
 
@@ -72,13 +98,45 @@ Write an 8-bit coverage bitmap (w*h, row-major) into the atlas at (x, y).
 
 ## Frame
 
+### `begin`
+
 ```almide
 pub fn begin(width: Int, height: Int) -> Unit
+```
+
+Start a frame `width` × `height` physical px: clears what was recorded.
+
+### `instance_count`
+
+```almide
 pub fn instance_count() -> Int
+```
+
+The shapes recorded since begin (for tests and budgets).
+
+### `fill`
+
+```almide
 pub fn fill(x: Float, y: Float, w: Float, h: Float, radius: Float, c: Color) -> Unit
+```
+
+A filled rectangle with rounded corners (radius 0 = square), physical px.
+
+### `stroke`
+
+```almide
 pub fn stroke(x: Float, y: Float, w: Float, h: Float, radius: Float, width: Float, c: Color) -> Unit
+```
+
+A rounded rectangle's outline, `width` px wide.
+
+### `shadow`
+
+```almide
 pub fn shadow(x: Float, y: Float, w: Float, h: Float, radius: Float, blur: Float, c: Color) -> Unit
 ```
+
+A soft shadow of a rounded rectangle, blurred by `blur` px.
 
 ### `glyph`
 
@@ -98,10 +156,21 @@ An RGBA texture drawn into (x, y, w, h) with rounded corners and opacity.
 
 ## Clipping (intersecting, stack-shaped)
 
+### `push_clip`
+
 ```almide
 pub fn push_clip(x: Float, y: Float, w: Float, h: Float) -> Unit
+```
+
+Clip what follows to this rect (intersected with the current clip).
+
+### `pop_clip`
+
+```almide
 pub fn pop_clip() -> Unit
 ```
+
+Back to the clip before the last push_clip.
 
 ## Submit
 

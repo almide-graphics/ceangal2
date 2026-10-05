@@ -47,10 +47,21 @@ type Theme = {
 }
 ```
 
+### `dark`
+
 ```almide
 pub fn dark() -> Theme
+```
+
+Dark surfaces, light text (the playground's dark palette).
+
+### `light`
+
+```almide
 pub fn light() -> Theme
 ```
+
+Light surfaces, dark text.
 
 ### `system`
 
@@ -87,9 +98,13 @@ pub fn heading(th: Theme, s: String) -> v.View
 
 A section's heading.
 
+### `body`
+
 ```almide
 pub fn body(th: Theme, s: String) -> v.View
 ```
+
+Ordinary text at the theme's size.
 
 ### `caption`
 

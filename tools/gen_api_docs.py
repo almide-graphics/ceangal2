@@ -66,6 +66,9 @@ def signature(lines, i):
     return text.rstrip()
 
 
+UNDOCUMENTED = []
+
+
 def module_doc(name, src, summary):
     lines = (ROOT / src).read_text().splitlines()
     # the file's leading comment
@@ -79,12 +82,24 @@ def module_doc(name, src, summary):
         md += [comment_text(intro), ""]
     md += [f"```almide\nimport {name}\n```", ""]
     pending, entries = [], 0
-    group = []  # undocumented items in a row: one block of signatures
+    # An entry: a commented item and the one-line `pub fn`s right below it
+    # (no blank line between), which the comment covers. Uncommented items
+    # elsewhere are listed together; a `pub fn` among them is reported.
+    entry = None       # [names, signatures, doc]
+    loose = []         # uncommented signatures in a row
+    last_fn_line = -2  # the line of the last one-line pub fn in the entry
 
     def flush():
-        if group:
-            md.extend(["```almide", "\n".join(group), "```", ""])
-            group.clear()
+        nonlocal entry
+        if entry:
+            names, sigs, doc = entry
+            md.extend(["### " + ", ".join(f"`{n}`" for n in names), "", "```almide", "\n".join(sigs), "```", ""])
+            if doc:
+                md.extend([doc, ""])
+            entry = None
+        if loose:
+            md.extend(["```almide", "\n".join(loose), "```", ""])
+            loose.clear()
 
     for j in range(i, len(lines)):
         line = lines[j]
@@ -108,13 +123,24 @@ def module_doc(name, src, summary):
                 continue
             entries += 1
             sig = signature(lines, j)
-            if not doc and "\n" not in sig:
-                group.append(sig)
+            one_line_fn = kind.startswith("pub") and "\n" not in sig
+            if not doc and entry and one_line_fn and last_fn_line == j - 1:
+                entry[0].append(ident)
+                entry[1].append(sig)
+                last_fn_line = j
                 continue
             flush()
-            md.extend([f"### `{ident}`", "", "```almide", sig, "```", ""])
             if doc:
-                md.extend([doc, ""])
+                entry = [[ident], [sig], doc]
+                last_fn_line = j if one_line_fn else -2
+            else:
+                if kind.startswith("pub"):
+                    UNDOCUMENTED.append(f"{src}:{j + 1} {ident}")
+                if "\n" in sig:
+                    md.extend([f"### `{ident}`", "", "```almide", sig, "```", ""])
+                else:
+                    loose.append(sig)
+                last_fn_line = -2
             continue
         pending = []
     flush()
@@ -138,6 +164,12 @@ def generate():
 
 def main():
     files = generate()
+    if UNDOCUMENTED:
+        print("public functions without a comment (write one above each, or put it right below")
+        print("a commented function it belongs with):")
+        for u in UNDOCUMENTED:
+            print("  " + u)
+        sys.exit(1)
     if "--check" in sys.argv:
         stale = [f for f, t in files.items() if not (OUT / f).exists() or (OUT / f).read_text() != t]
         extra = [p.name for p in OUT.glob("*.md") if p.name not in files] if OUT.exists() else []

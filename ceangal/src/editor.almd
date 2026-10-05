@@ -90,6 +90,7 @@ fn split_lines(s: String) -> List[List[Int]] = {
   lines
 }
 
+// An editor holding `s` (multi-line, syntax highlighting on, caret at the start).
 pub fn from_string(s: String) -> Editor = {
   lines: split_lines(s),
   cur: { line: 0, col: 0 },
@@ -124,17 +125,26 @@ pub fn from_string(s: String) -> Editor = {
   rows_w: 0.0,
 }
 
+// A one-line editor for a form field: Enter does not add a line, and
+// `placeholder` shows while it is empty.
 pub fn text_field(s: String, placeholder: String) -> Editor =
   { ...from_string(s), single_line: true, syntax: false, placeholder: placeholder, font_size: 14.0 }
 
+// Text size in logical px.
 pub fn with_font_size(e: Editor, size: Float) -> Editor = { ...e, font_size: size }
+// Almide syntax highlighting on or off.
 pub fn with_syntax(e: Editor, on: Bool) -> Editor = { ...e, syntax: on }
+// The text can be selected and copied but not changed.
 pub fn with_read_only(e: Editor, on: Bool) -> Editor = { ...e, read_only: on }
+// Squiggles under these ranges (compiler errors and warnings).
 pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor = { ...e, diags: ds }
+// Line numbers on the left.
 pub fn with_gutter(e: Editor, on: Bool) -> Editor = { ...e, gutter: on }
+// Show a bullet per character (passwords, API keys); copying is off.
 pub fn with_secret(e: Editor, on: Bool) -> Editor = { ...e, secret: on }
 // almide/almide#3358: `[]` in a spread update needs a typed helper.
 fn no_rows() -> List[Int] = []
+// Soft-wrap long lines at the view's width instead of scrolling sideways.
 pub fn with_wrap(e: Editor, on: Bool) -> Editor = if e.wrap == on then e else { ...e, wrap: on, rows: no_rows(), scroll_x: 0.0, scroll_to_cursor: true }
 
 // What is drawn for a line: the text, or one bullet per character.
@@ -163,6 +173,7 @@ pub fn append_line(e: Editor, s: String, style: Int) -> Editor = {
   if follow then { ...e3, scroll_y: clamp_scroll(e3, int.to_float(total_rows(e3)) * line_h(e3) - e3.view_h + pad_y(e3) * 2.0) } else e3
 }
 
+// Empty the text (undo history and settings kept).
 pub fn clear(e: Editor) -> Editor = {
   let p = { line: 0, col: 0 }
   let none_lines: List[List[Int]] = [[]]
@@ -181,6 +192,7 @@ fn cps_to_string(cps: List[Int]) -> String = {
   bytes.to_string_lossy(b)
 }
 
+// The whole text, lines joined with "\n".
 pub fn to_string(e: Editor) -> String = {
   var parts: List[String] = []
   for l in e.lines { list.push(parts, cps_to_string(l)) }
@@ -198,7 +210,9 @@ pub fn visible_text(e: Editor) -> String = if e.secret then "" else {
   string.join(parts, "\n")
 }
 
+// The number of lines.
 pub fn line_count(e: Editor) -> Int = list.len(e.lines)
+// The caret's position (line and column, from 0).
 pub fn cursor(e: Editor) -> Pos = e.cur
 
 // ── Positions ──
@@ -214,8 +228,10 @@ fn before(a: Pos, b: Pos) -> Bool = a.line < b.line or (a.line == b.line and a.c
 
 fn sel_start(e: Editor) -> Pos = if before(e.anchor, e.cur) then e.anchor else e.cur
 fn sel_end(e: Editor) -> Pos = if before(e.anchor, e.cur) then e.cur else e.anchor
+// Some text is selected.
 pub fn has_selection(e: Editor) -> Bool = e.anchor.line != e.cur.line or e.anchor.col != e.cur.col
 
+// The selected text ("" when none).
 pub fn selected_text(e: Editor) -> String = {
   let a = sel_start(e)
   let b = sel_end(e)
@@ -233,9 +249,11 @@ fn move_to(e: Editor, p: Pos, extend: Bool) -> Editor = {
   { ...e, cur: q, anchor: if extend then e.anchor else q, coalesce: 0, scroll_to_cursor: true }
 }
 
+// Move the caret to (line, col), clearing the selection.
 pub fn set_cursor(e: Editor, line: Int, col: Int) -> Editor =
   { ...move_to(e, { line: line, col: col }, false), want_x: -1.0 }
 
+// Select the whole text.
 pub fn select_all(e: Editor) -> Editor = {
   let last = list.len(e.lines) - 1
   { ...e, anchor: { line: 0, col: 0 }, cur: { line: last, col: line_len(e, last) }, coalesce: 0 }
@@ -287,8 +305,10 @@ fn replace_selection(e: Editor, ins: List[Int], kind: Int) -> Editor =
     { ...e1, lines: lines, cur: p, anchor: p, want_x: -1.0, version: e1.version + 1, scroll_to_cursor: true }
   }
 
+// Insert `s` at the caret (replacing the selection), as typing would.
 pub fn insert(e: Editor, s: String) -> Editor = replace_selection(e, tx.codepoints(s), 1)
 
+// Replace the whole text (an undoable edit; the caret goes to the end).
 pub fn set_text(e: Editor, s: String) -> Editor = {
   let e1 = checkpoint(e, 0)
   let lines = split_lines(s)
@@ -387,6 +407,7 @@ fn indent_lines(e: Editor, out: Bool) -> Editor = {
   { ...e1, lines: lines, anchor: if forward then na else nb, cur: if forward then nb else na, version: e1.version + 1 }
 }
 
+// Undo the last edit.
 pub fn undo(e: Editor) -> Editor = {
   let n = list.len(e.undo)
   if n == 0 then e
@@ -396,6 +417,7 @@ pub fn undo(e: Editor) -> Editor = {
   }
 }
 
+// Redo what undo undid.
 pub fn redo(e: Editor) -> Editor = {
   let n = list.len(e.redo)
   if n == 0 then e
@@ -651,9 +673,10 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool) =
     }
   }
 
-// Text input: kind 0 commit, 1 preedit, 2 preedit end, 3 paste.
 fn no_cps() -> List[Int] = []
 
+// Text input: kind 0 commit, 1 IME preedit (shown at the caret, not yet
+// text), 2 preedit end, 3 paste; `cursor` is the preedit's caret (bytes).
 pub fn text(e: Editor, kind: Int, s: String, cursor: Int) -> Editor =
   if kind == 1 then { ...e, preedit: tx.codepoints(s), preedit_cursor: cursor, scroll_to_cursor: true }
   else if kind == 2 then { ...e, preedit: no_cps() }
@@ -758,6 +781,7 @@ pub fn dark_theme() -> Theme = {
   styles: [snaidhm.hex(0xC0CAF5), snaidhm.hex(0xF7768E), snaidhm.hex(0x565F89), snaidhm.hex(0x9ECE6A), snaidhm.hex(0x7AA2F7)],
 }
 
+// Colours for a light background.
 pub fn light_theme() -> Theme = {
   bg: snaidhm.hex(0xFFFFFF), gutter_bg: snaidhm.hex(0xFFFFFF), gutter_fg: snaidhm.hex(0xB0B7C3), gutter_active: snaidhm.hex(0x4B5563),
   text: snaidhm.hex(0x1F2937), caret: snaidhm.hex(0x111827), selection: snaidhm.rgba(0.23, 0.51, 0.96, 0.22), active_line: snaidhm.rgba(0.0, 0.0, 0.0, 0.035),

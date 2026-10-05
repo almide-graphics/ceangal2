@@ -28,7 +28,7 @@ Two things every app file has, both because of open Almide issues:
 ```almide
 // A function called only from inside a closure must also be referenced at
 // the top level, or the wasm build drops it (almide/almide#3296):
-fn add() -> Unit = { … }
+fn add() -> Unit = { count = count + 1 }
 let keep_add = add
 
 // The web host calls into the app through this export:

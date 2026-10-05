@@ -54,21 +54,33 @@ let TAG_HEAD
 
 'head' 'hhea' 'maxp' 'cmap' 'hmtx' 'loca' 'glyf' as big-endian u32
 
+### `parse`
+
 ```almide
 pub fn parse(b: Bytes) -> Font
 ```
 
+A TrueType font from its file's bytes (`ok` is false when it cannot be read).
+
 ## Character map
+
+### `glyph_index`
 
 ```almide
 pub fn glyph_index(f: Font, cp: Int) -> Int
 ```
 
+The glyph for code point `cp` (0 = the font has none).
+
 ## Metrics
+
+### `advance`
 
 ```almide
 pub fn advance(f: Font, gid: Int) -> Float
 ```
+
+How far the pen moves after glyph `gid`, in font units.
 
 ## Outlines
 
@@ -81,9 +93,13 @@ type Outline = { xs: List[Float], ys: List[Float], on: List[Bool], ends: List[In
 A glyph outline in font units: points with on-curve flags, and the index
 one past the last point of each contour.
 
+### `outline`
+
 ```almide
 pub fn outline(f: Font, gid: Int) -> Outline
 ```
+
+Glyph `gid`'s outline (composite glyphs flattened).
 
 ## Rasterisation
 
