@@ -77,8 +77,8 @@ effect fn sdk_of(app: mf.App) -> Result[String, String] =
         let dir = home + "/.ceangal/sdk/" + app.sdk_version
         if fs.exists(dir + "/ceangal") then ok(dir)
         else {
-          println("Fetching the ceangal framework " + app.sdk_version + "…")
-          let code = sh.run("git", ["clone", "--quiet", "--depth", "1", "--branch", "v" + app.sdk_version, "https://github.com/almide-graphics/ceangal2", dir])
+          dev.say("Fetching the ceangal framework " + app.sdk_version + "…")
+          let code = sh.run("git", ["-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", "1", "--branch", "v" + app.sdk_version, "https://github.com/almide-graphics/ceangal2", dir])
           if code == 0 then ok(dir) else err("could not fetch ceangal " + app.sdk_version)
         }
       },
@@ -144,7 +144,7 @@ fn build(app: mf.App, sdk: String, target: String) -> Result[Unit, String] =
 fn run(app: mf.App, sdk: String, target: String) -> Result[Unit, String] =
   if target == "web" then {
     build(app, sdk, "web")!
-    println("Serving " + app.web_out + " at http://localhost:8000/ (Ctrl+C stops)")
+    dev.say("Serving " + app.web_out + " at http://localhost:8000/ (Ctrl+C stops)")
     check(sh.run("python3", ["-m", "http.server", "8000", "--bind", "127.0.0.1", "--directory", app.web_out]), "the web server")
   }
   else if target == "macos" or target == "linux" or target == "windows" or target == "native" then {

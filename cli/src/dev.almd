@@ -6,8 +6,10 @@ import self.manifest as mf
 
 @extern(rust, "crate::dev", "dev_stamp")
 fn stamp(paths: List[String]) -> String = _
+// A line on stdout, flushed at once (almide/almide#3417): for output that
+// comes before a child process's.
 @extern(rust, "crate::dev", "dev_say")
-fn say(line: String) -> Unit = _
+pub fn say(line: String) -> Unit = _
 @extern(rust, "crate::dev", "dev_sleep")
 fn sleep(ms: Int) -> Unit = _
 @extern(rust, "crate::dev", "dev_serve")

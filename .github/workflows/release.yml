@@ -4,6 +4,9 @@ name: release
 # and the CLI built here (its VERSION must match the tag) goes on the release
 # for install.sh / install.ps1. Run by hand on an existing tag to rebuild the
 # binaries.
+#   git tag v0.3.0 && git push origin v0.3.0
+# A lightweight tag: `git clone --branch` on an annotated one warns
+# "is not a commit!" in every app's first build.
 on:
   push:
     tags: ['v*']
