@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Right-to-left text in text fields and the editor**: shown in visual
+  order and joined, edited in logical order; selection, syntax colours
+  and clicks follow the screen; Left / Right move on screen. (ADR 0012)
 - **Colour emoji** (Twemoji, COLRv0): skin tones, ZWJ sequences, flags and
   keycaps, the same on every target; the caret and Backspace treat an
   emoji as one character. (ADR 0011)

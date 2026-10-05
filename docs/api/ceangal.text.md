@@ -105,6 +105,80 @@ pub fn backspace_to(cps: List[Int], col: Int) -> Int
 Where Backspace at `col` deletes back to: a whole emoji (with its skin
 tone or ZWJ sequence), otherwise one code point (one sign of a conjunct).
 
+## Lines for editing
+
+### `LineGeo`
+
+```almide
+type LineGeo = { caret: List[Float], left: List[Float], right: List[Float], glyphs: List[Glyph], ordered: Bool }
+```
+
+A line laid out for editing, in px from its start: where the caret goes
+at each position 0..n between its characters (logical order), the left
+and right edge of each character as shown, and its glyphs (clusters are
+character indices). Right-to-left runs are shown joined and reversed;
+positions stay logical. `ordered`: no reordering (glyph clusters ascend).
+
+### `line_geo`
+
+```almide
+pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) -> LineGeo
+```
+
+Lay out `cps` for editing. `base`: the paragraph direction (0 left to
+right, 1 right to left, -1 from the text: a wrapped row takes its line's).
+
+### `direction`
+
+```almide
+pub fn direction(cps: List[Int]) -> Int
+```
+
+The paragraph direction of `cps`: 1 when its first strong character is
+right to left, else 0.
+
+### `levels`
+
+```almide
+pub fn levels(cps: List[Int]) -> List[Int]
+```
+
+The embedding level of each character of `cps` (odd: right to left).
+
+### `widths_of`
+
+```almide
+pub fn widths_of(g: LineGeo) -> List[Float]
+```
+
+x after each character in logical order, as if laid end to end (n + 1
+values): where a line breaks when it wraps.
+
+### `geo_spans`
+
+```almide
+pub fn geo_spans(g: LineGeo, a: Int, b: Int) -> List[(Float, Float)]
+```
+
+The stretches (x0, x1) that characters a..b cover on screen, left to
+right (several when the range crosses a change of direction).
+
+### `geo_glyphs`
+
+```almide
+pub fn geo_glyphs(g: LineGeo, a: Int, b: Int) -> List[Glyph]
+```
+
+The glyphs that draw characters a..b.
+
+### `geo_nearest`
+
+```almide
+pub fn geo_nearest(g: LineGeo, x: Float, allowed: List[Bool]) -> Int
+```
+
+The caret position in 0..n nearest to x that `allowed` allows (a caret stop).
+
 ### `glyphs_in`
 
 ```almide

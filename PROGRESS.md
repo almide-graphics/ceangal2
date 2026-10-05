@@ -284,6 +284,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (`snaidhm/src/colr.almd`), UTS #51 sequences from generated emoji data,
   the font's ccmp through `otl`; caret stops / Backspace by cluster
   (`text.stops`, `backspace_to`; apps/gallery/tests/emoji.test).
+- RTL editing (ADR 0012): `bidi.layout` (logical, per character),
+  `text.LineGeo` (caret / spans / glyphs / nearest), wrapped rows reordered
+  on their own, visual arrows (apps/gallery/tests/rtl.test).
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -322,9 +325,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: RTL editing in
-   text fields, an Android file picker (needs an activity result), a
-   dropdown / menu control. Done: Indic shaping (ADR 0010), colour emoji (ADR 0011), iOS VoiceOver / Android TalkBack trees,
+0. Framework: an Android file picker (needs an activity result), a
+   dropdown / menu control. Done: Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,

@@ -1,0 +1,16 @@
+# Right-to-left text in a text field: shown in visual order and joined,
+# edited in logical order, arrows moving on screen (Right goes back in the
+# text when it reads right to left).
+tap "Name"
+type "שלום"
+see "Hello, שלום"
+key Right
+key Right
+type "a"
+see "Hello, שלaום"
+key End
+type " مرحبا لا"
+see "Hello, שלaום مرحبا لا"
+key Backspace
+see "Hello, שלaום مرحبا ل"
+shot "rtl.png"

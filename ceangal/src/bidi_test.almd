@@ -45,3 +45,30 @@ test "harakat do not break joining" {
   // بَت (fatha between): beh initial, fatha, teh final
   assert(bidi.join_arabic([0x0628, 0x064E, 0x062A]) == [0xFE91, 0x064E, 0xFE96])
 }
+
+test "layout keeps one entry per character, in logical order" {
+  // "ab שלום": the Hebrew run is level 1 and shown reversed after "ab "
+  let l = bidi.layout([0x61, 0x62, 0x20, 0x05E9, 0x05DC, 0x05D5, 0x05DD], -1)
+  assert(l.levels == [0, 0, 0, 1, 1, 1, 1])
+  assert(l.order == [0, 1, 2, 6, 5, 4, 3])
+  assert(list.len(l.shapes) == 7)
+}
+
+test "layout of a right-to-left paragraph puts English runs at level 2" {
+  // "שלום ab"
+  let l = bidi.layout([0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x61, 0x62], -1)
+  assert(l.levels == [1, 1, 1, 1, 1, 2, 2])
+  assert(l.order == [5, 6, 4, 3, 2, 1, 0])
+}
+
+test "layout keeps the length through a lam-alef ligature" {
+  // لا: lam + alef → the ligature, then U+200B in the alef's place
+  let l = bidi.layout([0x0644, 0x0627], -1)
+  assert(l.shapes == [0xFEFB, 0x200B])
+  assert(l.order == [1, 0])
+}
+
+test "the paragraph direction is the first strong character's" {
+  assert(bidi.direction([0x31, 0x20, 0x05D0]) == 1)
+  assert(bidi.direction([0x61, 0x05D0]) == 0)
+}

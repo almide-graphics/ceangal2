@@ -41,7 +41,7 @@ right-to-left text read backwards.
   GSUB/GPOS interpreter and a colour-glyph path (COLR or bitmaps), which
   are larger projects.
 - Text fields show right-to-left text in logical order and Arabic
-  unjoined.
+  unjoined (until ADR 0012).
 - The pixel harness disables lazy loading (`lazy: () => false`), so a
   screenshot never depends on when a font arrives.
 - Apps ship about 1 MB more of fonts on the native targets (the emoji font

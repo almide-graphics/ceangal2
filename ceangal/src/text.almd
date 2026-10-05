@@ -377,6 +377,96 @@ pub fn backspace_to(cps: List[Int], col: Int) -> Int =
     if emoji_end(cps, s) >= col then s else col - 1
   }
 
+// ── Lines for editing ──
+
+// A line laid out for editing, in px from its start: where the caret goes
+// at each position 0..n between its characters (logical order), the left
+// and right edge of each character as shown, and its glyphs (clusters are
+// character indices). Right-to-left runs are shown joined and reversed;
+// positions stay logical. `ordered`: no reordering (glyph clusters ascend).
+type LineGeo = { caret: List[Float], left: List[Float], right: List[Float], glyphs: List[Glyph], ordered: Bool }
+
+// Lay out `cps` for editing. `base`: the paragraph direction (0 left to
+// right, 1 right to left, -1 from the text: a wrapped row takes its line's).
+pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) -> LineGeo = {
+  let n = list.len(cps)
+  if base != 1 and not bidi.has_rtl(cps) then {
+    let gs = shape(cps, size, mono, bold)
+    let ex = edges(gs, n)
+    { caret: ex, left: list.take(ex, n), right: list.drop(ex, 1), glyphs: gs, ordered: true }
+  } else {
+    let l = bidi.layout(cps, base)
+    let gs = shape(list.map(l.order, (k) => l.shapes[k]), size, mono, bold)
+    let ev = edges(gs, n)
+    // character k is shown at position inv[k]
+    var inv = list.repeat(0, n)
+    for v in 0..<n { inv[l.order[v]] = v }
+    let left = list.map(list.range(0, n), (k) => ev[inv[k]])
+    let right = list.map(list.range(0, n), (k) => ev[inv[k] + 1])
+    // the caret after a character: on its trailing side (left, when right to left)
+    let caret = list.map(list.range(0, n + 1), (p) =>
+      if n == 0 then 0.0
+      else if p == 0 then (if l.levels[0] % 2 == 1 then right[0] else left[0])
+      else if l.levels[p - 1] % 2 == 1 then left[p - 1]
+      else right[p - 1])
+    { caret: caret, left: left, right: right, glyphs: list.map(gs, (g) => { ...g, cluster: l.order[int.min(g.cluster, n - 1)] }), ordered: false }
+  }
+}
+
+// The paragraph direction of `cps`: 1 when its first strong character is
+// right to left, else 0.
+pub fn direction(cps: List[Int]) -> Int = bidi.direction(cps)
+
+// The embedding level of each character of `cps` (odd: right to left).
+pub fn levels(cps: List[Int]) -> List[Int] = bidi.layout(cps, -1).levels
+
+// x after each character in logical order, as if laid end to end (n + 1
+// values): where a line breaks when it wraps.
+pub fn widths_of(g: LineGeo) -> List[Float] =
+  if g.ordered then g.caret
+  else {
+    var out = [0.0]
+    var x = 0.0
+    for k in 0..<list.len(g.left) {
+      x = x + (g.right[k] - g.left[k])
+      list.push(out, x)
+    }
+    out
+  }
+
+// The stretches (x0, x1) that characters a..b cover on screen, left to
+// right (several when the range crosses a change of direction).
+pub fn geo_spans(g: LineGeo, a: Int, b: Int) -> List[(Float, Float)] =
+  if b <= a then []
+  else if g.ordered then [(g.caret[a], g.caret[b])]
+  else {
+    let rects = list.sort_by(list.map(list.range(a, b), (k) => (g.left[k], g.right[k])), (r) => r.0)
+    var out: List[(Float, Float)] = []
+    for r in rects {
+      let m = list.len(out)
+      if m > 0 and r.0 <= out[m - 1].1 + 0.5 then out[m - 1] = (out[m - 1].0, float.max(out[m - 1].1, r.1))
+      else list.push(out, r)
+    }
+    out
+  }
+
+// The glyphs that draw characters a..b.
+pub fn geo_glyphs(g: LineGeo, a: Int, b: Int) -> List[Glyph] =
+  if g.ordered then glyphs_in(g.glyphs, a, b) else list.filter(g.glyphs, (x) => x.cluster >= a and x.cluster < b)
+
+// The caret position in 0..n nearest to x that `allowed` allows (a caret stop).
+pub fn geo_nearest(g: LineGeo, x: Float, allowed: List[Bool]) -> Int = {
+  var best = 0
+  var dist = -1.0
+  for p in 0..<list.len(g.caret) {
+    if p < list.len(allowed) and allowed[p] then {
+      let d = float.abs(g.caret[p] - x)
+      if dist < 0.0 or d < dist then { best = p; dist = d } else ()
+    } else ()
+  }
+  best
+}
+
 // The glyphs of the code points from c0 up to c1 (by cluster; shaping
 // keeps clusters in order, so this is a slice).
 pub fn glyphs_in(gs: List[Glyph], c0: Int, c1: Int) -> List[Glyph] = list.slice(gs, first_at(gs, c0), first_at(gs, c1))

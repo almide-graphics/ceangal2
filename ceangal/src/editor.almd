@@ -359,6 +359,22 @@ fn right_of(e: Editor, p: Pos) -> Pos = {
   else p
 }
 
+// The Left (or Right) arrow: one stop to that side on screen. In
+// right-to-left text that is forward in the text.
+fn arrow(e: Editor, p: Pos, to_left: Bool) -> Pos = {
+  let l = e.lines[p.line]
+  if not list.any(l, (c) => c >= 0x0590) then (if to_left then left_of(e, p) else right_of(e, p))
+  else {
+    let lv = tx.levels(l)
+    let n = list.len(l)
+    let rtl_before = p.col > 0 and lv[p.col - 1] % 2 == 1
+    let rtl_after = p.col < n and lv[p.col] % 2 == 1
+    let forward = if to_left then (if p.col > 0 and not rtl_before then false else if rtl_after then true else tx.direction(l) == 1)
+      else (if p.col < n and not rtl_after then true else if rtl_before then false else tx.direction(l) != 1)
+    if forward then right_of(e, p) else left_of(e, p)
+  }
+}
+
 // Backspace takes a whole emoji, but one sign of a conjunct (as typed).
 fn delete_back(e: Editor, word: Bool) -> Editor =
   if has_selection(e) then replace_selection(e, [], 2)
@@ -454,30 +470,32 @@ fn gutter_w(e: Editor) -> Float =
 
 fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
 
-// x of each column boundary of a line (length cols+1), logical px.
-fn col_xs(e: Editor, cps: List[Int]) -> List[Float] = {
-  let shown_cps = shown(e, cps)
-  tx.edges(tx.shape(shown_cps, e.font_size, not e.single_line, false), list.len(shown_cps))
-}
+// A line (or a row of it) laid out, logical px; `dir` its paragraph's direction.
+fn geo_of(e: Editor, cps: List[Int], dir: Int) -> tx.LineGeo = tx.line_geo(shown(e, cps), e.font_size, not e.single_line, false, dir)
 
+// x after each character laid end to end (length cols+1), logical px: where
+// a line wraps.
+fn col_xs(e: Editor, cps: List[Int]) -> List[Float] = tx.widths_of(geo_of(e, cps, tx.direction(cps)))
+
+// The caret's x at p on its line.
 fn x_of(e: Editor, p: Pos) -> Float = {
-  let xs = col_xs(e, list.take(e.lines[p.line], p.col))
-  xs[list.len(xs) - 1]
+  let l = e.lines[p.line]
+  geo_of(e, l, tx.direction(l)).caret[int.min(p.col, list.len(l))]
 }
 
+// The caret stop nearest to x on a line (never inside a conjunct or an emoji).
 fn col_at_x(e: Editor, line: Int, x: Float) -> Int = {
-  let xs = col_xs(e, e.lines[line])
-  let st = tx.stops(e.lines[line])
-  // the nearest caret stop (never inside a conjunct or an emoji)
-  var best = 0
-  var prev = 0
-  for i in 1..<list.len(xs) {
-    if st[i] then {
-      if (xs[prev] + xs[i]) * 0.5 <= x then best = i else ()
-      prev = i
-    } else ()
-  }
-  best
+  let l = e.lines[line]
+  tx.geo_nearest(geo_of(e, l, tx.direction(l)), x, tx.stops(l))
+}
+
+// The caret's x at col on row j of a wrapped line (from the row's start).
+fn x_in_row(e: Editor, line: Int, bs: List[Int], j: Int, col: Int) -> Float = {
+  let l = e.lines[line]
+  let c0 = bs[j]
+  let c1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(l)
+  let g = geo_of(e, list.slice(l, c0, c1), tx.direction(l))
+  g.caret[int.max(0, int.min(col - c0, c1 - c0))]
 }
 
 fn vertical(e0: Editor, dl: Int, extend: Bool) -> Editor = if wrapping(e0) then vertical_rows(with_rows(e0), dl, extend) else {
@@ -495,8 +513,7 @@ fn vertical(e0: Editor, dl: Int, extend: Bool) -> Editor = if wrapping(e0) then 
 fn vertical_rows(e: Editor, dl: Int, extend: Bool) -> Editor = {
   let bs = line_breaks(e, e.cur.line)
   let j = seg_of(bs, e.cur.col)
-  let xs = col_xs(e, e.lines[e.cur.line])
-  let wx = if e.want_x >= 0.0 then e.want_x else xs[e.cur.col] - xs[bs[j]]
+  let wx = if e.want_x >= 0.0 then e.want_x else x_in_row(e, e.cur.line, bs, j, e.cur.col)
   let row = row_start(e, e.cur.line) + j + dl
   if row < 0 then { ...move_to(e, { line: 0, col: 0 }, extend), want_x: wx }
   else if row >= total_rows(e) then {
@@ -510,13 +527,10 @@ fn pos_in_row(e: Editor, row: Int, x: Float) -> Pos = {
   let l = line_of_row(e, row)
   let bs = line_breaks(e, l)
   let j = int.max(0, int.min(list.len(bs) - 1, row - row_start(e, l)))
-  let xs = col_xs(e, e.lines[l])
   let c0 = bs[j]
   let c1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(e.lines[l])
-  var best = c0
-  for i in c0...c1 {
-    if i > c0 and (xs[i - 1] + xs[i]) * 0.5 - xs[c0] <= x then best = i else ()
-  }
+  let row = list.slice(e.lines[l], c0, c1)
+  let best = c0 + tx.geo_nearest(geo_of(e, row, tx.direction(e.lines[l])), x, tx.stops(row))
   // the end of a non-final row is the next row's start: stay on this row
   let col = if j + 1 < list.len(bs) and best == c1 then int.max(c0, c1 - 1) else best
   { line: l, col: col }
@@ -638,7 +652,8 @@ fn content_w(e: Editor) -> Float = {
     let n = list.len(e.lines[i])
     if n > best then { best = n; at = i } else ()
   }
-  x_of(e, { line: at, col: best })
+  let xs = col_xs(e, e.lines[at])
+  xs[list.len(xs) - 1]
 }
 
 fn clamp_scroll_x(e: Editor, sx: Float) -> Float = if wrapping(e) then 0.0 else {
@@ -658,8 +673,8 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool) =
     let lh = line_h(e)
     let page = int.max(1, float.to_int(e.view_h / lh) - 1)
     let r: Editor? =
-      if code == 10 then some(if has_selection(e) and not shift then move_to(e, sel_start(e), false) else if sc then move_to(e, { line: e.cur.line, col: 0 }, shift) else if alt then move_to(e, word_left(e, e.cur), shift) else move_to(e, left_of(e, e.cur), shift))
-      else if code == 11 then some(if has_selection(e) and not shift then move_to(e, sel_end(e), false) else if sc then move_to(e, { line: e.cur.line, col: line_len(e, e.cur.line) }, shift) else if alt then move_to(e, word_right(e, e.cur), shift) else move_to(e, right_of(e, e.cur), shift))
+      if code == 10 then some(if has_selection(e) and not shift then move_to(e, sel_start(e), false) else if sc then move_to(e, { line: e.cur.line, col: 0 }, shift) else if alt then move_to(e, word_left(e, e.cur), shift) else move_to(e, arrow(e, e.cur, true), shift))
+      else if code == 11 then some(if has_selection(e) and not shift then move_to(e, sel_end(e), false) else if sc then move_to(e, { line: e.cur.line, col: line_len(e, e.cur.line) }, shift) else if alt then move_to(e, word_right(e, e.cur), shift) else move_to(e, arrow(e, e.cur, false), shift))
       else if code == 12 and not e.single_line then some(if sc then move_to(e, { line: 0, col: 0 }, shift) else vertical(e, -1, shift))
       else if code == 13 and not e.single_line then some(if sc then move_to(e, { line: list.len(e.lines) - 1, col: line_len(e, list.len(e.lines) - 1) }, shift) else vertical(e, 1, shift))
       else if code == 14 then {
@@ -864,12 +879,10 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
     let on_cursor_line = l == e.cur.line
     let pre_n = if on_cursor_line then list.len(e.preedit) else 0
     if pre_n > 0 then cps = list.take(cps, e.cur.col) + e.preedit + list.drop(cps, e.cur.col) else ()
-    let gs = tx.shape(cps, size, mono, false)
-    // gx(i): x before code point i (device px)
-    let ex = tx.edges(gs, list.len(cps))
-    let gx = (i: Int) => ex[int.max(0, int.min(i, list.len(cps)))]
-    let xs = list.map(ex, (v) => v / k)
-    let bs = if wrapping(e) then breaks_of(xs, cps, wrap_avail(e)) else [0]
+    // the line laid out (right-to-left runs reordered; positions stay logical)
+    let dir = tx.direction(cps)
+    let lg = tx.line_geo(cps, size, mono, false, dir)
+    let bs = if wrapping(e) then breaks_of(list.map(tx.widths_of(lg), (v) => v / k), cps, wrap_avail(e)) else [0]
     let spans = if e.syntax then {
       let (sp, next) = syn.lex(e.lines[l], st)
       st = next
@@ -880,7 +893,15 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
       let c0 = bs[j]
       let c1 = if j + 1 < list.len(bs) then bs[j + 1] else n_all
       let ly = if e.single_line then y + (h - lh) * 0.5 else row_y(row_start(e, l) + j)
-      let sx = text_x * k - gx(c0)    // segment origin: its first glyph at text_x
+      // the row's geometry: the line's (a left-to-right row starts at its
+      // first character), or its own when a wrapped line has right-to-left
+      // text (each row is reordered on its own)
+      let own = not lg.ordered and list.len(bs) > 1
+      let g = if own then tx.line_geo(list.slice(cps, c0, c1), size, mono, false, dir) else lg
+      let off = if own then c0 else 0
+      let sx = if lg.ordered then text_x * k - lg.caret[c0] else text_x * k
+      let gx = (i: Int) => sx + g.caret[int.max(0, int.min(i - off, list.len(g.caret) - 1))]
+      let spans_of = (s0: Int, s1: Int) => tx.geo_spans(g, s0 - off, s1 - off)
       let last_seg = j + 1 == list.len(bs)
       if ly + lh >= y and ly <= y + h then {
         // selection (in original columns; preedit only exists without one)
@@ -889,7 +910,14 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
           let s1 = int.min(c1, if l == b.line then b.col else list.len(e.lines[l]))
           if s1 > s0 or (s1 == s0 and l < b.line and last_seg) then {
             let extra = if l < b.line and last_seg then 6.0 * k else 0.0
-            snaidhm.fill(sx + gx(s0), ly * k, gx(s1) - gx(s0) + extra, lh * k, 2.0 * k, th.selection)
+            let rs = spans_of(s0, s1)
+            if list.len(rs) == 0 then snaidhm.fill(gx(s0), ly * k, extra, lh * k, 2.0 * k, th.selection)
+            else {
+              for (ri, r) in list.enumerate(rs) {
+                let more = if ri + 1 == list.len(rs) then extra else 0.0
+                snaidhm.fill(sx + r.0, ly * k, r.1 - r.0 + more, lh * k, 2.0 * k, th.selection)
+              }
+            }
           } else ()
         } else ()
         // tokens
@@ -901,23 +929,23 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
             let s1 = if pre_n > 0 and sp.stop > e.cur.col then sp.stop + pre_n else sp.stop
             let r0 = int.max(s0, c0)
             let r1 = int.min(s1, c1)
-            if r1 > r0 then tx.draw_run(tx.glyphs_in(gs, r0, r1), sx, base, size, th.colors[sp.kind]) else ()
+            if r1 > r0 then tx.draw_run(tx.geo_glyphs(g, r0 - off, r1 - off), sx, base, size, th.colors[sp.kind]) else ()
           }
           if pre_n > 0 then {
             let r0 = int.max(e.cur.col, c0)
             let r1 = int.min(e.cur.col + pre_n, c1)
-            if r1 > r0 then tx.draw_run(tx.glyphs_in(gs, r0, r1), sx, base, size, th.text) else ()
+            if r1 > r0 then tx.draw_run(tx.geo_glyphs(g, r0 - off, r1 - off), sx, base, size, th.text) else ()
           } else ()
         } else {
           let st_i = if l < list.len(e.line_style) then e.line_style[l] else 0
           let col = if st_i > 0 and st_i < list.len(th.styles) then th.styles[st_i] else th.text
-          tx.draw_run(tx.glyphs_in(gs, c0, c1), sx, base, size, col)
+          tx.draw_run(tx.geo_glyphs(g, c0 - off, c1 - off), sx, base, size, col)
         }
         // preedit underline
         if pre_n > 0 then {
           let u0 = int.max(e.cur.col, c0)
           let u1 = int.min(e.cur.col + pre_n, c1)
-          if u1 > u0 then snaidhm.fill(sx + gx(u0), (ly + lh - 3.0) * k, gx(u1) - gx(u0), 1.5 * k, 0.0, th.text) else ()
+          for r in spans_of(u0, u1) { snaidhm.fill(sx + r.0, (ly + lh - 3.0) * k, r.1 - r.0, 1.5 * k, 0.0, th.text) }
         } else ()
         // diagnostics underline
         for d in e.diags {
@@ -929,7 +957,11 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
             let r1 = int.min(d1, c1)
             if r1 > r0 or (n == 0 and j == 0) then {
               let col = if d.severity == 0 then th.error else th.warning
-              snaidhm.fill(sx + gx(r0), (ly + lh - 2.5) * k, float.max(4.0 * k, gx(r1) - gx(r0)), 2.0 * k, 1.0 * k, col)
+              let rs = spans_of(r0, r1)
+              if list.len(rs) == 0 then snaidhm.fill(gx(r0), (ly + lh - 2.5) * k, 4.0 * k, 2.0 * k, 1.0 * k, col)
+              else {
+                for r in rs { snaidhm.fill(sx + r.0, (ly + lh - 2.5) * k, float.max(4.0 * k, r.1 - r.0), 2.0 * k, 1.0 * k, col) }
+              }
             } else ()
           } else ()
         }
@@ -937,7 +969,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
         if focused and on_cursor_line then {
           let cc = e.cur.col + (if pre_n > 0 then preedit_cols(e) else 0)
           if (cc >= c0 and cc < c1) or (last_seg and cc >= c0) then {
-            let cx = sx + gx(cc)
+            let cx = gx(cc)
             snaidhm.fill(cx, (ly + 3.0) * k, 2.0 * k, (lh - 6.0) * k, 0.0, th.caret)
             ui.set_caret(cx / k, ly, 2.0, lh)
           } else ()

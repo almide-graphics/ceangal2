@@ -108,54 +108,118 @@ pub fn visual(cps: List[Int]) -> List[Int] =
   if not has_rtl(cps) then cps
   else {
     let s = join_arabic(cps)
-    let n = list.len(s)
     let classes = list.map(s, (c) => class_of(c))
-    // the paragraph's direction: its first strong character's
-    let base = match list.find(classes, (k) => k == 0 or k == 1) { some(k) => k, none => 0 }
-    // strong directions with numbers resolved: a number after right-to-left
-    // text belongs to it (as far as neutrals go)
-    var strong: List[Int] = []
-    var last = base
-    for k in classes {
-      if k == 0 or k == 1 then { last = k; list.push(strong, k) }
-      else if k == 2 then list.push(strong, if last == 1 then 1 else 0)
-      else list.push(strong, -1)
-    }
-    var levels: List[Int] = []
-    for i in 0..<n {
-      let k = classes[i]
-      let lv = if k == 1 then 1
-        else if k == 0 then (if base == 1 then 2 else 0)
-        else if k == 2 then (if strong[i] == 1 or base == 1 then 2 else 0)
-        else {
-          // a neutral: the direction on both sides when they agree, else the paragraph's
-          var before = base
-          var j = i - 1
-          while j >= 0 and strong[j] < 0 { j = j - 1 }
-          if j >= 0 then before = strong[j] else ()
-          var after = base
-          var m = i + 1
-          while m < n and strong[m] < 0 { m = m + 1 }
-          if m < n then after = strong[m] else ()
-          if before == after then (if before == 1 then 1 else (if base == 1 then 2 else 0)) else base
-        }
-      list.push(levels, lv)
-    }
-    // reverse every run at or above each level, highest first
-    var order: List[Int] = list.range(0, n)
-    var top = list.fold(levels, 0, (a, b) => int.max(a, b))
-    while top >= 1 {
-      var i = 0
-      while i < n {
-        if levels[order[i]] >= top then {
-          var j = i
-          while j < n and levels[order[j]] >= top { j = j + 1 }
-          let run = list.reverse(list.slice(order, i, j))
-          order = list.take(order, i) + run + list.drop(order, j)
-          i = j
-        } else i = i + 1
-      }
-      top = top - 1
-    }
+    let levels = levels_of(classes, base_of(classes))
+    let order = order_of(levels)
     list.map(order, (k) => if levels[k] % 2 == 1 then mirror(s[k]) else s[k])
   }
+
+// The paragraph's direction from its classes: its first strong character's
+// (0 left to right, 1 right to left).
+fn base_of(classes: List[Int]) -> Int = match list.find(classes, (k) => k == 0 or k == 1) { some(k) => k, none => 0 }
+
+// The direction of the paragraph `cps` (0 left to right, 1 right to left).
+pub fn direction(cps: List[Int]) -> Int = base_of(list.map(cps, (c) => class_of(c)))
+
+// One line laid out for editing, one entry per character of `cps` (logical
+// order): its shape (joined; mirrored in right-to-left runs; the alef of a
+// lam-alef ligature becomes U+200B, drawn by the lam), its embedding level
+// (odd: right to left), and the display order (the character shown at each
+// position, left to right). `base`: the paragraph direction, -1 to take it
+// from the text.
+type Line = { shapes: List[Int], levels: List[Int], order: List[Int] }
+
+pub fn layout(cps: List[Int], base: Int) -> Line = {
+  let n = list.len(cps)
+  let joined = join_keeping_length(cps)
+  let classes = list.map(joined, (c) => class_of(c))
+  let b = if base >= 0 then base else base_of(classes)
+  if not has_rtl(cps) and b == 0 then { shapes: cps, levels: list.repeat(0, n), order: list.range(0, n) }
+  else {
+    let levels = levels_of(classes, b)
+    let shapes = list.map(list.range(0, n), (k) => if levels[k] % 2 == 1 then mirror(joined[k]) else joined[k])
+    { shapes: shapes, levels: levels, order: order_of(levels) }
+  }
+}
+
+// join_arabic, one output per input: a lam-alef ligature's alef becomes U+200B.
+fn join_keeping_length(cps: List[Int]) -> List[Int] = {
+  let joined = join_arabic(cps)
+  if list.len(joined) == list.len(cps) then joined
+  else {
+    // walk both: where the output has a ligature, the input has lam, marks, alef
+    var out: List[Int] = []
+    var j = 0
+    var i = 0
+    while i < list.len(cps) {
+      let o = joined[j]
+      list.push(out, o)
+      j = j + 1
+      if o >= 0xFEF5 and o <= 0xFEFC and cps[i] == 0x0644 then {
+        // the marks between lam and alef, then the alef
+        var k = i + 1
+        while k < list.len(cps) and transparent(cps[k]) { list.push(out, joined[j]); j = j + 1; k = k + 1 }
+        list.push(out, 0x200B)
+        i = k + 1
+      } else i = i + 1
+    }
+    out
+  }
+}
+
+// Embedding levels for the characters' classes in a paragraph of direction `base`.
+fn levels_of(classes: List[Int], base: Int) -> List[Int] = {
+  let n = list.len(classes)
+  // strong directions with numbers resolved: a number after right-to-left
+  // text belongs to it (as far as neutrals go)
+  var strong: List[Int] = []
+  var last = base
+  for k in classes {
+    if k == 0 or k == 1 then { last = k; list.push(strong, k) }
+    else if k == 2 then list.push(strong, if last == 1 then 1 else 0)
+    else list.push(strong, -1)
+  }
+  var levels: List[Int] = []
+  for i in 0..<n {
+    let k = classes[i]
+    let lv = if k == 1 then 1
+      else if k == 0 then (if base == 1 then 2 else 0)
+      else if k == 2 then (if strong[i] == 1 or base == 1 then 2 else 0)
+      else {
+        // a neutral: the direction on both sides when they agree, else the paragraph's
+        var before = base
+        var j = i - 1
+        while j >= 0 and strong[j] < 0 { j = j - 1 }
+        if j >= 0 then before = strong[j] else ()
+        var after = base
+        var m = i + 1
+        while m < n and strong[m] < 0 { m = m + 1 }
+        if m < n then after = strong[m] else ()
+        if before == after then (if before == 1 then 1 else (if base == 1 then 2 else 0)) else base
+      }
+    list.push(levels, lv)
+  }
+  levels
+}
+
+// The display order of characters with these levels: every run at or above
+// each level reversed, highest first.
+fn order_of(levels: List[Int]) -> List[Int] = {
+  let n = list.len(levels)
+  var order: List[Int] = list.range(0, n)
+  var top = list.fold(levels, 0, (a, b) => int.max(a, b))
+  while top >= 1 {
+    var i = 0
+    while i < n {
+      if levels[order[i]] >= top then {
+        var j = i
+        while j < n and levels[order[j]] >= top { j = j + 1 }
+        let run = list.reverse(list.slice(order, i, j))
+        order = list.take(order, i) + run + list.drop(order, j)
+        i = j
+      } else i = i + 1
+    }
+    top = top - 1
+  }
+  order
+}
