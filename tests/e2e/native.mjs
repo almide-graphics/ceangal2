@@ -61,7 +61,7 @@ const at = (label) => { const n = find(boot, label); if (!n) throw new Error(`no
 const setCode = (src) => `click ${at("Code editor")}; key 20 ${SC}; paste ${src}`;
 
 step("boots with the default program", () => {
-  for (const l of ["Run", "Examples", "Share", "Export", "Code editor", "Output", "Visual", "Rust", "AST"]) assert(find(boot, l), `missing ${l}`);
+  for (const l of ["Run", "Examples", "More", "AI assistant", "Code editor", "Output", "Visual", "Rust", "AST"]) assert(find(boot, l), `missing ${l}`);
   assert((find(boot, "Code editor").value || "").includes("Mini Markdown"), "default program");
 });
 
@@ -104,7 +104,11 @@ step("Rust and AST views", () => {
 });
 
 step("export writes a runnable project zip", () => {
-  const s = session("native-export", `wait; click ${at("Export")}; wait`);
+  // Share and Export live in the ⋯ menu
+  const menu = session("native-more", `wait; click ${at("More")}; frames 2`);
+  const exp = find(menu, "Export");
+  assert(exp && find(menu, "Share"), `More menu: ${menu.nodes.map((n) => n.label)}`);
+  const s = session("native-export", `wait; click ${at("More")}; frames 2; click ${center(exp)}; wait`);
   assert(s.downloads.length === 1, "no download");
   const zip = readFileSync(s.downloads[0]);
   assert(zip.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 3, 4])), "not a zip");
@@ -161,10 +165,13 @@ step("AI: generate, repair once, against a mock provider (real HTTP)", () => {
   const child = spawn(process.execPath, [server], { stdio: "ignore" });
   try {
     const t0 = Date.now(); while (Date.now() - t0 < 600) {}   // let it listen
+    // the key card first; the prompt box appears once a key is set
     const aiBoot = session("native-ai-boot", `wait; click ${at("AI assistant")}; frames 2`);
-    const field = (l) => { const n = find(aiBoot, l); if (!n) throw new Error(`no ${l}`); return center(n); };
+    const keyAt = center(find(aiBoot, "API key") || (() => { throw new Error(`no API key: ${aiBoot.nodes.map((n) => n.label)}`); })());
+    const keyed = session("native-ai-keyed", `wait; click ${at("AI assistant")}; frames 2; click ${keyAt}; text sk-ant-native; frames 2`);
+    const promptAt = center(find(keyed, "Prompt") || (() => { throw new Error(`no Prompt: ${keyed.nodes.map((n) => n.label)}`); })());
     const sep = process.platform === "win32" ? ";" : ":";
-    const s = session("native-ai", `wait; click ${at("AI assistant")}; frames 2; click ${field("API key")}; text sk-ant-native; click ${field("Prompt")}; text say hi; key 1 0; wait; frames 2; wait; frames 2; wait`, {
+    const s = session("native-ai", `wait; click ${at("AI assistant")}; frames 2; click ${keyAt}; text sk-ant-native; frames 2; click ${promptAt}; text say hi; key 1 0; wait; frames 2; wait; frames 2; wait`, {
       env: { CEANGAL_ASSETS: [assets, join(root, "apps/playground/assets"), join(root, "assets")].join(sep) },
     });
     assert(texts(s).some((t) => t.startsWith("Repaired (1)")), `status: ${texts(s)}`);
@@ -172,6 +179,7 @@ step("AI: generate, repair once, against a mock provider (real HTTP)", () => {
     assert(calls.length === 2 && calls[0].key === "sk-ant-native" && calls[0].url === "/v1/messages", JSON.stringify(calls.map((c) => [c.url, c.key])));
     assert(/Compile error/.test(calls[1].body.messages.at(-1).content), "repair carries the error");
     assert((find(s, "Code editor")?.value || "").includes("fixed natively"), "fixed code in the editor");
+    assert(texts(s).includes("Fixed — compiled and ran"), `conversation: ${texts(s)}`);
   } finally {
     child.kill();
     rmSync(work, { recursive: true, force: true });

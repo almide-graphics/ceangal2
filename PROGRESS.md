@@ -153,6 +153,24 @@ item, the first green CI run on main that deploys Pages, waits for a push
   sandboxed app runs (data lands in its container). CI job `macos-store`
   (validates with altool once the App Store Connect key is in secrets).
 
+### AI panel and header (2026-10-05)
+- Header: the files sit in it on wide screens; Examples ▾ next to them;
+  quiet controls on the right (⋯ menu with Share link / Export project, ✦ AI,
+  theme) and Run as the one filled button. Phones: Examples, ⋯ and theme on
+  top, the files below, and AI / Code·Output / Run in the bottom bar.
+- AI panel (beside the editor and output from 1180 px, in the output's place
+  below that, a bottom sheet on phones): the conversation (request, written
+  N lines, errors and fixes with expandable diffs, the run) and the prompt
+  box; a follow-up changes the program on screen, + starts over. The key /
+  provider / model card shows until a key is set (and stays until Done),
+  then behind ⚙. Suggestions on an empty conversation. "✦ Fix with AI" is
+  a pill in the status bar after a failed run (asks for a key if needed).
+- Readable API errors (401/403 key refused, 429, unreachable).
+- ceangal: `scroll_to_end(key)`, `a11y_hidden`, and a scroll view whose
+  content fits no longer scrolls by its bottom padding.
+- Not yet tried with a real provider key (tests use mock providers): Human
+  TODO.
+
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
   `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
@@ -267,5 +285,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - [ ] Native: VoiceOver (macOS), Narrator (Windows), Orca (Linux) read the
       playground through AccessKit. iOS VoiceOver / Android TalkBack: not
       wired yet (AccessKit has no UIKit adapter; Android needs GameActivity).
+- [ ] Try the AI panel with a real key for each provider (Claude, OpenAI,
+      Gemini): generate, a follow-up, Fix with AI, a wrong key's message.
 - [ ] Check the deployed web playground with a screen reader (VoiceOver) and
       on a phone (Safari iOS 26 / Chrome Android with WebGPU).

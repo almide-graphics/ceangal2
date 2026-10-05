@@ -588,8 +588,12 @@ pub effect fn boot() -> Unit = {
 // ── Setters for view closures (writing `st.x = …` from a closure in another
 // module miscompiles natively: almide/almide#3307) ──
 
-pub fn toggle_examples() -> Unit = { examples_open = not examples_open }
+pub fn toggle_examples() -> Unit = { more_open = false; examples_open = not examples_open }
 pub fn close_examples() -> Unit = { examples_open = false }
+// The ⋯ menu (Share, Export).
+var more_open = false
+pub fn toggle_more() -> Unit = { examples_open = false; more_open = not more_open }
+pub fn close_menus() -> Unit = { examples_open = false; more_open = false }
 pub fn toggle_mobile_output() -> Unit = { mobile_output = not mobile_output }
 pub fn show_code() -> Unit = { mobile_output = false }
 pub fn set_rename_field(e: ed.Editor) -> Unit = { rename_field = e }

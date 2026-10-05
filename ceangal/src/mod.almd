@@ -349,7 +349,7 @@ fn emit_a11y() -> Unit = {
   for i in 0..<list.len(frame_views) {
     let vw = frame_views[i]
     let is_text = vw.kind == v.TEXT and vw.content != ""
-    if vw.role != 0 or vw.label != "" or vw.focusable or is_text then {
+    if vw.role >= 0 and (vw.role != 0 or vw.label != "" or vw.focusable or is_text) then {
       let r = frame_rects[i]
       let role = if vw.role != 0 then vw.role else if is_text then 4 else 2
       let label = if vw.label != "" then vw.label else vw.content
@@ -456,6 +456,14 @@ fn subtree_len(view: v.View) -> Int = {
 // Shift each scroll view's descendants up by its offset (clamped to the
 // content) and clip them to it. Rects are in flatten / paint order, where a
 // view's subtree is the contiguous run after it.
+// Scroll the `scroll_y` view with `key` to its end on the next layout (a log
+// or a conversation following what was just added).
+var scroll_end_keys: List[String] = []
+pub fn scroll_to_end(key: String) -> Unit = {
+  if not list.contains(scroll_end_keys, key) then list.push(scroll_end_keys, key) else ()
+  invalidate()
+}
+
 fn apply_scrolls(views: List[v.View], laid: List[lay.LayoutRect]) -> List[lay.LayoutRect] = {
   var rs = laid
   let n = int.min(list.len(views), list.len(rs))
@@ -464,10 +472,16 @@ fn apply_scrolls(views: List[v.View], laid: List[lay.LayoutRect]) -> List[lay.La
       let j = scroll_index(views[i].key)
       let r = rs[i]
       let end = int.min(n, i + subtree_len(views[i]))
-      var bottom = r.y + r.h
+      // how far the content reaches (not the view's own box: a view whose
+      // content fits must not scroll by its bottom padding)
+      var bottom = r.y
       for d in (i + 1)..<end { bottom = float.max(bottom, rs[d].y + rs[d].h) }
       let mx = float.max(0.0, bottom + views[i].style.pb - (r.y + r.h))
       scroll_max[j] = mx
+      if list.contains(scroll_end_keys, views[i].key) then {
+        scroll_offs[j] = mx
+        scroll_end_keys = list.filter(scroll_end_keys, (k) => k != views[i].key)
+      } else ()
       let off = float.max(0.0, float.min(scroll_offs[j], mx))
       scroll_offs[j] = off
       if off > 0.0 then {

@@ -211,4 +211,7 @@ pub fn key(v: View, k: String) -> View = { ...v, key: k }
 
 pub fn label(v: View, l: String) -> View = { ...v, label: l }
 pub fn role(v: View, r: Int) -> View = { ...v, role: r }
+// Leave the view out of the accessibility tree (a parent speaks for it, as
+// the words of a wrapped paragraph).
+pub fn a11y_hidden(v: View) -> View = { ...v, role: -1 }
 pub fn value(v: View, f: () -> String) -> View = { ...v, value: f }

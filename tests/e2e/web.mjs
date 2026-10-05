@@ -49,7 +49,7 @@ try {
   await step("boot shows the default program", async () => {
     await ev("pg.boot()", 120000);
     await until(`(pg) => (pg.value("Code editor") || "").includes("Mini Markdown")`);
-    for (const l of ["Run", "Examples", "Share", "main.almd", "Output", "Visual", "Rust", "AST", "New file"]) assert(await ev(`!!pg.find(${JSON.stringify(l)})`), `missing ${l}`);
+    for (const l of ["Run", "Examples", "More", "AI assistant", "main.almd", "Output", "Visual", "Rust", "AST", "New file"]) assert(await ev(`!!pg.find(${JSON.stringify(l)})`), `missing ${l}`);
     await shot("boot");
   });
 
@@ -133,7 +133,9 @@ try {
   });
 
   await step("export downloads a runnable project zip", async () => {
+    await ev(`pg.click("More")`);
     await ev(`pg.click("Export")`);
+    assert(!(await ev(`!!pg.find("More menu")`)), "the menu closes after a choice");
     const b64 = await ev(`pg.lastDownload()`);
     assert(b64, "no download");
     const zipPath = join(out, "export.zip");
@@ -143,6 +145,7 @@ try {
   });
 
   await step("share copies a link", async () => {
+    await ev(`pg.click("More")`);
     await ev(`pg.click("Share")`);
     await until(`(pg) => pg.texts().some((t) => t.startsWith("Share link copied"))`);
   });
@@ -183,6 +186,16 @@ try {
     await ev(`pg.click("Output")`);
     await until(`(pg) => !!pg.find("Program output")`);
     await shot("mobile-output");
+    // the AI sheet from the bottom bar, closed by the backdrop's ✕
+    await ev(`pg.click("AI assistant")`);
+    await until(`(pg) => !!pg.find("AI panel")`);
+    await shot("mobile-ai");
+    await ev(`pg.click("Close AI")`);
+    assert(!(await ev(`!!pg.find("AI panel")`)), "the sheet closes");
+    await ev(`pg.click("More")`);
+    await until(`(pg) => !!pg.find("More menu")`);
+    await shot("mobile-more");
+    await ev(`pg.click("More")`);
   });
 
   await step("AI: generate, run, repair once, key kept in secret storage", async () => {
@@ -194,9 +207,11 @@ try {
       ["effect fn main() -> Unit = {\n  let n = 7 * 6\n  println(\"fixed ✓ \" + int.to_string(n))\n}\n"],
     ])})`);
     await ev(`pg.click("AI assistant")`);
+    assert(!(await ev(`!!pg.find("Prompt")`)), "the prompt waits for a key");
     await ev(`pg.click("API key")`);
     await ev(`pg.type("sk-ant-test")`);
-    await ev(`pg.click("Prompt")`);
+    await ev(`pg.click("Done")`);
+    assert(!(await ev(`!!pg.find("AI key and model")`)), "the key card closes");
     await ev(`pg.type("print the answer")`);
     await ev(`pg.key(1)`);
     await until(`(pg) => pg.texts().some((t) => t.startsWith("Repaired (1)"))`, 90000);
@@ -212,10 +227,26 @@ try {
     assert(code.includes("fixed ✓"), `code is ${JSON.stringify(code)}`);
     assert(await ev(`atob(localStorage.getItem("almide-playground:secret:ai-key-0") || "") === "sk-ant-test"`), "key not in secret storage");
     assert(!(await ev(`JSON.stringify(pg.nodes()).includes("sk-ant-test")`)), "key leaked into the a11y tree");
-    await ev(`pg.click("AI")`);   // the log tab
-    assert((await ev(`pg.value("AI log")`)).includes("Fixed"), "repair log");
+    // the conversation: the request, the error, the fix with its diff, the run
+    const t = await ev(`pg.texts()`);
+    for (const want of ["print the answer", "Fixed — compiled and ran"]) assert(t.includes(want), `conversation lacks ${want}: ${JSON.stringify(t)}`);
+    assert(t.some((x) => x.startsWith("Fix 1/3 · +")), `no fix line: ${JSON.stringify(t)}`);
     await shot("ai");
     void out;
+  });
+
+  await step("AI: a follow-up changes the program on screen", async () => {
+    await ev(`pg.mockAI(${JSON.stringify([["effect fn main() -> Unit = println(\"forty-three\")\n"]])})`);
+    await ev(`pg.click("Prompt")`);
+    await ev(`pg.type("print forty-three instead")`);
+    await ev(`pg.key(1)`);
+    await until(`(pg) => pg.texts().some((t) => t.startsWith("Changed the program")) && pg.texts().filter((t) => t === "Compiled and ran" || t === "Fixed — compiled and ran").length >= 2`, 90000);
+    const calls = await ev(`window.aiCalls`);
+    const msg = calls.at(-1).body.messages;
+    assert(msg.length === 1 && msg[0].content.includes("Here is my current Almide program") && msg[0].content.includes("fixed ✓"), "the follow-up carries the current code");
+    await ev(`pg.click("New conversation")`);
+    assert(!(await ev(`pg.texts()`)).includes("print the answer"), "New clears the conversation");
+    await shot("ai-followup");
   });
 
   await step("AI: stop while streaming, then fix a failed run", async () => {
@@ -223,9 +254,9 @@ try {
     await ev(`pg.click("Prompt")`);
     await ev(`pg.type("anything")`);
     await ev(`pg.key(1)`);
-    await until(`(pg) => !!pg.find("■ Stop")`);
-    await ev(`pg.click("■ Stop")`);
-    await until(`(pg) => pg.texts().includes("Cancelled")`);
+    await until(`(pg) => !!pg.find("Stop AI")`);
+    await ev(`pg.click("Stop AI")`);
+    await until(`(pg) => pg.texts().includes("Stopped")`);
     await setCode('effect fn main() -> Unit = println(undefined_thing)\n');
     await ev(`pg.click("Run")`);
     await until(`(pg) => !!pg.find("Fix with AI")`, 60000);

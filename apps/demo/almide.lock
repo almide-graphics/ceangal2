@@ -1,4 +1,4 @@
 # almide.lock — auto-generated, do not edit
 
-ceangal = { git = "", ref = "main", commit = "d0bf303764bb47e3fd9c95478cebbb3d268961da" }
-snaidhm = { git = "", ref = "main", commit = "d0bf303764bb47e3fd9c95478cebbb3d268961da" }
+ceangal = { git = "", ref = "main", commit = "49535050f0788809e08a3fe5272ce469d3b1433f" }
+snaidhm = { git = "", ref = "main", commit = "49535050f0788809e08a3fe5272ce469d3b1433f" }
