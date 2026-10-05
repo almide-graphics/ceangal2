@@ -273,8 +273,12 @@ item, the first green CI run on main that deploys Pages, waits for a push
 
 ## Human TODO
 - [ ] Apple Developer Program membership (iOS + macOS App Store) as the
-      organization AID-ON, K.K. (D-U-N-S 964469847, found 2026-10-05; enroll
-      with exactly that legal name; site aid-on.org). The existing team
+      organization AID-ON, K.K. (D-U-N-S 964469847). Enrollment submitted
+      2026-10-05, enrollment ID 5N37NU7TFW: waiting for Apple to verify the
+      signing authority (an email follows; then the agreement and payment).
+      The D&B record still has the old head office (広島2-11-8 パレインヴィラ);
+      the move to 橘通東4-1-4 河北ビル1F (registered 2026-09-15) is to be
+      updated through Tokyo Shoko Research's contact form (free). The existing team
       "iwamoto takeshi" (XT522XX64M) is someone else's individual team: not
       used. After approval: App Store Connect API key (App Manager) and team
       ID → GitHub secrets ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 /
