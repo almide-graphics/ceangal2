@@ -350,10 +350,14 @@ item, the first green CI run on main that deploys Pages, waits for a push
       Mac Installer certs), MAC_CERTS_PASS, MAC_APP_IDENTITY,
       MAC_INSTALLER_IDENTITY, MAC_PROVISIONING_PROFILE_B64, and ASC_KEY_ID /
       ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
-- [ ] Microsoft Partner Center company account (company verification
-      uses the same business records: after the D&B address update); reserve
-      "Almide Playground"; its Publisher value (`CN=…`) → GitHub secret
-      `MSIX_PUBLISHER` (Claude can set it).
+- [ ] Microsoft Partner Center company account (free; start at
+      storedeveloper.microsoft.com, sign in with the aid-on.org work account).
+      Business verification: the D-U-N-S number (fast, but pulls the old D&B
+      address until it is updated) or official documents instead — the
+      履歴事項全部証明書 (already being obtained for Apple) has the current
+      address; manual review 2–5 business days. Employment verification uses
+      the @aid-on.org email. Then reserve "Almide Playground"; its Publisher
+      value (`CN=…`) → GitHub secret `MSIX_PUBLISHER` (Claude can set it).
 - [ ] Flathub: confirm the app ID `io.github.almide.playground` (or register
       almide.dev and move to `dev.almide.playground`), then the submission PR.
 - [ ] iOS App Store: GitHub secret IOS_TEAM_ID (with the ASC_* key above the
