@@ -241,6 +241,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   README; doc comments added to the `ceangal` module.
 - `app.yml` imports the Mac signing certificates like this repository's
   CI (it only passed the identity names before).
+- Released v0.2.0 (2026-10-05): the release workflow built the four CLI
+  binaries and installed them on macOS, Linux and Windows (each built a new
+  app for the web against v0.2.0). ceangal-hello moved to v0.2.0: all six
+  platform jobs green. The tag is lightweight (an annotated tag makes
+  `git clone --branch` warn in every app's first build).
 
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
