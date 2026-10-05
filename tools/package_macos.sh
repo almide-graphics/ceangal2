@@ -2,8 +2,8 @@
 # The macOS app for the Mac App Store: a universal (arm64 + x86_64) bundle
 # with App Sandbox, signed, wrapped in an installer pkg.
 #
-#   tools/package_macos.sh [app]        (default: playground)
-#   → out/macos/<Name>.app, out/macos/<app>.pkg
+#   tools/package_macos.sh            (the app: $CEANGAL_APP, or `ceangal build macos`)
+#   → $APP_OUT/macos/<Name>.app, $APP_OUT/macos/<key>.pkg
 #
 # Signing (from secrets in CI): MAC_APP_IDENTITY ("3rd Party Mac Developer
 # Application: …" / "Apple Distribution: …"), MAC_INSTALLER_IDENTITY
@@ -13,13 +13,13 @@
 # MAC_ARCHS="arm64" builds one architecture (faster local runs).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-app="${1:-playground}"
-# shellcheck disable=SC1090
-source "$root/apps/$app/app.env"
-out="$root/out/macos"
+source "$root/tools/app_env.sh"
+app="$APP_KEY"
+out="$APP_OUT/macos"
 bundle="$out/$APP_NAME.app"
 rm -rf "$bundle" "$out/$app.pkg"; mkdir -p "$out"
 archs=(${MAC_ARCHS:-arm64 x86_64})
+app_icons
 
 # ── the binary, per architecture, then lipo ──
 bins=()
@@ -29,16 +29,7 @@ for arch in "${archs[@]}"; do
     x86_64) triple=x86_64-apple-darwin ;;
   esac
   bin="$out/$app-$arch"
-  export CEANGAL_APP_ID="$APP_ID" MACOSX_DEPLOYMENT_TARGET=12.0
-  if [ "$app" = playground ]; then
-    CEANGAL_BUILD_TAG="macos-$arch" "$root/tools/build_native.sh" -o "$bin" --target "$triple"
-  else
-    build="$root/out/build/$app-macos-$arch"
-    rm -rf "$build"; mkdir -p "$build"
-    ln -s "$root/apps/$app/src" "$build/src"
-    sed -e "s#\"\.\./\.\./#\"$root/#g" "$root/apps/$app/almide.toml" > "$build/almide.toml"
-    (cd "$build" && "$root/tools/almide" build src/main.almd --release --target "$triple" -o "$bin")
-  fi
+  MACOSX_DEPLOYMENT_TARGET=12.0 CEANGAL_BUILD_TAG="macos-$arch" "$root/tools/build_native.sh" -o "$bin" --target "$triple"
   bins+=("$bin")
 done
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources/assets"
@@ -46,11 +37,13 @@ lipo -create "${bins[@]}" -output "$bundle/Contents/MacOS/$app"
 lipo -info "$bundle/Contents/MacOS/$app"
 
 # ── resources: assets (the host looks in Contents/Resources/assets), icon ──
-for d in $APP_ASSETS; do cp -Rn "$root/$d/." "$bundle/Contents/Resources/assets/"; done
-icns="$root/store/$app/macos/AppIcon.icns"
+app_copy_assets "$bundle/Contents/Resources/assets"
+icns="$APP_STORE/macos/AppIcon.icns"
 [ -f "$icns" ] && cp "$icns" "$bundle/Contents/Resources/AppIcon.icns"
 # the privacy manifest (required for App Store apps)
-cp "$root/store/$app/ios/PrivacyInfo.xcprivacy" "$bundle/Contents/Resources/" 2>/dev/null || true
+privacy="$APP_STORE/ios/PrivacyInfo.xcprivacy"
+[ -f "$privacy" ] || privacy="$root/tools/templates/PrivacyInfo.xcprivacy"
+cp "$privacy" "$bundle/Contents/Resources/"
 
 cat > "$bundle/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -63,16 +56,16 @@ cat > "$bundle/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>$app</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleVersion</key><string>$VERSION_CODE</string>
+  <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
+  <key>CFBundleVersion</key><string>$APP_BUILD</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
-  <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
+  <key>LSApplicationCategoryType</key><string>$APP_CATEGORY</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
   <key>ITSAppUsesNonExemptEncryption</key><false/>
-  <key>NSHumanReadableCopyright</key><string>© Almide contributors</string>
+$([ -n "$APP_COPYRIGHT" ] && echo "  <key>NSHumanReadableCopyright</key><string>$APP_COPYRIGHT</string>")
 </dict>
 </plist>
 PLIST
@@ -90,7 +83,7 @@ ent="$out/$app.entitlements"
   <!-- Open / Save dialogs (export a project, open a file) -->
   <key>com.apple.security.files.user-selected.read-write</key><true/>
 XML
-  [ "${APP_NETWORK:-0}" = 1 ] && echo '  <!-- the AI assistant calls the provider the user picked -->
+  [ "${APP_NETWORK:-0}" = 1 ] && echo '  <!-- [app] network = true -->
   <key>com.apple.security.network.client</key><true/>'
   echo '</dict>'
   echo '</plist>'

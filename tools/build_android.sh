@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Build an app for Android: the Almide program as a NativeActivity cdylib per
 # ABI, packaged without Gradle (aapt2 + bundletool) into
-#   out/android/<app>.aab   the Play upload (signed with the upload key)
-#   out/android/<app>.apk   a universal APK for emulators and sideloading
+#   $APP_OUT/android/<key>.aab   the Play upload (signed with the upload key)
+#   $APP_OUT/android/<key>.apk   a universal APK for emulators and sideloading
 #
-#   tools/build_android.sh <app> [abi…]      (default ABIs: arm64-v8a x86_64)
+#   tools/build_android.sh [app] [abi…]      (default ABIs: arm64-v8a x86_64)
+# The app: `ceangal build android`, else the [app] argument (a directory or
+# apps/<name>), else $CEANGAL_APP.
 #
 # Needs ANDROID_HOME (platforms;android-$ANDROID_API, build-tools, ndk), Rust
 # targets aarch64-linux-android / x86_64-linux-android, and Java. Signing:
@@ -12,7 +14,7 @@
 # ANDROID_KEY_PASS); without it a debug key in out/android/ is used.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-app="${1:?usage: build_android.sh <app> [abi…]}"; shift
+case "${1:-}" in ""|arm64-v8a|x86_64) ;; *) export CEANGAL_APP="$1"; shift ;; esac
 abis=("$@"); [ ${#abis[@]} -gt 0 ] || abis=(arm64-v8a x86_64)
 
 : "${ANDROID_HOME:=${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
@@ -24,14 +26,11 @@ tc="$(echo "$ndk"/toolchains/llvm/prebuilt/*/bin)"
 jar="$ANDROID_HOME/platforms/android-$api/android.jar"
 [ -f "$jar" ] || jar="$ANDROID_HOME/platforms/android-${api%%.*}/android.jar"
 
-# shellcheck disable=SC1090
-source "$root/apps/$app/app.env"
-# Icon: PNG layers from tools/build_brand.py (store/<app>/android/), or a
-# vector path (store/<app>/icon.env) for the demo apps.
-icons="$root/store/$app/android"
-# shellcheck disable=SC1090
-[ -d "$icons" ] || source "$root/store/$app/icon.env"
-out="$root/out/android"
+source "$root/tools/app_env.sh"
+app="$APP_KEY"
+app_icons
+icons="$APP_STORE/android"   # adaptive icon layers: fg-<dpi>.png (+ mono-<dpi>.png)
+out="$APP_OUT/android"
 work="$out/$app"
 rm -rf "$work"; mkdir -p "$work"
 
@@ -40,7 +39,6 @@ bundletool="$out/bundletool-1.18.3.jar"
   https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
 
 # ── the native library, per ABI ──
-export CEANGAL_APP_ID="$APP_ID"
 for abi in "${abis[@]}"; do
   case "$abi" in
     arm64-v8a) triple=aarch64-linux-android ;;
@@ -62,17 +60,7 @@ for abi in "${abis[@]}"; do
   export RUSTC_BOOTSTRAP=1 CARGO_UNSTABLE_BUILD_STD=std,panic_abort
   mkdir -p "$work/lib/$abi"
   so="$work/lib/$abi/lib$app.so"
-  if [ "$app" = playground ]; then
-    CEANGAL_BUILD_TAG="android-$abi" "$root/tools/build_native.sh" -o "$so" --cdylib --target "$triple"
-  else
-    build="$root/out/build/$app-android-$abi"
-    rm -rf "$build"; mkdir -p "$build"
-    ln -s "$root/apps/$app/src" "$build/src"
-    [ -d "$root/apps/$app/native" ] && ln -s "$root/apps/$app/native" "$build/native"
-    sed -e "s#\"\.\./\.\./#\"$root/#g" "$root/apps/$app/almide.toml" > "$build/almide.toml"
-    (cd "$build" && "$root/tools/almide" build src/main.almd --release --cdylib --target "$triple" -o "$app")
-    mv "$build/lib$app.so" "$so"
-  fi
+  CEANGAL_BUILD_TAG="android-$abi" "$root/tools/build_native.sh" -o "$so" --cdylib --target "$triple"
   "$tc/llvm-strip" --strip-unneeded "$so"
 done
 
@@ -84,39 +72,28 @@ cat > "$res/values/strings.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <resources><string name="app_name">$(esc "$APP_NAME")</string></resources>
 XML
-if [ -d "$icons" ]; then
-  # White ground, the mark in the safe zone, its silhouette for themed icons.
-  for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-    mkdir -p "$res/mipmap-$dpi"
-    cp "$icons/fg-$dpi.png" "$res/mipmap-$dpi/ic_launcher_foreground.png"
+# APP_ICON_BG behind the foreground layer; the silhouette for themed icons
+# when the app has one.
+mono_line=""
+for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+  mkdir -p "$res/mipmap-$dpi"
+  cp "$icons/fg-$dpi.png" "$res/mipmap-$dpi/ic_launcher_foreground.png"
+  if [ -f "$icons/mono-$dpi.png" ]; then
     cp "$icons/mono-$dpi.png" "$res/mipmap-$dpi/ic_launcher_monochrome.png"
-  done
-  cat > "$res/values/colors.xml" <<XML
+    mono_line='<monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>'
+  fi
+done
+cat > "$res/values/colors.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
-<resources><color name="icon_bg">#FFFFFF</color></resources>
+<resources><color name="icon_bg">$APP_ICON_BG</color></resources>
 XML
-  bg='@color/icon_bg'; fg='@mipmap/ic_launcher_foreground'; mono='@mipmap/ic_launcher_monochrome'
-else
-  cat > "$res/values/colors.xml" <<XML
-<?xml version="1.0" encoding="utf-8"?>
-<resources><color name="icon_bg">$ICON_BG</color></resources>
-XML
-  cat > "$res/drawable/ic_launcher_foreground.xml" <<XML
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-  <path android:fillColor="$ICON_FG" android:pathData="$ICON_PATH"/>
-</vector>
-XML
-  bg='@color/icon_bg'; fg='@drawable/ic_launcher_foreground'; mono='@drawable/ic_launcher_foreground'
-fi
 for name in ic_launcher ic_launcher_round; do
   cat > "$res/mipmap-anydpi-v26/$name.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-  <background android:drawable="$bg"/>
-  <foreground android:drawable="$fg"/>
-  <monochrome android:drawable="$mono"/>
+  <background android:drawable="@color/icon_bg"/>
+  <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+  $mono_line
 </adaptive-icon>
 XML
 done
@@ -161,16 +138,13 @@ XML
 # ── assets: the app's directories merged, earlier ones win ──
 assets="$work/assets"
 mkdir -p "$assets"
-for d in $APP_ASSETS; do
-  # -n: keep a file an earlier directory already provided
-  cp -Rn "$root/$d/." "$assets/"
-done
+app_copy_assets "$assets"
 
 # ── link (proto format for the bundle) and build the base module ──
 "$bt/aapt2" compile --dir "$res" -o "$work/res.zip"
 "$bt/aapt2" link --proto-format -o "$work/linked.apk" -I "$jar" \
   --manifest "$work/AndroidManifest.xml" --min-sdk-version "$min_api" \
-  --target-sdk-version "${api%%.*}" --version-code "$VERSION_CODE" --version-name "$VERSION" \
+  --target-sdk-version "${api%%.*}" --version-code "$APP_BUILD" --version-name "$APP_VERSION" \
   -A "$assets" "$work/res.zip"
 mod="$work/base"
 mkdir -p "$mod/manifest"

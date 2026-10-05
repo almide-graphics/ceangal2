@@ -1,7 +1,7 @@
 // The native playground, headless: each scenario runs the binary with a
 // script (ceangal/native/host.rs) and asserts on the accessibility tree it
 // leaves behind (CEANGAL_A11Y_DUMP) — the same labels the web E2E uses.
-//   node tests/e2e/native.mjs [--bin out/playground] [--skip-fixtures]
+//   node tests/e2e/native.mjs [--bin out/native/playground] [--skip-fixtures]
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,7 +12,7 @@ import { deflateRawSync } from "node:zlib";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const exe = process.platform === "win32" ? ".exe" : "";
 const binArg = process.argv.includes("--bin") ? process.argv[process.argv.indexOf("--bin") + 1] : null;
-const bin = binArg ? (binArg.startsWith("/") || /^[A-Za-z]:/.test(binArg) ? binArg : join(process.cwd(), binArg)) : join(root, `out/playground${exe}`);
+const bin = binArg ? (binArg.startsWith("/") || /^[A-Za-z]:/.test(binArg) ? binArg : join(process.cwd(), binArg)) : join(root, `out/native/playground${exe}`);
 if (!existsSync(bin)) execFileSync("bash", [join(root, "tools/build_native.sh")], { stdio: "inherit" });
 const out = join(root, "out/e2e-native");
 mkdirSync(out, { recursive: true });

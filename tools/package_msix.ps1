@@ -1,28 +1,46 @@
-# The Windows app for the Microsoft Store: an MSIX with the playground,
-# its assets and tiles, signed, then checked with the Windows App
-# Certification Kit.
+# The Windows app for the Microsoft Store: an MSIX with the app, its assets
+# and tiles, signed, then checked with the Windows App Certification Kit.
 #
-#   pwsh tools/package_msix.ps1 [-Exe out/playground.exe] [-Wack]
-#   → out/msix/playground.msix (+ out/msix/wack-report.xml with -Wack)
+#   pwsh tools/package_msix.ps1 [-Exe <built exe>] [-Wack]
+#   → $APP_OUT/msix/<key>.msix (+ wack-report.xml with -Wack)
+# The app's settings come from the environment (`ceangal build windows`
+# sets them); run on its own, it asks the CLI for $CEANGAL_APP's
+# (default apps/playground).
 #
 # Signing: MSIX_PFX (path) + MSIX_PFX_PASS from secrets, with MSIX_PUBLISHER
 # matching the certificate subject (Partner Center gives it). Without them a
 # self-signed test certificate is made and trusted on this machine, which is
 # enough for WACK, not for the Store upload (the Store re-signs anyway).
 param(
-  [string]$Exe = "out/playground.exe",
+  [string]$Exe = "",
   [switch]$Wack
 )
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot/.."
 Set-Location $root
 
-# app.env: KEY=value lines
-$envFile = Get-Content "apps/playground/app.env" | Where-Object { $_ -match '^[A-Z_]+=' }
-$app = @{}
-foreach ($l in $envFile) { $k, $v = $l -split '=', 2; $app[$k] = $v.Trim('"') }
-$version = "$($app.VERSION).0"
-$publisher = if ($env:MSIX_PUBLISHER) { $env:MSIX_PUBLISHER } else { "CN=Almide Playground Test" }
+if (-not $env:APP_DIR) {
+  $appDir = if ($env:CEANGAL_APP) { $env:CEANGAL_APP } else { "apps/playground" }
+  # Git's bash (System32\bash.exe would be WSL's)
+  $bash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+  if (-not (Test-Path $bash)) { $bash = "bash" }
+  (& $bash tools/ceangal env --pwsh --app $appDir) -join "`n" | Invoke-Expression
+  if ($LASTEXITCODE -ne 0) { throw "ceangal env failed" }
+}
+$key = $env:APP_KEY
+if (-not $Exe) { $Exe = "$env:APP_OUT/native/$key.exe" }
+$version = "$env:APP_VERSION.0"
+$publisher = if ($env:MSIX_PUBLISHER) { $env:MSIX_PUBLISHER } else { "CN=$env:APP_PUBLISHER Test" }
+function Esc([string]$s) { [System.Security.SecurityElement]::Escape($s) }
+$name = Esc $env:APP_NAME
+$description = Esc $(if ($env:APP_DESCRIPTION) { $env:APP_DESCRIPTION } else { $env:APP_NAME })
+$languages = ($env:APP_LANGUAGES -split ' ' | Where-Object { $_ } | ForEach-Object { "    <Resource Language=`"$_`" />" }) -join "`n"
+$network = if ($env:APP_NETWORK -eq "1") { '<Capability Name="internetClient" />' } else { "" }
+# the store icons (tools/app_icons.py keeps the ones an app made by hand)
+if (-not (Test-Path "$env:APP_STORE/windows")) {
+  python -c "import PIL" 2>$null; if ($LASTEXITCODE -ne 0) { python -m pip install --quiet pillow }
+  python tools/app_icons.py; if ($LASTEXITCODE -ne 0) { throw "app_icons.py failed" }
+}
 
 # Windows SDK tools
 $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
@@ -32,15 +50,15 @@ $makeappx = Join-Path $bin "makeappx.exe"
 $makepri = Join-Path $bin "makepri.exe"
 $signtool = Join-Path $bin "signtool.exe"
 
-$out = Join-Path $root "out/msix"
+$out = Join-Path $env:APP_OUT "msix"
 $layout = Join-Path $out "layout"
 Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$layout/Assets", "$layout/assets" | Out-Null
 
-Copy-Item $Exe "$layout/playground.exe"
+Copy-Item $Exe "$layout/$key.exe"
 # The application manifest WACK looks for: per-monitor DPI awareness (winit
 # also sets it at run time), Windows 10/11, UTF-8, the user's privileges.
-$appManifest = Join-Path $out "playground.exe.manifest"
+$appManifest = Join-Path $out "$key.exe.manifest"
 Set-Content -Encoding utf8 $appManifest @'
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
@@ -59,12 +77,17 @@ Set-Content -Encoding utf8 $appManifest @'
   </trustInfo>
 </assembly>
 '@
-& (Join-Path $bin "mt.exe") -nologo -manifest $appManifest "-outputresource:$layout\playground.exe;#1"
+& (Join-Path $bin "mt.exe") -nologo -manifest $appManifest "-outputresource:$layout\$key.exe;#1"
 if ($LASTEXITCODE -ne 0) { throw "mt.exe failed" }
-foreach ($d in ($app.APP_ASSETS -split ' ')) {
-  Copy-Item -Recurse -Force "$d/*" "$layout/assets/"
+# the app's assets first: an app's file wins over the framework's
+foreach ($d in ($env:APP_ASSETS -split "`n")) {
+  if (-not $d -or -not (Test-Path $d)) { continue }
+  Get-ChildItem -Recurse -File $d | ForEach-Object {
+    $dst = Join-Path "$layout/assets" $_.FullName.Substring((Resolve-Path $d).Path.Length)
+    if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null; Copy-Item $_.FullName $dst }
+  }
 }
-Copy-Item "store/playground/windows/*.png" "$layout/Assets/"
+Copy-Item "$env:APP_STORE/windows/*.png" "$layout/Assets/"
 
 $manifest = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -72,31 +95,29 @@ $manifest = @"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap rescap">
-  <Identity Name="$($app.APP_ID)" Publisher="$publisher" Version="$version" ProcessorArchitecture="x64" />
+  <Identity Name="$env:APP_ID" Publisher="$publisher" Version="$version" ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>$($app.APP_NAME)</DisplayName>
-    <PublisherDisplayName>Almide</PublisherDisplayName>
+    <DisplayName>$name</DisplayName>
+    <PublisherDisplayName>$(Esc $env:APP_PUBLISHER)</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
-    <Description>Write, run and share Almide programs.</Description>
+    <Description>$description</Description>
   </Properties>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Resources>
-    <Resource Language="en-us" />
-    <Resource Language="ja-jp" />
+$languages
   </Resources>
   <Applications>
-    <Application Id="Playground" Executable="playground.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="$($app.APP_NAME)" Description="Write, run and share Almide programs"
+    <Application Id="App" Executable="$key.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="$name" Description="$description"
           BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
     </Application>
   </Applications>
   <Capabilities>
-    <!-- the AI assistant calls the provider the user picked -->
-    <Capability Name="internetClient" />
+    $network
     <rescap:Capability Name="runFullTrust" />
   </Capabilities>
 </Package>
@@ -109,7 +130,7 @@ Push-Location $layout
 & $makepri new /pr $layout /cf "$out/priconfig.xml" /mn "$layout/AppxManifest.xml" /of "$layout/resources.pri" /o | Out-Null
 Pop-Location
 
-$msix = Join-Path $out "playground.msix"
+$msix = Join-Path $out "$key.msix"
 & $makeappx pack /d $layout /p $msix /o | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "makeappx failed" }
 
@@ -118,7 +139,7 @@ if ($env:MSIX_PFX) {
   & $signtool sign /fd SHA256 /f $env:MSIX_PFX /p $env:MSIX_PFX_PASS $msix
 } else {
   $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyUsage DigitalSignature `
-    -FriendlyName "Almide Playground test" -CertStoreLocation "Cert:\CurrentUser\My" `
+    -FriendlyName "$env:APP_NAME test" -CertStoreLocation "Cert:\CurrentUser\My" `
     -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
   $pfx = Join-Path $out "test.pfx"
   $pw = ConvertTo-SecureString -String "test" -Force -AsPlainText

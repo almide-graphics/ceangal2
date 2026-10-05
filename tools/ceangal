@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# The ceangal CLI from this checkout, built on first use (and when its
+# sources change).
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd)"
+exe="$root/out/cli/ceangal"
+[ -n "${OS:-}" ] && [ "$OS" = Windows_NT ] && exe="$exe.exe"
+if [ ! -x "$exe" ] || [ -n "$(find "$root/cli" -newer "$exe" -type f \( -name '*.almd' -o -name '*.rs' -o -name '*.toml' \) 2>/dev/null | head -1)" ]; then
+  mkdir -p "$(dirname "$exe")"
+  (cd "$root/cli" && "$root/tools/almide" build src/main.almd --release -o "$exe" >&2)
+fi
+exec "$exe" "$@"

@@ -1,0 +1,37 @@
+# The Almide Playground: the reference app (docs/adr/0006).
+[app]
+id = "dev.almide.playground"
+name = "Almide Playground"
+description = "Write, run and share Almide programs"
+publisher = "Almide"
+copyright = "© Almide contributors"
+category = "public.app-category.developer-tools"
+languages = ["en-us", "ja-jp"]
+version = "0.1.0"
+build = 1
+entry = "src/main.almd"
+icon_background = "#FFFFFF"      # the brand icons are made by tools/build_brand.py
+assets = ["assets"]
+network = true                   # the AI assistant calls the provider the user picked
+
+[framework]
+path = "../.."
+
+[native]
+dir = "native"                   # runner.rs: the compiler service and wasmi
+deps = { almide-compiler-service = { path = "compiler" }, wasmi = "2", serde_json = "1" }
+
+[web]
+out = "../../dist/web"           # what GitHub Pages serves
+boot = "web/boot.js"             # the runner extension, the examples
+files = ["web/index.html", "web/manifest.webmanifest"]
+prebuild = "web/prebuild.sh"     # the compiler as wasm
+
+[linux]
+id = "io.github.almide.playground"   # Flathub verifies the domain (docs/adr/0005)
+
+[store]
+dir = "../../store/playground"
+
+[build]
+out = "../../out"

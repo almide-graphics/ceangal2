@@ -1,0 +1,15 @@
+// Child processes with the terminal's stdio (native/sh.rs).
+
+@extern(rust, "crate::sh", "sh_run")
+fn run_env(cmd: String, args: List[String], dir: String, keys: List[String], vals: List[String]) -> Int = _
+
+@extern(rust, "crate::sh", "sh_real")
+fn real(path: String) -> String = _
+
+@extern(rust, "crate::sh", "sh_os")
+fn os() -> String = _
+
+@extern(rust, "crate::sh", "sh_toml_json")
+fn toml_json(text: String) -> String = _
+
+pub fn run(cmd: String, args: List[String]) -> Int = run_env(cmd, args, "", [], [])

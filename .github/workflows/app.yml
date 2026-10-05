@@ -1,0 +1,165 @@
+# Reusable CI for a ceangal app in its own repository (docs/adr/0006):
+#
+#   jobs:
+#     app:
+#       uses: almide-graphics/ceangal2/.github/workflows/app.yml@main
+#       secrets: inherit
+#
+# Builds the app for every platform with the framework its ceangal.toml
+# names ([framework] version → tag v<version>, else main): the web build is
+# opened in headless Chrome, the macOS app started once, and the store
+# packages (AAB/APK, MSIX, Flatpak, iOS archive, Mac pkg) uploaded as
+# artifacts. Signing uses the same secrets as this repository's CI.
+name: app
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: the app's directory in the calling repository
+        type: string
+        default: .
+      platforms:
+        description: which jobs run (space-separated)
+        type: string
+        default: web macos ios android windows linux
+      click:
+        description: an accessible label the web smoke test clicks (optional)
+        type: string
+        default: ""
+
+jobs:
+  web:
+    if: contains(inputs.platforms, 'web')
+    runs-on: macos-15
+    steps:
+      - &checkout
+        uses: actions/checkout@v4
+        with: { path: app }
+      - &framework
+        name: the framework ceangal.toml names
+        shell: bash
+        run: |
+          ver="$(python3 -c "import tomllib,sys; print(tomllib.load(open(sys.argv[1],'rb')).get('framework',{}).get('version',''))" "app/${{ inputs.app }}/ceangal.toml")"
+          git clone --quiet --depth 1 ${ver:+--branch "v$ver"} https://github.com/almide-graphics/ceangal2 sdk
+          echo "CEANGAL_SDK=$GITHUB_WORKSPACE/sdk" >> "$GITHUB_ENV"
+          app="$GITHUB_WORKSPACE/app/${{ inputs.app }}"
+          echo "APP=$app" >> "$GITHUB_ENV"
+          echo "OUT=$app/$(python3 -c "import tomllib,sys; print(tomllib.load(open(sys.argv[1],'rb')).get('build',{}).get('out','build'))" "$app/ceangal.toml")" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sdk/tools/ceangal build web --app "$APP"
+      - name: the page starts in headless Chrome (WebGPU)
+        run: |
+          web="$(sdk/tools/ceangal env --app "$APP" | sed -n "s/^export APP_WEB_OUT='\(.*\)'$/\1/p")"
+          node sdk/tests/e2e/smoke_web.mjs "$web" ${{ inputs.click != '' && format('--click "{0}"', inputs.click) || '' }} --shot "$RUNNER_TEMP/web.png"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: web, path: "${{ runner.temp }}/web.png" }
+
+  macos:
+    if: contains(inputs.platforms, 'macos')
+    runs-on: macos-15
+    steps:
+      - *checkout
+      - *framework
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: "aarch64-apple-darwin,x86_64-apple-darwin" }
+      - run: sdk/tools/ceangal build macos --app "$APP"
+        env:
+          MAC_APP_IDENTITY: ${{ secrets.MAC_APP_IDENTITY }}
+          MAC_INSTALLER_IDENTITY: ${{ secrets.MAC_INSTALLER_IDENTITY }}
+      - name: the sandboxed app starts
+        run: |
+          app="$(ls -d "$OUT"/macos/*.app | head -1)"
+          CEANGAL_EXIT_AFTER_MS=3000 "$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: "${{ env.OUT }}/macos/*.pkg" }
+
+  ios:
+    if: contains(inputs.platforms, 'ios')
+    runs-on: macos-26
+    env:
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - *checkout
+      - *framework
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: "aarch64-apple-ios,aarch64-apple-ios-sim" }
+      - name: App Store Connect key (when the secrets exist)
+        if: env.ASC_KEY_ID != ''
+        env: { ASC_KEY_P8: "${{ secrets.ASC_KEY_P8 }}" }
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+      - run: sdk/tools/ceangal build ios-sim --app "$APP"
+      - run: sdk/tools/ceangal build ios --app "$APP"
+      - uses: actions/upload-artifact@v4
+        with: { name: ios, path: "${{ env.OUT }}/ios/*/export/*.ipa", if-no-files-found: ignore }
+
+  android:
+    if: contains(inputs.platforms, 'android')
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+      - *framework
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+          components: rust-src
+      - name: SDK platform, build tools, NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" "ndk;30.0.16248370" >/dev/null
+      - name: upload key
+        env: { KEYSTORE_B64: "${{ secrets.ANDROID_KEYSTORE_B64 }}" }
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "ANDROID_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          fi
+      - run: sdk/tools/ceangal build android --app "$APP"
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: |
+            ${{ env.OUT }}/android/*.aab
+            ${{ env.OUT }}/android/*.apk
+
+  windows:
+    if: contains(inputs.platforms, 'windows')
+    runs-on: windows-latest
+    defaults: { run: { shell: bash } }
+    steps:
+      - *checkout
+      - *framework
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sdk/tools/ceangal build windows --app "$APP"
+        env: { MSIX_PUBLISHER: "${{ secrets.MSIX_PUBLISHER }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: "${{ env.OUT }}/msix/*.msix" }
+
+  linux:
+    if: contains(inputs.platforms, 'linux')
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout
+      - *framework
+      - uses: dtolnay/rust-toolchain@stable
+      - name: flatpak tooling
+        run: |
+          sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder dbus desktop-file-utils python3-aiohttp python3-tomlkit python3-pil
+          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y --noninteractive flathub org.freedesktop.Platform//26.08 org.freedesktop.Sdk//26.08 org.freedesktop.Sdk.Extension.rust-stable//26.08 org.flatpak.Builder
+      - run: dbus-run-session -- sdk/tools/ceangal build linux --app "$APP"
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: "${{ env.OUT }}/flatpak/*.flatpak" }

@@ -1,33 +1,56 @@
 #!/usr/bin/env bash
-# Assemble the web playground into dist/web (what GitHub Pages serves).
-#   tools/build_web.sh            build everything
-#   SKIP_COMPILER=1 tools/...     reuse out/compiler-pkg
+# Assemble the app for the web into $APP_WEB_OUT (`[web] out`, default
+# <build out>/web; the playground's is dist/web, what GitHub Pages serves). The app: `ceangal build web`, else
+# $CEANGAL_APP (default apps/playground).
+#
+#   index.html, boot.js, manifest.webmanifest   tools/templates/web, filled in
+#   <key>.wasm                                  the app
+#   host.js, … vendor/                          the web host (hosts/web)
+#   assets/ + assets.json                       APP_ASSETS merged
+#   favicon, icons                              $APP_STORE/web
+#   privacy.html                                $APP_STORE/privacy-policy.md
+# then `[web] boot` replaces boot.js, `[web] files` are copied over the top
+# and `[web] prebuild` runs with WEB_OUT set.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-out="$root/dist/web"
-almide="$root/tools/almide"
-# rustup's cargo first: a distro cargo usually lacks the wasm32 target.
-cargo="${CARGO:-$([ -x "$HOME/.cargo/bin/cargo" ] && echo "$HOME/.cargo/bin/cargo" || command -v cargo)}"
-bindgen="${WASM_BINDGEN:-$([ -x "$HOME/.cargo/bin/wasm-bindgen" ] && echo "$HOME/.cargo/bin/wasm-bindgen" || command -v wasm-bindgen)}"
-
-if [ -z "${SKIP_COMPILER:-}" ] || [ ! -f "$root/out/compiler-pkg/almide_compiler_service_bg.wasm" ]; then
-  (cd "$root/apps/playground/compiler" && "$cargo" build --release --lib --target wasm32-unknown-unknown --features web)
-  "$bindgen" --target web --no-typescript --out-dir "$root/out/compiler-pkg" \
-    "$root/apps/playground/compiler/target/wasm32-unknown-unknown/release/almide_compiler_service.wasm"
-fi
+source "$root/tools/app_env.sh"
+out="${WEB_OUT:-$APP_WEB_OUT}"
+app_icons
 
 rm -rf "$out"
-mkdir -p "$out/assets" "$out/compiler"
-(cd "$root/apps/playground" && "$almide" build src/main.almd --target wasm -o "$out/playground.wasm")
-node "$root/tests/wasm_stubs.mjs" "$out/playground.wasm"
-cp "$root/apps/playground/web/index.html" "$root/apps/playground/web/boot.js" "$root/hosts/web/host.js" "$root/hosts/web/dom.js" "$root/hosts/web/gui.js" "$root/hosts/web/gui-worker.js" "$root/hosts/web/runner.js" "$root/hosts/web/runner-worker.js" "$out/"
+mkdir -p "$out"
+build="$(app_build_dir web)"
+(cd "$build" && "$root/tools/almide" build "$APP_ENTRY" --target wasm -o "$out/$APP_KEY.wasm")
+node "$root/tests/wasm_stubs.mjs" "$out/$APP_KEY.wasm"
+
+fill() { # template → stdout, the app's settings in place of __X__
+  python3 - "$1" <<'PY'
+import html, json, os, sys
+e = os.environ
+desc = e.get("APP_DESCRIPTION") or e["APP_NAME"]
+text = open(sys.argv[1], encoding="utf-8").read()
+js = sys.argv[1].endswith((".js", ".webmanifest"))
+q = (lambda s: json.dumps(s)[1:-1]) if js else (lambda s: html.escape(s))
+for k, v in {"NAME": e["APP_NAME"], "DESCRIPTION": desc, "BG": e["APP_ICON_BG"], "KEY": e["APP_KEY"], "ID": e["APP_ID"]}.items():
+    text = text.replace(f"__{k}__", q(v))
+sys.stdout.write(text)
+PY
+}
+for f in index.html boot.js manifest.webmanifest; do fill "$root/tools/templates/web/$f" > "$out/$f"; done
+cp "$root"/hosts/web/*.js "$out/"
 cp -R "$root/hosts/web/vendor" "$out/vendor"
-cp "$root/out/compiler-pkg/almide_compiler_service.js" "$root/out/compiler-pkg/almide_compiler_service_bg.wasm" "$out/compiler/"
-cp -R "$root/assets/fonts" "$out/assets/fonts"
-cp -R "$root/apps/playground/assets/examples" "$out/assets/examples"
-cp -R "$root/apps/playground/assets/ai" "$out/assets/ai"
-cp -R "$root/apps/playground/assets/brand" "$out/assets/brand"
-cp "$root/apps/playground/web/manifest.webmanifest" "$root"/store/playground/web/* "$out/"
-python3 "$root/tools/md_page.py" "$root/store/playground/privacy-policy.md" "$out/privacy.html" "Almide Playground — Privacy Policy"
+app_copy_assets "$out/assets"
+(cd "$out/assets" && find . -type f | sed 's#^\./##' | LC_ALL=C sort | python3 -c 'import json,sys; print(json.dumps([l.strip() for l in sys.stdin]))') > "$out/assets.json"
+cp -R "$APP_STORE/web/." "$out/"
+if [ -f "$APP_STORE/privacy-policy.md" ]; then
+  python3 "$root/tools/md_page.py" "$APP_STORE/privacy-policy.md" "$out/privacy.html" "$APP_NAME — Privacy Policy"
+fi
+
+[ -n "$APP_WEB_BOOT" ] && cp "$APP_WEB_BOOT" "$out/boot.js"
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  if [ -d "$f" ]; then cp -R "$f/." "$out/"; else cp "$f" "$out/"; fi
+done <<<"$APP_WEB_FILES"
+[ -n "$APP_WEB_PREBUILD" ] && WEB_OUT="$out" bash "$APP_WEB_PREBUILD"
 touch "$out/.nojekyll"
-echo "dist/web: $(du -sh "$out" | cut -f1)"
+echo "$out: $(du -sh "$out" | cut -f1)"

@@ -33,6 +33,9 @@ jobs:
       - name: playground units
         working-directory: apps/playground
         run: ../../tools/almide test src/deflate_test.almd && ../../tools/almide test src/zip_test.almd
+      - name: the ceangal CLI
+        working-directory: cli
+        run: ../tools/almide check
       - name: wasm check (every app)
         run: |
           for app in apps/*/; do
@@ -343,6 +346,45 @@ jobs:
           path: |
             out/e2e/android-*.png
             out/e2e/android-*.log
+
+  # The framework as an app author meets it: the ceangal CLI makes a new
+  # app outside this repository, builds it for the web (opened in headless
+  # Chrome, clicked) and as a sandboxed Mac app (started once).
+  framework:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.almide
+          key: framework-${{ hashFiles('.almide-version', 'cli/almide.toml') }}
+      - name: ceangal new
+        run: |
+          pip3 install --quiet --break-system-packages pillow
+          cd "$RUNNER_TEMP" && CEANGAL_SDK="$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tools/ceangal" new hello-app --id dev.example.hello
+      - name: web build, in headless Chrome
+        run: |
+          tools/ceangal build web --app "$RUNNER_TEMP/hello-app"
+          node tests/e2e/smoke_web.mjs "$RUNNER_TEMP/hello-app/build/web" --click Count --expect 1 --shot out/framework-web.png
+      - name: Mac app (arm64), started once
+        run: |
+          MAC_ARCHS=arm64 tools/ceangal build macos --app "$RUNNER_TEMP/hello-app"
+          CEANGAL_EXIT_AFTER_MS=3000 "$RUNNER_TEMP/hello-app/build/macos/Hello App.app/Contents/MacOS/hello"
+      - name: errors name the problem
+        run: |
+          ! tools/ceangal info --app /nonexistent 2>err.txt && grep -q "no such directory" err.txt
+          ! tools/ceangal build nowhere --app apps/todo 2>err.txt && grep -q "unknown build target" err.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: framework
+          path: out/framework-*.png
 
   # The web playground: compiler wasm, app wasm, real-browser E2E, the old
   # playground's fixtures, and (on main) the GitHub Pages deploy.

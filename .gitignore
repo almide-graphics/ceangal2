@@ -7,3 +7,4 @@ node_modules/
 !hosts/web/vendor/*.wasm
 .DS_Store
 dist/
+apps/*/build/

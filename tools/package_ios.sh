@@ -4,29 +4,32 @@
 # target takes the prebuilt executable, the assets, the icon and the privacy
 # manifest. Xcode signs, archives and exports.
 #
-#   tools/package_ios.sh [app] [sim|archive|e2e|all]     (default: playground all)
-#   → out/ios/<app>/<Name>.xcodeproj
-#     sim:     out/ios/<app>/build/sim/<app>.app       (simulator build)
-#     archive: out/ios/<app>/<app>.xcarchive           (device, Release)
+#   tools/package_ios.sh [app] [sim|archive|e2e|all]     (default: all)
+# The app: `ceangal build ios`, else [app] (a directory or apps/<name>), else
+# $CEANGAL_APP. Output in $APP_OUT/ios/<key>:
+#     <Name>.xcodeproj
+#     sim:     build/sim/<key>.app       (simulator build)
+#     archive: <key>.xcarchive           (device, Release)
 #     e2e:     the UI tests (tests/e2e/ios) in a simulator (IOS_SIM, default
-#              "iPhone 17"); screenshots and the result in out/ios/<app>/e2e
+#              "iPhone 17"); screenshots and the result in e2e/
 #
 # Signing (from secrets in CI): IOS_TEAM_ID, and an App Store Connect API key
 # (ASC_KEY_ID, ASC_ISSUER_ID, the .p8 at
 # ~/.appstoreconnect/private_keys/AuthKey_<id>.p8) with which Xcode makes the
 # certificate and profile itself; then the archive is signed, exported as
-# out/ios/<app>/export/<app>.ipa and validated by App Store Connect. Without
+# $APP_OUT/ios/<key>/export/<key>.ipa and validated by App Store Connect. Without
 # IOS_TEAM_ID the archive is unsigned — enough to check the bundle, not to
 # upload.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-app="${1:-playground}"
-what="${2:-all}"
-# shellcheck disable=SC1090
-source "$root/apps/$app/app.env"
-out="$root/out/ios/$app"
+case "${1:-}" in ""|sim|archive|e2e|all) ;; *) export CEANGAL_APP="$1"; shift ;; esac
+what="${1:-all}"
+source "$root/tools/app_env.sh"
+app="$APP_KEY"
+out="$APP_OUT/ios/$app"
 mkdir -p "$out"
-export PATH="$HOME/.cargo/bin:$PATH" IPHONEOS_DEPLOYMENT_TARGET=16.0 CEANGAL_APP_ID="$APP_ID"
+export PATH="$HOME/.cargo/bin:$PATH" IPHONEOS_DEPLOYMENT_TARGET=16.0
+app_icons
 
 # ── XcodeGen (a pinned release when it is not installed) ──
 xcodegen="$(command -v xcodegen || true)"
@@ -44,15 +47,7 @@ build() { # triple → $out/bin/<sdk>/<app>   (IOS_REUSE_BIN=1: keep a built one
   local triple="$1" sdk="$2" bin="$out/bin/$2/$app"
   [ "${IOS_REUSE_BIN:-0}" = 1 ] && [ -f "$bin" ] && return
   mkdir -p "$out/bin/$sdk"
-  if [ "$app" = playground ]; then
-    CEANGAL_BUILD_TAG="ios-$sdk" "$root/tools/build_native.sh" -o "$bin" --target "$triple"
-  else
-    local b="$root/out/build/$app-ios-$sdk"
-    rm -rf "$b"; mkdir -p "$b"
-    ln -s "$root/apps/$app/src" "$b/src"
-    sed -e "s#\"\.\./\.\./#\"$root/#g" "$root/apps/$app/almide.toml" > "$b/almide.toml"
-    (cd "$b" && "$root/tools/almide" build src/main.almd --release --target "$triple" -o "$bin")
-  fi
+  CEANGAL_BUILD_TAG="ios-$sdk" "$root/tools/build_native.sh" -o "$bin" --target "$triple"
 }
 case "$what" in sim|e2e|all) build aarch64-apple-ios-sim iphonesimulator ;; esac
 case "$what" in archive|all) build aarch64-apple-ios iphoneos ;; esac
@@ -60,19 +55,12 @@ case "$what" in archive|all) build aarch64-apple-ios iphoneos ;; esac
 # ── project sources: assets, icon, privacy manifest, Info.plist ──
 proj="$out/project"
 rm -rf "$proj"; mkdir -p "$proj/assets" "$proj/Assets.xcassets"
-for d in $APP_ASSETS; do cp -Rn "$root/$d/." "$proj/assets/"; done
+app_copy_assets "$proj/assets"
 echo '{"info":{"version":1,"author":"xcode"}}' > "$proj/Assets.xcassets/Contents.json"
-icon="$root/store/$app/ios/AppIcon-1024.png"
-if [ ! -f "$icon" ] && [ -f "$root/store/$app/icon.env" ]; then
-  # the demo apps: their vector mark (store/<app>/icon.env) on its colour,
-  # rendered here (the App Store wants no alpha: through JPEG and back)
-  # shellcheck disable=SC1090
-  source "$root/store/$app/icon.env"
-  echo "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1024\" height=\"1024\" viewBox=\"0 0 108 108\"><rect width=\"108\" height=\"108\" fill=\"$ICON_BG\"/><path d=\"$ICON_PATH\" fill=\"$ICON_FG\"/></svg>" > "$out/icon.svg"
-  sips -s format jpeg "$out/icon.svg" --out "$out/icon.jpg" >/dev/null
-  sips -s format png "$out/icon.jpg" --out "$out/AppIcon-1024.png" >/dev/null
-  icon="$out/AppIcon-1024.png"
-fi
+# the App Store wants no alpha: through JPEG and back
+icon="$out/AppIcon-1024.png"
+sips -s format jpeg "$APP_STORE/ios/AppIcon-1024.png" --out "$out/icon.jpg" >/dev/null
+sips -s format png "$out/icon.jpg" --out "$icon" >/dev/null
 if [ -f "$icon" ]; then
   mkdir -p "$proj/Assets.xcassets/AppIcon.appiconset"
   cp "$icon" "$proj/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
@@ -80,8 +68,8 @@ if [ -f "$icon" ]; then
 {"images":[{"filename":"AppIcon-1024.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"version":1,"author":"xcode"}}
 JSON
 fi
-privacy="$root/store/$app/ios/PrivacyInfo.xcprivacy"
-[ -f "$privacy" ] || privacy="$root/store/playground/ios/PrivacyInfo.xcprivacy"
+privacy="$APP_STORE/ios/PrivacyInfo.xcprivacy"
+[ -f "$privacy" ] || privacy="$root/tools/templates/PrivacyInfo.xcprivacy"
 cp "$privacy" "$proj/PrivacyInfo.xcprivacy"
 
 cat > "$proj/Info.plist" <<PLIST
@@ -123,8 +111,8 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "$VERSION"
-    CURRENT_PROJECT_VERSION: "$VERSION_CODE"
+    MARKETING_VERSION: "$APP_VERSION"
+    CURRENT_PROJECT_VERSION: "$APP_BUILD"
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_BITCODE: NO
     ARCHS: arm64
@@ -164,7 +152,7 @@ targets:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: $root/tests/e2e/ios
+      - path: project/uitests
     dependencies:
       - target: $app
     settings:
@@ -174,6 +162,9 @@ targets:
         TEST_TARGET_NAME: $app
         SWIFT_VERSION: "5.0"
 YAML
+# sources inside the project directory: xcodegen walks a path outside it
+# group by group (and spins on /tmp → /private/tmp)
+mkdir -p "$proj/uitests" && cp "$root"/tests/e2e/ios/*.swift "$proj/uitests/"
 (cd "$out" && "$xcodegen" generate --spec project.yml --quiet)
 xproj="$out/$APP_NAME.xcodeproj"
 

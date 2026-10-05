@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const bin = join(root, process.platform === "win32" ? "out/playground.exe" : "out/playground");
+const bin = join(root, process.platform === "win32" ? "out/native/playground.exe" : "out/native/playground");
 if (!existsSync(bin)) throw new Error(`build the native playground first (tools/build_native.sh): ${bin}`);
 const sep = process.platform === "win32" ? ";" : ":";
 

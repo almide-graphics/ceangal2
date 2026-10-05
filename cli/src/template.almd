@@ -1,0 +1,104 @@
+// `ceangal new`: a counter app with its manifest, editor setup and CI.
+
+import fs
+import env
+import self.manifest as mf
+
+let MAIN = "// A counter: the ceangal starter app. Click the button to count.
+
+import ceangal
+import ceangal.view as v
+import snaidhm
+
+var count = 0
+
+fn bump() -> Unit = { count = count + 1 }
+
+// Functions reached only from closures (almide/almide#3296).
+let keep_bump = bump
+
+let INK = snaidhm.hex(0xE6E8F0)
+let ACCENT = snaidhm.hex(0x7AA2F7)
+
+fn view() -> v.View =
+  v.col([
+    v.text(\"__NAME__\") |> v.font(28.0) |> v.bold() |> v.color(INK),
+    v.text(int.to_string(count)) |> v.font(64.0) |> v.color(INK),
+    v.text(\"Count\") |> v.font(16.0) |> v.color(snaidhm.hex(0x1A1B26)) |> v.bold()
+      |> v.px(24.0) |> v.py(12.0) |> v.rounded(10.0) |> v.bg(ACCENT)
+      |> v.on_click(() => bump()) |> v.role(3) |> v.label(\"Count\"),
+  ]) |> v.gap(20.0) |> v.align(v.Middle) |> v.justify(v.Center) |> v.fill()
+
+@export(wasm, \"ceangal_event\")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit =
+  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)))
+"
+
+let MANIFEST = "[app]
+id = \"__ID__\"
+name = \"__NAME__\"
+version = \"0.1.0\"
+build = 1
+entry = \"src/main.almd\"
+# icon = \"icon.png\"            # 1024 px; `ceangal icons` makes every size from it
+icon_background = \"#1A1B26\"
+assets = []
+network = false
+
+[framework]
+__FRAMEWORK__
+
+[linux]
+id = \"__ID__\"   # Flathub checks this domain (io.github.<you>.<app> works)
+"
+
+let WORKFLOW = "name: app
+on: [push, pull_request]
+jobs:
+  app:
+    uses: almide-graphics/ceangal2/.github/workflows/app.yml@main
+    secrets: inherit
+"
+
+// almide.toml is written by every `ceangal` command for editors and
+// `almide check`, with paths to this machine's framework (almide/almide#3381).
+let GITIGNORE = "/build/\n/target/\n/almide.toml\n/almide.lock\n"
+
+fn fill(t: String, id: String, name: String, key: String, framework: String) -> String =
+  t |> string.replace("__ID__", id) |> string.replace("__NAME__", name)
+    |> string.replace("__KEY__", key) |> string.replace("__FRAMEWORK__", framework)
+
+// "hello-app" → "Hello App"
+fn title_of(base: String) -> String = {
+  let words = string.split(string.replace(string.replace(base, "-", " "), "_", " "), " ")
+    |> list.filter((w) => w != "")
+    |> list.map((w) => string.to_upper(string.slice(w, 0, 1)) + string.slice(w, 1, string.len(w)))
+  if list.is_empty(words) then "App" else string.join(words, " ")
+}
+
+// Creates `dir`; `id` and `name` default from its last path segment. A
+// framework checkout found via $CEANGAL_SDK is used by path, otherwise the
+// app pins this CLI's framework version.
+pub effect fn create(dir: String, id_given: String, name_given: String) -> Result[String, String] = {
+  if fs.exists(dir + "/ceangal.toml") then err(dir + " already has a ceangal.toml")
+  else {
+    let base = match list.last(string.split(dir, "/")) { some(s) => s, none => "app" }
+    let key = mf.key_of("x." + base, "")
+    let id = if id_given != "" then id_given else "dev.example." + key
+    let name = if name_given != "" then name_given else title_of(base)
+    let framework = match env.get("CEANGAL_SDK") {
+      some(p) => "path = \"" + p + "\"",
+      none => "version = \"0.1.0\"",
+    }
+    fs.mkdir_p(dir + "/src")!
+    fs.mkdir_p(dir + "/.github/workflows")!
+    fs.write(dir + "/ceangal.toml", fill(MANIFEST, id, name, key, framework))!
+    fs.write(dir + "/src/main.almd", fill(MAIN, id, name, key, framework))!
+    fs.write(dir + "/.github/workflows/app.yml", WORKFLOW)!
+    fs.write(dir + "/.gitignore", GITIGNORE)!
+    ok("Created " + name + " (" + id + ") in " + dir + "\n\n  cd " + dir + "\n  ceangal run macos     # or web, linux, windows, ios, android")
+  }
+}

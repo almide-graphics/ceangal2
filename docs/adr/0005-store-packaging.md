@@ -14,7 +14,8 @@ it.
   `tools/package_ios.sh`, `tools/build_android.sh`, `tools/package_msix.ps1`
   and `tools/build_flatpak.sh` each take the Rust build for their target and
   add only what the store needs (bundle, manifest, icons, privacy manifest,
-  signature). Store identity comes from `apps/<app>/app.env`.
+  signature). Store identity comes from the app's `ceangal.toml`
+  (docs/adr/0006).
 - **iOS: an Xcode project without sources.** `tools/package_ios.sh`
   generates the project with XcodeGen (pinned release, downloaded when not
   installed). The app target has no compile sources: a build phase copies

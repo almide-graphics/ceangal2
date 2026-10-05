@@ -8,7 +8,9 @@ Every pixel is drawn by [snaidhm](snaidhm/) through one small host ABI
 implement that ABI.
 
 ```
+cli/              the ceangal CLI: new, build, run, icons (docs/adr/0006)
 apps/playground   the Almide Playground (editor, runner, user GUI programs)
+apps/todo         the demo app
 apps/demo         the M0 demo
 ceangal/          UI framework: views, flex layout, events, text, widgets
   native/         Rust host for native builds (window, input, IME, storage…)
@@ -16,8 +18,25 @@ snaidhm/          renderer: instanced SDF quads, glyph atlas, images
   native/gpu.rs   wgpu implementation of the gpu namespace
 hosts/web/        JS host (WebGPU) — the same ABI for browsers
 abi/              generated ABI manifest (tools/gen_bindings.py)
+tools/            per-platform build and packaging scripts the CLI runs
 store/            store listings, assets, checklists
 ```
+
+## Make an app
+
+```sh
+tools/ceangal new ~/src/hello --id dev.example.hello   # ceangal.toml, src/main.almd, CI
+cd ~/src/hello
+ceangal run macos          # or web, linux, windows, ios, android
+ceangal build android      # store packages: web macos ios android linux windows
+```
+
+(`tools/ceangal` builds the CLI on first use; put it on your `PATH` or call
+it by path. Inside this repository, set `CEANGAL_SDK` to the checkout before
+`new` so the app uses it instead of a release.) An app is described by
+`ceangal.toml` — identity, icon, assets, permissions, extra Rust — see
+[docs/adr/0006](docs/adr/0006-framework-cli.md). Its CI is one line:
+`uses: almide-graphics/ceangal2/.github/workflows/app.yml@main`.
 
 ## Build and run
 

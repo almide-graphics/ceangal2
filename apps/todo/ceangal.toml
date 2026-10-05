@@ -1,0 +1,20 @@
+# Todo: the ceangal demo app (docs/adr/0006).
+[app]
+id = "dev.almide.todo"
+name = "Todo"
+description = "A small to-do list"
+publisher = "Almide"
+version = "0.1.0"
+build = 1
+entry = "src/main.almd"
+icon = "icon.png"
+icon_background = "#2E7D32"
+
+[framework]
+path = "../.."
+
+[store]
+dir = "../../store/todo"
+
+[build]
+out = "../../out"

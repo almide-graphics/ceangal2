@@ -26,3 +26,4 @@ export async function playgroundOptions({ base = new URL(".", import.meta.url).h
     extensions: [runnerExtension({ compiler: `${base}compiler/almide_compiler_service.js` })],
   };
 }
+export const options = playgroundOptions;

@@ -1,0 +1,209 @@
+// ceangal — build, run and package a ceangal app for every platform
+// (docs/adr/0006).
+//
+//   ceangal new <dir> [--id ID] [--name NAME]
+//   ceangal build <target> [--app DIR]     web native macos ios ios-sim android linux windows
+//   ceangal run <target> [--app DIR]       web macos linux windows ios android
+//   ceangal icons [--app DIR]
+//   ceangal env [--pwsh] [--app DIR]       the app's settings as shell exports
+//   ceangal info [--app DIR]
+
+import fs
+import env
+import process
+import self.sh
+import self.manifest as mf
+import self.template
+
+let USAGE = "usage: ceangal <command> [options]
+
+  new <dir> [--id ID] [--name NAME]   create an app
+  build <target>                      web native macos ios ios-sim android linux windows
+  run <target>                        web macos linux windows ios android
+  icons                               every platform's icons from icon.png
+  env [--pwsh]                        the app's settings as shell exports
+  info                                what ceangal.toml says
+
+  --app DIR   the app's directory (default: the current one)"
+
+type Opts = { words: List[String], app: String, flags: List[String], values: List[(String, String)] }
+
+fn parse_args(args: List[String]) -> Opts = {
+  var words: List[String] = []
+  var flags: List[String] = []
+  var values: List[(String, String)] = []
+  var app = "."
+  var i = 0
+  while i < list.len(args) {
+    let a = args[i]
+    if (a == "--app" or a == "--id" or a == "--name") and i + 1 < list.len(args) then {
+      if a == "--app" then app = args[i + 1] else list.push(values, (a, args[i + 1]))
+      i = i + 2
+    } else if string.starts_with(a, "--") then { list.push(flags, a); i = i + 1 }
+    else { list.push(words, a); i = i + 1 }
+  }
+  { words: words, app: app, flags: flags, values: values }
+}
+
+fn value_of(o: Opts, name: String) -> String = {
+  var v = ""
+  for (k, x) in o.values { if k == name then v = x else () }
+  v
+}
+
+// ── the framework ──
+//
+// `[framework] path` (a checkout), else $CEANGAL_SDK, else the release
+// `[framework] version` kept in ~/.ceangal/sdk/<version>.
+effect fn sdk_of(app: mf.App) -> Result[String, String] =
+  if app.sdk_path != "" then ok(sh.real(app.sdk_path))
+  else match env.get("CEANGAL_SDK") {
+    some(p) => ok(sh.real(p)),
+    none => if app.sdk_version == "" then err("ceangal.toml: set [framework] path or version (or $CEANGAL_SDK)")
+      else {
+        let home = env.get("HOME") ?? "."
+        let dir = home + "/.ceangal/sdk/" + app.sdk_version
+        if fs.exists(dir + "/ceangal") then ok(dir)
+        else {
+          println("Fetching the ceangal framework " + app.sdk_version + "…")
+          let code = sh.run("git", ["clone", "--quiet", "--depth", "1", "--branch", "v" + app.sdk_version, "https://github.com/almide-graphics/ceangal2", dir])
+          if code == 0 then ok(dir) else err("could not fetch ceangal " + app.sdk_version)
+        }
+      },
+  }
+
+// ── settings for the tools ──
+
+fn env_pairs(app: mf.App, sdk: String) -> List[(String, String)] = {
+  let assets = app.assets + [sdk + "/assets"]
+  var deps: List[String] = []
+  for d in app.native_deps { list.push(deps, d.name + " = " + d.spec) }
+  [
+    ("CEANGAL_SDK", sdk), ("APP_DIR", app.dir), ("APP_KEY", app.key), ("APP_ID", app.id),
+    ("APP_NAME", app.name), ("APP_VERSION", app.version), ("APP_BUILD", int.to_string(app.build)),
+    ("VERSION", app.version), ("VERSION_CODE", int.to_string(app.build)),
+    ("APP_ENTRY", app.entry), ("APP_ICON", app.icon), ("APP_ICON_BG", app.icon_bg),
+    ("APP_ASSETS", string.join(assets, "\n")), ("APP_NETWORK", if app.network then "1" else "0"),
+    ("APP_CATEGORY", app.category), ("APP_COPYRIGHT", app.copyright),
+    ("APP_DESCRIPTION", app.description), ("APP_PUBLISHER", if app.publisher == "" then app.name else app.publisher),
+    ("APP_LANGUAGES", string.join(app.languages, " ")),
+    ("APP_NATIVE_DIR", app.native_dir), ("APP_NATIVE_DEPS", string.join(deps, "\n")),
+    ("APP_WEB_BOOT", app.web_boot), ("APP_WEB_FILES", string.join(app.web_files, "\n")),
+    ("APP_WEB_PREBUILD", app.web_prebuild), ("APP_WEB_OUT", app.web_out), ("APP_LINUX_ID", app.linux_id),
+    ("APP_STORE", app.store), ("APP_OUT", app.out), ("CEANGAL_APP_ID", app.id),
+  ]
+}
+
+fn quote_sh(s: String) -> String = "'" + string.replace(s, "'", "'\\''") + "'"
+fn quote_ps(s: String) -> String = "'" + string.replace(s, "'", "''") + "'"
+
+// Run a tool with the app's settings in its environment.
+fn tool(app: mf.App, sdk: String, cmd: String, args: List[String]) -> Int = {
+  let pairs = env_pairs(app, sdk)
+  sh.run_env(cmd, args, app.dir, list.map(pairs, (p) => p.0), list.map(pairs, (p) => p.1))
+}
+
+fn script(app: mf.App, sdk: String, name: String, args: List[String]) -> Int =
+  tool(app, sdk, "bash", [sdk + "/tools/" + name] + args)
+
+fn check(code: Int, what: String) -> Result[Unit, String] =
+  if code != 0 then err(what + " failed (exit " + int.to_string(code) + ")") else ok(())
+
+fn build_native(app: mf.App, sdk: String) -> Result[String, String] = {
+  let exe = app.out + "/native/" + app.key + (if sh.os() == "windows" then ".exe" else "")
+  check(script(app, sdk, "build_native.sh", ["-o", exe]), "the native build")!
+  ok(exe)
+}
+
+fn build(app: mf.App, sdk: String, target: String) -> Result[Unit, String] =
+  if target == "web" then check(script(app, sdk, "build_web.sh", []), "the web build")
+  else if target == "native" then { build_native(app, sdk)!; ok(()) }
+  else if target == "macos" then check(script(app, sdk, "package_macos.sh", []), "the macOS package")
+  else if target == "ios" then check(script(app, sdk, "package_ios.sh", ["archive"]), "the iOS archive")
+  else if target == "ios-sim" then check(script(app, sdk, "package_ios.sh", ["sim"]), "the iOS simulator build")
+  else if target == "android" then check(script(app, sdk, "build_android.sh", []), "the Android build")
+  else if target == "linux" then check(script(app, sdk, "build_flatpak.sh", []), "the Flatpak")
+  else if target == "windows" then {
+    let exe = build_native(app, sdk)!
+    check(tool(app, sdk, "pwsh", [sdk + "/tools/package_msix.ps1", "-Exe", exe]), "the MSIX package")
+  }
+  else err("unknown build target \"" + target + "\"\n" + USAGE)
+
+fn run(app: mf.App, sdk: String, target: String) -> Result[Unit, String] =
+  if target == "web" then {
+    build(app, sdk, "web")!
+    println("Serving " + app.web_out + " at http://localhost:8000/ (Ctrl+C stops)")
+    check(sh.run("python3", ["-m", "http.server", "8000", "--bind", "127.0.0.1", "--directory", app.web_out]), "the web server")
+  }
+  else if target == "macos" or target == "linux" or target == "windows" or target == "native" then {
+    let exe = build_native(app, sdk)!
+    let sep = if sh.os() == "windows" then ";" else ":"
+    let assets = string.join(app.assets + [sdk + "/assets"], sep)
+    check(sh.run_env(exe, [], app.dir, ["CEANGAL_ASSETS"], [assets]), app.name)
+  }
+  else if target == "ios" then check(script(app, sdk, "run_ios.sh", []), "the iOS run")
+  else if target == "android" then check(script(app, sdk, "run_android.sh", []), "the Android run")
+  else err("unknown run target \"" + target + "\"\n" + USAGE)
+
+let EDITOR_HEADER = "# Written by ceangal for editors and `almide check` (not committed)."
+
+// The app's almide.toml, pointing at this machine's framework, unless the
+// app keeps its own (one without the header).
+effect fn editor_manifest(app: mf.App, sdk: String) -> Result[Unit, String] = {
+  let file = app.dir + "/almide.toml"
+  let text = EDITOR_HEADER + "\n[package]\nname = \"" + app.key + "\"\nversion = \"" + app.version + "\"\n\n[dependencies]\n"
+    + "ceangal = { path = \"" + sdk + "/ceangal\" }\nsnaidhm = { path = \"" + sdk + "/snaidhm\" }\n"
+  let current = if fs.exists(file) then fs.read_text(file)! else ""
+  if current == text or (current != "" and not string.starts_with(current, EDITOR_HEADER)) then ok(())
+  else fs.write(file, text)
+}
+
+effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
+  let dir = sh.real(o.app)
+  if dir == "" then err("no such directory: " + o.app)
+  else {
+    let app = mf.load(dir)!
+    let sdk = sdk_of(app)!
+    if sdk == "" then err("the framework directory does not exist")
+    else {
+    editor_manifest(app, sdk)!
+    if cmd == "env" then {
+      let ps = list.contains(o.flags, "--pwsh")
+      for (k, v) in env_pairs(app, sdk) {
+        println(if ps then "$env:" + k + " = " + quote_ps(v) else "export " + k + "=" + quote_sh(v))
+      }
+      ok(())
+    }
+    else if cmd == "info" then {
+      println(app.name + " (" + app.id + ") " + app.version + " build " + int.to_string(app.build))
+      println("  app:       " + app.dir)
+      println("  framework: " + sdk)
+      println("  entry:     " + app.entry)
+      println("  output:    " + app.out)
+      ok(())
+    }
+    else if cmd == "build" or cmd == "run" then match list.get(o.words, 1) {
+      some(t) => if cmd == "build" then build(app, sdk, t) else run(app, sdk, t),
+      none => err("usage: ceangal " + cmd + " <target>"),
+    }
+    else if cmd == "icons" then check(tool(app, sdk, "python3", [sdk + "/tools/app_icons.py"] + o.flags), "making the icons")
+    else err("unknown command \"" + cmd + "\"\n" + USAGE)
+    }
+  }
+}
+
+effect fn command(o: Opts) -> Result[Unit, String] = match list.get(o.words, 0) {
+  none => ok(println(USAGE)),
+  some(cmd) =>
+    if cmd == "help" or list.contains(o.flags, "--help") then ok(println(USAGE))
+    else if cmd == "new" then match list.get(o.words, 1) {
+      some(dir) => { let msg = template.create(dir, value_of(o, "--id"), value_of(o, "--name"))!; ok(println(msg)) },
+      none => err("usage: ceangal new <dir> [--id ID] [--name NAME]"),
+    }
+    else with_app(o, cmd),
+}
+
+effect fn main() -> Unit = match command(parse_args(env.args())) {
+  ok(_) => (),
+  err(e) => { eprintln("ceangal: " + e); process.exit(1) },
+}

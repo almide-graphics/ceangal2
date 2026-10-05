@@ -1,0 +1,163 @@
+// `ceangal.toml`: an app's identity and build settings (docs/adr/0006).
+// Paths in the file are relative to the app's directory; here they come
+// out absolute.
+
+import fs
+import json
+import self.sh
+
+type Dep = { name: String, spec: String }
+
+type App = {
+  dir: String,          // the app's directory
+  key: String,          // a file-safe short name: executables, packages
+  id: String,           // reverse-DNS bundle / application ID
+  name: String,         // what the user sees
+  version: String,
+  build: Int,           // store build number
+  entry: String,
+  icon: String,         // 1024 px PNG ("" = none)
+  icon_bg: String,      // Android adaptive icon ground
+  assets: List[String],
+  network: Bool,
+  category: String,     // macOS LSApplicationCategoryType
+  description: String,  // one line, for stores and launchers
+  publisher: String,    // shown as the publisher (MSIX, metainfo)
+  languages: List[String],
+  copyright: String,
+  native_dir: String,   // @extern(rust) modules ("" = none)
+  native_deps: List[Dep],
+  web_boot: String,
+  web_files: List[String],
+  web_prebuild: String,
+  web_out: String,      // default <out>/web
+  linux_id: String,
+  store: String,        // listing, privacy policy, screenshots, store icons
+  out: String,          // build output
+  sdk_path: String,     // [framework] path ("" = not given)
+  sdk_version: String,  // [framework] version
+}
+
+fn field(v: Value, path: List[String]) -> Value? = match list.get(path, 0) {
+  none => some(v),
+  some(k) => match value.field(v, k) {
+    ok(x) => field(x, list.drop(path, 1)),
+    err(_) => none,
+  },
+}
+
+fn str(v: Value, path: List[String], default: String) -> String = match field(v, path) {
+  some(x) => match value.as_string(x) { ok(s) => s, err(_) => default },
+  none => default,
+}
+
+fn int_of(v: Value, path: List[String], default: Int) -> Int = match field(v, path) {
+  some(x) => match value.as_int(x) { ok(n) => n, err(_) => default },
+  none => default,
+}
+
+fn bool_of(v: Value, path: List[String], default: Bool) -> Bool = match field(v, path) {
+  some(x) => match value.as_bool(x) { ok(b) => b, err(_) => default },
+  none => default,
+}
+
+fn strs(v: Value, path: List[String]) -> List[String] = match field(v, path) {
+  some(x) => match value.as_array(x) {
+    ok(xs) => list.filter_map(xs, (e) => match value.as_string(e) { ok(s) => some(s), err(_) => none }),
+    err(_) => [],
+  },
+  none => [],
+}
+
+// `a/b/../c/./d` → `a/c/d` (a leading `/` or drive stays).
+fn collapse(p: String) -> String = {
+  var kept: List[String] = []
+  for part in string.split(p, "/") {
+    if part == "." or (part == "" and not list.is_empty(kept)) then ()
+    else if part == ".." and list.len(kept) > 1 then kept = list.take(kept, list.len(kept) - 1)
+    else list.push(kept, part)
+  }
+  string.join(kept, "/")
+}
+
+pub fn absolute(dir: String, p: String) -> String =
+  if p == "" then ""
+  else if string.starts_with(p, "/") or string.starts_with(p, "~") or (string.len(p) > 1 and string.slice(p, 1, 2) == ":") then p
+  else if p == "." then dir
+  else collapse(dir + "/" + p)
+
+// A TOML value written back inline, with `path` entries made absolute (the
+// generated build manifest lives elsewhere).
+fn inline(dir: String, key: String, v: Value) -> String =
+  match value.as_string(v) {
+    ok(s) => "\"" + (if key == "path" then absolute(dir, s) else s) + "\"",
+    err(_) => match value.as_bool(v) {
+      ok(b) => if b then "true" else "false",
+      err(_) => match value.as_int(v) {
+        ok(n) => int.to_string(n),
+        err(_) => match value.as_array(v) {
+          ok(xs) => "[" + string.join(list.map(xs, (x) => inline(dir, "", x)), ", ") + "]",
+          err(_) => "{ " + string.join(list.map(value.keys(v), (k) => k + " = " + (match value.field(v, k) { ok(x) => inline(dir, k, x), err(_) => "\"\"" })), ", ") + " }",
+        },
+      },
+    },
+  }
+
+fn deps(dir: String, v: Value) -> List[Dep] = match field(v, ["native", "deps"]) {
+  some(t) => list.map(value.keys(t), (k) => { name: k, spec: match value.field(t, k) { ok(x) => inline(dir, "", x), err(_) => "\"*\"" } }),
+  none => [],
+}
+
+// The short name: `[app] key`, else the ID's last part, lowercase alphanumerics.
+pub fn key_of(id: String, given: String) -> String =
+  if given != "" then given
+  else {
+    let last = match list.last(string.split(id, ".")) { some(s) => s, none => "app" }
+    let kept = list.filter(string.chars(string.to_lower(last)), (ch) => string.is_alphanumeric(ch))
+    if list.is_empty(kept) then "app" else string.join(kept, "")
+  }
+
+pub effect fn load(dir: String) -> Result[App, String] = {
+  let file = dir + "/ceangal.toml"
+  if not fs.exists(file) then err("no ceangal.toml in " + dir)
+  else {
+    let text = fs.read_text(file)!
+    let v = json.parse(sh.toml_json(text))!
+    let id = str(v, ["app", "id"], "")
+    let bad = str(v, ["__error"], "")
+    if bad != "" then err(file + ": " + bad)
+    else if id == "" then err(file + ": [app] id is required (reverse-DNS, e.g. dev.example.todo)")
+    else {
+    let out = absolute(dir, str(v, ["build", "out"], "build"))
+    ok({
+      dir: dir,
+      key: key_of(id, str(v, ["app", "key"], "")),
+      id: id,
+      name: str(v, ["app", "name"], id),
+      version: str(v, ["app", "version"], "0.1.0"),
+      build: int_of(v, ["app", "build"], 1),
+      entry: str(v, ["app", "entry"], "src/main.almd"),
+      icon: absolute(dir, str(v, ["app", "icon"], "")),
+      icon_bg: str(v, ["app", "icon_background"], "#FFFFFF"),
+      assets: list.map(strs(v, ["app", "assets"]), (p) => absolute(dir, p)),
+      network: bool_of(v, ["app", "network"], false),
+      category: str(v, ["app", "category"], "public.app-category.utilities"),
+      copyright: str(v, ["app", "copyright"], ""),
+      description: str(v, ["app", "description"], ""),
+      publisher: str(v, ["app", "publisher"], ""),
+      languages: { let l = strs(v, ["app", "languages"]); if list.is_empty(l) then ["en"] else l },
+      native_dir: absolute(dir, str(v, ["native", "dir"], "")),
+      native_deps: deps(dir, v),
+      web_boot: absolute(dir, str(v, ["web", "boot"], "")),
+      web_files: list.map(strs(v, ["web", "files"]), (p) => absolute(dir, p)),
+      web_prebuild: absolute(dir, str(v, ["web", "prebuild"], "")),
+      web_out: { let w = str(v, ["web", "out"], ""); if w == "" then out + "/web" else absolute(dir, w) },
+      linux_id: str(v, ["linux", "id"], id),
+      store: absolute(dir, str(v, ["store", "dir"], "store")),
+      out: out,
+      sdk_path: absolute(dir, str(v, ["framework", "path"], "")),
+      sdk_version: str(v, ["framework", "version"], ""),
+    })
+    }
+  }
+}

@@ -183,6 +183,31 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - Not yet tried with a real provider key (tests use mock providers): Human
   TODO.
 
+### Framework: `ceangal.toml` + the `ceangal` CLI (2026-10-05, ADR 0006)
+- `cli/` (Almide; `tools/ceangal` builds it on first use): `new`, `build`
+  (web native macos ios ios-sim android linux windows), `run` (web, desktop,
+  ios simulator, android device/emulator with its log), `icons`, `env`,
+  `info`. The framework comes from `[framework] path`, `$CEANGAL_SDK` or a
+  clone at tag `v<version>` in `~/.ceangal/sdk`.
+- Every script in `tools/` takes the app from APP_* variables
+  (`tools/app_env.sh`; on their own they load `$CEANGAL_APP`, default the
+  playground, so CI calls them as before). No script names an app; the
+  playground's compiler crate, compiler build, runner extension and page
+  are its `ceangal.toml` settings. `app.env` and `icon.env` are gone.
+- Icons from one picture (`tools/app_icons.py`, existing files kept); web
+  page / manifest / boot script, privacy manifest, Flatpak manifest /
+  desktop entry / metainfo written from `ceangal.toml` when the app has
+  none.
+- Checked locally: playground web (file set identical to before) + web
+  E2E, native + native E2E, macOS package, exported Rust project builds
+  with cargo alone; Todo Mac app; Todo Android E2E; a `ceangal new` app
+  outside the repository on the web (headless Chrome, clicked), macOS,
+  the iOS simulator and the Android emulator.
+- CI: `framework` job (a new app built for the web and the Mac); the
+  reusable `.github/workflows/app.yml` for apps in their own repositories
+  (written by `ceangal new`). Its Windows / Linux / Android / iOS jobs run
+  for the first time when an app uses it.
+
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
   `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
@@ -213,6 +238,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
   until then the `pages` job fails.
 
 ## Next
+0. Framework: tag a release (`v0.1.0`) so `[framework] version` resolves —
+   until then apps use `path` or `$CEANGAL_SDK`; `ceangal dev` (rebuild on
+   change) and `ceangal test`; move the playground into its own repository
+   once the reusable workflow has run green for an outside app.
 1. CI is green for every job except `pages` (needs the Pages source setting,
    Human TODO); then `pages-e2e` runs against the live site.
 2. M6: store screenshots for iOS from the simulator build (the generator
@@ -222,6 +251,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- almide/toml#2 — almide/toml does not build with Almide 0.66: the CLI
+  parses `ceangal.toml` with the `toml` crate (native helper) and reads JSON.
+- almide/almide#3379 — no process run with inherited stdio + exit code: the
+  CLI's `sh_run` helper.
+- almide/almide#3381 — git dependencies cannot name a package in a repo
+  subdirectory: the CLI writes an uncommitted `almide.toml` with `path`
+  dependencies to the resolved framework.
 - almide/almide#3349 — `build --cdylib -o <path>` uses the path as the crate
   name: build with `-o <name>` and move `lib<name>.so`.
 - almide/almide#3350 — `[native-deps]` cannot be target-specific: the
