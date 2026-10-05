@@ -272,8 +272,14 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - `clip()` is rectangular; no kerning; a11y tree is flat (parent 0).
 
 ## Human TODO
-- [ ] Apple Developer Program membership (iOS + macOS App Store), team ID,
-      distribution certificates, App Store Connect API key → GitHub secrets.
+- [ ] Apple Developer Program membership (iOS + macOS App Store) as the
+      organization AID-ON, K.K. (D-U-N-S 964469847, found 2026-10-05; enroll
+      with exactly that legal name; site aid-on.org). The existing team
+      "iwamoto takeshi" (XT522XX64M) is someone else's individual team: not
+      used. After approval: App Store Connect API key (App Manager) and team
+      ID → GitHub secrets ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 /
+      IOS_TEAM_ID, Mac certificates for the pkg (Claude can do these steps
+      once the membership is active).
 - [ ] Google Play developer account; start the 12-tester / 14-day closed test
       early (new personal accounts). Upload key → GitHub secrets
       `ANDROID_KEYSTORE_B64` (base64 .jks), `ANDROID_KEYSTORE_PASS`,
