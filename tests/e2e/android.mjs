@@ -200,8 +200,16 @@ for (const app of apps) {
       await until((t) => !has("Buy milk")(t), "the task removed");
     });
     await step("todo: survives background / foreground (surface recreated)", async () => {
-      adb("shell", "input", "keyevent", "3"); // HOME
-      await sleep(1500);
+      // HOME, until the app really left the foreground (a fresh image may
+      // still skip HOME while it counts as "in setup")
+      const focused = () => adb("shell", "dumpsys", "window").split("\n").filter((l) => /mCurrentFocus|mFocusedApp/.test(l)).join(" ");
+      for (let i = 0; i < 8; i++) {
+        adb("shell", "settings", "put", "secure", "user_setup_complete", "1");
+        adb("shell", "input", "keyevent", "3"); // HOME
+        await sleep(1500);
+        if (!focused().includes(pkg)) break;
+      }
+      assert(!focused().includes(pkg), `the app stayed in front after HOME: ${focused()}`);
       adb("logcat", "-c");
       adb("shell", "am", "start", "-n", `${pkg}/android.app.NativeActivity`);
       await until(has("New task"), "the app after resume");
