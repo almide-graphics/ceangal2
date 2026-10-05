@@ -56,6 +56,7 @@ type Editor = {
   rows: List[Int],        // wrap cache: first visual row of each line, then the total
   rows_ver: Int,          // ... for this version
   rows_w: Float,          // ... and this wrap width
+  align_end: Bool,        // right-to-left lines start at the right edge
 }
 
 // A touch gesture: pending until it moves (scroll) or is held first (select);
@@ -123,6 +124,7 @@ pub fn from_string(s: String) -> Editor = {
   rows: [],
   rows_ver: -1,
   rows_w: 0.0,
+  align_end: false,
 }
 
 // A one-line editor for a form field: Enter does not add a line, and
@@ -142,6 +144,9 @@ pub fn with_diagnostics(e: Editor, ds: List[Diag]) -> Editor = { ...e, diags: ds
 pub fn with_gutter(e: Editor, on: Bool) -> Editor = { ...e, gutter: on }
 // Show a bullet per character (passwords, API keys); copying is off.
 pub fn with_secret(e: Editor, on: Bool) -> Editor = { ...e, secret: on }
+// Lines whose paragraph reads right to left (Hebrew, Arabic) start at the
+// right edge, as text fields do on those platforms.
+pub fn with_align_end(e: Editor, on: Bool) -> Editor = { ...e, align_end: on }
 // almide/almide#3358: `[]` in a spread update needs a typed helper.
 fn no_rows() -> List[Int] = []
 // Soft-wrap long lines at the view's width instead of scrolling sideways.
@@ -473,20 +478,33 @@ fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
 // A line (or a row of it) laid out, logical px; `dir` its paragraph's direction.
 fn geo_of(e: Editor, cps: List[Int], dir: Int) -> tx.LineGeo = tx.line_geo(shown(e, cps), e.font_size, not e.single_line, false, dir)
 
+// How far a line laid out as `g` is drawn to the right in `avail` px: with
+// `align_end`, a right-to-left line ends at the right edge (unless it is wider).
+fn align_dx(e: Editor, g: tx.LineGeo, dir: Int, avail: Float) -> Float =
+  if not e.align_end or dir != 1 then 0.0
+  else {
+    var w = 0.0
+    for c in g.caret { w = float.max(w, c) }
+    float.max(0.0, avail - w)
+  }
+
 // x after each character laid end to end (length cols+1), logical px: where
 // a line wraps.
 fn col_xs(e: Editor, cps: List[Int]) -> List[Float] = tx.widths_of(geo_of(e, cps, tx.direction(cps)))
 
+
 // The caret's x at p on its line.
 fn x_of(e: Editor, p: Pos) -> Float = {
   let l = e.lines[p.line]
-  geo_of(e, l, tx.direction(l)).caret[int.min(p.col, list.len(l))]
+  let g = geo_of(e, l, tx.direction(l))
+  g.caret[int.min(p.col, list.len(l))] + align_dx(e, g, tx.direction(l), wrap_avail(e))
 }
 
 // The caret stop nearest to x on a line (never inside a conjunct or an emoji).
 fn col_at_x(e: Editor, line: Int, x: Float) -> Int = {
   let l = e.lines[line]
-  tx.geo_nearest(geo_of(e, l, tx.direction(l)), x, tx.stops(l))
+  let g = geo_of(e, l, tx.direction(l))
+  tx.geo_nearest(g, x - align_dx(e, g, tx.direction(l), wrap_avail(e)), tx.stops(l))
 }
 
 // The caret's x at col on row j of a wrapped line (from the row's start).
@@ -495,7 +513,7 @@ fn x_in_row(e: Editor, line: Int, bs: List[Int], j: Int, col: Int) -> Float = {
   let c0 = bs[j]
   let c1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(l)
   let g = geo_of(e, list.slice(l, c0, c1), tx.direction(l))
-  g.caret[int.max(0, int.min(col - c0, c1 - c0))]
+  g.caret[int.max(0, int.min(col - c0, c1 - c0))] + align_dx(e, g, tx.direction(l), wrap_avail(e))
 }
 
 fn vertical(e0: Editor, dl: Int, extend: Bool) -> Editor = if wrapping(e0) then vertical_rows(with_rows(e0), dl, extend) else {
@@ -530,7 +548,8 @@ fn pos_in_row(e: Editor, row: Int, x: Float) -> Pos = {
   let c0 = bs[j]
   let c1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(e.lines[l])
   let row = list.slice(e.lines[l], c0, c1)
-  let best = c0 + tx.geo_nearest(geo_of(e, row, tx.direction(e.lines[l])), x, tx.stops(row))
+  let g = geo_of(e, row, tx.direction(e.lines[l]))
+  let best = c0 + tx.geo_nearest(g, x - align_dx(e, g, tx.direction(e.lines[l]), wrap_avail(e)), tx.stops(row))
   // the end of a non-final row is the next row's start: stay on this row
   let col = if j + 1 < list.len(bs) and best == c1 then int.max(c0, c1 - 1) else best
   { line: l, col: col }
@@ -899,7 +918,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
       let own = not lg.ordered and list.len(bs) > 1
       let g = if own then tx.line_geo(list.slice(cps, c0, c1), size, mono, false, dir) else lg
       let off = if own then c0 else 0
-      let sx = if lg.ordered then text_x * k - lg.caret[c0] else text_x * k
+      let sx = (if lg.ordered then text_x * k - lg.caret[c0] else text_x * k) + align_dx(e, g, dir, float.max(40.0, w - gw - px * 2.0) * k)
       let gx = (i: Int) => sx + g.caret[int.max(0, int.min(i - off, list.len(g.caret) - 1))]
       let spans_of = (s0: Int, s1: Int) => tx.geo_spans(g, s0 - off, s1 - off)
       let last_seg = j + 1 == list.len(bs)

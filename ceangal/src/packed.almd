@@ -1,0 +1,12 @@
+// Tables generated into hex strings (indic_data, emoji_data, arabic_data):
+// a string costs far less wasm than a list literal.
+
+// The number written by the `n` hex digits (0-9, A-F) at `p` in `b`.
+pub fn hex(b: Bytes, p: Int, n: Int) -> Int = {
+  var v = 0
+  for k in 0..<n {
+    let c = bytes.read_u8(b, p + k)
+    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
+  }
+  v
+}

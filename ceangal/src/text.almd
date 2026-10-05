@@ -19,6 +19,7 @@ import snaidhm.font as font
 import snaidhm.otl as otl
 import snaidhm.colr as colr
 import self.layout as lay
+import self.packed
 import self.host.sys as sys
 import self.bidi
 import self.indic
@@ -183,19 +184,10 @@ fn unpack_ranges(s: String) -> List[(Int, Int)] = {
   var out: List[(Int, Int)] = []
   var k = 0
   while k + 10 <= bytes.len(b) {
-    list.push(out, (hex_at(b, k, 5), hex_at(b, k + 5, 5)))
+    list.push(out, (packed.hex(b, k, 5), packed.hex(b, k + 5, 5)))
     k = k + 10
   }
   out
-}
-
-fn hex_at(b: Bytes, p: Int, n: Int) -> Int = {
-  var v = 0
-  for k in 0..<n {
-    let c = bytes.read_u8(b, p + k)
-    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
-  }
-  v
 }
 
 fn regional(cp: Int) -> Bool = cp >= 0x1F1E6 and cp <= 0x1F1FF
@@ -454,7 +446,9 @@ pub fn shape_line(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int
   else {
     let lv = bidi.levels(cps, base)
     let n = list.len(cps)
-    let has_arabic = font_at(FONT_ARABIC).ok and list.any(cps, (c) => arabic.is_arabic(c))
+    var has_arabic = false
+    for c in cps { if arabic.is_arabic(c) then has_arabic = true else () }
+    has_arabic = has_arabic and font_at(FONT_ARABIC).ok
     // kind of each character: 0 left to right, 1 right to left, 2 Arabic
     var kinds: List[Int] = []
     for i in 0..<n {

@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **`ed.with_align_end`**: a text field or editor whose line reads right
+  to left starts it at the right edge; clicks and the caret follow.
 - **Arabic shaped with the font's OpenType tables**, as HarfBuzz does:
   joining forms, lam-alef and other ligatures, marks placed over letters
   and ligatures, kerning. 38 test words and phrases match HarfBuzz

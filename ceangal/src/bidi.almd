@@ -27,20 +27,34 @@ pub fn mirror(cp: Int) -> Int =
   else if cp == 0xAB then 0xBB else if cp == 0xBB then 0xAB else cp
 
 // Whether `cps` has a right-to-left letter.
-pub fn has_rtl(cps: List[Int]) -> Bool = list.any(cps, (c) => class_of(c) == 1)
+pub fn has_rtl(cps: List[Int]) -> Bool = {
+  var r = false
+  for c in cps { if class_of(c) == 1 then r = true else () }
+  r
+}
 
 // The paragraph's direction from its classes: its first strong character's
 // (0 left to right, 1 right to left).
-fn base_of(classes: List[Int]) -> Int = match list.find(classes, (k) => k == 0 or k == 1) { some(k) => k, none => 0 }
+fn base_of(classes: List[Int]) -> Int = {
+  var b = -1
+  for k in classes { if b < 0 and (k == 0 or k == 1) then b = k else () }
+  int.max(b, 0)
+}
 
 // The direction of the paragraph `cps` (0 left to right, 1 right to left).
-pub fn direction(cps: List[Int]) -> Int = base_of(list.map(cps, (c) => class_of(c)))
+pub fn direction(cps: List[Int]) -> Int = base_of(classes_of(cps))
+
+fn classes_of(cps: List[Int]) -> List[Int] = {
+  var out: List[Int] = []
+  for c in cps { list.push(out, class_of(c)) }
+  out
+}
 
 // The embedding level of each character of `cps` (odd: right to left) in a
 // paragraph of direction `base` (0 left to right, 1 right to left, -1 from
 // its first strong character).
 pub fn levels(cps: List[Int], base: Int) -> List[Int] = {
-  let classes = list.map(cps, (c) => class_of(c))
+  let classes = classes_of(cps)
   levels_of(classes, if base >= 0 then base else base_of(classes))
 }
 
@@ -85,7 +99,8 @@ fn levels_of(classes: List[Int], base: Int) -> List[Int] = {
 pub fn order_of(levels: List[Int]) -> List[Int] = {
   let n = list.len(levels)
   var order: List[Int] = list.range(0, n)
-  var top = list.fold(levels, 0, (a, b) => int.max(a, b))
+  var top = 0
+  for lv in levels { top = int.max(top, lv) }
   while top >= 1 {
     var i = 0
     while i < n {

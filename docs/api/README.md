@@ -11,7 +11,7 @@ The guides are in [../guide](../guide/README.md).
 | [`ceangal`](ceangal.md) | the app: run, focus, keyboard, viewport, clipboard | 41 |
 | [`ceangal.view`](ceangal.view.md) | views and modifiers: text, col, row, styles, events, accessibility | 76 |
 | [`ceangal.widgets`](ceangal.widgets.md) | standard controls: buttons, checkboxes, switches, sliders, dialogs… | 29 |
-| [`ceangal.editor`](ceangal.editor.md) | a multi-line text editor view | 40 |
+| [`ceangal.editor`](ceangal.editor.md) | a multi-line text editor view | 41 |
 | [`ceangal.storage`](ceangal.storage.md) | saved values and secrets | 6 |
 | [`ceangal.http`](ceangal.http.md) | HTTP requests | 6 |
 | [`ceangal.text`](ceangal.text.md) | fonts: shaping, measuring and drawing text | 29 |

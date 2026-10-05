@@ -40,8 +40,11 @@ a field read backwards, and Arabic stayed unjoined.
 - Hebrew and Arabic (joined) read correctly in fields and the editor. A
   mixed line (an English word or a number inside Arabic, Arabic inside
   English) selects and colours by what is on screen.
-- Fields stay left-aligned whatever the paragraph direction. Right
-  alignment for a right-to-left paragraph is a later option of the field.
+- Fields stay left-aligned whatever the paragraph direction, unless the
+  editor is made `with_align_end`: then a line whose paragraph reads right
+  to left (each row, when wrapped) ends at the right edge. The shift is
+  added where lines are drawn and where x is turned into a column, so
+  the geometry stays left-based (2026-10-06).
 - An emoji ZWJ sequence inside right-to-left text is reordered character
   by character (the reduced bidi treats its parts as neutrals). The
   ADR 0009 limits still apply: no explicit embeddings or isolates.

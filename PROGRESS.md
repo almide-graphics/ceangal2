@@ -4,6 +4,10 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- テキストフィールドの RTL 右寄せオプション `ed.with_align_end` を追加。
+  描画とクリック位置の両方に同じずらしを入れ、gallery の Note 欄で
+  「中央をタップすると論理末尾に入る」ことを web / native で検査
+  (右寄せを切ると落ちることも確認)。hex 展開を共通化して予算内に収めた。
 - Arabic を presentation forms から font の GSUB/GPOS へ移行 (ADR 0014)。
   HarfBuzz の Arabic shaper を移植し、38 語・句で glyph・位置まで完全一致
   (CI で検査)。lam-alef や合字の上の記号も正しく置かれる。bidi は並べ替え
@@ -323,6 +327,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   `text.shape_line` (segments by level and script, then display order),
   LineGeo sharing a cluster's width among its characters. 38 HarfBuzz
   cases (`tests/shaping/arabic.txt`, CI). Budgets +5 / +4 / +2 KB.
+- `ed.with_align_end` (ADR 0012 update): right-to-left lines (and rows)
+  end at the field's right edge; the shift is applied where lines are
+  drawn and where x becomes a column. apps/gallery's Note field and
+  rtl.test (a tap mid-field lands at the word's logical end). One shared
+  `packed.hex` for the generated tables.
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -361,8 +370,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Text (goal order): RTL paragraph right-alignment option for fields,
-   bidi isolates / embeddings, emoji ZWJ sequences inside RTL text,
+0. Text (goal order): bidi isolates / embeddings, emoji ZWJ sequences inside RTL text,
    UAX #14 line breaking. Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,

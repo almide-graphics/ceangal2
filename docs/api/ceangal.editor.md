@@ -71,6 +71,7 @@ type Editor = {
   rows: List[Int],        // wrap cache: first visual row of each line, then the total
   rows_ver: Int,          // ... for this version
   rows_w: Float,          // ... and this wrap width
+  align_end: Bool,        // right-to-left lines start at the right edge
 }
 ```
 
@@ -149,6 +150,15 @@ pub fn with_secret(e: Editor, on: Bool) -> Editor
 ```
 
 Show a bullet per character (passwords, API keys); copying is off.
+
+### `with_align_end`
+
+```almide
+pub fn with_align_end(e: Editor, on: Bool) -> Editor
+```
+
+Lines whose paragraph reads right to left (Hebrew, Arabic) start at the
+right edge, as text fields do on those platforms.
 
 ### `with_wrap`
 

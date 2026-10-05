@@ -13,6 +13,7 @@
 import snaidhm.font as font
 import snaidhm.otl as otl
 import self.arabic_data as data
+import self.packed
 import self.bidi
 
 // Joining types
@@ -49,20 +50,11 @@ fn ranges() -> List[(Int, Int, Int)] = {
     let b = bytes.from_string(data.PACKED)
     var k = 0
     while k + 9 <= bytes.len(b) {
-      list.push(unpacked, (hex(b, k, 4), hex(b, k + 4, 4), hex(b, k + 8, 1)))
+      list.push(unpacked, (packed.hex(b, k, 4), packed.hex(b, k + 4, 4), packed.hex(b, k + 8, 1)))
       k = k + 9
     }
   } else ()
   unpacked
-}
-
-fn hex(b: Bytes, p: Int, n: Int) -> Int = {
-  var v = 0
-  for k in 0..<n {
-    let c = bytes.read_u8(b, p + k)
-    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
-  }
-  v
 }
 
 // Combining classes of the marks, unpacked on first use: (first, last, class).
@@ -74,7 +66,7 @@ fn raw_ccc(cp: Int) -> Int = {
     let b = bytes.from_string(data.CCC)
     var k = 0
     while k + 10 <= bytes.len(b) {
-      list.push(classes, (hex(b, k, 4), hex(b, k + 4, 4), hex(b, k + 8, 2)))
+      list.push(classes, (packed.hex(b, k, 4), packed.hex(b, k + 4, 4), packed.hex(b, k + 8, 2)))
       k = k + 10
     }
   } else ()

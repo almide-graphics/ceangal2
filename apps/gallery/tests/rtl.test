@@ -14,3 +14,13 @@ see "Hello, שלaום مرحبا لا"
 key Backspace
 see "Hello, שלaום مرحبا ل"
 shot "rtl.png"
+# A field with_align_end: right-to-left text sits at the right edge, so a
+# tap in the middle of the field lands after the (logical) end of a short word.
+tap "Note"
+type "مرحبا"
+see "Note = مرحبا"
+tap "Name"
+tap "Note"
+type "ب"
+see "Note = مرحباب"
+shot "rtl-aligned.png"

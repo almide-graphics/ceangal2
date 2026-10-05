@@ -15,6 +15,7 @@ var size = 1
 var tab = 0
 var volume = 40.0
 var name = ed.text_field("", "Your name")
+var note = ed.with_align_end(ed.text_field("", "A note"), true)
 var confirming = false
 var country = 0
 let COUNTRIES = ["Japan", "India", "Egypt", "Brazil", "Norway"]
@@ -27,6 +28,7 @@ fn set_size(i: Int) -> Unit = { size = i; say("size " + int.to_string(i)) }
 fn set_tab(i: Int) -> Unit = { tab = i; say("tab " + int.to_string(i)) }
 fn set_volume(x: Float) -> Unit = { volume = x; say("volume " + int.to_string(float.to_int(x))) }
 fn set_name(e: ed.Editor) -> Unit = { name = e }
+fn set_note(e: ed.Editor) -> Unit = { note = e }
 fn set_country(i: Int) -> Unit = { country = i; say("country " + COUNTRIES[i]) }
 fn open_dialog() -> Unit = { confirming = true; say("asking") }
 fn close_dialog(s: String) -> Unit = { confirming = false; say(s) }
@@ -40,6 +42,7 @@ let keep_set_size = set_size
 let keep_set_tab = set_tab
 let keep_set_volume = set_volume
 let keep_set_name = set_name
+let keep_set_note = set_note
 let keep_set_country = set_country
 let keep_open_dialog = open_dialog
 let keep_close_dialog = close_dialog
@@ -82,6 +85,8 @@ fn controls(th: w.Theme) -> v.View =
       w.progress(th, "Upload", volume / 100.0),
       w.text_field(th, "name", "Name", () => name, (e) => set_name(e)),
       w.body(th, "Hello, " + (if ed.to_string(name) == "" then "stranger" else ed.to_string(name))),
+      // right-to-left text starts at the right edge
+      w.text_field(th, "note", "Note", () => note, (e) => set_note(e)),
       w.link(th, "Almide", "https://github.com/almide/almide"),
     ]),
   ]) |> v.gap(16.0)

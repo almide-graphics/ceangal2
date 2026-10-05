@@ -225,8 +225,8 @@ The editor does selection, copy and paste, undo, IME composition (Japanese
 and other input methods) and, on phones, the on-screen keyboard. Read the
 text with `ed.to_string`, replace it with `ed.set_text`, and see
 [`ceangal.editor`](../api/ceangal.editor.md) for the rest (`with_secret`
-for passwords, `with_syntax`, `with_read_only`, `log` for an output
-pane…).
+for passwords, `with_align_end` to start right-to-left lines at the right
+edge, `with_syntax`, `with_read_only`, `log` for an output pane…).
 
 ### Keys and focus
 
