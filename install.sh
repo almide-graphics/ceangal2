@@ -20,6 +20,18 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 echo "Downloading $url"
 curl -fSL --progress-bar "$url" -o "$tmp/$asset"
+# the release's SHA256SUMS: the download is the file that was built
+if curl -fsSL "${url%/*}/SHA256SUMS" -o "$tmp/SHA256SUMS" 2>/dev/null; then
+  want="$(grep " $asset\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)"
+  got="$( (command -v sha256sum >/dev/null && sha256sum "$tmp/$asset" || shasum -a 256 "$tmp/$asset") | cut -d' ' -f1)"
+  if [ -z "$want" ] || [ "$want" != "$got" ]; then
+    echo "ceangal: the download does not match the release's checksum ($asset)" >&2
+    exit 1
+  fi
+  echo "Checksum verified"
+else
+  echo "(this release has no SHA256SUMS: not verified)"
+fi
 tar xzf "$tmp/$asset" -C "$tmp"
 mkdir -p "$home/bin"
 mv "$tmp/ceangal" "$home/bin/ceangal"

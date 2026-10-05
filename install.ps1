@@ -15,6 +15,17 @@ New-Item -ItemType Directory -Force $tmp | Out-Null
 try {
   Write-Host "Downloading $url"
   Invoke-WebRequest -UseBasicParsing $url -OutFile (Join-Path $tmp $asset)
+  # the release's SHA256SUMS: the download is the file that was built
+  $sums = Join-Path $tmp "SHA256SUMS"
+  $base = $url.Substring(0, $url.LastIndexOf('/'))
+  $have = $true
+  try { Invoke-WebRequest -UseBasicParsing "$base/SHA256SUMS" -OutFile $sums } catch { $have = $false }
+  if ($have) {
+    $want = ((Get-Content $sums | Where-Object { $_ -match " $([regex]::Escape($asset))$" }) -split ' ')[0]
+    $got = (Get-FileHash -Algorithm SHA256 (Join-Path $tmp $asset)).Hash.ToLower()
+    if (-not $want -or $want -ne $got) { throw "the download does not match the release's checksum ($asset)" }
+    Write-Host "Checksum verified"
+  } else { Write-Host "(this release has no SHA256SUMS: not verified)" }
   Expand-Archive -Force (Join-Path $tmp $asset) $tmp
   $bin = Join-Path $home_ "bin"
   New-Item -ItemType Directory -Force $bin | Out-Null

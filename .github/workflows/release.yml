@@ -31,8 +31,13 @@ jobs:
         run: |
           v="$(sed -n 's/^let VERSION = "\(.*\)"$/\1/p' cli/src/main.almd)"
           [ "v$v" = "$TAG" ] || { echo "cli/src/main.almd says $v, the tag is $TAG"; exit 1; }
-      - name: the release (notes from the commits since the last tag)
-        run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --generate-notes --title "ceangal ${TAG#v}"
+      - name: the release, its notes from CHANGELOG.md
+        run: |
+          # the section "## <version> …" up to the next "## "
+          awk -v v="${TAG#v}" '/^## /{p = index($0, "## " v " ") == 1 || $0 == "## " v} p && !/^## /{print}' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for ${TAG#v}"; exit 1; }
+          if gh release view "$TAG" >/dev/null 2>&1; then gh release edit "$TAG" --notes-file notes.md
+          else gh release create "$TAG" --verify-tag --notes-file notes.md --title "ceangal ${TAG#v}"; fi
 
   cli:
     needs: release
@@ -80,10 +85,22 @@ jobs:
           else tar czf "${{ matrix.asset }}" ceangal; fi
           gh release upload "$TAG" "${{ matrix.asset }}" --clobber
 
+  # A checksum file for the binaries, which the installers verify.
+  checksums:
+    needs: cli
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir rel && cd rel
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p 'ceangal-*'
+          sha256sum ceangal-* > SHA256SUMS
+          hew SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS -R "$GITHUB_REPOSITORY" --clobber
+
   # What a new user does: install from the release, make an app, have the CLI
   # fetch this framework version, and build it for the web.
   install:
-    needs: cli
+    needs: checksums
     strategy:
       fail-fast: false
       matrix:
