@@ -249,6 +249,16 @@ try {
     await shot("ai-followup");
   });
 
+  await step("AI: a failed request leaves the code as it was", async () => {
+    await setCode('effect fn main() -> Unit = println("keep me")\n');
+    await ev(`pg.mockAI(${JSON.stringify([{ status: 401, body: JSON.stringify({ error: { message: "invalid x-api-key" } }) }])})`);
+    await ev(`pg.click("Prompt")`);
+    await ev(`pg.type("rewrite it")`);
+    await ev(`pg.key(1)`);
+    await until(`(pg) => pg.texts().some((t) => t.startsWith("The API key was refused"))`);
+    assert((await ev(`pg.value("Code editor")`)).includes("keep me"), "the code was lost");
+  });
+
   await step("AI: stop while streaming, then fix a failed run", async () => {
     await ev(`pg.mockAI(${JSON.stringify(["hang", ['effect fn main() -> Unit = println("repaired")\n']])})`);
     await ev(`pg.click("Prompt")`);
@@ -257,6 +267,7 @@ try {
     await until(`(pg) => !!pg.find("Stop AI")`);
     await ev(`pg.click("Stop AI")`);
     await until(`(pg) => pg.texts().includes("Stopped")`);
+    assert((await ev(`pg.value("Code editor")`)).includes("keep me"), "Stop lost the code");
     await setCode('effect fn main() -> Unit = println(undefined_thing)\n');
     await ev(`pg.click("Run")`);
     await until(`(pg) => !!pg.find("Fix with AI")`, 60000);

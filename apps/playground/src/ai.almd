@@ -58,6 +58,7 @@ var messages: List[Msg] = []
 var attempt = 0
 var runs_seen = 0
 var prev_code = ""
+var before_stream = ""       // the editor's text when the request went out
 var loaded = false
 
 pub fn busy() -> Bool = phase != 0
@@ -244,7 +245,9 @@ fn start_stream() -> Unit = {
   pending = bytes.new(0)
   error_body = ""
   http_status = 0
-  st.set_active_text("")
+  // The code stays on screen until the first streamed text replaces it, and
+  // comes back if the request fails or is stopped.
+  before_stream = st.active_text()
   let id =
     if provider == 0 then {
       let r = begin(endpoint("https://api.anthropic.com/v1/messages"))
@@ -423,10 +426,13 @@ fn repair(code: String, error: String) -> Unit = {
 
 pub fn stop() -> Unit = if phase != 0 then {
   if req_id >= 0 then net.http_cancel(req_id) else ()
+  if phase == 1 then restore() else ()
   drop_writing()
   note(5, "Stopped", "")
   finish("Cancelled")
 } else ()
+
+fn restore() -> Unit = if st.active_text() != before_stream then st.set_active_text(before_stream) else ()
 
 fn drop_writing() -> Unit = {
   let n = list.len(entries)
@@ -450,7 +456,8 @@ fn stream_done() -> Unit = {
       else if http_status == 401 or http_status == 403 then "The API key was refused (" + int.to_string(http_status) + "). Check it in ⚙."
       else if http_status == 429 then "Rate limited or out of credit (429)."
       else "Error " + int.to_string(http_status) + " from " + PROVIDERS[provider] + "."
-    note(5, why, api_message(string.slice(error_body, 0, 2000)))
+    restore()
+    note(5, why + " Your code is unchanged.", api_message(string.slice(error_body, 0, 2000)))
     finish(if http_status == 0 then "AI request failed" else "AI error " + int.to_string(http_status))
   } else {
     let code = strip_fences(generated)
