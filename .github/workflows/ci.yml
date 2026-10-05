@@ -412,6 +412,8 @@ jobs:
           ! tools/ceangal test web --app "$RUNNER_TEMP/hello-app" > out.txt 2>&1
           grep -q 'wrong.test:2: see "42"' out.txt
           rm "$RUNNER_TEMP/hello-app/tests/wrong.test"
+      - name: size and startup budgets (tests/perf/budgets.json)
+        run: node tests/perf/budgets.mjs gallery=out/gallery/web todo=out/web hello="$RUNNER_TEMP/hello-app/build/web"
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs
       - name: ceangal dev (macos) — an edit restarts the app
