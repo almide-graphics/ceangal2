@@ -5,6 +5,7 @@
 import fs
 import json
 import self.sh
+import self.check
 
 type Dep = { name: String, spec: String }
 
@@ -125,8 +126,11 @@ pub effect fn load(dir: String) -> Result[App, String] = {
     let v = json.parse(sh.toml_json(text))!
     let id = str(v, ["app", "id"], "")
     let bad = str(v, ["__error"], "")
+    let (problems, warnings) = if bad == "" then check.problems(v, dir)! else ([], [])
+    for w in warnings { sh.warn("ceangal.toml: " + w) }
     if bad != "" then err(file + ": " + bad)
     else if id == "" then err(file + ": [app] id is required (reverse-DNS, e.g. dev.example.todo)")
+    else if not list.is_empty(problems) then err(file + ":\n  " + string.join(problems, "\n  "))
     else {
     let out = absolute(dir, str(v, ["build", "out"], "build"))
     ok({

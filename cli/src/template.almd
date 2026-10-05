@@ -3,6 +3,7 @@
 import fs
 import env
 import self.manifest as mf
+import self.check
 
 let MAIN = "// A counter: the ceangal starter app. Click the button to count.
 
@@ -103,6 +104,8 @@ fn title_of(base: String) -> String = {
 // app pins this CLI's framework version.
 pub effect fn create(dir: String, id_given: String, name_given: String, version: String) -> Result[String, String] = {
   if fs.exists(dir + "/ceangal.toml") then err(dir + " already has a ceangal.toml")
+  else if id_given != "" and not check.valid_id(id_given) then
+    err("--id " + id_given + ": an app ID is reverse-DNS, two or more parts of letters, digits and _, each starting with a letter (dev.example.todo)")
   else {
     let base = match list.last(string.split(dir, "/")) { some(s) => s, none => "app" }
     let key = mf.key_of("x." + base, "")

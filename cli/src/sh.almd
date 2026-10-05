@@ -9,6 +9,10 @@ fn real(path: String) -> String = _
 @extern(rust, "crate::sh", "sh_os")
 fn os() -> String = _
 
+// A line on stderr, flushed (almide/almide#3417).
+@extern(rust, "crate::sh", "sh_warn")
+fn warn(line: String) -> Unit = _
+
 @extern(rust, "crate::sh", "sh_toml_json")
 fn toml_json(text: String) -> String = _
 

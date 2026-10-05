@@ -40,6 +40,15 @@ pub fn sh_real(path: &str) -> String {
     if cfg!(windows) { p.trim_start_matches(r"\\?\").replace('\\', "/") } else { p }
 }
 
+/// A line on stderr, flushed: Almide's eprintln holds output until exit in
+/// this program (almide/almide#3417).
+pub fn sh_warn(line: &str) {
+    use std::io::Write;
+    let mut e = std::io::stderr().lock();
+    let _ = writeln!(e, "{line}");
+    let _ = e.flush();
+}
+
 /// "macos", "linux", "windows" or another `std::env::consts::OS`.
 pub fn sh_os() -> String { std::env::consts::OS.to_string() }
 

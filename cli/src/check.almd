@@ -1,0 +1,184 @@
+// Checks `ceangal.toml` against what the CLI reads (docs/guide/ceangal-toml.md):
+// a key it does not know is a warning (with the nearest known one, since
+// it is usually a typo that would otherwise be ignored without a word); a
+// value of the wrong type or form, or a path that does not exist, is an
+// error, found here rather than halfway through a platform build.
+
+import fs
+
+// [table] → its keys and their kinds: s string, i integer, b bool,
+// l list of strings, t table (any keys).
+let SCHEMA: List[(String, List[(String, String)])] = [
+  ("app", [("id", "s"), ("key", "s"), ("name", "s"), ("version", "s"), ("build", "i"), ("entry", "s"),
+           ("icon", "s"), ("icon_background", "s"), ("description", "s"), ("publisher", "s"),
+           ("copyright", "s"), ("category", "s"), ("languages", "l"), ("network", "b"), ("assets", "l")]),
+  ("framework", [("version", "s"), ("path", "s")]),
+  ("native", [("dir", "s"), ("deps", "t")]),
+  ("web", [("out", "s"), ("boot", "s"), ("files", "l"), ("prebuild", "s")]),
+  ("linux", [("id", "s")]),
+  ("store", [("dir", "s")]),
+  ("build", [("out", "s")]),
+]
+
+fn kind_name(k: String) -> String =
+  if k == "s" then "a string" else if k == "i" then "an integer" else if k == "b" then "true or false"
+  else if k == "l" then "a list of strings" else "a table"
+
+fn has_kind(x: Value, k: String) -> Bool =
+  if k == "s" then (match value.as_string(x) { ok(_) => true, err(_) => false })
+  else if k == "i" then (match value.as_int(x) { ok(_) => true, err(_) => false })
+  else if k == "b" then (match value.as_bool(x) { ok(_) => true, err(_) => false })
+  else if k == "l" then (match value.as_array(x) {
+    ok(xs) => list.all(xs, (e) => match value.as_string(e) { ok(_) => true, err(_) => false }),
+    err(_) => false,
+  })
+  else (match value.as_string(x) { ok(_) => false, err(_) => list.len(value.keys(x)) > 0 or (match value.as_array(x) { ok(_) => false, err(_) => true }) })
+
+// Levenshtein distance, for "did you mean".
+fn distance(a: String, b: String) -> Int = {
+  let xs = string.chars(a)
+  let ys = string.chars(b)
+  var prev: List[Int] = list.map(list.range(0, list.len(ys) + 1), (j) => j)
+  for i in 0..<list.len(xs) {
+    var cur: List[Int] = [i + 1]
+    for j in 0..<list.len(ys) {
+      let sub = prev[j] + (if xs[i] == ys[j] then 0 else 1)
+      list.push(cur, int.min(sub, int.min(prev[j + 1] + 1, cur[j] + 1)))
+    }
+    prev = cur
+  }
+  prev[list.len(ys)]
+}
+
+fn nearest(word: String, known: List[String]) -> String = {
+  var best = ""
+  var best_d = 3   // farther than 2 edits is not a typo of it
+  for k in known {
+    let d = distance(word, k)
+    if d < best_d then { best = k; best_d = d } else ()
+  }
+  if best == "" then "" else " (did you mean \"" + best + "\"?)"
+}
+
+fn tables() -> List[String] = list.map(SCHEMA, (t) => t.0)
+
+fn keys_of_table(name: String) -> List[(String, String)] = match list.find(SCHEMA, (t) => t.0 == name) {
+  some(t) => t.1,
+  none => [],
+}
+
+// "dev.example.todo": two or more parts of letters, digits and _, each
+// starting with a letter (Android's rule, the strictest of the stores).
+pub fn valid_id(id: String) -> Bool = {
+  let parts = string.split(id, ".")
+  list.len(parts) >= 2 and list.all(parts, (p) => {
+    let cs = string.chars(p)
+    list.len(cs) > 0 and string.is_alpha(cs[0]) and list.all(cs, (c) => string.is_alphanumeric(c) or c == "_")
+  })
+}
+
+fn digits(s: String) -> Bool = string.len(s) > 0 and list.all(string.chars(s), (c) => string.is_digit(c))
+
+// "1", "1.2", "1.2.3": what every store accepts as a version.
+fn valid_version(v: String) -> Bool = {
+  let parts = string.split(v, ".")
+  list.len(parts) >= 1 and list.len(parts) <= 3 and list.all(parts, (p) => digits(p))
+}
+
+fn valid_colour(c: String) -> Bool =
+  string.len(c) == 7 and string.starts_with(c, "#")
+    and list.all(string.chars(string.slice(c, 1, 7)), (ch) => string.contains("0123456789abcdefABCDEF", ch))
+
+fn str_at(v: Value, t: String, k: String) -> String = match value.field(v, t) {
+  ok(tv) => match value.field(tv, k) { ok(x) => match value.as_string(x) { ok(s) => s, err(_) => "" }, err(_) => "" },
+  err(_) => "",
+}
+
+fn strs_at(v: Value, t: String, k: String) -> List[String] = match value.field(v, t) {
+  ok(tv) => match value.field(tv, k) {
+    ok(x) => match value.as_array(x) { ok(xs) => list.filter_map(xs, (e) => match value.as_string(e) { ok(s) => some(s), err(_) => none }), err(_) => [] },
+    err(_) => [],
+  },
+  err(_) => [],
+}
+
+fn resolve(dir: String, p: String) -> String =
+  if string.starts_with(p, "/") or (string.len(p) > 1 and string.slice(p, 1, 2) == ":") then p else dir + "/" + p
+
+// The problems in the parsed file `v` of the app in `dir`: (errors, warnings).
+pub effect fn problems(v: Value, dir: String) -> (List[String], List[String]) = {
+  var errors: List[String] = []
+  var warnings: List[String] = []
+  for t in value.keys(v) {
+    if not list.contains(tables(), t) then
+      list.push(warnings, "unknown table [" + t + "]" + nearest(t, tables()) + ": ignored")
+    else {
+      let known = keys_of_table(t)
+      let tv = match value.field(v, t) { ok(x) => x, err(_) => v }
+      for k in value.keys(tv) {
+        match list.find(known, (e) => e.0 == k) {
+          none => list.push(warnings, "unknown key [" + t + "] " + k + nearest(k, list.map(known, (e) => e.0)) + ": ignored"),
+          some(e) => match value.field(tv, k) {
+            ok(x) => if has_kind(x, e.1) then () else list.push(errors, "[" + t + "] " + k + " must be " + kind_name(e.1)),
+            err(_) => (),
+          },
+        }
+      }
+    }
+  }
+  let id = str_at(v, "app", "id")
+  if id != "" and not valid_id(id) then
+    list.push(errors, "[app] id \"" + id + "\" must be reverse-DNS: two or more parts of letters, digits and _, each starting with a letter (dev.example.todo)")
+  else ()
+  let linux_id = str_at(v, "linux", "id")
+  if linux_id != "" and not valid_id(linux_id) then
+    list.push(errors, "[linux] id \"" + linux_id + "\" must be reverse-DNS, like [app] id")
+  else ()
+  let version = str_at(v, "app", "version")
+  if version != "" and not valid_version(version) then
+    list.push(errors, "[app] version \"" + version + "\" must be one to three numbers with dots (1.2.0): the stores take nothing else")
+  else ()
+  match value.field(v, "app") {
+    ok(av) => match value.field(av, "build") {
+      ok(b) => match value.as_int(b) {
+        ok(n) => if n < 1 or n > 2100000000 then list.push(errors, "[app] build must be from 1 to 2100000000 (Google Play's limit)") else (),
+        err(_) => (),
+      },
+      err(_) => (),
+    },
+    err(_) => (),
+  }
+  let colour = str_at(v, "app", "icon_background")
+  if colour != "" and not valid_colour(colour) then
+    list.push(errors, "[app] icon_background \"" + colour + "\" must be a colour as #RRGGBB")
+  else ()
+  let entry = str_at(v, "app", "entry")
+  let entry_file = if entry == "" then "src/main.almd" else entry
+  if not fs.exists(resolve(dir, entry_file)) then list.push(errors, "[app] entry: " + entry_file + " does not exist") else ()
+  let icon = str_at(v, "app", "icon")
+  if icon != "" then {
+    if not fs.exists(resolve(dir, icon)) then list.push(errors, "[app] icon: " + icon + " does not exist")
+    else if not string.ends_with(string.to_lower(icon), ".png") then list.push(errors, "[app] icon: " + icon + " must be a PNG (1024 × 1024)")
+    else ()
+  } else ()
+  for (t, k) in [("app", "assets"), ("web", "files")] {
+    for p in strs_at(v, t, k) {
+      if not fs.exists(resolve(dir, p)) then list.push(errors, "[" + t + "] " + k + ": " + p + " does not exist") else ()
+    }
+  }
+  for (t, k) in [("native", "dir"), ("web", "boot"), ("web", "prebuild")] {
+    let p = str_at(v, t, k)
+    if p != "" and not fs.exists(resolve(dir, p)) then list.push(errors, "[" + t + "] " + k + ": " + p + " does not exist") else ()
+  }
+  let fw_path = str_at(v, "framework", "path")
+  if fw_path != "" and str_at(v, "framework", "version") != "" then
+    list.push(warnings, "[framework] has both path and version: path is used")
+  else ()
+  for lang in strs_at(v, "app", "languages") {
+    let parts = string.split(lang, "-")
+    if not (list.len(parts) <= 3 and list.all(parts, (p) => string.len(p) >= 2 and string.len(p) <= 4 and list.all(string.chars(p), (c) => string.is_alpha(c)))) then
+      list.push(warnings, "[app] languages: \"" + lang + "\" is not a language tag (en-us, ja-jp)")
+    else ()
+  }
+  (errors, warnings)
+}

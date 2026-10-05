@@ -397,6 +397,7 @@ jobs:
           tools/ceangal doctor --app apps/todo
       - name: errors name the problem
         run: |
+          tests/cli/manifest_check.sh
           ! tools/ceangal info --app /nonexistent 2>err.txt && grep -q "no such directory" err.txt
           ! tools/ceangal build nowhere --app apps/todo 2>err.txt && grep -q "unknown build target" err.txt
       - uses: actions/upload-artifact@v4

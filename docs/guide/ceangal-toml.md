@@ -3,6 +3,12 @@
 An app is a directory with a `ceangal.toml` and Almide sources. Paths in
 the file are relative to the app's directory. Only `[app] id` is required.
 
+Every command checks the file first. A key it does not know is a
+warning, with the nearest known key (`icon_backgroud` → did you mean
+`icon_background`?), so a typo is not silently ignored. A value of the
+wrong type or form, or a path that does not exist, is an error before
+anything is built.
+
 ```toml
 [app]
 id = "dev.example.todo"
