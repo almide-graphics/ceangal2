@@ -275,7 +275,9 @@ try {
       .catch(async (e) => { throw new Error(e.message.slice(0, 120) + " | output: " + (await ev(`pg.value("Program output")`)) + " | editor: " + JSON.stringify(await ev(`pg.value("Code editor")`)) + " | repair request: " + JSON.stringify((await ev(`window.aiCalls`)).at(-3)?.body.messages.at(-1).content.slice(0, 600))); });
     const sent = (await ev(`window.aiCalls`)).at(-1).body.messages[0].content;
     assert(sent.includes("=== main.almd ===") && sent.includes("=== stats.almd ==="), "every file goes with an edit");
-    assert((await ev(`pg.value("Program output")`)).includes("mean is 1.5"), "the three files ran together");
+    // the a11y value of the output refreshes at most every 250 ms
+    await until(`(pg) => (pg.value("Program output") || "").includes("mean is 1.5")`, 5000)
+      .catch(async () => { throw new Error("the three files ran together; output: " + JSON.stringify(await ev(`pg.value("Program output")`))); });
     await shot("ai-files");
     await ev(`pg.click("Undo format the mean in its own module")`);
     await until(`(pg) => !pg.find("fmt.almd")`);
