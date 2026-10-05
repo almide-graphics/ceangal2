@@ -350,14 +350,17 @@ item, the first green CI run on main that deploys Pages, waits for a push
       Mac Installer certs), MAC_CERTS_PASS, MAC_APP_IDENTITY,
       MAC_INSTALLER_IDENTITY, MAC_PROVISIONING_PROFILE_B64, and ASC_KEY_ID /
       ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
-- [ ] Microsoft Partner Center company account (free; start at
-      storedeveloper.microsoft.com, sign in with the aid-on.org work account).
-      Business verification: the D-U-N-S number (fast, but pulls the old D&B
-      address until it is updated) or official documents instead — the
-      履歴事項全部証明書 (already being obtained for Apple) has the current
-      address; manual review 2–5 business days. Employment verification uses
-      the @aid-on.org email. Then reserve "Almide Playground"; its Publisher
-      value (`CN=…`) → GitHub secret `MSIX_PUBLISHER` (Claude can set it).
+- [ ] Microsoft Partner Center company account: submitted 2026-10-05 from
+      hiromi.motodera@aid-on.org with D-U-N-S 964469847 (publisher name
+      "AID-ON", free). Email and business verified; employment verification
+      under review (about 5 business days, result by email). The legal
+      address it took from D&B is the old one (パレインヴィラ): update it once
+      Tokyo Shoko Research has the new address. Store contact (public):
+      info@aid-on.org, 4-1-4 Tachibanadori Higashi Kahoku Bldg 1F, and
+      +81 80-7974-1025 for now — replace the phone with a 050 number before
+      the first app submission. After approval: reserve "Almide Playground";
+      its Publisher value (`CN=…`) → GitHub secret `MSIX_PUBLISHER` (Claude
+      can set it).
 - [ ] Flathub: confirm the app ID `io.github.almide.playground` (or register
       almide.dev and move to `dev.almide.playground`), then the submission PR.
 - [ ] iOS App Store: GitHub secret IOS_TEAM_ID (with the ASC_* key above the
