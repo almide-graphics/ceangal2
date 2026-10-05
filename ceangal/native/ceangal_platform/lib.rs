@@ -96,8 +96,9 @@ pub type Done = Box<dyn FnOnce(i64, Vec<u8>) + Send>;
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn mobile_save(name: &str, data: &[u8], downloads: &std::path::Path, done: Done) { mobile::save(name, data, downloads, done) }
 
-/// Phones: a text file the user picks. iOS: the document picker; Android has
-/// no picker yet (a NativeActivity cannot receive the result): 0 + reason.
+/// Phones: a file the user picks, its bytes. iOS: the document picker;
+/// Android: the system picker (ACTION_OPEN_DOCUMENT) through
+/// dev.ceangal.PickerActivity.
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn mobile_open(done: Done) { mobile::open(done) }
 
@@ -235,8 +236,48 @@ mod mobile {
         }
     }
 
+    /// The open request waiting for dev.ceangal.PickerActivity's answer.
+    static PENDING: std::sync::Mutex<Option<super::Done>> = std::sync::Mutex::new(None);
+    static REGISTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+    /// The system picker through dev.ceangal.PickerActivity (in the app's
+    /// dex, from ceangal/android): a NativeActivity cannot receive an
+    /// activity result, so that activity takes it and calls `picked`.
     pub fn open(done: super::Done) {
-        done(0, b"no file picker on Android yet".to_vec());
+        // a second request replaces the first, which is cancelled
+        if let Some(prev) = PENDING.lock().unwrap().replace(done) { prev(499, Vec::new()) }
+        let started = with_env(|env, act| {
+            // the app's class loader (a native thread's FindClass only sees the system's)
+            let loader = env.call_method(act, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])?.l()?;
+            let name = env.new_string("dev.ceangal.PickerActivity")?;
+            let cls = jni::objects::JClass::from(env.call_method(&loader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", &[JValue::Object(&name)])?.l()?);
+            if !REGISTERED.swap(true, Ordering::SeqCst) {
+                env.register_native_methods(&cls, &[jni::NativeMethod {
+                    name: "picked".into(),
+                    sig: "(ILjava/lang/String;[B)V".into(),
+                    fn_ptr: picked as *mut std::ffi::c_void,
+                }])?;
+            }
+            let intent = env.new_object("android/content/Intent", "(Landroid/content/Context;Ljava/lang/Class;)V",
+                &[JValue::Object(act), JValue::Object(&cls)])?;
+            let (k, v) = (env.new_string("type")?, env.new_string("*/*")?);
+            env.call_method(&intent, "putExtra", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;",
+                &[JValue::Object(&k), JValue::Object(&v)])?;
+            env.call_method(act, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&intent)])?;
+            Ok(())
+        });
+        if started.is_none() {
+            REGISTERED.store(false, Ordering::SeqCst);
+            if let Some(done) = PENDING.lock().unwrap().take() { done(0, b"the file picker could not start".to_vec()) }
+        }
+    }
+
+    /// PickerActivity.picked(status, name, data): 200 with the file, 499
+    /// cancelled, 0 with the reason.
+    extern "system" fn picked<'local>(mut env: jni::JNIEnv<'local>, _cls: jni::objects::JClass<'local>, status: jni::sys::jint,
+                                      _name: jni::objects::JString<'local>, data: jni::objects::JByteArray<'local>) {
+        let bytes = env.convert_byte_array(&data).unwrap_or_default();
+        if let Some(done) = PENDING.lock().unwrap().take() { done(status as i64, bytes) }
     }
 }
 

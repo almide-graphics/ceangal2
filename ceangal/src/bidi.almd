@@ -101,6 +101,9 @@ fn mirror(cp: Int) -> Int =
   else if cp == 0x7B then 0x7D else if cp == 0x7D then 0x7B else if cp == 0x3C then 0x3E else if cp == 0x3E then 0x3C
   else if cp == 0xAB then 0xBB else if cp == 0xBB then 0xAB else cp
 
+// Reached only from closures (almide/almide#3296).
+let keep_mirror = mirror
+
 pub fn has_rtl(cps: List[Int]) -> Bool = list.any(cps, (c) => class_of(c) == 1)
 
 // One line in display order: joined, levelled, reordered, mirrored.

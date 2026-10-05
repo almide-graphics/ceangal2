@@ -81,9 +81,13 @@ target-specific.
   adapter. Both are checked in CI through the platform's own accessibility
   APIs (uiautomator on Android, XCUITest on iOS).
 - Phones use the system clipboard; save goes to the share sheet (iOS) or
-  the shared Downloads folder (Android); iOS has the document picker. A
-  NativeActivity cannot receive an activity result, so Android has no file
-  picker.
+  the shared Downloads folder (Android). Open is the document picker on
+  iOS. A NativeActivity cannot receive an activity result, so on Android a
+  small Java activity of the framework's (`ceangal/android/dev/ceangal/
+  PickerActivity.java`, compiled into the app's dex by build_android.sh
+  with javac and d8) opens ACTION_OPEN_DOCUMENT, reads the file and hands
+  it to the native code through a method ceangal_platform registers
+  (2026-10-06). The app now has code (`hasCode="true"`): that one class.
 - Tests drive the real app on an emulator through `adb shell input`. Taps go
   to the a11y tree's rects × scale, and the user program's tree is logged
   with `debug.ceangal.gui_a11y`.

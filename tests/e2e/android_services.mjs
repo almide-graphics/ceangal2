@@ -1,7 +1,8 @@
 // tests/apps/services on an Android device or emulator: what TalkBack sees
 // (the AccessKit tree, read through uiautomator like any accessibility
 // service), a file saved by ceangal.save_file landing in the shared
-// Downloads folder (MediaStore), and the clipboard write reaching the system.
+// Downloads folder (MediaStore), the clipboard write reaching the system, and
+// open_text_file through the system picker (cancelled, then that file picked).
 //   node tests/e2e/android_services.mjs [apk]
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -35,6 +36,37 @@ async function tap(label) {
   const t = await until((t) => t.nodes.some((n) => n.label === label), `"${label}"`);
   const n = t.nodes.find((n) => n.label === label);
   adb("shell", "input", "tap", String(Math.round((n.x + n.w / 2) * t.scale)), String(Math.round((n.y + n.h / 2) * t.scale)));
+}
+
+// The system picker (DocumentsUI) on screen: its nodes, by uiautomator.
+function screen() {
+  adb("shell", "uiautomator", "dump", "/sdcard/ui.xml");
+  return adb("shell", "cat", "/sdcard/ui.xml");
+}
+async function pickerUp() {
+  for (let i = 0; i < 30; i++) { if (/package="com\.(google\.)?android\.documentsui"/.test(screen())) return; await sleep(500); }
+  throw new Error("the system picker did not open");
+}
+const centre = (b) => { const m = b.match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/); return [Math.round((+m[1] + +m[3]) / 2), Math.round((+m[2] + +m[4]) / 2)]; };
+function find(xml, attr, value) {
+  const re = new RegExp(`<node[^>]*${attr}="${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*bounds="([^"]+)"`);
+  const m = xml.match(re);
+  return m ? centre(m[1]) : null;
+}
+// Tap `name` in the picker, going to Downloads first when it is not shown.
+async function pickFile(name) {
+  for (let i = 0; i < 20; i++) {
+    const xml = screen();
+    const at = find(xml, "text", name);
+    if (at) { adb("shell", "input", "tap", String(at[0]), String(at[1])); return; }
+    // the roots drawer, then Downloads
+    const roots = find(xml, "content-desc", "Show roots");
+    const downloads = find(xml, "text", "Downloads");
+    if (downloads) adb("shell", "input", "tap", String(downloads[0]), String(downloads[1]));
+    else if (roots) adb("shell", "input", "tap", String(roots[0]), String(roots[1]));
+    await sleep(800);
+  }
+  throw new Error(`${name} not found in the picker`);
 }
 
 let ok = false;
@@ -72,9 +104,19 @@ try {
   if (overlays() > before) console.log("ok   copy_text reached the system clipboard (its overlay showed)");
   else console.log("note copy_text: no clipboard overlay seen (older Android shows none)");
 
+  // the system picker: Back cancels it
   await tap("Open");
-  await until((t) => t.nodes.some((n) => n.label.startsWith("file 0 ")), "the open's answer (no picker on Android yet)");
-  console.log("ok   open_text_file answers 0 (no picker on Android yet)");
+  await pickerUp();
+  adb("shell", "input", "keyevent", "KEYCODE_BACK");
+  await until((t) => t.nodes.some((n) => n.label === "file 499 "), "the cancelled open's answer");
+  console.log("ok   open_text_file: the system picker, Back answers 499");
+
+  // and picking the file saved above returns its bytes
+  await tap("Open");
+  await pickerUp();
+  await pickFile("services.txt");
+  await until((t) => t.nodes.some((n) => n.label === "file 200 exported by ceangal"), "the picked file's contents");
+  console.log("ok   open_text_file: services.txt picked in the system picker, its bytes returned");
   ok = true;
 } catch (e) {
   console.log(`FAIL ${e.message}`);

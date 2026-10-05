@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Android file picker**: `ceangal.open_text_file()` opens the system
+  picker (a small framework activity takes its result for the
+  NativeActivity).
 - **Right-to-left text in text fields and the editor**: shown in visual
   order and joined, edited in logical order; selection, syntax colours
   and clicks follow the screen; Left / Right move on screen. (ADR 0012)

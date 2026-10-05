@@ -9,7 +9,8 @@
 # apps/<name>), else $CEANGAL_APP.
 #
 # Needs ANDROID_HOME (platforms;android-$ANDROID_API, build-tools, ndk), Rust
-# targets aarch64-linux-android / x86_64-linux-android, and Java. Signing:
+# targets aarch64-linux-android / x86_64-linux-android, and a JDK (javac:
+# the framework's few Java classes, d8 from build-tools makes the dex). Signing:
 # ANDROID_KEYSTORE (+ ANDROID_KEYSTORE_PASS, ANDROID_KEY_ALIAS,
 # ANDROID_KEY_PASS); without it a debug key in out/android/ is used.
 set -euo pipefail
@@ -109,7 +110,7 @@ cat > "$work/AndroidManifest.xml" <<XML
   <uses-feature android:name="android.hardware.vulkan.version" android:version="0x401000" android:required="false"/>
   <application android:label="@string/app_name"
       android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"
-      android:hasCode="false" android:extractNativeLibs="false"
+      android:hasCode="true" android:extractNativeLibs="false"
       android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules"
       android:theme="@android:style/Theme.Material.NoActionBar">
     <activity android:name="android.app.NativeActivity" android:exported="true"
@@ -122,6 +123,10 @@ cat > "$work/AndroidManifest.xml" <<XML
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <!-- the system file picker, for ceangal.file's open (NativeActivity cannot take its result) -->
+    <activity android:name="dev.ceangal.PickerActivity" android:exported="false"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar"
+        android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection"/>
   </application>
 </manifest>
 XML
@@ -140,6 +145,12 @@ assets="$work/assets"
 mkdir -p "$assets"
 app_copy_assets "$assets"
 
+# ── the framework's Java (ceangal/android) as the app's dex ──
+java_src="$root/ceangal/android"
+mkdir -p "$work/classes" "$work/dex"
+javac --release 11 -nowarn -cp "$jar" -d "$work/classes" $(find "$java_src" -name '*.java')
+"$bt/d8" --release --min-api "$min_api" --lib "$jar" --output "$work/dex" $(find "$work/classes" -name '*.class')
+
 # ── link (proto format for the bundle) and build the base module ──
 "$bt/aapt2" compile --dir "$res" -o "$work/res.zip"
 "$bt/aapt2" link --proto-format -o "$work/linked.apk" -I "$jar" \
@@ -151,6 +162,7 @@ mkdir -p "$mod/manifest"
 (cd "$mod" && unzip -q "$work/linked.apk")
 mv "$mod/AndroidManifest.xml" "$mod/manifest/"
 cp -R "$work/lib" "$mod/lib"
+mkdir -p "$mod/dex" && cp "$work/dex/classes.dex" "$mod/dex/"
 (cd "$mod" && zip -qr "$work/base.zip" .)
 cat > "$work/BundleConfig.json" <<JSON
 { "optimizations": { "uncompressNativeLibraries": { "enabled": true, "alignment": "PAGE_ALIGNMENT_16K" } },

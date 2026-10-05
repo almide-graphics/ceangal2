@@ -284,6 +284,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (`snaidhm/src/colr.almd`), UTS #51 sequences from generated emoji data,
   the font's ccmp through `otl`; caret stops / Backspace by cluster
   (`text.stops`, `backspace_to`; apps/gallery/tests/emoji.test).
+- Android file picker: a framework Java activity (ceangal/android, javac +
+  d8 into the app's dex) takes ACTION_OPEN_DOCUMENT's result and calls
+  native code; the services E2E cancels with Back, then picks the file it
+  saved.
 - RTL editing (ADR 0012): `bidi.layout` (logical, per character),
   `text.LineGeo` (caret / spans / glyphs / nearest), wrapped rows reordered
   on their own, visual arrows (apps/gallery/tests/rtl.test).
@@ -325,8 +329,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: an Android file picker (needs an activity result), a
-   dropdown / menu control. Done: Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
+0. Framework: a dropdown / menu control. Done: Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
@@ -373,10 +376,14 @@ item, the first green CI run on main that deploys Pages, waits for a push
   Android's pthread keys ("out of TLS keys"): the Android build rebuilds std
   with emulated TLS (`-Zbuild-std`, `-Zhas-thread-local=yes`,
   `RUSTC_BOOTSTRAP=1`, clang builtins linked).
-- Android has no file picker (a NativeActivity cannot receive the result): open_text_file
-  answers 0 there. Clipboard (system), save (iOS share sheet, Android
-  shared Downloads) and the iOS document picker work (2026-10-05,
-  tests/e2e/android_services.mjs, ServicesE2E).
+- Clipboard (system), save (iOS share sheet, Android shared Downloads),
+  the iOS document picker and the Android system picker (through
+  dev.ceangal.PickerActivity, 2026-10-06) work (tests/e2e/android_services.mjs,
+  ServicesE2E).
+- almide/almide#3433 — a lambda parameter annotated `List[mod.T]` breaks
+  when another module declares `T`: Indic uses a top-level fn instead.
+- Closure-only functions pinned with `let keep_x = x` (#3296) — but not one
+  taking Bytes (#3419: colr.layers loops instead of mapping).
 - almide/almide#3281 — `@export` outside the root module is dropped: apps carry
   the one-line `ceangal_event` forwarder.
 - almide/almide#3283 — native leg emits the wrong struct for same-shape record

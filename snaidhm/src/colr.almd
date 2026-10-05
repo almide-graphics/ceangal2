@@ -38,11 +38,13 @@ pub fn layers(f: font.Font, t: Colr, gid: Int) -> List[Layer] =
     if at < 0 then []
     else {
       let first = u16(b, at + 2)
-      let count = u16(b, at + 4)
-      list.map(list.range(0, count), (k) => {
+      // a loop, not a closure: palette_color takes Bytes (almide/almide#3296, #3419)
+      var out: List[Layer] = []
+      for k in 0..<u16(b, at + 4) {
         let r = recs + (first + k) * 4
-        { gid: u16(b, r), color: palette_color(b, t.cpal, u16(b, r + 2)) }
-      })
+        list.push(out, { gid: u16(b, r), color: palette_color(b, t.cpal, u16(b, r + 2)) })
+      }
+      out
     }
   }
 
