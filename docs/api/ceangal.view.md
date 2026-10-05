@@ -95,6 +95,9 @@ type View = {
   // Text an assistive technology reads as the node's value (text fields,
   // editors). Called once per committed frame, so keep it cheap.
   value: () -> String,
+  // State an assistive technology announces: 4 selected, 8 checked,
+  // 16 disabled (docs/abi.md §4.4).
+  states: Int,
 }
 ```
 
@@ -116,6 +119,18 @@ A row whose children flow onto further lines when they do not fit.
 
 ```almide
 pub fn box(child: View) -> View
+```
+
+### `with_child`
+
+```almide
+pub fn with_child(v: View, child: View) -> View
+```
+
+The view with one more child after its others (on top of them, when it
+is absolute).
+
+```almide
 pub fn empty() -> View
 pub fn spacer() -> View
 pub fn custom(key: String, paint: Painter) -> View
@@ -251,3 +266,28 @@ the words of a wrapped paragraph).
 ```almide
 pub fn value(v: View, f: () -> String) -> View
 ```
+
+### `checked`
+
+```almide
+pub fn checked(v: View, on: Bool) -> View
+```
+
+Announced as checked (a checkbox, switch or radio button: give it that role).
+
+### `selected`
+
+```almide
+pub fn selected(v: View, on: Bool) -> View
+```
+
+Announced as the selected one (a tab, a list item, a segment).
+
+### `disabled`
+
+```almide
+pub fn disabled(v: View, on: Bool) -> View
+```
+
+Announced as unavailable. It only marks the view: leave out its handlers
+too (the ceangal.widgets controls do).

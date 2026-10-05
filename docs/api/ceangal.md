@@ -326,3 +326,19 @@ pub fn rect_of(key: String) -> lay.LayoutRect
 ```
 
 The laid-out rect of the view with `key` in the last frame (logical px).
+
+### `is_hovered`
+
+```almide
+pub fn is_hovered(key: String) -> Bool
+```
+
+The mouse is over the clickable view with `key` (never on touch screens).
+
+### `is_pressed`
+
+```almide
+pub fn is_pressed(key: String) -> Bool
+```
+
+The view with `key` is being pressed (mouse button or finger down on it).

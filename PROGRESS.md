@@ -247,6 +247,21 @@ item, the first green CI run on main that deploys Pages, waits for a push
   platform jobs green. The tag is lightweight (an annotated tag makes
   `git clone --branch` warn in every app's first build).
 
+### Framework: standard controls, manifest checks (2026-10-05, ADR 0008)
+- `ceangal.widgets`: buttons, checkbox, switch, radio group, segmented,
+  slider, progress, text field, text styles, card, list row, dialog; Theme
+  light / dark / system. Keyboard (Tab, Enter/Space, arrows), focus ring,
+  hover / press, roles and states for screen readers.
+- Runtime: `is_hovered`, `is_pressed`, `v.checked/selected/disabled`, roles
+  15–20 on both hosts, AccessKit increment/decrement.
+- Layout: wrap rows inside columns, percentage sizes of in-flow children,
+  absolute left+right / top+bottom stretch (tests added).
+- `apps/gallery` + `tests/e2e/gallery.mjs` (CI `framework` job). The
+  `ceangal new` template uses the controls.
+- `ceangal.toml` checks: unknown keys warn with a suggestion; types, ID /
+  version / colour / build forms and paths are errors
+  (`tests/cli/manifest_check.sh`).
+
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
   `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
@@ -289,6 +304,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- almide/almide#3424 — a failing test in the ceangal package shows as a
+  rustc error (`almide_rt_ceangal_v0_dispatch` not found): run
+  `almide test --target wasm` to see the assertion.
 - almide/almide#3417 — `println` output is held until exit in programs
   built by the standard codegen: `ceangal dev` prints through `dev_say`.
 - almide/almide#3419 — a top-level fn with a `Bytes` parameter as a value

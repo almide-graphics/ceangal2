@@ -950,3 +950,45 @@ test "yoga: padding_percentage_asymmetric" {
   // child at x=20 (5% of 400)
   assert(approx(r[1].x, 20.0))
 }
+
+// A wrapping row with no width of its own, stretched by its column, is as
+// tall as its lines (Yoga's wrapped_row_within_align_items_* set the
+// width; here the column gives it).
+test "stretched wrap_row grows its column" {
+  let root = lay.col([
+    lay.row([lay.leaf(100.0, 20.0), lay.leaf(100.0, 20.0), lay.leaf(100.0, 20.0)]) |> lay.with_wrap(WRAP),
+    lay.leaf(50.0, 10.0),
+  ]) |> lay.with_size(250.0, UNDEF)
+  let r = lay.layout(root, 250.0, 500.0)
+  assert(approx(r[1].h, 40.0))
+  assert(approx(r[4].y, 20.0))
+  assert(approx(r[5].y, 40.0))
+  assert(approx(r[0].h, 50.0))
+}
+
+// Percentage sizes of in-flow children resolve against the parent's inner size.
+test "percent width and height of flex children" {
+  let root = lay.col([
+    lay.node_defaults() |> lay.with_width_pct(50.0) |> lay.with_height_pct(25.0),
+    lay.row([lay.node_defaults() |> lay.with_width_pct(40.0) |> lay.with_height_pct(100.0)]) |> lay.with_size(UNDEF, 10.0),
+  ]) |> lay.with_size(200.0, 200.0) |> lay.with_padding(lay.edges_all(10.0))
+  let r = lay.layout(root, 200.0, 200.0)
+  assert(approx(r[1].w, 90.0))
+  assert(approx(r[1].h, 45.0))
+  assert(approx(r[2].y, 55.0))
+  assert(approx(r[3].w, 72.0))
+  assert(approx(r[3].h, 10.0))
+}
+
+// An absolute child with both left and right (top and bottom) and no size
+// spans between them.
+test "absolute insets on both sides stretch" {
+  let root = lay.col([
+    lay.node_defaults() |> lay.with_position(lay.POSITION_ABSOLUTE, 5.0, 10.0, 15.0, 20.0),
+  ]) |> lay.with_size(200.0, 100.0)
+  let r = lay.layout(root, 200.0, 100.0)
+  assert(approx(r[1].x, 20.0))
+  assert(approx(r[1].y, 5.0))
+  assert(approx(r[1].w, 170.0))
+  assert(approx(r[1].h, 80.0))
+}

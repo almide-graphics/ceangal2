@@ -20,6 +20,7 @@ OUT = ROOT / "docs/api"
 MODULES = [
     ("ceangal", "ceangal/src/mod.almd", "the app: run, focus, keyboard, viewport, clipboard"),
     ("ceangal.view", "ceangal/src/view.almd", "views and modifiers: text, col, row, styles, events, accessibility"),
+    ("ceangal.widgets", "ceangal/src/widgets.almd", "standard controls: buttons, checkboxes, switches, sliders, dialogs…"),
     ("ceangal.editor", "ceangal/src/editor.almd", "a multi-line text editor view"),
     ("ceangal.storage", "ceangal/src/storage.almd", "saved values and secrets"),
     ("ceangal.http", "ceangal/src/http.almd", "HTTP requests"),

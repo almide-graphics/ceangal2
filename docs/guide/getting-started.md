@@ -66,7 +66,7 @@ itself, and a build error shows on the page until you fix it.
 ```almide
 import ceangal
 import ceangal.view as v
-import snaidhm
+import ceangal.widgets as w
 
 var count = 0
 
@@ -75,26 +75,30 @@ fn bump() -> Unit = { count = count + 1 }
 // Functions reached only from closures (almide/almide#3296).
 let keep_bump = bump
 
-fn view() -> v.View =
+fn view() -> v.View = {
+  // light or dark, as the system is (and it follows when that changes)
+  let th = w.system()
+  ceangal.set_background(th.bg)
   v.col([
-    v.text("Hello") |> v.font(28.0) |> v.bold(),
-    v.text(int.to_string(count)) |> v.font(64.0),
-    v.text("Count") |> v.px(24.0) |> v.py(12.0) |> v.rounded(10.0) |> v.bg(snaidhm.hex(0x7AA2F7))
-      |> v.on_click(() => bump()) |> v.role(3) |> v.label("Count"),
+    w.title(th, "Hello"),
+    v.text(int.to_string(count)) |> v.font(64.0) |> v.bold() |> v.color(th.text),
+    w.button(th, "Count", () => bump()),
   ]) |> v.gap(20.0) |> v.align(v.Middle) |> v.justify(v.Center) |> v.fill()
+}
 
 // The web host calls into the app through this export.
 @export(wasm, "ceangal_event")
 fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
   ceangal.dispatch(kind, a, b, x, y, z, w)
 
-effect fn main() -> Unit =
-  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)))
+effect fn main() -> Unit = ceangal.run(ceangal.app(view))
 ```
 
 The view is a function of the app's state. A click handler changes the
-state, and ceangal calls `view()` again and redraws. [Building UI](ui.md)
-covers views, layout and input.
+state, and ceangal calls `view()` again and redraws. `w.button` is one of
+the [standard controls](ui.md#controls), styled by a theme that follows
+the system's light or dark mode. [Building UI](ui.md) covers views,
+layout and input.
 
 ## Run it everywhere
 

@@ -99,6 +99,9 @@ type View = {
   // Text an assistive technology reads as the node's value (text fields,
   // editors). Called once per committed frame, so keep it cheap.
   value: () -> String,
+  // State an assistive technology announces: 4 selected, 8 checked,
+  // 16 disabled (docs/abi.md §4.4).
+  states: Int,
 }
 
 // Default handlers are lambdas, not named fns: a named fn stored as a value
@@ -109,7 +112,7 @@ fn node(kind: Int, children: List[View], content: String) -> View = {
   on_wheel: (x, y, dx, dy) => false, wheel: false, scroller: false,
   focusable: false, text_input: false, keeps_focus: false,
   on_key: (phase, key, mods) => false, on_text: (kind, t, c) => false, on_focus: (f) => (),
-  paint: (x, y, w, h) => (), label: "", role: 0, value: () => "",
+  paint: (x, y, w, h) => (), label: "", role: 0, value: () => "", states: 0,
 }
 
 // ── Constructors ──
@@ -120,6 +123,9 @@ pub fn row(children: List[View]) -> View = node(ROW, children, "")
 // A row whose children flow onto further lines when they do not fit.
 pub fn wrap_row(children: List[View]) -> View = { ...node(ROW, children, ""), style: { ...default_style, wrap: true, align: 0 } }
 pub fn box(child: View) -> View = node(COL, [child], "")
+// The view with one more child after its others (on top of them, when it
+// is absolute).
+pub fn with_child(v: View, child: View) -> View = { ...v, children: v.children + [child] }
 pub fn empty() -> View = node(BOX, [], "")
 pub fn spacer() -> View = node(BOX, [], "") |> grow(1.0)
 pub fn custom(key: String, paint: Painter) -> View = { ...node(CUSTOM, [], ""), key: key, paint: paint }
@@ -218,3 +224,16 @@ pub fn role(v: View, r: Int) -> View = { ...v, role: r }
 // the words of a wrapped paragraph).
 pub fn a11y_hidden(v: View) -> View = { ...v, role: -1 }
 pub fn value(v: View, f: () -> String) -> View = { ...v, value: f }
+
+fn with_state(v: View, bit: Int, on: Bool) -> View = {
+  let has = (v.states / bit) % 2 == 1
+  { ...v, states: if on and not has then v.states + bit else if not on and has then v.states - bit else v.states }
+}
+
+// Announced as checked (a checkbox, switch or radio button: give it that role).
+pub fn checked(v: View, on: Bool) -> View = with_state(v, 8, on)
+// Announced as the selected one (a tab, a list item, a segment).
+pub fn selected(v: View, on: Bool) -> View = with_state(v, 4, on)
+// Announced as unavailable. It only marks the view: leave out its handlers
+// too (the ceangal.widgets controls do).
+pub fn disabled(v: View, on: Bool) -> View = with_state(v, 16, on)

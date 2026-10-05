@@ -1,0 +1,364 @@
+// Standard controls on top of ceangal.view: buttons, checkboxes, switches,
+// radio groups, segmented controls, sliders, progress bars, text fields,
+// cards, list rows and dialogs, styled by one Theme.
+//
+//   import ceangal.widgets as w
+//   let th = w.system()       // light or dark, following the system
+//   w.button(th, "Save", () => save())
+//   w.checkbox(th, "Remember me", remember, (on) => set_remember(on))
+//
+// Every control is keyboard- and screen-reader-ready: it is a Tab stop
+// (Enter or Space activates it, arrows move a slider), has the right
+// role, label and state for assistive technology, shows a focus ring, and
+// reacts to hover and press. A control's key, which focus and hover go
+// by, comes from its label, so give the controls on one screen distinct
+// labels (which screen readers need anyway: "Remove Milk", not "Remove").
+//
+// Controls hold no state: pass the current value in and change it in the
+// callback, as with everything else in a view.
+
+import snaidhm
+import self as ui
+import self.view as v
+import self.editor as ed
+
+type Theme = {
+  bg: snaidhm.Color,        // the window
+  surface: snaidhm.Color,   // cards, fields, inactive controls
+  raised: snaidhm.Color,    // hovered surfaces, tracks
+  text: snaidhm.Color,
+  dim: snaidhm.Color,       // secondary text, placeholders
+  accent: snaidhm.Color,    // primary buttons, checked controls, links
+  on_accent: snaidhm.Color, // text on the accent
+  border: snaidhm.Color,
+  focus: snaidhm.Color,     // the keyboard focus ring
+  danger: snaidhm.Color,
+  radius: Float,
+  font_size: Float,
+  editor: ed.Theme,         // text fields
+}
+
+pub fn dark() -> Theme = {
+  bg: snaidhm.hex(0x1A1B26), surface: snaidhm.hex(0x24283B), raised: snaidhm.hex(0x2F3549),
+  text: snaidhm.hex(0xE6E8F0), dim: snaidhm.hex(0x8A90A8), accent: snaidhm.hex(0x7AA2F7),
+  on_accent: snaidhm.hex(0x1A1B26), border: snaidhm.hex(0x3B4261), focus: snaidhm.hex(0x7DCFFF),
+  danger: snaidhm.hex(0xF7768E), radius: 8.0, font_size: 15.0, editor: ed.dark_theme(),
+}
+
+pub fn light() -> Theme = {
+  bg: snaidhm.hex(0xF7F8FA), surface: snaidhm.hex(0xFFFFFF), raised: snaidhm.hex(0xEEF0F4),
+  text: snaidhm.hex(0x1A1B26), dim: snaidhm.hex(0x6B7280), accent: snaidhm.hex(0x2563EB),
+  on_accent: snaidhm.hex(0xFFFFFF), border: snaidhm.hex(0xD5DAE1), focus: snaidhm.hex(0x2563EB),
+  danger: snaidhm.hex(0xDC2626), radius: 8.0, font_size: 15.0, editor: ed.light_theme(),
+}
+
+// dark() or light(), as the system's appearance is now (it can change while
+// the app runs; build the theme in view() so it follows).
+pub fn system() -> Theme = if ui.is_dark() then dark() else light()
+
+fn clear() -> snaidhm.Color = snaidhm.rgba(0.0, 0.0, 0.0, 0.0)
+
+// `a` moved toward `b` by t (0–1).
+pub fn mix(a: snaidhm.Color, b: snaidhm.Color, t: Float) -> snaidhm.Color =
+  snaidhm.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
+
+// The colour of an interactive surface: lighter (or darker) when hovered,
+// more when pressed.
+fn live(th: Theme, base: snaidhm.Color, key: String) -> snaidhm.Color =
+  if ui.is_pressed(key) then mix(base, th.text, 0.18)
+  else if ui.is_hovered(key) then mix(base, th.text, 0.08)
+  else base
+
+// The focus ring: a border in the focus colour while the control has focus.
+fn ring(view: v.View, th: Theme, key: String, idle: snaidhm.Color) -> v.View =
+  view |> v.border(2.0, if ui.is_focused(key) then th.focus else idle)
+
+// Enter or Space while focused runs `f`.
+fn activates(view: v.View, f: () -> Unit) -> v.View =
+  view |> v.on_key((phase, code, mods) => if phase != 1 and (code == 1 or code == 60) then { f(); true } else false)
+
+// ── Text ──
+
+// A screen's title: large, bold, announced as a heading.
+pub fn title(th: Theme, s: String) -> v.View = v.text(s) |> v.font(26.0) |> v.bold() |> v.color(th.text) |> v.role(10)
+// A section's heading.
+pub fn heading(th: Theme, s: String) -> v.View = v.text(s) |> v.font(18.0) |> v.bold() |> v.color(th.text) |> v.role(10)
+pub fn body(th: Theme, s: String) -> v.View = v.text(s) |> v.font(th.font_size) |> v.color(th.text)
+// Secondary text: hints, counts, timestamps.
+pub fn caption(th: Theme, s: String) -> v.View = v.text(s) |> v.font(13.0) |> v.color(th.dim)
+// Text that opens `url` in the browser.
+pub fn link(th: Theme, s: String, url: String) -> v.View = {
+  let key = "link:" + s
+  v.text(s) |> v.font(th.font_size) |> v.color(if ui.is_hovered(key) then mix(th.accent, th.text, 0.3) else th.accent)
+    |> v.focusable(key) |> v.on_click(() => ui.open_url(url)) |> activates(() => ui.open_url(url))
+    |> v.role(11) |> v.label(s)
+}
+
+// ── Buttons ──
+
+// 0 primary, 1 secondary, 2 danger, 3 plain (text only)
+fn button_of(th: Theme, title: String, kind: Int, enabled: Bool, on: () -> Unit) -> v.View = {
+  let key = "button:" + title
+  let fill = if kind == 0 then th.accent else if kind == 2 then th.danger else if kind == 1 then th.surface else clear()
+  let ink = if kind == 0 or kind == 2 then th.on_accent else if kind == 3 then th.accent else th.text
+  // a plain button shows a tint of its text colour only under the pointer
+  let shown = if kind == 3 then
+      (if ui.is_pressed(key) then snaidhm.with_alpha(th.accent, 0.22) else if ui.is_hovered(key) then snaidhm.with_alpha(th.accent, 0.12) else clear())
+    else live(th, fill, key)
+  let edge = if kind == 1 then th.border else shown
+  let base = v.text(title) |> v.font(th.font_size) |> v.bold()
+    |> v.px(18.0) |> v.py(9.0) |> v.rounded(th.radius) |> v.center()
+    |> v.role(3) |> v.label(title)
+  if not enabled then
+    // dimmed against the window rather than see-through, so no edge shows twice
+    base |> v.color(mix(ink, th.bg, 0.45)) |> v.bg(if kind == 3 then clear() else mix(fill, th.bg, 0.55))
+      |> v.border(2.0, if kind == 1 then mix(th.border, th.bg, 0.5) else clear()) |> v.disabled(true)
+  else base |> v.color(ink) |> v.bg(shown) |> ring(th, key, edge)
+    |> v.focusable(key) |> v.on_click(on) |> activates(on)
+}
+
+// The main action: filled with the accent colour.
+pub fn button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 0, true, on)
+// Another action: outlined.
+pub fn secondary_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 1, true, on)
+// A destructive action.
+pub fn danger_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 2, true, on)
+// A light action: accent-coloured text.
+pub fn text_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 3, true, on)
+// A primary button that can be turned off (shown dimmed, announced as unavailable).
+pub fn button_enabled(th: Theme, title: String, enabled: Bool, on: () -> Unit) -> v.View = button_of(th, title, 0, enabled, on)
+
+// ── Choices ──
+
+// A check mark in the box's rect (logical px).
+fn tick(c: snaidhm.Color) -> v.View =
+  v.custom("tick", (x, y, w, h) => {
+    let k = ui.pixel_scale()
+    let t = 2.2 * k
+    // two strokes as thin rounded bars: down-right, then up-right
+    let x0 = (x + w * 0.22) * k
+    let y0 = (y + h * 0.52) * k
+    let x1 = (x + w * 0.42) * k
+    let y1 = (y + h * 0.72) * k
+    let x2 = (x + w * 0.80) * k
+    let y2 = (y + h * 0.30) * k
+    bar(x0, y0, x1, y1, t, c)
+    bar(x1, y1, x2, y2, t, c)
+  }) |> v.fill()
+
+// A line from (x0, y0) to (x1, y1), `t` thick, as dots along it (snaidhm
+// draws axis-aligned rounded rects).
+fn bar(x0: Float, y0: Float, x1: Float, y1: Float, t: Float, c: snaidhm.Color) -> Unit = {
+  let dx = x1 - x0
+  let dy = y1 - y0
+  let len = float.sqrt(dx * dx + dy * dy)
+  let steps = int.max(2, float.to_int(len / (t * 0.35)))
+  for i in 0..<steps + 1 {
+    let f = int.to_float(i) / int.to_float(steps)
+    snaidhm.fill(x0 + dx * f - t / 2.0, y0 + dy * f - t / 2.0, t, t, t / 2.0, c)
+  }
+}
+
+// Functions reached only from closures (almide/almide#3296).
+let keep_bar = bar
+
+// A checkbox and its label; the whole row toggles it.
+pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: (Bool) -> Unit) -> v.View = {
+  let key = "checkbox:" + label
+  let flip = () => on_change(not checked)
+  let mark = v.box(if checked then tick(th.on_accent) else v.empty())
+    |> v.size(20.0, 20.0) |> v.rounded(5.0)
+    |> v.bg(if checked then live(th, th.accent, key) else live(th, th.surface, key))
+    |> v.border(2.0, if ui.is_focused(key) then th.focus else if checked then th.accent else th.border)
+  v.row([mark, v.text(label) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden()])
+    |> v.gap(10.0) |> v.align(v.Middle) |> v.py(4.0)
+    |> v.focusable(key) |> v.on_click(flip) |> activates(flip)
+    |> v.role(12) |> v.label(label) |> v.checked(checked)
+}
+
+// A switch: a setting that takes effect at once.
+pub fn switch(th: Theme, label: String, on: Bool, on_change: (Bool) -> Unit) -> v.View = {
+  let key = "switch:" + label
+  let flip = () => on_change(not on)
+  let knob = v.empty() |> v.size(20.0, 20.0) |> v.rounded(10.0) |> v.bg(if on then th.on_accent else mix(th.surface, th.text, 0.4))
+    |> v.absolute() |> v.top(3.0) |> v.left(if on then 23.0 else 3.0)
+  let track = v.box(knob) |> v.size(46.0, 26.0) |> v.rounded(13.0)
+    |> v.bg(if on then live(th, th.accent, key) else live(th, th.raised, key))
+    |> v.border(2.0, if ui.is_focused(key) then th.focus else if on then th.accent else th.border)
+  v.row([v.text(label) |> v.font(th.font_size) |> v.color(th.text) |> v.grow(1.0) |> v.a11y_hidden(), track])
+    |> v.gap(12.0) |> v.align(v.Middle) |> v.py(4.0)
+    |> v.focusable(key) |> v.on_click(flip) |> activates(flip)
+    |> v.role(15) |> v.label(label) |> v.checked(on)
+}
+
+// One choice out of a few, as a column of radio buttons.
+pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+  var rows: List[v.View] = []
+  for i in 0..<list.len(options) {
+    let opt = options[i]
+    let key = "radio:" + label + ":" + opt
+    let picked = i == index
+    let pick = () => on_select(i)
+    let dot = v.box(if picked then v.empty() |> v.size(10.0, 10.0) |> v.rounded(5.0) |> v.bg(th.on_accent) else v.empty())
+      |> v.size(20.0, 20.0) |> v.rounded(10.0) |> v.center()
+      |> v.bg(if picked then live(th, th.accent, key) else live(th, th.surface, key))
+      |> v.border(2.0, if ui.is_focused(key) then th.focus else if picked then th.accent else th.border)
+    list.push(rows, v.row([dot, v.text(opt) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden()])
+      |> v.gap(10.0) |> v.align(v.Middle) |> v.py(4.0)
+      |> v.focusable(key) |> v.on_click(pick) |> activates(pick)
+      // arrows move the choice, as in a native radio group
+      |> v.on_key((phase, code, mods) =>
+        if phase != 1 and (code == 13 or code == 11) and i + 1 < list.len(options) then { on_select(i + 1); ui.focus("radio:" + label + ":" + options[i + 1]); true }
+        else if phase != 1 and (code == 12 or code == 10) and i > 0 then { on_select(i - 1); ui.focus("radio:" + label + ":" + options[i - 1]); true }
+        else false)
+      |> v.role(18) |> v.label(opt) |> v.checked(picked))
+  }
+  v.col(rows) |> v.gap(2.0) |> v.role(19) |> v.label(label)
+}
+
+// One choice out of two to five, as joined buttons (a tab bar, a view switcher).
+pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+  var segs: List[v.View] = []
+  for i in 0..<list.len(options) {
+    let opt = options[i]
+    let key = "segment:" + label + ":" + opt
+    let picked = i == index
+    let pick = () => on_select(i)
+    list.push(segs, v.text(opt) |> v.font(14.0) |> v.bold() |> v.color(if picked then th.on_accent else th.text)
+      |> v.px(14.0) |> v.py(7.0) |> v.rounded(th.radius - 2.0) |> v.grow(1.0) |> v.center()
+      |> v.bg(if picked then th.accent else live(th, th.surface, key))
+      |> v.border(2.0, if ui.is_focused(key) then th.focus else if picked then th.accent else th.surface)
+      |> v.focusable(key) |> v.on_click(pick) |> activates(pick)
+      |> v.on_key((phase, code, mods) =>
+        if phase != 1 and code == 11 and i + 1 < list.len(options) then { on_select(i + 1); ui.focus("segment:" + label + ":" + options[i + 1]); true }
+        else if phase != 1 and code == 10 and i > 0 then { on_select(i - 1); ui.focus("segment:" + label + ":" + options[i - 1]); true }
+        else false)
+      |> v.role(8) |> v.label(opt) |> v.selected(picked))
+  }
+  v.row(segs) |> v.gap(2.0) |> v.padding(3.0) |> v.rounded(th.radius) |> v.bg(th.surface)
+    |> v.border(1.0, th.border) |> v.role(9) |> v.label(label)
+}
+
+// ── Values ──
+
+fn clamp(x: Float, lo: Float, hi: Float) -> Float = float.max(lo, float.min(hi, x))
+
+fn snap(x: Float, lo: Float, hi: Float, step: Float) -> Float =
+  if step <= 0.0 then clamp(x, lo, hi) else clamp(lo + float.round((x - lo) / step) * step, lo, hi)
+
+// A number shown without a trailing ".0".
+fn num(x: Float) -> String = if float.round(x) == x then int.to_string(float.to_int(x)) else float.to_string(x)
+
+let keep_snap = snap
+let keep_num = num
+
+// A value from `lo` to `hi` (in steps of `step`; 0 = any). Drag or tap the
+// track; with focus, Left / Right (and a screen reader's adjust gesture)
+// move it a step (a twentieth of the range when step is 0).
+pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step: Float, on_change: (Float) -> Unit) -> v.View = {
+  let key = "slider:" + label
+  let span = if hi > lo then hi - lo else 1.0
+  let f = clamp((value - lo) / span, 0.0, 1.0)
+  let nudge = if step > 0.0 then step else span / 20.0
+  let track = v.custom(key + ":track", (x, y, w, h) => {
+    let k = ui.pixel_scale()
+    let ty = (y + h / 2.0 - 3.0) * k
+    snaidhm.fill(x * k, ty, w * k, 6.0 * k, 3.0 * k, th.raised)
+    snaidhm.fill(x * k, ty, w * f * k, 6.0 * k, 3.0 * k, th.accent)
+    let r = 10.0
+    let cx = x + r + (w - 2.0 * r) * f
+    let ring_c = if ui.is_focused(key) then th.focus else th.accent
+    snaidhm.fill((cx - r - 2.0) * k, (y + h / 2.0 - r - 2.0) * k, (r + 2.0) * 2.0 * k, (r + 2.0) * 2.0 * k, (r + 2.0) * k, ring_c)
+    snaidhm.fill((cx - r + 2.0) * k, (y + h / 2.0 - r + 2.0) * k, (r - 2.0) * 2.0 * k, (r - 2.0) * 2.0 * k, (r - 2.0) * k, th.surface)
+  }) |> v.h(28.0) |> v.grow(1.0)
+  v.row([
+    v.text(label) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden(),
+    track,
+    v.text(num(value)) |> v.font(13.0) |> v.color(th.dim) |> v.min_w(32.0) |> v.a11y_hidden(),
+  ]) |> v.gap(12.0) |> v.align(v.Middle)
+    |> v.focusable(key)
+    |> v.on_pointer((p) => {
+      // the track starts after the label; the pointer's x is measured on the row
+      let r = ui.rect_of(key + ":track")
+      let row = ui.rect_of(key)
+      let tx = p.x - (r.x - row.x)
+      if p.phase == 0 or (p.phase == 1 and p.buttons > 0) or (p.phase == 1 and p.id >= 1) then {
+        on_change(snap(lo + clamp((tx - 10.0) / float.max(1.0, r.w - 20.0), 0.0, 1.0) * span, lo, hi, step))
+        true
+      } else p.phase == 2
+    })
+    |> v.on_key((phase, code, mods) =>
+      if phase != 1 and code == 11 then { on_change(snap(value + nudge, lo, hi, step)); true }
+      else if phase != 1 and code == 10 then { on_change(snap(value - nudge, lo, hi, step)); true }
+      else if phase != 1 and code == 14 then { on_change(lo); true }
+      else if phase != 1 and code == 15 then { on_change(hi); true }
+      else false)
+    |> v.role(16) |> v.label(label) |> v.value(() => num(value))
+}
+
+// How far a task has got: `fraction` from 0 to 1.
+pub fn progress(th: Theme, label: String, fraction: Float) -> v.View = {
+  let f = clamp(fraction, 0.0, 1.0)
+  v.box(v.empty() |> v.h_pct(100.0) |> v.w_pct(f * 100.0) |> v.rounded(4.0) |> v.bg(th.accent))
+    |> v.h(8.0) |> v.rounded(4.0) |> v.bg(th.raised) |> v.clip()
+    |> v.role(20) |> v.label(label) |> v.value(() => int.to_string(float.to_int(f * 100.0)) + "%")
+}
+
+// ── Text entry ──
+
+// A one-line text field: `get` / `set` hold its ed.Editor (make one with
+// ed.text_field(text, placeholder)). `label` is what a screen reader says.
+// (The editor paints its whole rect, so the border is on a box around it.)
+pub fn text_field(th: Theme, key: String, label: String, get: () -> ed.Editor, set: (ed.Editor) -> Unit) -> v.View =
+  v.box(ed.field(key, get, set, { ...th.editor, bg: th.surface }) |> v.grow(1.0) |> v.label(label))
+    |> v.h(42.0) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
+    |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
+
+// ── Containers ──
+
+// A group of related content on a raised surface.
+pub fn card(th: Theme, children: List[v.View]) -> v.View =
+  v.col(children) |> v.gap(10.0) |> v.padding(16.0) |> v.rounded(th.radius + 4.0)
+    |> v.bg(th.surface) |> v.border(1.0, th.border)
+
+// A thin line between rows.
+pub fn divider(th: Theme) -> v.View = v.empty() |> v.h(1.0) |> v.bg(th.border) |> v.a11y_hidden()
+
+// A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
+pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> v.View = {
+  let key = "item:" + title
+  let texts = if subtitle == "" then [v.text(title) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden()]
+    else [v.text(title) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden(),
+          v.text(subtitle) |> v.font(13.0) |> v.color(th.dim) |> v.a11y_hidden()]
+  v.col(texts) |> v.gap(2.0) |> v.px(14.0) |> v.py(10.0) |> v.rounded(th.radius)
+    |> v.bg(live(th, th.bg, key)) |> ring(th, key, live(th, th.bg, key))
+    |> v.focusable(key) |> v.on_click(on) |> activates(on)
+    |> v.role(7) |> v.label(if subtitle == "" then title else title + ", " + subtitle)
+}
+
+// A dialog over `base`: a dimmed backdrop (clicking it calls `on_dismiss`)
+// and a card with a title, content and a row of actions. Show it by
+// returning `dialog(...)` from view() while it is open, `base` otherwise:
+//
+//   fn view() -> v.View = if confirming then w.dialog(th, page(), "Delete?", [w.body(th, "…")],
+//     [w.secondary_button(th, "Cancel", () => close()), w.danger_button(th, "Delete", () => delete())], () => close())
+//     else page()
+//
+// Escape is the app's to handle (ceangal.on_key), as it may mean more than
+// closing the dialog.
+pub fn dialog(th: Theme, base: v.View, title: String, content: List[v.View], actions: List[v.View], on_dismiss: () -> Unit) -> v.View = {
+  let card_view = v.col([heading(th, title)] + content + [v.row(actions) |> v.gap(10.0) |> v.justify(v.End)])
+    |> v.gap(14.0) |> v.padding(22.0) |> v.rounded(th.radius + 6.0) |> v.bg(th.surface)
+    |> v.border(1.0, th.border) |> v.shadow(30.0, 10.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.35))
+    |> v.max_w(440.0) |> v.w_pct(90.0)
+    // clicks on the card stay on the card
+    |> v.on_pointer((p) => true)
+    |> v.role(17) |> v.label(title)
+  let backdrop = v.box(card_view) |> v.center()
+    |> v.bg(snaidhm.rgba(0.0, 0.0, 0.0, 0.45))
+    |> v.absolute() |> v.top(0.0) |> v.left(0.0) |> v.right(0.0) |> v.bottom(0.0)
+    |> v.on_click(on_dismiss) |> v.cursor(0) |> v.a11y_hidden()
+    // a click on it takes focus from what is underneath
+    |> v.focusable("dialog:" + title)
+  v.box(base |> v.grow(1.0)) |> v.fill() |> v.with_child(backdrop)
+}

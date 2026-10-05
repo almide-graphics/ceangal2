@@ -467,7 +467,7 @@ fn compute_size(node: Node, avail_w: Float, avail_h: Float) -> Size = {
       let inner_m = if is_defined(am) then am - pm else UNDEFINED
 
       // Use line-based computation (handles both wrap and nowrap)
-      let lines = build_lines(node, if is_defined(inner_m) then inner_m else 99999.0)
+      let lines = build_lines(node, if is_defined(inner_m) then inner_m else 99999.0, if is_defined(ac) then ac - pc else UNDEFINED)
       let n_lines = list.len(lines)
 
       // Resolve flex per line
@@ -506,9 +506,32 @@ fn compute_size(node: Node, avail_w: Float, avail_h: Float) -> Size = {
   }
 }
 
+// An in-flow child with a percentage width / height, made definite now that
+// the parent's inner box is known (absolute children resolve theirs below).
+fn sized_by_parent(c: Node, inner_w: Float, inner_h: Float) -> Node =
+  if c.position == POSITION_ABSOLUTE or (not is_defined(c.width_pct) and not is_defined(c.height_pct)) then c
+  else {
+    ...c,
+    width: if is_defined(c.width_pct) and is_defined(inner_w) then inner_w * c.width_pct / 100.0 else c.width,
+    height: if is_defined(c.height_pct) and is_defined(inner_h) then inner_h * c.height_pct / 100.0 else c.height,
+  }
+
+let keep_sized_by_parent = sized_by_parent
+
+// The width a column's child is measured at: its own, else the column's
+// inner width less its margins, within its min / max.
+fn column_child_width(child: Node, inner_cross: Float, dir: Int) -> Float =
+  if is_defined(child.width) then child.width
+  else if not is_defined(inner_cross) then UNDEFINED
+  else clamp_dim(inner_cross - mar_cross(child, dir), child.min_width, child.max_width)
+
 // ── Build flex lines (wrap support) ──
 
-fn build_lines(node: Node, inner_main: Float) -> List[FlexLine] = {
+// `inner_cross`: the container's inner cross size when known. A column
+// measures each child's height at that width, so a child whose content
+// wraps (a wrapping row, inside however many columns) gets the height of
+// all its lines rather than of one.
+fn build_lines(node: Node, inner_main: Float, inner_cross: Float) -> List[FlexLine] = {
   let dir = node.direction
   let n_ch = list.len(node.children)
   let do_wrap = node.wrap != WRAP_NONE and is_defined(inner_main)
@@ -527,8 +550,8 @@ fn build_lines(node: Node, inner_main: Float) -> List[FlexLine] = {
               else {
                 // Pass UNDEFINED on main axis → child returns content size, not fill
                 let cs = compute_size(child,
-                  if is_row(dir) then UNDEFINED else UNDEFINED,
-                  if is_row(dir) then UNDEFINED else UNDEFINED)
+                  if is_row(dir) then UNDEFINED else column_child_width(child, inner_cross, dir),
+                  UNDEFINED)
                 main_of(cs, dir)
               }
       let item_main = b + mar_main(child, dir)
@@ -789,8 +812,12 @@ fn do_layout(node: Node, x: Float, y: Float, w: Float, h: Float,
       let child_clip_w = if node.overflow != OVERFLOW_VISIBLE then w else clip_w
       let child_clip_h = if node.overflow != OVERFLOW_VISIBLE then h else clip_h
 
+      // Percentage sizes of in-flow children are of this inner box
+      let kids = list.map(node.children, (c) => sized_by_parent(c, inner_w, inner_h))
+      let node = { ...node, children: kids }
+
       // Build and resolve flex lines
-      let raw_lines = build_lines(node, inner_main)
+      let raw_lines = build_lines(node, inner_main, inner_cross)
       var lines: List[FlexLine] = []
       for rl in raw_lines {
         lines = lines + [resolve_line_flex(node, rl, inner_main)]
@@ -860,11 +887,14 @@ fn do_layout(node: Node, x: Float, y: Float, w: Float, h: Float,
           let aw = clamp_dim(
             if is_defined(child.width_pct) then inner_w * child.width_pct / 100.0
             else if is_defined(child.width) then child.width
+            // left and right both given: the span between them
+            else if is_defined(child.pos_left) and is_defined(child.pos_right) then inner_w - child.pos_left - child.pos_right
             else { let cs = compute_size(child, inner_w, inner_h); cs.w },
             child.min_width, child.max_width)
           let ah = clamp_dim(
             if is_defined(child.height_pct) then inner_h * child.height_pct / 100.0
             else if is_defined(child.height) then child.height
+            else if is_defined(child.pos_top) and is_defined(child.pos_bottom) then inner_h - child.pos_top - child.pos_bottom
             else { let cs = compute_size(child, inner_w, inner_h); cs.h },
             child.min_height, child.max_height)
 

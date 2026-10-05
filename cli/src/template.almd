@@ -9,7 +9,7 @@ let MAIN = "// A counter: the ceangal starter app. Click the button to count.
 
 import ceangal
 import ceangal.view as v
-import snaidhm
+import ceangal.widgets as w
 
 var count = 0
 
@@ -18,24 +18,22 @@ fn bump() -> Unit = { count = count + 1 }
 // Functions reached only from closures (almide/almide#3296).
 let keep_bump = bump
 
-let INK = snaidhm.hex(0xE6E8F0)
-let ACCENT = snaidhm.hex(0x7AA2F7)
-
-fn view() -> v.View =
+fn view() -> v.View = {
+  // light or dark, as the system is (and it follows when that changes)
+  let th = w.system()
+  ceangal.set_background(th.bg)
   v.col([
-    v.text(\"__NAME__\") |> v.font(28.0) |> v.bold() |> v.color(INK),
-    v.text(int.to_string(count)) |> v.font(64.0) |> v.color(INK),
-    v.text(\"Count\") |> v.font(16.0) |> v.color(snaidhm.hex(0x1A1B26)) |> v.bold()
-      |> v.px(24.0) |> v.py(12.0) |> v.rounded(10.0) |> v.bg(ACCENT)
-      |> v.on_click(() => bump()) |> v.role(3) |> v.label(\"Count\"),
+    w.title(th, \"__NAME__\"),
+    v.text(int.to_string(count)) |> v.font(64.0) |> v.bold() |> v.color(th.text),
+    w.button(th, \"Count\", () => bump()),
   ]) |> v.gap(20.0) |> v.align(v.Middle) |> v.justify(v.Center) |> v.fill()
+}
 
 @export(wasm, \"ceangal_event\")
 fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
   ceangal.dispatch(kind, a, b, x, y, z, w)
 
-effect fn main() -> Unit =
-  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)))
+effect fn main() -> Unit = ceangal.run(ceangal.app(view))
 "
 
 let MANIFEST = "[app]

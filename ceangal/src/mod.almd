@@ -85,6 +85,10 @@ var started = false
 var frame_views: List[v.View] = []
 var frame_rects: List[lay.LayoutRect] = []
 var pressed = -1
+// The key of the view under the mouse (the topmost with a key and a click
+// or pointer handler), and of the one being pressed: is_hovered / is_pressed.
+var hover_key = ""
+var pressed_key = ""
 var hover_cursor = 0
 var last_x = 0.0
 var last_y = 0.0
@@ -444,7 +448,7 @@ fn emit_a11y() -> Unit = {
       let label = if vw.label != "" then vw.label else vw.content
       let lb = bytes.from_string(label)
       let focused_flag = if vw.focusable and vw.key != "" and vw.key == focus_key then 2 else 0
-      let flags = (if vw.focusable then 1 else 0) + focused_flag
+      let flags = (if vw.focusable then 1 else 0) + focused_flag + vw.states
       a11y.a11y_node(i + 1, 0, role, r.x, r.y, r.w, r.h, flags, bytes.data_ptr(lb), bytes.len(lb))
       let id = vw.key + "\u{1}" + label
       let val = if refresh then vw.value() else cached_value(id)
@@ -473,6 +477,12 @@ fn a11y_action(id: Int, action: Int) -> Bool = {
   if i < 0 or i >= list.len(frame_views) then false
   else if action == 1 and frame_views[i].clickable then { frame_views[i].on_click(); invalidate(); true }
   else if action == 2 and frame_views[i].focusable then { focus(frame_views[i].key); true }
+  // increment / decrement (a slider): as the Right / Left arrow keys
+  else if action == 3 or action == 4 then {
+    let done = frame_views[i].on_key(0, if action == 3 then 11 else 10, 0)
+    if done then invalidate() else ()
+    done
+  }
   else false
 }
 
@@ -756,6 +766,21 @@ pub fn rect_of(key: String) -> lay.LayoutRect = {
 }
 
 // Topmost node at (x, y) with a cursor.
+fn hover_at(x: Float, y: Float) -> String = {
+  var k = ""
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    let fv = frame_views[i]
+    if fv.key != "" and (fv.clickable or fv.pointer) and inside(frame_rects[i], x, y) then k = fv.key else ()
+  }
+  k
+}
+
+// The mouse is over the clickable view with `key` (never on touch screens).
+pub fn is_hovered(key: String) -> Bool = key != "" and key == hover_key
+// The view with `key` is being pressed (mouse button or finger down on it).
+pub fn is_pressed(key: String) -> Bool = key != "" and key == pressed_key
+
 fn cursor_at(x: Float, y: Float) -> Int = {
   var c = 0
   let n = int.min(list.len(frame_views), list.len(frame_rects))
@@ -773,6 +798,10 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
   if phase == 1 then {
     let c = cursor_at(x, y)
     if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()
+  } else ()
+  if id == 0 then {
+    let h = if phase == 5 then "" else hover_at(x, y)
+    if h != hover_key then { hover_key = h; invalidate() } else ()
   } else ()
   last_x = x
   last_y = y
@@ -805,8 +834,14 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
     if fv.pointer then {
       handled = fv.on_pointer({ phase: phase, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: buttons, mods: mods, id: id })
     } else ()
-    if phase == 0 then { pressed = target } else ()
+    if phase == 0 then {
+      pressed = target
+      pressed_key = fv.key
+      if fv.key != "" then invalidate() else ()
+    } else ()
     if phase == 2 or phase == 3 then {
+      if pressed_key != "" then invalidate() else ()
+      pressed_key = ""
       if phase == 2 and fv.clickable and inside(r, x, y) then {
         fv.on_click()
         handled = true

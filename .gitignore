@@ -12,3 +12,4 @@ tests/apps/*/build/
 tests/apps/*/store/
 tests/apps/*/almide.toml
 tests/apps/*/almide.lock
+apps/gallery/almide.lock

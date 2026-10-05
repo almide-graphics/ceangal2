@@ -89,7 +89,7 @@ const ROOT: u64 = u64::MAX;
 
 fn role_of(r: i64) -> accesskit::Role {
     use accesskit::Role::*;
-    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, _ => GenericContainer }
+    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, 15 => Switch, 16 => Slider, 17 => Dialog, 18 => RadioButton, 19 => RadioGroup, 20 => ProgressIndicator, _ => GenericContainer }
 }
 
 pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
@@ -108,8 +108,10 @@ pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
             if !n.label.is_empty() { node.set_label(n.label.clone()); }
             if let Some(v) = &n.value { node.set_value(v.clone()); }
             if n.flags & 1 != 0 { node.add_action(Action::Focus); }
-            if matches!(n.role, 3 | 8 | 11 | 12) { node.add_action(Action::Click); }
-            if n.flags & 8 != 0 { node.set_toggled(Toggled::True); } else if n.role == 12 { node.set_toggled(Toggled::False); }
+            if matches!(n.role, 3 | 8 | 11 | 12 | 15 | 18) { node.add_action(Action::Click); }
+            if n.role == 16 { node.add_action(Action::Increment); node.add_action(Action::Decrement); }
+            if n.flags & 8 != 0 { node.set_toggled(Toggled::True); } else if matches!(n.role, 12 | 15 | 18) { node.set_toggled(Toggled::False); }
+            if n.flags & 4 != 0 { node.set_selected(true); }
             if n.flags & 16 != 0 { node.set_disabled(); }
             nodes.push((NodeId(n.id as u64), node));
         }
@@ -127,7 +129,13 @@ pub fn set_active(on: bool) { ACTIVE.with(|a| a.set(on)); }
 
 /// An AccessKit action as an ABI event-12 action code (docs/abi.md §4.4).
 pub fn action_code(a: accesskit::Action) -> Option<i64> {
-    match a { accesskit::Action::Click => Some(1), accesskit::Action::Focus => Some(2), _ => None }
+    match a {
+        accesskit::Action::Click => Some(1),
+        accesskit::Action::Focus => Some(2),
+        accesskit::Action::Increment => Some(3),
+        accesskit::Action::Decrement => Some(4),
+        _ => None,
+    }
 }
 
 /// Android tests (`debug.ceangal.a11y` = 1): the committed tree to logcat,

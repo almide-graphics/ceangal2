@@ -1,0 +1,16 @@
+# Every ceangal.widgets control on one screen: the reference for how they
+# look, and what CI clicks through (tests/e2e/smoke_web.mjs).
+[app]
+id = "dev.almide.ceangal.gallery"
+name = "Gallery"
+description = "The ceangal standard controls"
+icon_background = "#1A1B26"
+
+[framework]
+path = "../.."
+
+[build]
+out = "../../out/gallery"
+
+[store]
+dir = "../../out/gallery/store"

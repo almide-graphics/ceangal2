@@ -386,6 +386,11 @@ jobs:
           node tests/e2e/smoke_web.mjs tests/apps/services/build/web --expect "twice 42 6"
           node tests/e2e/smoke_web.mjs tests/apps/services/build/web --expect "asset: bundled words"
           tools/ceangal build native --app tests/apps/services
+      - name: the standard controls (apps/gallery) in Chrome, by pointer, keyboard and accessibility tree
+        run: |
+          tools/ceangal build web --app apps/gallery
+          node tests/e2e/gallery.mjs out/gallery/web --shots out/framework-gallery
+          tools/ceangal build native --app apps/gallery
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs
       - name: ceangal dev (macos) — an edit restarts the app
@@ -404,7 +409,9 @@ jobs:
         if: always()
         with:
           name: framework
-          path: out/framework-*.png
+          path: |
+            out/framework-*.png
+            out/framework-gallery/*.png
 
   # The web playground: compiler wasm, app wasm, real-browser E2E, the old
   # playground's fixtures, and (on main) the GitHub Pages deploy.

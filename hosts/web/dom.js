@@ -16,7 +16,7 @@ export const KEYS = {
 };
 export const LETTER_KEYS = { a: 20, c: 21, v: 22, x: 23, z: 24, y: 25, s: 26, f: 27, o: 28, n: 29, w: 30 };
 export const CURSORS = ["default", "text", "pointer", "grab", "ew-resize", "ns-resize"];
-export const ROLES = { 1: "application", 2: "group", 3: "button", 4: "note", 5: "textbox", 6: "list", 7: "listitem", 8: "tab", 9: "tablist", 10: "heading", 11: "link", 12: "checkbox", 13: "img", 14: "textbox" };
+export const ROLES = { 1: "application", 2: "group", 3: "button", 4: "note", 5: "textbox", 6: "list", 7: "listitem", 8: "tab", 9: "tablist", 10: "heading", 11: "link", 12: "checkbox", 13: "img", 14: "textbox", 15: "switch", 16: "slider", 17: "dialog", 18: "radio", 19: "radiogroup", 20: "progressbar" };
 
 const enc = new TextEncoder();
 
@@ -206,11 +206,13 @@ export class DomUi {
     const frag = document.createDocumentFragment();
     for (const n of nodes || []) {
       const el = document.createElement(n.role === 3 ? "button" : "div");
+      if (n.role === 14) el.setAttribute("aria-multiline", "true");
       el.setAttribute("role", ROLES[n.role] || "group");
       if (n.label) el.setAttribute("aria-label", n.label);
       if (n.value != null) el.setAttribute("aria-valuetext", n.value);
       if (n.flags & 4) el.setAttribute("aria-selected", "true");
       if (n.flags & 8) el.setAttribute("aria-checked", "true");
+      else if (n.role === 12 || n.role === 15 || n.role === 18) el.setAttribute("aria-checked", "false");
       if (n.flags & 16) el.setAttribute("aria-disabled", "true");
       el.tabIndex = n.flags & 1 ? 0 : -1;
       Object.assign(el.style, { position: "absolute", left: `${r.left + n.x}px`, top: `${r.top + n.y}px`, width: `${n.w}px`, height: `${n.h}px`, opacity: "0", pointerEvents: "none" });

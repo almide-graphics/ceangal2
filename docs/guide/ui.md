@@ -68,6 +68,51 @@ fn button(title: String, on: () -> Unit) -> v.View =
     |> v.on_click(on) |> v.role(3) |> v.label(title)
 ```
 
+## Controls
+
+`ceangal.widgets` has the standard controls, styled by one theme:
+
+```almide
+import ceangal.widgets as w
+
+fn view() -> v.View = {
+  let th = w.system()            // w.light(), w.dark(), or your own Theme
+  w.card(th, [
+    w.heading(th, "Settings"),
+    w.switch(th, "Notifications", notify, (on) => set_notify(on)),
+    w.checkbox(th, "Remember me", remember, (on) => set_remember(on)),
+    w.radio_group(th, "Size", ["Small", "Medium", "Large"], size, (i) => set_size(i)),
+    w.slider(th, "Volume", volume, 0.0, 100.0, 5.0, (x) => set_volume(x)),
+    w.text_field(th, "name", "Name", () => name, (e) => set_name(e)),
+    v.row([w.secondary_button(th, "Cancel", () => cancel()), w.button(th, "Save", () => save())]) |> v.gap(10.0),
+  ])
+}
+```
+
+| | |
+|---|---|
+| `button`, `secondary_button`, `danger_button`, `text_button`, `button_enabled` | actions |
+| `checkbox`, `switch`, `radio_group`, `segmented` | choices |
+| `slider`, `progress` | values |
+| `text_field` | text entry (holds an `ed.Editor`) |
+| `title`, `heading`, `body`, `caption`, `link` | text |
+| `card`, `divider`, `list_item`, `dialog` | containers |
+
+Every control can be reached with Tab and activated with Enter or Space;
+arrows move radio groups, segments and sliders. Each shows a focus ring,
+reacts to hover and press, and tells screen readers its role, label and
+state (checked, selected, unavailable, a slider's value). Controls hold
+no state of their own: pass the current value in and update it in the
+callback. A control's key, which focus and hover go by, comes from its
+label, so the controls on one screen need distinct labels (which screen
+readers need anyway).
+
+[apps/gallery](../../apps/gallery/src/main.almd) shows every control,
+and [`ceangal.widgets`](../api/ceangal.widgets.md) lists them all. For
+your own controls, `ceangal.is_hovered(key)` and `ceangal.is_pressed(key)`
+give the pointer state, and `v.checked`, `v.selected` and `v.disabled`
+the state screen readers announce.
+
 ## Layout
 
 Layout is flexbox: a column or row places its children along its axis.
@@ -203,7 +248,10 @@ v.text("×") |> v.on_click(() => remove(id)) |> v.role(3) |> v.label("Remove " +
 ```
 
 `role(r)`: 3 button, 4 text, 5 text field, 6 list, 7 list item, 8 tab,
-9 tab list, 10 heading, 11 link, 12 checkbox, 13 image. `label(s)` is
+9 tab list, 10 heading, 11 link, 12 checkbox, 13 image, 15 switch,
+16 slider, 17 dialog, 18 radio button, 19 radio group, 20 progress bar.
+`checked(on)`, `selected(on)`, `disabled(on)` add the state. The
+standard controls set all of this themselves. `label(s)` is
 what is read. `value(f)` gives a changing value (a field's text).
 `a11y_hidden()` leaves out a view whose parent already speaks for it.
 Text is read as text without any of this. Anything you can click needs a

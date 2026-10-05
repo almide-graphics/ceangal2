@@ -1,0 +1,103 @@
+// Gallery: every ceangal.widgets control, wired to state, in light and
+// dark. Each action writes what happened to the status line, which the
+// web test reads.
+
+import ceangal
+import ceangal.view as v
+import ceangal.widgets as w
+import ceangal.editor as ed
+
+var dark = true
+var status = "ready"
+var subscribed = false
+var wifi = true
+var size = 1
+var tab = 0
+var volume = 40.0
+var name = ed.text_field("", "Your name")
+var confirming = false
+
+fn say(s: String) -> Unit = { status = s }
+fn set_dark(on: Bool) -> Unit = { dark = on; say(if on then "dark" else "light") }
+fn set_subscribed(on: Bool) -> Unit = { subscribed = on; say("subscribed " + (if on then "on" else "off")) }
+fn set_wifi(on: Bool) -> Unit = { wifi = on; say("wi-fi " + (if on then "on" else "off")) }
+fn set_size(i: Int) -> Unit = { size = i; say("size " + int.to_string(i)) }
+fn set_tab(i: Int) -> Unit = { tab = i; say("tab " + int.to_string(i)) }
+fn set_volume(x: Float) -> Unit = { volume = x; say("volume " + int.to_string(float.to_int(x))) }
+fn set_name(e: ed.Editor) -> Unit = { name = e }
+fn open_dialog() -> Unit = { confirming = true; say("asking") }
+fn close_dialog(s: String) -> Unit = { confirming = false; say(s) }
+
+// Functions reached only from closures (almide/almide#3296).
+let keep_say = say
+let keep_set_dark = set_dark
+let keep_set_subscribed = set_subscribed
+let keep_set_wifi = set_wifi
+let keep_set_size = set_size
+let keep_set_tab = set_tab
+let keep_set_volume = set_volume
+let keep_set_name = set_name
+let keep_open_dialog = open_dialog
+let keep_close_dialog = close_dialog
+
+fn theme() -> w.Theme = if dark then w.dark() else w.light()
+
+fn page(th: w.Theme) -> v.View =
+  v.col([
+    w.title(th, "Gallery"),
+    w.caption(th, "status: " + status) |> v.label("status: " + status),
+    w.segmented(th, "Section", ["Controls", "Lists"], tab, (i) => set_tab(i)),
+    if tab == 0 then controls(th) else lists(th),
+  ]) |> v.gap(16.0) |> v.max_w(560.0) |> v.grow(1.0) |> v.shrink(1.0)
+
+fn controls(th: w.Theme) -> v.View =
+  v.col([
+    w.card(th, [
+      w.heading(th, "Buttons"),
+      v.wrap_row([
+        w.button(th, "Save", () => say("saved")),
+        w.secondary_button(th, "Cancel", () => say("cancelled")),
+        w.danger_button(th, "Delete", () => open_dialog()),
+        w.text_button(th, "Learn more", () => say("learn")),
+        w.button_enabled(th, "Unavailable", false, () => say("should not happen")),
+      ]) |> v.gap(10.0),
+    ]),
+    w.card(th, [
+      w.heading(th, "Choices"),
+      w.checkbox(th, "Subscribe to updates", subscribed, (on) => set_subscribed(on)),
+      w.switch(th, "Wi-Fi", wifi, (on) => set_wifi(on)),
+      w.switch(th, "Dark theme", dark, (on) => set_dark(on)),
+      w.radio_group(th, "Size", ["Small", "Medium", "Large"], size, (i) => set_size(i)),
+    ]),
+    w.card(th, [
+      w.heading(th, "Values"),
+      w.slider(th, "Volume", volume, 0.0, 100.0, 5.0, (x) => set_volume(x)),
+      w.progress(th, "Upload", volume / 100.0),
+      w.text_field(th, "name", "Name", () => name, (e) => set_name(e)),
+      w.body(th, "Hello, " + (if ed.to_string(name) == "" then "stranger" else ed.to_string(name))),
+      w.link(th, "Almide", "https://github.com/almide/almide"),
+    ]),
+  ]) |> v.gap(16.0)
+
+fn lists(th: w.Theme) -> v.View =
+  w.card(th, [
+    w.list_item(th, "Inbox", "3 new", () => say("inbox")),
+    w.divider(th),
+    w.list_item(th, "Archive", "", () => say("archive")),
+  ])
+
+fn view() -> v.View = {
+  let th = theme()
+  // centred, at most 560 wide
+  let base = v.col([v.row([page(th)]) |> v.justify(v.Center) |> v.padding(24.0)]) |> v.scroll_y("page") |> v.fill() |> v.bg(th.bg)
+  if confirming then w.dialog(th, base, "Delete everything?", [w.body(th, "This cannot be undone.")],
+    [w.secondary_button(th, "Keep", () => close_dialog("kept")), w.danger_button(th, "Delete all", () => close_dialog("deleted"))],
+    () => close_dialog("dismissed"))
+  else base
+}
+
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+effect fn main() -> Unit = ceangal.run(ceangal.app(view))
