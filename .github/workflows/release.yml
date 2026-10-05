@@ -1,0 +1,113 @@
+name: release
+
+# A tag v<version> is a framework release: apps pin it in [framework] version
+# and the CLI built here (its VERSION must match the tag) goes on the release
+# for install.sh / install.ps1. Run by hand on an existing tag to rebuild the
+# binaries.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag: { description: 'tag (v0.2.0)', required: true }
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - name: the CLI's version is the tag's
+        run: |
+          v="$(sed -n 's/^let VERSION = "\(.*\)"$/\1/p' cli/src/main.almd)"
+          [ "v$v" = "$TAG" ] || { echo "cli/src/main.almd says $v, the tag is $TAG"; exit 1; }
+      - name: the release (notes from the commits since the last tag)
+        run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --generate-notes --title "ceangal ${TAG#v}"
+
+  cli:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, asset: ceangal-macos-universal.tar.gz }
+          - { os: ubuntu-latest, asset: ceangal-linux-x86_64.tar.gz, musl: x86_64-unknown-linux-musl }
+          - { os: ubuntu-24.04-arm, asset: ceangal-linux-aarch64.tar.gz, musl: aarch64-unknown-linux-musl }
+          - { os: windows-latest, asset: ceangal-windows-x86_64.zip }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.musl || (runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin') || '' }}
+      - name: build
+        working-directory: cli
+        run: |
+          mkdir -p ../out/rel
+          case "$RUNNER_OS" in
+            macOS)
+              ../tools/almide build src/main.almd --release --target aarch64-apple-darwin -o ../out/rel/arm64
+              ../tools/almide build src/main.almd --release --target x86_64-apple-darwin -o ../out/rel/x86_64
+              lipo -create ../out/rel/arm64 ../out/rel/x86_64 -output ../out/rel/ceangal
+              lipo -info ../out/rel/ceangal ;;
+            Linux)
+              # musl: one static binary for every distribution
+              ../tools/almide build src/main.almd --release --target linux-musl -o ../out/rel/ceangal
+              file ../out/rel/ceangal ;;
+            Windows)
+              ../tools/almide build src/main.almd --release -o ../out/rel/ceangal.exe ;;
+          esac
+      - name: it runs and knows its version
+        run: |
+          exe=out/rel/ceangal; [ "$RUNNER_OS" = Windows ] && exe=out/rel/ceangal.exe
+          [ "$("$exe" --version)" = "ceangal ${TAG#v}" ]
+      - name: upload
+        run: |
+          cd out/rel
+          if [ "$RUNNER_OS" = Windows ]; then 7z a -tzip "${{ matrix.asset }}" ceangal.exe >/dev/null
+          else tar czf "${{ matrix.asset }}" ceangal; fi
+          gh release upload "$TAG" "${{ matrix.asset }}" --clobber
+
+  # What a new user does: install from the release, make an app, have the CLI
+  # fetch this framework version, and build it for the web.
+  install:
+    needs: cli
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install.sh
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/almide-graphics/ceangal2/$TAG/install.sh" | CEANGAL_VERSION="${TAG#v}" sh
+          echo "$HOME/.ceangal/bin" >> "$GITHUB_PATH"
+      - name: install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:CEANGAL_VERSION = "$env:TAG".TrimStart('v')
+          irm "https://raw.githubusercontent.com/almide-graphics/ceangal2/$env:TAG/install.ps1" | iex
+          "$HOME\.ceangal\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - name: a new app, built for the web against the released framework
+        shell: bash
+        run: |
+          ceangal --version
+          cd "$RUNNER_TEMP" && ceangal new hello && cd hello
+          grep -q "version = \"${TAG#v}\"" ceangal.toml
+          python3 -m pip install --quiet pillow 2>/dev/null || python3 -m pip install --quiet --break-system-packages pillow
+          ceangal build web
+          ls build/web/hello.wasm

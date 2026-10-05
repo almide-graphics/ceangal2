@@ -1,0 +1,45 @@
+// HTTP requests. A request returns its id at once; the answer comes to the
+// app's `on_result` handler (ceangal.on_result) as (id, status, body):
+//
+//   var weather_req = -1
+//   fn refresh() -> Unit = { weather_req = http.get("https://example.com/today.json") }
+//   fn result(id: Int, status: Int, body: Bytes) -> Unit =
+//     if id == weather_req and status == 200 then weather = bytes.to_string_lossy(body) else ()
+//   … ceangal.app(view) |> ceangal.on_result(result)
+//
+// `status` is the HTTP status, or 0 when the request failed (the body is
+// the error). A streamed response (server-sent events) comes in pieces
+// first: `is_chunk(status)`, the HTTP status being `chunk_status(status)`.
+// The app needs `network = true` in ceangal.toml (the Android permission,
+// the macOS sandbox entitlement); on the web, the server must allow the
+// page's origin (CORS).
+
+import self.host.net as net
+
+// Start a request: method ("GET", "POST", …), URL, headers, body ("" for
+// none). The id it returns comes back with the answer.
+pub fn request(method: String, url: String, headers: List[(String, String)], body: String) -> Int = {
+  let m = bytes.from_string(method)
+  let u = bytes.from_string(url)
+  let id = net.http_begin(bytes.data_ptr(m), bytes.len(m), bytes.data_ptr(u), bytes.len(u))
+  for h in headers {
+    let n = bytes.from_string(h.0)
+    let v = bytes.from_string(h.1)
+    net.http_header(id, bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(v), bytes.len(v))
+  }
+  let b = bytes.from_string(body)
+  net.http_send(id, bytes.data_ptr(b), bytes.len(b))
+  id
+}
+
+pub fn get(url: String) -> Int = request("GET", url, [], "")
+
+// POST `body` as JSON.
+pub fn post_json(url: String, body: String) -> Int = request("POST", url, [("Content-Type", "application/json")], body)
+
+// Stop a request: nothing more arrives for it.
+pub fn cancel(id: Int) -> Unit = net.http_cancel(id)
+
+// A piece of a streamed response (more follow, then the final status).
+pub fn is_chunk(status: Int) -> Bool = status >= 1000
+pub fn chunk_status(status: Int) -> Int = if status >= 1000 then status - 1000 else status

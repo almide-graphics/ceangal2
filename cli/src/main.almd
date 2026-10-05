@@ -72,7 +72,8 @@ effect fn sdk_of(app: mf.App) -> Result[String, String] =
     some(p) => ok(sh.real(p)),
     none => if app.sdk_version == "" then err("ceangal.toml: set [framework] path or version (or $CEANGAL_SDK)")
       else {
-        let home = env.get("HOME") ?? "."
+        // PowerShell and cmd have no $HOME
+        let home = string.replace(env.get("HOME") ?? (env.get("USERPROFILE") ?? "."), "\\", "/")
         let dir = home + "/.ceangal/sdk/" + app.sdk_version
         if fs.exists(dir + "/ceangal") then ok(dir)
         else {

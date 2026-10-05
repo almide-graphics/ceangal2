@@ -1,0 +1,56 @@
+// Per-app storage: small strings that survive restarts (settings, drafts,
+// a list saved as JSON) and secrets (API keys, tokens) kept in the system's
+// credential store — Keychain, Android Keystore, Windows Credential Manager,
+// libsecret; the browser's localStorage on the web (docs/abi.md §4.6).
+//
+//   storage.set("theme", "dark")
+//   let theme = storage.get("theme") ?? "light"
+
+import self.host.storage as host
+
+// The value saved under `key`, none when there is none.
+pub fn get(key: String) -> String? = {
+  let k = bytes.from_string(key)
+  let n = host.storage_len(bytes.data_ptr(k), bytes.len(k))
+  if n < 0 then none
+  else {
+    var b = bytes.new(n)
+    let _ = host.storage_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
+    some(bytes.to_string_lossy(b))
+  }
+}
+
+// Save `value` under `key`, replacing what was there.
+pub fn set(key: String, value: String) -> Unit = {
+  let k = bytes.from_string(key)
+  let b = bytes.from_string(value)
+  host.storage_write(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), bytes.len(b))
+}
+
+pub fn remove(key: String) -> Unit = {
+  let k = bytes.from_string(key)
+  host.storage_remove(bytes.data_ptr(k), bytes.len(k))
+}
+
+// A secret saved under `key` (in the credential store), none when there is none.
+pub fn secret_get(key: String) -> String? = {
+  let k = bytes.from_string(key)
+  let n = host.secret_len(bytes.data_ptr(k), bytes.len(k))
+  if n < 0 then none
+  else {
+    var b = bytes.new(n)
+    let _ = host.secret_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
+    some(bytes.to_string_lossy(b))
+  }
+}
+
+pub fn secret_set(key: String, value: String) -> Unit = {
+  let k = bytes.from_string(key)
+  let b = bytes.from_string(value)
+  host.secret_write(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), bytes.len(b))
+}
+
+pub fn secret_remove(key: String) -> Unit = {
+  let k = bytes.from_string(key)
+  host.secret_remove(bytes.data_ptr(k), bytes.len(k))
+}

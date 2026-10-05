@@ -19,6 +19,8 @@ jobs:
       - name: bindings are generated from the manifest
         run: python3 tools/gen_bindings.py && git diff --exit-code
       - run: node tests/abi_conformance.mjs
+      - name: the API reference is generated from the sources (docs/api)
+        run: python3 tools/gen_api_docs.py --check
 
   almide-tests:
     runs-on: ubuntu-latest
@@ -377,6 +379,10 @@ jobs:
         run: |
           MAC_ARCHS=arm64 tools/ceangal build macos --app "$RUNNER_TEMP/hello-app"
           CEANGAL_EXIT_AFTER_MS=3000 "$RUNNER_TEMP/hello-app/build/macos/Hello App.app/Contents/MacOS/hello"
+      - name: platform services (storage, secrets, HTTP) in a web build
+        run: |
+          tools/ceangal build web --app tests/apps/services
+          node tests/e2e/smoke_web.mjs tests/apps/services/build/web --click Save --expect "saved+secret"
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs
       - name: ceangal dev (macos) — an edit restarts the app

@@ -13,8 +13,14 @@ import self.text as tx
 import self.host.sys as sys
 import self.host.text_input as text_input
 import self.host.clipboard as clip
+import self.host.file as file
 import self.host.a11y as a11y
 
+// An app: its view (called whenever the UI is redrawn) and handlers for
+// what views do not handle themselves. Build it with `app(view)` and the
+// setters below, start it with `run`:
+//
+//   effect fn main() -> Unit = ceangal.run(ceangal.app(view) |> ceangal.background(BG))
 type App = {
   view: () -> v.View,
   background: snaidhm.Color,
@@ -24,6 +30,8 @@ type App = {
   on_result: (Int, Int, Bytes) -> Unit, // async request (id, status, body)
 }
 
+// An app that draws `view()` on a white background and handles no keys,
+// text, frames or results itself.
 pub fn app(view: () -> v.View) -> App = {
   view: view,
   background: snaidhm.hex(0xFFFFFF),
@@ -33,10 +41,21 @@ pub fn app(view: () -> v.View) -> App = {
   on_result: (id, status, body) => (),
 }
 
+// The colour behind the views (and under the safe-area insets).
 pub fn background(a: App, c: snaidhm.Color) -> App = { ...a, background: c }
+// Keys: f(phase, key, mods), true = handled. Phase 0 down, 1 up, 2 repeat;
+// key codes in docs/abi.md §2.2; read mods with has_shift, is_shortcut….
+// Shortcuts (Cmd/Ctrl+…) reach the app first, except the editing ones a
+// text view owns (select all, copy, cut, undo, redo); other keys only when
+// the focused view did not take them.
 pub fn on_key(a: App, f: (Int, Int, Int) -> Bool) -> App = { ...a, on_key: f }
+// Text the focused view did not take: f(kind, text), true = handled. Kind
+// 0 commit, 1 IME preedit, 2 preedit end, 3 paste.
 pub fn on_text(a: App, f: (Int, String) -> Bool) -> App = { ...a, on_text: f }
+// Called every frame with the clock (ms) while it returns true: animations.
 pub fn on_frame(a: App, f: (Float) -> Bool) -> App = { ...a, on_frame: f }
+// The answer to an asynchronous host request (an HTTP fetch, a file picker):
+// f(id, status, body).
 pub fn on_result(a: App, f: (Int, Int, Bytes) -> Unit) -> App = { ...a, on_result: f }
 
 // Change the running app's background (the colour around the views, e.g.
@@ -110,6 +129,8 @@ var a11y_values_at = -1000000.0
 var a11y_values_focus = "-"
 var a11y_cache: List[(String, String)] = []
 
+// Start the app: the host opens its window (or page, or activity) and runs
+// the event loop; on the desktop this returns when the window closes.
 pub fn run(a: App) -> Unit = {
   current = a
   sys.run()
@@ -123,6 +144,7 @@ pub fn invalidate() -> Unit = {
 
 // ── Focus ──
 
+// Give keyboard focus to the focusable view with `key` ("" = none).
 pub fn focus(key: String) -> Unit = {
   if key != focus_key then {
     let old = find_key(focus_key)
@@ -134,6 +156,7 @@ pub fn focus(key: String) -> Unit = {
   } else ()
 }
 
+// The focused view's key ("" = none).
 pub fn focused() -> String = focus_key
 pub fn is_focused(key: String) -> Bool = key != "" and key == focus_key
 
@@ -153,6 +176,7 @@ pub fn is_shortcut(mods: Int) -> Bool = {
   if apple then mods % 16 >= 8 else (mods / 2) % 2 == 1
 }
 
+// The modifier bits of a key event.
 pub fn has_shift(mods: Int) -> Bool = mods % 2 == 1
 pub fn has_alt(mods: Int) -> Bool = (mods / 4) % 2 == 1
 
@@ -209,12 +233,18 @@ fn update_ime() -> Unit = {
 // The area the app is laid out in (inside the safe-area insets).
 pub fn viewport_width() -> Float = float.max(1.0, width - safe_l - safe_r)
 pub fn viewport_height() -> Float = float.max(1.0, height - safe_t - safe_b)
+// The system's dark appearance (it changes while the app runs: a new frame
+// follows).
 pub fn is_dark() -> Bool = dark_mode
+// Physical pixels per logical px.
 pub fn pixel_scale() -> Float = scale
+// A monotonic clock in ms.
 pub fn clock_ms() -> Float = sys.now_ms()
 
 // ── Dispatch (docs/abi.md §2) ──
 
+// The host's entry point: every event comes through here (docs/abi.md §2).
+// Apps do not call it; tests can, to drive an app without a host.
 pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
   if kind == 1 or kind == 2 then {
     width = x
@@ -295,6 +325,33 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
   }
 }
 
+// Open `url` in the system browser (a new tab on the web).
+pub fn open_url(url: String) -> Unit = {
+  let b = bytes.from_string(url)
+  sys.open_url(bytes.data_ptr(b), bytes.len(b))
+}
+
+// The window's title (the page's on the web; phones show none).
+pub fn set_title(title: String) -> Unit = {
+  let b = bytes.from_string(title)
+  sys.set_title(bytes.data_ptr(b), bytes.len(b))
+}
+
+// Offer `data` to the user to save as `name` (a save dialog on the desktop,
+// a download on the web). Returns a request id; `on_result` gets it with
+// status 200 when it was saved (the body is the path), 499 when the user
+// cancelled, 0 when it failed (the body is why).
+pub fn save_file(name: String, data: Bytes) -> Int = {
+  let n = bytes.from_string(name)
+  file.file_save(bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(data), bytes.len(data))
+}
+
+// Ask the user for a text file (the system picker). Returns a request id;
+// `on_result` gets it with status 200 and the contents, 499 when the user
+// cancelled, 0 when it failed.
+pub fn open_text_file() -> Int = file.file_open(0)
+
+// Put `s` on the system clipboard.
 pub fn copy_text(s: String) -> Unit = {
   let b = bytes.from_string(s)
   clip.clipboard_write(bytes.data_ptr(b), bytes.len(b))
@@ -440,8 +497,6 @@ fn to_node(view: v.View) -> lay.Node = {
   }
 }
 
-// The views in the order lay.layout emits rects: self, in-flow children
-// (recursively), then absolutely positioned children.
 // ── Scroll views ──
 
 fn scroll_index(key: String) -> Int = {
@@ -462,17 +517,18 @@ fn subtree_len(view: v.View) -> Int = {
   n
 }
 
-// Shift each scroll view's descendants up by its offset (clamped to the
-// content) and clip them to it. Rects are in flatten / paint order, where a
-// view's subtree is the contiguous run after it.
+var scroll_end_keys: List[String] = []
+
 // Scroll the `scroll_y` view with `key` to its end on the next layout (a log
 // or a conversation following what was just added).
-var scroll_end_keys: List[String] = []
 pub fn scroll_to_end(key: String) -> Unit = {
   if not list.contains(scroll_end_keys, key) then list.push(scroll_end_keys, key) else ()
   invalidate()
 }
 
+// Shift each scroll view's descendants up by its offset (clamped to the
+// content) and clip them to it. Rects are in flatten / paint order, where a
+// view's subtree is the contiguous run after it.
 fn apply_scrolls(views: List[v.View], laid: List[lay.LayoutRect]) -> List[lay.LayoutRect] = {
   var rs = laid
   let n = int.min(list.len(views), list.len(rs))
@@ -600,6 +656,8 @@ fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
     was
   }
 
+// The views in the order lay.layout emits rects: self, in-flow children
+// (recursively), then absolutely positioned children.
 fn flatten(view: v.View) -> List[v.View] = {
   var out: List[v.View] = [view]
   for c in view.children {

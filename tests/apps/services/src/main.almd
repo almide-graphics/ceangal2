@@ -1,0 +1,44 @@
+// Save: a value and a secret written and read back, a title set, and an
+// HTTP request whose answer (any status, 0 when CORS refuses it) shows up.
+
+import ceangal
+import ceangal.view as v
+import ceangal.storage as storage
+import ceangal.http as http
+import snaidhm
+
+var shown = storage.get("note") ?? "none"
+var req = -1
+var answer = "no answer"
+
+fn result(id: Int, status: Int, body: Bytes) -> Unit =
+  if id == req and not http.is_chunk(status) then answer = "answer " + int.to_string(status) else ()
+
+fn save() -> Unit = {
+  storage.set("note", "saved")
+  storage.secret_set("token", "secret")
+  shown = (storage.get("note") ?? "?") + "+" + (storage.secret_get("token") ?? "?")
+  storage.remove("note")
+  storage.secret_remove("token")
+  ceangal.set_title("Saved")
+  req = http.get("https://example.com/")
+}
+
+// Functions reached only from closures (almide/almide#3296).
+let keep_save = save
+
+fn view() -> v.View =
+  v.col([
+    v.text(shown) |> v.label(shown),
+    v.text(answer) |> v.label(answer),
+    v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()) |> v.role(3) |> v.label("Save"),
+  ]) |> v.gap(12.0) |> v.padding(24.0)
+
+@export(wasm, "ceangal_event")
+fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)
+
+// `result` goes in as a lambda: a top-level fn value with a Bytes
+// parameter does not compile natively (almide/almide#3419).
+effect fn main() -> Unit =
+  ceangal.run(ceangal.app(view) |> ceangal.on_result((id, s, b) => result(id, s, b)) |> ceangal.background(snaidhm.hex(0xFFFFFF)))
