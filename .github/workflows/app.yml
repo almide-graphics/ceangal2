@@ -49,7 +49,8 @@ jobs:
           [ -n "$ref" ] || ref="${ver:+v$ver}"
           git clone --quiet --depth 1 ${ref:+--branch "$ref"} https://github.com/almide-graphics/ceangal2 sdk
           echo "CEANGAL_SDK=$GITHUB_WORKSPACE/sdk" >> "$GITHUB_ENV"
-          app="$GITHUB_WORKSPACE/app/${{ inputs.app }}"
+          # normalised: upload-artifact refuses paths with ./ or ../
+          app="$(python3 -c "import os,sys; print(os.path.normpath(sys.argv[1]))" "$GITHUB_WORKSPACE/app/${{ inputs.app }}")"
           echo "APP=$app" >> "$GITHUB_ENV"
           echo "OUT=$app/$(python3 -c "import tomllib,sys; print(tomllib.load(open(sys.argv[1],'rb')).get('build',{}).get('out','build'))" "$app/ceangal.toml")" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
