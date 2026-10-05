@@ -80,6 +80,21 @@ fn controls(th: w.Theme) -> v.View =
   ]) |> v.gap(16.0)
 
 fn lists(th: w.Theme) -> v.View =
+  v.col([languages(th), list_card(th)]) |> v.gap(16.0)
+
+// Scripts beyond Latin: each line's own font, joined and ordered as it reads.
+fn languages(th: w.Theme) -> v.View =
+  w.card(th, [
+    w.heading(th, "Languages"),
+    w.body(th, "Ελληνικά · Русский"),
+    w.body(th, "日本語のテキスト"),
+    w.body(th, "עברית: שלום עולם"),
+    w.body(th, "العربية: مرحبا بالعالم 123"),
+    w.body(th, "ภาษาไทย สวัสดีครับ"),
+    w.body(th, "Emoji 😀 👍🏽 🎉 ❤️"),
+  ])
+
+fn list_card(th: w.Theme) -> v.View =
   w.card(th, [
     w.list_item(th, "Inbox", "3 new", () => say("inbox")),
     w.divider(th),

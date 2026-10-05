@@ -27,7 +27,7 @@ export async function start(opts) {
   const host = new Host({ device, canvas, headless, appId, onError: opts.onError });
   host.extensions = opts.extensions || [];
   host.launch = opts.launch ?? null;
-  await host.loadAssets(assets);
+  await host.loadAssets(assets, opts.lazy);
   await host.instantiate(wasm);
   host.boot();
   return host;
@@ -81,11 +81,28 @@ export class Host {
     }
   }
 
-  async loadAssets(assets) {
+  // Fallback fonts (CJK, Arabic, Hebrew, Thai, emoji: megabytes between
+  // them) are fetched the first time the app asks for them, not before it
+  // starts; until then asset_len says -1 and the app draws again once they
+  // arrive. `lazy: (name) => bool` in the start options overrides the rule.
+  async loadAssets(assets, lazy = (name) => /^fonts\/(cjk|arabic|hebrew|thai|emoji)\.ttf$/.test(name)) {
+    this.lazyAssets = new Map();
     await Promise.all(Object.entries(assets).map(async ([name, src]) => {
+      if (!(src instanceof Uint8Array) && lazy(name)) { this.lazyAssets.set(name, src); return; }
       const data = src instanceof Uint8Array ? src : new Uint8Array(await (await fetch(src)).arrayBuffer());
       this.assets.set(name, data);
     }));
+  }
+
+  fetchLazy(name) {
+    const src = this.lazyAssets?.get(name);
+    if (!src) return;
+    this.lazyAssets.delete(name);
+    fetch(src).then((r) => r.arrayBuffer()).then((b) => {
+      this.assets.set(name, new Uint8Array(b));
+      this.frameRequested = true;
+      this.schedule();
+    }).catch(() => {});
   }
 
   // ── memory helpers ──
@@ -237,7 +254,7 @@ export class Host {
       set_cursor: (k) => self.ui.cursor(Number(k)),
       set_title: (p, n) => self.ui.title(self.str(p, n)),
       open_url: (p, n) => self.ui.openUrl(self.str(p, n)),
-      asset_len: (p, n) => { const a = self.assets.get(self.str(p, n)); return BigInt(a ? a.length : -1); },
+      asset_len: (p, n) => { const name = self.str(p, n); const a = self.assets.get(name); if (!a) self.fetchLazy(name); return BigInt(a ? a.length : -1); },
       asset_read: (p, n, dp, dn) => { const a = self.assets.get(self.str(p, n)); return a ? self.fill(a, dp, dn) : 0n; },
       exit: () => { self.dead = true; },
       launch_len: () => BigInt(enc.encode(self.launchString()).length),

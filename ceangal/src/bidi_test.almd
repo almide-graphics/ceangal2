@@ -1,0 +1,47 @@
+// ceangal.bidi: joining and visual order for one line.
+
+import self.bidi
+
+test "left-to-right text is unchanged" {
+  assert(bidi.visual([0x61, 0x62, 0x20, 0x31]) == [0x61, 0x62, 0x20, 0x31])
+}
+
+test "Hebrew is reversed" {
+  // שלום
+  assert(bidi.visual([0x05E9, 0x05DC, 0x05D5, 0x05DD]) == [0x05DD, 0x05D5, 0x05DC, 0x05E9])
+}
+
+test "Hebrew inside English keeps the English order" {
+  // "ab שלום cd"
+  let got = bidi.visual([0x61, 0x62, 0x20, 0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x63, 0x64])
+  assert(got == [0x61, 0x62, 0x20, 0x05DD, 0x05D5, 0x05DC, 0x05E9, 0x20, 0x63, 0x64])
+}
+
+test "numbers in right-to-left text stay left to right" {
+  // "שלום 123" → "123 םולש"
+  let got = bidi.visual([0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x31, 0x32, 0x33])
+  assert(got == [0x31, 0x32, 0x33, 0x20, 0x05DD, 0x05D5, 0x05DC, 0x05E9])
+}
+
+test "brackets are mirrored in right-to-left runs" {
+  // "(שלום)" shows as "(םולש)"
+  let got = bidi.visual([0x28, 0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x29])
+  assert(got == [0x28, 0x05DD, 0x05D5, 0x05DC, 0x05E9, 0x29])
+}
+
+test "Arabic letters join, lam-alef is one ligature" {
+  // سلام: seen initial, lam-alef final, meem isolated
+  assert(bidi.join_arabic([0x0633, 0x0644, 0x0627, 0x0645]) == [0xFEB3, 0xFEFC, 0xFEE1])
+}
+
+test "Arabic joining: medial and final forms, right-joining letters" {
+  // بيت: beh initial, yeh medial, teh final
+  assert(bidi.join_arabic([0x0628, 0x064A, 0x062A]) == [0xFE91, 0xFEF4, 0xFE96])
+  // دب: dal does not join forward, so beh stands alone
+  assert(bidi.join_arabic([0x062F, 0x0628]) == [0xFEA9, 0xFE8F])
+}
+
+test "harakat do not break joining" {
+  // بَت (fatha between): beh initial, fatha, teh final
+  assert(bidi.join_arabic([0x0628, 0x064E, 0x062A]) == [0xFE91, 0x064E, 0xFE96])
+}

@@ -158,9 +158,17 @@ fn ink() -> snaidhm.Color = if ceangal.is_dark() then snaidhm.hex(0xE6E8F0) else
 `ceangal.set_background(c)` changes the colour behind everything,
 including under the safe areas.
 
-Text is drawn with the bundled fonts: a UI sans (regular and semibold), a
-monospace font for `mono()`, and a CJK font that covers Japanese, Chinese
-and Korean in any style.
+Text is drawn with the bundled fonts: a UI sans (regular and semibold;
+Latin, Greek, Cyrillic), a monospace font for `mono()`, and fallbacks
+picked per character: Japanese / Chinese, Arabic (letters joined into
+their contextual forms), Hebrew, Thai, and emoji (monochrome, in the text
+colour). A line with right-to-left text is shown in visual order: the
+paragraph takes the direction of its first letter, numbers stay left to
+right, brackets mirror. Fallback fonts load the first time a character
+needs them (on the web, after the app starts). Not yet: scripts that need
+OpenType shaping (Devanagari and other Indic scripts), right-to-left
+editing in text fields (they keep logical order and unjoined letters), and
+colour emoji.
 
 ## Input
 

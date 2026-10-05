@@ -3,7 +3,10 @@
 // Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
 // once by snaidhm.font. Each codepoint is drawn with the first font in the
 // style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
-// cjk → ui). Glyphs are rasterised on first use into snaidhm's coverage
+// cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
+// Thai, emoji: loaded the first time a character needs them). Labels and
+// paragraphs are joined and put in visual order first (self.bidi).
+// Glyphs are rasterised on first use into snaidhm's coverage
 // atlas (shelf-packed); a full atlas is cleared at the start of the next
 // frame and refilled lazily.
 
@@ -11,6 +14,7 @@ import snaidhm
 import snaidhm.font as font
 import self.layout as lay
 import self.host.sys as sys
+import self.bidi
 
 // Sizes are layout.Size: a second record type with the same fields makes the
 // native leg emit the wrong struct (almide/almide#3283).
@@ -20,11 +24,44 @@ let FONT_UI = 0
 let FONT_UI_BOLD = 1
 let FONT_MONO = 2
 let FONT_CJK = 3
+let FONT_ARABIC = 4
+let FONT_HEBREW = 5
+let FONT_THAI = 6
+let FONT_EMOJI = 7
 
-let FONT_FILES = ["fonts/ui.ttf", "fonts/ui-semibold.ttf", "fonts/mono.ttf", "fonts/cjk.ttf"]
+let FONT_FILES = ["fonts/ui.ttf", "fonts/ui-semibold.ttf", "fonts/mono.ttf", "fonts/cjk.ttf",
+                  "fonts/arabic.ttf", "fonts/hebrew.ttf", "fonts/thai.ttf", "fonts/emoji.ttf"]
 
 var fonts: List[font.Font] = []
-var font_tried: List[Bool] = [false, false, false, false]
+var font_tried: List[Bool] = [false, false, false, false, false, false, false, false]
+
+// A font was needed but has not arrived yet (the web loads fallback fonts
+// on first use): the runtime redraws until it has.
+var waiting = false
+
+// Whether text drawn since the last call lacked a font still loading.
+pub fn take_waiting() -> Bool = {
+  let w = waiting
+  waiting = false
+  w
+}
+
+// The font for a script that the UI and code fonts lack (-1 = none).
+fn script_font(cp: Int) -> Int =
+  if (cp >= 0x0600 and cp <= 0x08FF) or (cp >= 0xFB50 and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then FONT_ARABIC
+  else if (cp >= 0x0590 and cp <= 0x05FF) or (cp >= 0xFB1D and cp <= 0xFB4F) then FONT_HEBREW
+  else if cp >= 0x0E00 and cp <= 0x0E7F then FONT_THAI
+  else if (cp >= 0x1F000 and cp <= 0x1FAFF) or (cp >= 0x2600 and cp <= 0x27BF) or (cp >= 0x2B00 and cp <= 0x2BFF)
+    or (cp >= 0x2300 and cp <= 0x23FF) or cp == 0x3030 or cp == 0x303D then FONT_EMOJI
+  else -1
+
+// Formatting characters that draw nothing: zero-width (non-)joiners and
+// spaces, direction marks, variation selectors, emoji skin-tone modifiers
+// (the emoji font is monochrome), the byte-order mark.
+fn invisible(cp: Int) -> Bool =
+  (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2064)
+    or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
+    or (cp >= 0xE0100 and cp <= 0xE01EF)
 
 fn load_asset(name: String) -> Bytes = {
   let key = bytes.from_string(name)
@@ -38,13 +75,13 @@ fn load_asset(name: String) -> Bytes = {
 }
 
 fn font_at(slot: Int) -> font.Font = {
-  if list.len(fonts) == 0 then fonts = [font.empty_font(), font.empty_font(), font.empty_font(), font.empty_font()] else ()
+  if list.len(fonts) == 0 then fonts = list.map(FONT_FILES, (f) => font.empty_font()) else ()
   if not font_tried[slot] then {
     let f = font.parse(load_asset(FONT_FILES[slot]))
     fonts[slot] = f
-    // A missing asset may still be loading (web fetches the CJK font in the
-    // background): retry on a later frame rather than giving up for good.
-    if f.ok then font_tried[slot] = true else sys.request_frame()
+    // A missing asset may still be loading (the web fetches fallback fonts
+    // the first time they are needed): draw again on the next frame.
+    if f.ok then font_tried[slot] = true else { waiting = true; sys.request_frame() }
     f
   } else fonts[slot]
 }
@@ -92,23 +129,33 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
   var out: List[Glyph] = []
   var x = 0.0
   for cp in cps {
-    var slot = ch[0]
-    var gid = 0
-    for s in ch {
-      if gid == 0 then {
-        let f = font_at(s)
-        let g = font.glyph_index(f, cp)
-        if g != 0 then { slot = s; gid = g } else ()
-      } else ()
+    if invisible(cp) then () else {
+      let sf = script_font(cp)
+      let order = if sf >= 0 then [sf] + ch else ch
+      var slot = order[0]
+      var gid = 0
+      for s in order {
+        if gid == 0 then {
+          let f = font_at(s)
+          let g = font.glyph_index(f, cp)
+          if g != 0 then { slot = s; gid = g } else ()
+        } else ()
+      }
+      // nothing has it: the primary font's missing-glyph box
+      if gid == 0 then slot = ch[0] else ()
+      let f = font_at(slot)
+      let adv = if cp == 9 then font.advance(f, font.glyph_index(f, 32)) * 4.0 else font.advance(f, gid)
+      let a = adv * size / f.units_per_em
+      list.push(out, { slot: slot, gid: gid, x: x, advance: a })
+      x = x + a
     }
-    let f = font_at(slot)
-    let adv = if cp == 9 then font.advance(f, font.glyph_index(f, 32)) * 4.0 else font.advance(f, gid)
-    let a = adv * size / f.units_per_em
-    list.push(out, { slot: slot, gid: gid, x: x, advance: a })
-    x = x + a
   }
   out
 }
+
+// `s` as it is shown on one line: Arabic joined, right-to-left runs in
+// visual order (self.bidi).
+pub fn display(s: String) -> List[Int] = bidi.visual(codepoints(s))
 
 // Line metrics of the primary font at `size`: ascent and full line height.
 pub fn ascent(size: Float, mono: Bool) -> Float = {
@@ -124,7 +171,7 @@ pub fn line_height(size: Float, mono: Bool) -> Float = {
 
 // The width of `s` on one line at `size`.
 pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float = {
-  let gs = shape(codepoints(s), size, mono, bold)
+  let gs = shape(display(s), size, mono, bold)
   let n = list.len(gs)
   if n == 0 then 0.0 else gs[n - 1].x + gs[n - 1].advance
 }
@@ -205,7 +252,7 @@ pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono
 pub fn draw_style(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit = {
   let lh = line_height(size, mono)
   let baseline = float.round(y + (h - lh) * 0.5 + ascent(size, mono))
-  draw_run(shape(codepoints(s), size, mono, bold), x, baseline, size, c)
+  draw_run(shape(display(s), size, mono, bold), x, baseline, size, c)
 }
 
 // Draw shaped glyphs with the pen starting at (x, baseline), physical px.

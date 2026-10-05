@@ -9,7 +9,10 @@ Text: font loading, fallback, measurement and drawing.
 Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
 once by snaidhm.font. Each codepoint is drawn with the first font in the
 style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
-cjk → ui). Glyphs are rasterised on first use into snaidhm's coverage
+cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
+Thai, emoji: loaded the first time a character needs them). Labels and
+paragraphs are joined and put in visual order first (self.bidi).
+Glyphs are rasterised on first use into snaidhm's coverage
 atlas (shelf-packed); a full atlas is cleared at the start of the next
 frame and refilled lazily.
 
@@ -25,6 +28,14 @@ type Extent = lay.Size
 
 Sizes are layout.Size: a second record type with the same fields makes the
 native leg emit the wrong struct (almide/almide#3283).
+
+### `take_waiting`
+
+```almide
+pub fn take_waiting() -> Bool
+```
+
+Whether text drawn since the last call lacked a font still loading.
 
 ## UTF-8
 
@@ -55,6 +66,15 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
 
 Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
 mono → CJK → UI for code) and x positions.
+
+### `display`
+
+```almide
+pub fn display(s: String) -> List[Int]
+```
+
+`s` as it is shown on one line: Arabic joined, right-to-left runs in
+visual order (self.bidi).
 
 ### `ascent`
 

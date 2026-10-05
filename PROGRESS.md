@@ -265,6 +265,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - The guide's code examples are type-checked in CI
   (tools/check_doc_examples.py); every public function has a comment
   (gen_api_docs.py --check).
+- Text beyond Latin (ADR 0009): Greek / Cyrillic, Arabic (joined via
+  presentation forms), Hebrew, Thai, monochrome emoji; one-line bidi;
+  fallback fonts lazy on the web (CJK too). Not yet: Indic shaping,
+  colour emoji, RTL editing.
+- Phones: system clipboard, iOS share sheet / document picker, Android
+  shared Downloads; TalkBack (AccessKit injecting adapter) and iOS
+  VoiceOver trees checked in CI.
 - `ceangal.toml` checks: unknown keys warn with a suggestion; types, ID /
   version / colour / build forms and paths are errors
   (`tests/cli/manifest_check.sh`).
@@ -298,10 +305,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework quality (in progress, 2026-10-05): CLI install and `dev` on
-   Linux / Windows in CI, release checksums + CHANGELOG, performance
-   budgets, mobile clipboard / share / picker, emoji / RTL / complex
-   scripts. Done: iOS VoiceOver / Android TalkBack trees, v0.1.0, v0.2.0,
+0. Framework: Indic shaping (GSUB/GPOS), colour emoji, RTL editing in
+   text fields, an Android file picker (needs an activity result), a
+   dropdown / menu control. Done: iOS VoiceOver / Android TalkBack trees,
+   mobile clipboard / share / picker, text beyond Latin, release checksums
+   + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
    guide + API reference, manifest checks, standard controls, `ceangal
    test`, checked doc examples (ADR 0007, 0008).

@@ -45,7 +45,8 @@ async function runScript(host, script) {
 
 window.__run = async () => {
   const errors = [];
-  const host = await start({ canvas: null, wasm: q.get("wasm"), assets, headless: { width, height, scale }, onError: (e) => errors.push(String(e)) });
+  // every font up front: a screenshot must not depend on when a lazy one lands
+  const host = await start({ canvas: null, wasm: q.get("wasm"), assets, lazy: () => false, headless: { width, height, scale }, onError: (e) => errors.push(String(e)) });
   await host.settle();
   await runScript(host, q.get("script") || "");
   const snap = await host.snapshot();

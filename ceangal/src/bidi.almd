@@ -1,0 +1,161 @@
+// Right-to-left text for display: Arabic letters joined into their
+// contextual forms (through Unicode's presentation forms, which the bundled
+// Arabic font maps), then one line put in visual order by a reduced Unicode
+// Bidirectional Algorithm (paragraph direction from the first strong
+// character, numbers kept left to right, neutrals taking the direction
+// around them, brackets mirrored in right-to-left runs). Labels and
+// paragraphs go through it; the editor keeps logical order for its caret.
+
+// ── Arabic joining ──
+
+// (letter, its isolated presentation form, how many forms: 4 = isolated,
+// final, initial, medial; 2 = isolated, final)
+let FORMS: List[(Int, Int, Int)] = [
+  (0x0621, 0xFE80, 1), (0x0622, 0xFE81, 2), (0x0623, 0xFE83, 2), (0x0624, 0xFE85, 2),
+  (0x0625, 0xFE87, 2), (0x0626, 0xFE89, 4), (0x0627, 0xFE8D, 2), (0x0628, 0xFE8F, 4),
+  (0x0629, 0xFE93, 2), (0x062A, 0xFE95, 4), (0x062B, 0xFE99, 4), (0x062C, 0xFE9D, 4),
+  (0x062D, 0xFEA1, 4), (0x062E, 0xFEA5, 4), (0x062F, 0xFEA9, 2), (0x0630, 0xFEAB, 2),
+  (0x0631, 0xFEAD, 2), (0x0632, 0xFEAF, 2), (0x0633, 0xFEB1, 4), (0x0634, 0xFEB5, 4),
+  (0x0635, 0xFEB9, 4), (0x0636, 0xFEBD, 4), (0x0637, 0xFEC1, 4), (0x0638, 0xFEC5, 4),
+  (0x0639, 0xFEC9, 4), (0x063A, 0xFECD, 4), (0x0641, 0xFED1, 4), (0x0642, 0xFED5, 4),
+  (0x0643, 0xFED9, 4), (0x0644, 0xFEDD, 4), (0x0645, 0xFEE1, 4), (0x0646, 0xFEE5, 4),
+  (0x0647, 0xFEE9, 4), (0x0648, 0xFEED, 2), (0x0649, 0xFEEF, 2), (0x064A, 0xFEF1, 4),
+  // Persian / Urdu
+  (0x067E, 0xFB56, 4), (0x0686, 0xFB7A, 4), (0x0698, 0xFB8A, 2), (0x06A9, 0xFB8E, 4),
+  (0x06AF, 0xFB92, 4), (0x06CC, 0xFBFC, 4),
+]
+
+fn forms_of(cp: Int) -> (Int, Int) = match list.find(FORMS, (f) => f.0 == cp) {
+  some(f) => (f.1, f.2),
+  none => (0, 0),
+}
+
+// Marks that do not break joining (harakat and the like).
+fn transparent(cp: Int) -> Bool =
+  (cp >= 0x064B and cp <= 0x065F) or cp == 0x0670 or (cp >= 0x06D6 and cp <= 0x06DC)
+    or (cp >= 0x06DF and cp <= 0x06E4) or cp == 0x06E7 or cp == 0x06E8 or (cp >= 0x06EA and cp <= 0x06ED)
+
+// Joins on both sides (tatweel joins without forms of its own).
+fn dual(cp: Int) -> Bool = cp == 0x0640 or forms_of(cp).1 == 4
+// Joins to the letter before it.
+fn joins_before(cp: Int) -> Bool = cp == 0x0640 or forms_of(cp).1 >= 2
+
+fn lam_alef(alef: Int) -> Int =
+  if alef == 0x0622 then 0xFEF5 else if alef == 0x0623 then 0xFEF7
+  else if alef == 0x0625 then 0xFEF9 else if alef == 0x0627 then 0xFEFB else 0
+
+// The letter before / after i, skipping marks (-1 = none).
+fn neighbour(cps: List[Int], i: Int, step: Int) -> Int = {
+  var j = i + step
+  while j >= 0 and j < list.len(cps) and transparent(cps[j]) { j = j + step }
+  if j >= 0 and j < list.len(cps) then j else -1
+}
+
+// Arabic letters in their joined forms (other text unchanged).
+pub fn join_arabic(cps: List[Int]) -> List[Int] = {
+  var out: List[Int] = []
+  var i = 0
+  let n = list.len(cps)
+  while i < n {
+    let cp = cps[i]
+    let (base, count) = forms_of(cp)
+    if count == 0 then { list.push(out, cp); i = i + 1 }
+    else {
+      let p = neighbour(cps, i, -1)
+      let q = neighbour(cps, i, 1)
+      let after_join = p >= 0 and dual(cps[p])
+      let next_join = count == 4 and q >= 0 and joins_before(cps[q])
+      let lig = if cp == 0x0644 and q >= 0 then lam_alef(cps[q]) else 0
+      if lig != 0 then {
+        // lam + alef: one ligature (isolated or final), marks between kept after it
+        list.push(out, if after_join then lig + 1 else lig)
+        for k in i + 1..<q { list.push(out, cps[k]) }
+        i = q + 1
+      } else {
+        let form = if count == 1 then 0
+          else if count == 2 then (if after_join then 1 else 0)
+          else if after_join and next_join then 3
+          else if after_join then 1
+          else if next_join then 2
+          else 0
+        list.push(out, base + form)
+        i = i + 1
+      }
+    }
+  }
+  out
+}
+
+// ── Direction ──
+
+// 0 left-to-right, 1 right-to-left, 2 number, 3 neutral
+fn class_of(cp: Int) -> Int =
+  if (cp >= 0x0590 and cp <= 0x08FF) or (cp >= 0xFB1D and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then
+    (if cp >= 0x0660 and cp <= 0x0669 then 2 else if cp >= 0x06F0 and cp <= 0x06F9 then 2 else if transparent(cp) then 3 else 1)
+  else if cp >= 0x30 and cp <= 0x39 then 2
+  else if cp < 0x30 or (cp >= 0x3A and cp <= 0x40) or (cp >= 0x5B and cp <= 0x60) or (cp >= 0x7B and cp <= 0xBF) or (cp >= 0x2000 and cp <= 0x206F) then 3
+  else 0
+
+fn mirror(cp: Int) -> Int =
+  if cp == 0x28 then 0x29 else if cp == 0x29 then 0x28 else if cp == 0x5B then 0x5D else if cp == 0x5D then 0x5B
+  else if cp == 0x7B then 0x7D else if cp == 0x7D then 0x7B else if cp == 0x3C then 0x3E else if cp == 0x3E then 0x3C
+  else if cp == 0xAB then 0xBB else if cp == 0xBB then 0xAB else cp
+
+pub fn has_rtl(cps: List[Int]) -> Bool = list.any(cps, (c) => class_of(c) == 1)
+
+// One line in display order: joined, levelled, reordered, mirrored.
+pub fn visual(cps: List[Int]) -> List[Int] =
+  if not has_rtl(cps) then cps
+  else {
+    let s = join_arabic(cps)
+    let n = list.len(s)
+    let classes = list.map(s, (c) => class_of(c))
+    // the paragraph's direction: its first strong character's
+    let base = match list.find(classes, (k) => k == 0 or k == 1) { some(k) => k, none => 0 }
+    // strong directions with numbers resolved: a number after right-to-left
+    // text belongs to it (as far as neutrals go)
+    var strong: List[Int] = []
+    var last = base
+    for k in classes {
+      if k == 0 or k == 1 then { last = k; list.push(strong, k) }
+      else if k == 2 then list.push(strong, if last == 1 then 1 else 0)
+      else list.push(strong, -1)
+    }
+    var levels: List[Int] = []
+    for i in 0..<n {
+      let k = classes[i]
+      let lv = if k == 1 then 1
+        else if k == 0 then (if base == 1 then 2 else 0)
+        else if k == 2 then (if strong[i] == 1 or base == 1 then 2 else 0)
+        else {
+          // a neutral: the direction on both sides when they agree, else the paragraph's
+          var before = base
+          var j = i - 1
+          while j >= 0 and strong[j] < 0 { j = j - 1 }
+          if j >= 0 then before = strong[j] else ()
+          var after = base
+          var m = i + 1
+          while m < n and strong[m] < 0 { m = m + 1 }
+          if m < n then after = strong[m] else ()
+          if before == after then (if before == 1 then 1 else (if base == 1 then 2 else 0)) else base
+        }
+      list.push(levels, lv)
+    }
+    // reverse every run at or above each level, highest first
+    var order: List[Int] = list.range(0, n)
+    var top = list.fold(levels, 0, (a, b) => int.max(a, b))
+    while top >= 1 {
+      var i = 0
+      while i < n {
+        if levels[order[i]] >= top then {
+          var j = i
+          while j < n and levels[order[j]] >= top { j = j + 1 }
+          let run = list.reverse(list.slice(order, i, j))
+          order = list.take(order, i) + run + list.drop(order, j)
+          i = j
+        } else i = i + 1
+      }
+      top = top - 1
+    }
+    list.map(order, (k) => if levels[k] % 2 == 1 then mirror(s[k]) else s[k])
+  }

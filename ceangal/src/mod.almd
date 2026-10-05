@@ -404,6 +404,8 @@ fn frame(t: Float) -> Int = {
   let flinging = advance_flings(t)
   if flinging then dirty = true else ()
   let animating = current.on_frame(t) or flinging
+  // a font still loading: draw again until it is there
+  if tx.take_waiting() then dirty = true else ()
   if dirty or animating then {
     dirty = false
     render()

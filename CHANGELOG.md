@@ -28,6 +28,10 @@ release. The release workflow takes the release notes from this file.
   `save_file` opens the share sheet on iOS and saves into the shared
   Downloads folder on Android 10+; `open_text_file` opens the document
   picker on iOS.
+- Text: Greek and Cyrillic in the UI font; Arabic (joined), Hebrew, Thai
+  and emoji fallback fonts; right-to-left lines in visual order (bidi).
+  On the web, fallback fonts (CJK included) load on first use instead of
+  before the app starts.
 - Screen readers: TalkBack on Android and VoiceOver on iOS see ceangal
   apps; plain text is read on every platform (it was empty to AccessKit
   readers before).

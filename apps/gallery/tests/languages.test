@@ -1,0 +1,8 @@
+# Text beyond Latin: each script's font, Arabic joined, right-to-left in
+# order (the screenshot is the check a person makes).
+tap "Lists"
+see "Languages"
+see "עברית: שלום עולם"
+see "Emoji"
+wait 1000
+shot "languages.png"

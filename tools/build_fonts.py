@@ -8,10 +8,21 @@ face), then subset:
   mono.ttf                    JetBrains Mono Latin, box drawing, arrows, symbols
   cjk.ttf                     Noto Sans JP   kana, CJK punctuation, fullwidth forms,
                                              every kanji in JIS X 0208 (cp932)
+  arabic.ttf                  Noto Sans Arabic   Arabic, Persian / Urdu letters, presentation forms
+                                             (ceangal.text joins letters through them)
+  hebrew.ttf                  Noto Sans Hebrew
+  thai.ttf                    Noto Sans Thai
+  emoji.ttf                   Noto Emoji     monochrome emoji (drawn in the text colour)
 
-Usage (needs fonttools):  python3 tools/build_fonts.py <dir with upstream .ttf>
-Upstream files: Inter[opsz,wght].ttf, JetBrainsMono[wght].ttf, NotoSansJP[wght].ttf
-from https://github.com/google/fonts (ofl/inter, ofl/jetbrainsmono, ofl/notosansjp).
+The UI faces also cover Greek and Cyrillic. Fallback fonts are loaded the
+first time a character needs them (lazily on the web).
+
+Usage (needs fonttools):  python3 tools/build_fonts.py <dir with upstream .ttf> [name…]
+(names: ui mono cjk arabic hebrew thai emoji; default all)
+Upstream files from https://github.com/google/fonts: ofl/inter/Inter[opsz,wght].ttf,
+ofl/jetbrainsmono/JetBrainsMono[wght].ttf, ofl/notosansjp/NotoSansJP[wght].ttf,
+ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf, ofl/notosanshebrew/NotoSansHebrew[wdth,wght].ttf,
+ofl/notosansthai/NotoSansThai[wdth,wght].ttf, ofl/notoemoji/NotoEmoji[wght].ttf.
 """
 import os
 import sys
@@ -28,6 +39,11 @@ LATIN = list(range(0x20, 0x7F)) + list(range(0xA0, 0x180)) + [
     0x2039, 0x203A, 0x20AC, 0x2122, 0x2190, 0x2191, 0x2192, 0x2193, 0x2212, 0x2318,
     0x2325, 0x21E7, 0x23CE, 0x232B, 0x2713, 0x2715, 0x25B6, 0x25BC, 0x25B2, 0x25C0, 0x00D7,
 ]
+GREEK_CYRILLIC = list(range(0x370, 0x400)) + list(range(0x400, 0x530))
+PUNCT = [0x20, 0x2E, 0x2C, 0x3A, 0x3B, 0x21, 0x3F, 0x28, 0x29, 0xA0, 0x200C, 0x200D, 0x200E, 0x200F, 0x25CC]
+ARABIC = list(range(0x600, 0x700)) + list(range(0x750, 0x780)) + list(range(0xFB50, 0xFE00)) + list(range(0xFE70, 0xFF00)) + PUNCT
+HEBREW = list(range(0x590, 0x600)) + list(range(0xFB1D, 0xFB50)) + PUNCT
+THAI = list(range(0xE00, 0xE80)) + PUNCT
 MONO_EXTRA = list(range(0x2500, 0x2580)) + list(range(0x2190, 0x2200)) + list(range(0x2200, 0x2300))
 
 
@@ -64,11 +80,27 @@ def build(src, dst, axes, unicodes, keep_layout=True):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "."
+    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji"}
     os.makedirs(OUT, exist_ok=True)
-    build(os.path.join(src, "Inter[opsz,wght].ttf"), os.path.join(OUT, "ui.ttf"), {"wght": 400, "opsz": 14}, LATIN)
-    build(os.path.join(src, "Inter[opsz,wght].ttf"), os.path.join(OUT, "ui-semibold.ttf"), {"wght": 600, "opsz": 14}, LATIN)
-    build(os.path.join(src, "JetBrainsMono[wght].ttf"), os.path.join(OUT, "mono.ttf"), {"wght": 400}, LATIN + MONO_EXTRA, keep_layout=False)
-    build(os.path.join(src, "NotoSansJP[wght].ttf"), os.path.join(OUT, "cjk.ttf"), {"wght": 400}, cjk_codepoints(), keep_layout=False)
+    f = lambda n: os.path.join(src, n)
+    o = lambda n: os.path.join(OUT, n)
+    if "ui" in want:
+        build(f("Inter[opsz,wght].ttf"), o("ui.ttf"), {"wght": 400, "opsz": 14}, LATIN + GREEK_CYRILLIC)
+        build(f("Inter[opsz,wght].ttf"), o("ui-semibold.ttf"), {"wght": 600, "opsz": 14}, LATIN + GREEK_CYRILLIC)
+    if "mono" in want:
+        build(f("JetBrainsMono[wght].ttf"), o("mono.ttf"), {"wght": 400}, LATIN + MONO_EXTRA, keep_layout=False)
+    if "cjk" in want:
+        build(f("NotoSansJP[wght].ttf"), o("cjk.ttf"), {"wght": 400}, cjk_codepoints(), keep_layout=False)
+    # shaping is ceangal.text's (joining via presentation forms, bidi): no layout tables
+    if "arabic" in want:
+        build(f("NotoSansArabic[wdth,wght].ttf"), o("arabic.ttf"), {"wght": 400, "wdth": 100}, ARABIC, keep_layout=False)
+    if "hebrew" in want:
+        build(f("NotoSansHebrew[wdth,wght].ttf"), o("hebrew.ttf"), {"wght": 400, "wdth": 100}, HEBREW, keep_layout=False)
+    if "thai" in want:
+        build(f("NotoSansThai[wdth,wght].ttf"), o("thai.ttf"), {"wght": 400, "wdth": 100}, THAI, keep_layout=False)
+    if "emoji" in want:
+        emoji = TTFont(f("NotoEmoji[wght].ttf")).getBestCmap().keys()
+        build(f("NotoEmoji[wght].ttf"), o("emoji.ttf"), {"wght": 400}, sorted(emoji), keep_layout=False)
 
 
 if __name__ == "__main__":
