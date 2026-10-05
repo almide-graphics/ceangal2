@@ -10,7 +10,7 @@ Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
 once by snaidhm.font. Each codepoint is drawn with the first font in the
 style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
-Thai, Devanagari, Bengali, Tamil, symbols: loaded the first time a
+Thai, the Indic scripts, symbols: loaded the first time a
 character needs them). Labels and paragraphs are joined and put in visual
 order first (self.bidi); Indic runs are shaped with their font's layout
 tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
@@ -31,6 +31,14 @@ type Extent = lay.Size
 
 Sizes are layout.Size: a second record type with the same fields makes the
 native leg emit the wrong struct (almide/almide#3283).
+
+### `FONT_COLOR_EMOJI`
+
+```almide
+let FONT_COLOR_EMOJI
+```
+
+Gurmukhi, Gujarati, Telugu, Kannada, Malayalam: 12–16
 
 ### `take_waiting`
 
@@ -74,7 +82,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
 ```
 
 Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
-mono → CJK → UI for code) and x positions. Devanagari, Bengali and Tamil
+mono → CJK → UI for code) and x positions. Indic
 runs are shaped as a whole (self.indic); other text glyph by glyph.
 
 ### `edges`

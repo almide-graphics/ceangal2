@@ -4,7 +4,7 @@
 // once by snaidhm.font. Each codepoint is drawn with the first font in the
 // style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 // cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
-// Thai, Devanagari, Bengali, Tamil, symbols: loaded the first time a
+// Thai, the Indic scripts, symbols: loaded the first time a
 // character needs them). Labels and paragraphs are joined and put in visual
 // order first (self.bidi); Indic runs are shaped with their font's layout
 // tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
@@ -38,14 +38,19 @@ let FONT_EMOJI = 7
 let FONT_DEVANAGARI = 8
 let FONT_BENGALI = 9
 let FONT_TAMIL = 10
+// Gurmukhi, Gujarati, Telugu, Kannada, Malayalam: 12–16
 let FONT_COLOR_EMOJI = 11
 
 let FONT_FILES = ["fonts/ui.ttf", "fonts/ui-semibold.ttf", "fonts/mono.ttf", "fonts/cjk.ttf",
                   "fonts/arabic.ttf", "fonts/hebrew.ttf", "fonts/thai.ttf", "fonts/emoji.ttf",
-                  "fonts/devanagari.ttf", "fonts/bengali.ttf", "fonts/tamil.ttf", "fonts/emoji-color.ttf"]
+                  "fonts/devanagari.ttf", "fonts/bengali.ttf", "fonts/tamil.ttf", "fonts/emoji-color.ttf",
+                  "fonts/gurmukhi.ttf", "fonts/gujarati.ttf", "fonts/telugu.ttf", "fonts/kannada.ttf", "fonts/malayalam.ttf"]
 
 var fonts: List[font.Font] = []
-var font_tried: List[Bool] = list.repeat(false, 12)
+var font_tried: List[Bool] = list.repeat(false, 17)
+
+// The font slot of an Indic script (self.indic's numbering).
+fn indic_slot(sc: Int) -> Int = if sc < 3 then FONT_DEVANAGARI + sc else 9 + sc
 
 // A font was needed but has not arrived yet (the web loads fallback fonts
 // on first use): the runtime redraws until it has.
@@ -67,7 +72,7 @@ fn script_font(cp: Int) -> Int =
     or (cp >= 0x2300 and cp <= 0x23FF) or cp == 0x3030 or cp == 0x303D then FONT_EMOJI
   else {
     let sc = indic.script_of(cp)
-    if sc >= 0 then FONT_DEVANAGARI + sc else -1
+    if sc >= 0 then indic_slot(sc) else -1
   }
 
 // Formatting characters that draw nothing: zero-width (non-)joiners and
@@ -156,6 +161,41 @@ fn in_ranges(rs: List[(Int, Int)], cp: Int) -> Bool = {
   hit
 }
 
+// emoji_data's packed ranges, unpacked on first use.
+var pres_ranges: List[(Int, Int)] = []
+var pict_ranges: List[(Int, Int)] = []
+
+fn presentation() -> List[(Int, Int)] = {
+  if list.len(pres_ranges) == 0 then pres_ranges = unpack_ranges(emoji.PRESENTATION) else ()
+  pres_ranges
+}
+
+fn pictographic() -> List[(Int, Int)] = {
+  if list.len(pict_ranges) == 0 then pict_ranges = unpack_ranges(emoji.PICTOGRAPHIC) else ()
+  pict_ranges
+}
+
+// (first, last) pairs from 10 hex digits each.
+fn unpack_ranges(s: String) -> List[(Int, Int)] = {
+  let b = bytes.from_string(s)
+  var out: List[(Int, Int)] = []
+  var k = 0
+  while k + 10 <= bytes.len(b) {
+    list.push(out, (hex_at(b, k, 5), hex_at(b, k + 5, 5)))
+    k = k + 10
+  }
+  out
+}
+
+fn hex_at(b: Bytes, p: Int, n: Int) -> Int = {
+  var v = 0
+  for k in 0..<n {
+    let c = bytes.read_u8(b, p + k)
+    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
+  }
+  v
+}
+
 fn regional(cp: Int) -> Bool = cp >= 0x1F1E6 and cp <= 0x1F1FF
 fn skin_tone(cp: Int) -> Bool = cp >= 0x1F3FB and cp <= 0x1F3FF
 fn tag_char(cp: Int) -> Bool = cp >= 0xE0020 and cp <= 0xE007F
@@ -187,9 +227,9 @@ fn emoji_end(cps: List[Int], i: Int) -> Int = {
     else i
   } else if cp < 0xA9 then i
   else if regional(cp) then (if regional(next) then i + 2 else i + 1)
-  else if in_ranges(emoji.PRESENTATION, cp) or (in_ranges(emoji.PICTOGRAPHIC, cp) and (next == 0xFE0F or skin_tone(next))) then {
+  else if in_ranges(presentation(), cp) or (in_ranges(pictographic(), cp) and (next == 0xFE0F or skin_tone(next))) then {
     var k = emoji_element_end(cps, i)
-    while k + 1 < n and cps[k] == 0x200D and in_ranges(emoji.PICTOGRAPHIC, cps[k + 1]) { k = emoji_element_end(cps, k + 1) }
+    while k + 1 < n and cps[k] == 0x200D and in_ranges(pictographic(), cps[k + 1]) { k = emoji_element_end(cps, k + 1) }
     k
   } else i
 }
@@ -236,7 +276,7 @@ fn shape_indic(slot: Int, script: Int, cps: List[Int]) -> List[indic.Out] = {
 }
 
 // Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
-// mono → CJK → UI for code) and x positions. Devanagari, Bengali and Tamil
+// mono → CJK → UI for code) and x positions. Indic
 // runs are shaped as a whole (self.indic); other text glyph by glyph.
 pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph] = {
   let ch = chain(mono, bold)
@@ -247,7 +287,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
   while i < n {
     let cp = cps[i]
     let sc = if cp < 0x0900 then -1 else indic.script_of(cp)
-    let slot_i = if sc >= 0 then FONT_DEVANAGARI + sc else -1
+    let slot_i = if sc >= 0 then indic_slot(sc) else -1
     let e_end = if cp < 0x23 or (cp < 0xA9 and not keycap_base(cp)) or sc >= 0 then i else emoji_end(cps, i)
     if e_end > i and font_at(FONT_COLOR_EMOJI).ok then {
       // an emoji: its glyphs (one, after the font's ligatures), each as its colour layers

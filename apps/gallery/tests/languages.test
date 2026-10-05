@@ -4,6 +4,7 @@ tap "Lists"
 see "Languages"
 see "עברית: שלום עולם"
 see "हिन्दी: नमस्ते दुनिया, श्री कृष्ण"
+see "ਪੰਜਾਬੀ · ગુજરાતી · తెలుగు · ಕನ್ನಡ · മലയാളം"
 see "Emoji"
 wait 1000
 shot "languages.png"

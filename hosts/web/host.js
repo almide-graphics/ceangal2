@@ -85,7 +85,7 @@ export class Host {
   // them) are fetched the first time the app asks for them, not before it
   // starts; until then asset_len says -1 and the app draws again once they
   // arrive. `lazy: (name) => bool` in the start options overrides the rule.
-  async loadAssets(assets, lazy = (name) => /^fonts\/(cjk|arabic|hebrew|thai|emoji|emoji-color|devanagari|bengali|tamil)\.ttf$/.test(name)) {
+  async loadAssets(assets, lazy = (name) => /^fonts\/(cjk|arabic|hebrew|thai|emoji|emoji-color|devanagari|bengali|tamil|gurmukhi|gujarati|telugu|kannada|malayalam)\.ttf$/.test(name)) {
     this.lazyAssets = new Map();
     await Promise.all(Object.entries(assets).map(async ([name, src]) => {
       if (!(src instanceof Uint8Array) && lazy(name)) { this.lazyAssets.set(name, src); return; }

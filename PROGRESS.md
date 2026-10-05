@@ -2,6 +2,15 @@
 
 Read at the start of every session; update at the end.
 
+## 留守中の作業まとめ (2026-10-06 から, 最新が上)
+
+- Indic を 8 文字に拡大: Gurmukhi / Gujarati / Telugu / Kannada /
+  Malayalam を追加。363 語で HarfBuzz と glyph・cluster・位置まで完全一致
+  (CI で検査)。文字表を圧縮文字列にして wasm を約 5 KB 削減し、予算内に収めた。
+- Android CI: エミュレータが「初期設定中」で HOME が無視される問題を、
+  テスト側で本当に背面へ移るまで HOME を押すように修正 (31aa557)。
+- (この下に作業ごとに追記していく)
+
 ## Current milestone
 
 **M5 — mobile** (M0–M4 done locally; Android and iOS done locally, iOS CI
@@ -284,6 +293,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (`snaidhm/src/colr.almd`), UTS #51 sequences from generated emoji data,
   the font's ccmp through `otl`; caret stops / Backspace by cluster
   (`text.stops`, `backspace_to`; apps/gallery/tests/emoji.test).
+- Indic, eight scripts (ADR 0010 update): Gurmukhi, Gujarati, Telugu,
+  Kannada, Malayalam (fonts, script table: reph position / mode, blwf
+  mode, matra positions; pref reordering, Malayalam base / dot reph,
+  Kannada Ra+H+ZWJ); 363 HarfBuzz cases. indic_data / emoji_data packed
+  as strings (−5 KB wasm).
 - Dropdown / menu (ADR 0013): `v.overlay()` (painted last, hit first,
   ancestor clips dropped), one popup at a time in the runtime (a press
   outside closes it and its release does nothing), `w.dropdown`,

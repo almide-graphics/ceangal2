@@ -57,10 +57,31 @@ Hindi, Bengali and Tamil together are read by over a billion people.
   140 KB to 185 KB). The budgets in `tests/perf/budgets.json` rise to
   match. Editor frames do not slow down: the per-glyph path for other
   text got faster in the same change.
-- Other Indic scripts (Gurmukhi, Gujarati, Oriya, Telugu, Kannada,
-  Malayalam) need a font and their rows in the shaper's script table
-  (reph and matra positions, pre-base-reordering Ra for Kannada / Telugu /
-  Malayalam, which is not implemented). Myanmar, Khmer and the
-  USE-shaped scripts need their own shapers on the same engine.
+- Myanmar, Khmer and the USE-shaped scripts need their own shapers on the
+  same engine. Oriya and Sinhala need a font and their rows in the script
+  table.
 - Arabic still joins through presentation forms. Moving it to the font's
   GSUB (init / medi / fina, mark positioning) would now be possible.
+
+## Update (2026-10-06): eight scripts
+Gurmukhi, Gujarati, Telugu, Kannada and Malayalam were added, each with
+its Noto Sans font (24–133 KB, lazy on the web). The script table gives:
+
+- Ra and the virama as fixed offsets in each block;
+- the reph's position (before the sub-joined forms, after them, before or
+  after the post-base forms, or after the main consonant);
+- how a reph is written: Ra + virama, Ra + virama + ZWJ (Telugu), or a
+  repha character (Malayalam's dot reph, U+0D4E);
+- whether consonants before the base take below-base forms (not Telugu
+  and Kannada);
+- each script's matra positions.
+
+The shaper also reorders a pre-base-reordering Ra (pref), skips
+Malayalam's unformed below-base forms when finding the base, and treats
+Kannada's legacy Ra, virama, ZWJ as Ra, ZWJ, virama. 363 words in eight
+scripts match HarfBuzz.
+
+The character tables (indic_data, emoji_data) are now packed strings,
+unpacked on first use. A list of tuples cost about 4 KB of wasm per
+hundred rows, a string about a tenth of that. That keeps the code for the five
+scripts inside the size budgets.

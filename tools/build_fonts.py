@@ -15,7 +15,8 @@ face), then subset:
   emoji.ttf                   Noto Emoji     monochrome emoji: symbols in text presentation
   emoji-color.ttf             Twemoji Mozilla  colour emoji (COLRv0 layers, CPAL palette, its GSUB
                                              for ZWJ sequences, flags, keycaps, skin tones)
-  devanagari.ttf / bengali.ttf / tamil.ttf   Noto Sans Devanagari / Bengali / Tamil,
+  devanagari.ttf / bengali.ttf / tamil.ttf / gurmukhi.ttf / gujarati.ttf / telugu.ttf /
+  kannada.ttf / malayalam.ttf                Noto Sans for each script,
                                              with their OpenType layout (GSUB, GPOS, GDEF):
                                              ceangal.indic shapes them
 
@@ -23,13 +24,14 @@ The UI faces also cover Greek and Cyrillic. Fallback fonts are loaded the
 first time a character needs them (lazily on the web).
 
 Usage (needs fonttools):  python3 tools/build_fonts.py <dir with upstream .ttf> [name…]
-(names: ui mono cjk arabic hebrew thai emoji emoji-color devanagari bengali tamil; default all)
+(names: ui mono cjk arabic hebrew thai emoji emoji-color, and the Indic scripts below; default all)
 Upstream files from https://github.com/google/fonts: ofl/inter/Inter[opsz,wght].ttf,
 ofl/jetbrainsmono/JetBrainsMono[wght].ttf, ofl/notosansjp/NotoSansJP[wght].ttf,
 ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf, ofl/notosanshebrew/NotoSansHebrew[wdth,wght].ttf,
 ofl/notosansthai/NotoSansThai[wdth,wght].ttf, ofl/notoemoji/NotoEmoji[wght].ttf,
 ofl/notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf, ofl/notosansbengali/NotoSansBengali[wdth,wght].ttf,
-ofl/notosanstamil/NotoSansTamil[wdth,wght].ttf; Twemoji.Mozilla.ttf from
+ofl/notosanstamil/NotoSansTamil[wdth,wght].ttf, and likewise notosansgurmukhi, notosansgujarati,
+notosanstelugu, notosanskannada, notosansmalayalam; Twemoji.Mozilla.ttf from
 https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0 (CC-BY 4.0 art, Apache-2.0 build).
 """
 import os
@@ -53,9 +55,16 @@ ARABIC = list(range(0x600, 0x700)) + list(range(0x750, 0x780)) + list(range(0xFB
 HEBREW = list(range(0x590, 0x600)) + list(range(0xFB1D, 0xFB50)) + PUNCT
 THAI = list(range(0xE00, 0xE80)) + PUNCT
 INDIC_COMMON = PUNCT + [0x0964, 0x0965, 0x00A0, 0x2010, 0x2013, 0x2014]
-DEVANAGARI = list(range(0x900, 0x980)) + list(range(0xA8E0, 0xA900)) + INDIC_COMMON
-BENGALI = list(range(0x980, 0xA00)) + INDIC_COMMON
-TAMIL = list(range(0xB80, 0xC00)) + INDIC_COMMON
+INDIC_FONTS = [
+    ("devanagari", "NotoSansDevanagari", list(range(0x900, 0x980)) + list(range(0xA8E0, 0xA900))),
+    ("bengali", "NotoSansBengali", list(range(0x980, 0xA00))),
+    ("tamil", "NotoSansTamil", list(range(0xB80, 0xC00))),
+    ("gurmukhi", "NotoSansGurmukhi", list(range(0xA00, 0xA80))),
+    ("gujarati", "NotoSansGujarati", list(range(0xA80, 0xB00))),
+    ("telugu", "NotoSansTelugu", list(range(0xC00, 0xC80))),
+    ("kannada", "NotoSansKannada", list(range(0xC80, 0xD00))),
+    ("malayalam", "NotoSansMalayalam", list(range(0xD00, 0xD80))),
+]
 MONO_EXTRA = list(range(0x2500, 0x2580)) + list(range(0x2190, 0x2200)) + list(range(0x2200, 0x2300))
 
 
@@ -93,7 +102,7 @@ def build(src, dst, axes, unicodes, keep_layout=True, all_features=False):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "."
-    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji", "emoji-color", "devanagari", "bengali", "tamil"}
+    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji", "emoji-color"} | {n for n, _, _ in INDIC_FONTS}
     os.makedirs(OUT, exist_ok=True)
     f = lambda n: os.path.join(src, n)
     o = lambda n: os.path.join(OUT, n)
@@ -118,9 +127,9 @@ def main():
         emoji = TTFont(f("Twemoji.Mozilla.ttf")).getBestCmap().keys()
         build(f("Twemoji.Mozilla.ttf"), o("emoji-color.ttf"), {}, sorted(emoji), all_features=True)
     # Indic: the fonts' own layout tables do the conjuncts, half forms, reph and marks
-    for name, family, cps in [("devanagari", "NotoSansDevanagari", DEVANAGARI), ("bengali", "NotoSansBengali", BENGALI), ("tamil", "NotoSansTamil", TAMIL)]:
+    for name, family, cps in INDIC_FONTS:
         if name in want:
-            build(f(family + "[wdth,wght].ttf"), o(name + ".ttf"), {"wght": 400, "wdth": 100}, cps, all_features=True)
+            build(f(family + "[wdth,wght].ttf"), o(name + ".ttf"), {"wght": 400, "wdth": 100}, cps + INDIC_COMMON, all_features=True)
 
 
 if __name__ == "__main__":

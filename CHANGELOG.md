@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Gurmukhi, Gujarati, Telugu, Kannada and Malayalam**, shaped like the
+  other Indic scripts (reph by script, pre-base-reordering Ra, Malayalam's
+  dot reph): 363 words in eight scripts match HarfBuzz. (ADR 0010)
 - **Dropdown and menu** (`w.dropdown`, `w.menu_button`): lists that float
   over the window, by pointer, keyboard and screen reader (combo box,
   list box, menu roles; expanded state). Underneath: `v.overlay()` and

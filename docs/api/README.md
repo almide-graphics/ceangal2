@@ -14,7 +14,7 @@ The guides are in [../guide](../guide/README.md).
 | [`ceangal.editor`](ceangal.editor.md) | a multi-line text editor view | 40 |
 | [`ceangal.storage`](ceangal.storage.md) | saved values and secrets | 6 |
 | [`ceangal.http`](ceangal.http.md) | HTTP requests | 6 |
-| [`ceangal.text`](ceangal.text.md) | fonts: shaping, measuring and drawing text | 28 |
+| [`ceangal.text`](ceangal.text.md) | fonts: shaping, measuring and drawing text | 29 |
 | [`ceangal.syntax`](ceangal.syntax.md) | Almide syntax highlighting | 5 |
 | [`snaidhm`](snaidhm.md) | the renderer: colours, frames, shapes, images | 20 |
 | [`snaidhm.vector`](snaidhm.vector.md) | vector paths: fill and stroke | 10 |
