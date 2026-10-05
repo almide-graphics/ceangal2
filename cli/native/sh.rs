@@ -6,7 +6,7 @@
 /// extra environment `keys[i] = vals[i]`; the exit code, or -1 when it could
 /// not start (the reason goes to stderr).
 pub fn sh_run(cmd: &str, args: &[String], dir: &str, keys: &[String], vals: &[String]) -> i64 {
-    let mut c = std::process::Command::new(cmd);
+    let mut c = std::process::Command::new(program(cmd));
     c.args(args);
     if !dir.is_empty() { c.current_dir(dir); }
     for (k, v) in keys.iter().zip(vals) { c.env(k, v); }
@@ -14,6 +14,22 @@ pub fn sh_run(cmd: &str, args: &[String], dir: &str, keys: &[String], vals: &[St
         Ok(s) => s.code().unwrap_or(-1) as i64,
         Err(e) => { eprintln!("ceangal: cannot run {cmd}: {e}"); -1 }
     }
+}
+
+/// Windows: `bash` is Git's (the tools are bash scripts); a bare `bash` would
+/// find System32\bash.exe first, WSL's launcher. `$CEANGAL_BASH` overrides.
+fn program(cmd: &str) -> String {
+    if !cfg!(windows) || cmd != "bash" { return cmd.to_string() }
+    if let Ok(b) = std::env::var("CEANGAL_BASH") { return b }
+    for base in ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)", "LOCALAPPDATA"] {
+        if let Ok(dir) = std::env::var(base) {
+            for rel in [r"Git\bin\bash.exe", r"Programs\Git\bin\bash.exe"] {
+                let p = std::path::Path::new(&dir).join(rel);
+                if p.exists() { return p.to_string_lossy().into_owned() }
+            }
+        }
+    }
+    cmd.to_string()
 }
 
 /// The directory as an absolute, normalised path ("" when it does not exist).
