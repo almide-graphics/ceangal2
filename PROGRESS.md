@@ -338,8 +338,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
       Workspace / Cloud) has 東京都台東区竜泉3-10-2 アミーレ浅草竜泉1003 and
       the D-U-N-S record the old 広島2-11-8 パレインヴィラ; linking the
       D-U-N-S changes that profile for every service. First the D&B address
-      update (Tokyo Shoko Research, as for Apple) and the payments profile
-      address, then sign up again (US$25). After approval: upload key →
+      update (Tokyo Shoko Research, as for Apple; the payments profile
+      address was moved to 橘通東4-1-4 河北ビル1F on 2026-10-05), then sign
+      up again (US$25). After approval: upload key →
       GitHub secrets `ANDROID_KEYSTORE_B64` (base64 .jks),
       `ANDROID_KEYSTORE_PASS`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASS`
       (Claude can make the key and set them); enroll in Play App Signing.
