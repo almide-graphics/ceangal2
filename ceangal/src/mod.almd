@@ -363,8 +363,9 @@ pub fn set_title(title: String) -> Unit = {
   sys.set_title(bytes.data_ptr(b), bytes.len(b))
 }
 
-// Offer `data` to the user to save as `name` (a save dialog on the desktop,
-// a download on the web). Returns a request id; `on_result` gets it with
+// Offer `data` to the user to save as `name`: a save dialog on the desktop,
+// a download on the web, the share sheet on iOS (Save to Files, AirDrop…),
+// the shared Downloads folder on Android. Returns a request id; `on_result` gets it with
 // status 200 when it was saved (the body is the path), 499 when the user
 // cancelled, 0 when it failed (the body is why).
 pub fn save_file(name: String, data: Bytes) -> Int = {
@@ -375,7 +376,8 @@ pub fn save_file(name: String, data: Bytes) -> Int = {
   id
 }
 
-// Ask the user for a text file (the system picker). Returns a request id;
+// Ask the user for a text file: the system picker (the document picker on
+// iOS; Android has none yet and answers 0). Returns a request id;
 // `on_result` gets it with status 200 and the contents, 499 when the user
 // cancelled, 0 when it failed.
 pub fn open_text_file() -> Int = file.file_open(0)

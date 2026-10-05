@@ -1,6 +1,7 @@
 //! `file` namespace — docs/abi.md §4.7. Picker requests are queued for the
 //! host loop (system dialogs must run on the main thread); results arrive as
-//! event 10. Dialogs come from `ceangal_platform`.
+//! event 10. Dialogs come from `ceangal_platform`: the desktop's save / open
+//! panels, the share sheet and document picker on iOS, Downloads on Android.
 
 #![allow(dead_code)]
 
@@ -47,6 +48,22 @@ pub fn take_requests() -> Vec<FileRequest> {
 /// 499 when the user cancels; 0 + message on failure.
 pub fn perform(interactive: bool) {
     for req in take_requests() {
+        // Phones: the platform's own flows (share sheet, Downloads, document
+        // picker), answered asynchronously.
+        #[cfg(any(target_os = "android", target_os = "ios"))]
+        if interactive {
+            crate::sys::begin_async();
+            match req {
+                FileRequest::Save { id, name, data } => {
+                    let downloads = crate::storage::data_dir().join("Downloads");
+                    ceangal_platform::mobile_save(&name, &data, &downloads, Box::new(move |s, b| crate::sys::finish_async(id, s, Some(b))));
+                }
+                FileRequest::Open { id, kind: _ } => {
+                    ceangal_platform::mobile_open(Box::new(move |s, b| crate::sys::finish_async(id, s, Some(b))));
+                }
+            }
+            continue;
+        }
         match req {
             FileRequest::Save { id, name, data } => {
                 let path = if interactive {

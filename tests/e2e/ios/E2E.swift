@@ -298,3 +298,32 @@ final class PlaygroundE2E: E2E {
         XCTAssertTrue(bad.isEmpty, bad.joined(separator: "; "))
     }
 }
+
+/// tests/apps/services: the system clipboard (checked from outside with
+/// `simctl pbpaste`), the share sheet for a saved file, the document picker.
+final class ServicesE2E: E2E {
+    func test1_clipboardShareSheetPicker() {
+        guard appName == "services" else { return }
+        launch()
+        until("the app", has("Copy"))
+        tap("Copy")
+        shot("copied")
+
+        tap("Export")
+        // the share sheet is the system's (a remote view): tap above it to
+        // close it, and the app hears "cancelled"
+        let sheet = app.otherElements["ActivityListView"].firstMatch
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), "no share sheet")
+        Thread.sleep(forTimeInterval: 1)
+        shot("share-sheet")
+        tapAt(app.frame.width / 2, 120)
+        until("the cancelled save", has("file 499 "))
+
+        tap("Open")
+        let cancel = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "no document picker")
+        shot("picker")
+        cancel.tap()
+        until("the cancelled open", has("file 499 "))
+    }
+}

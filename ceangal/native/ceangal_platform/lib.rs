@@ -38,13 +38,17 @@ mod imp {
 mod imp {
     use std::path::PathBuf;
 
-    /// In-app clipboard: copy / paste work between fields of this app.
+    /// The system clipboard (UIPasteboard / ClipboardManager); what the app
+    /// copied last stays readable here should the system refuse a read.
     pub struct Clipboard(Option<String>);
 
     impl Clipboard {
         pub fn new() -> Option<Self> { Some(Clipboard(None)) }
-        pub fn get_text(&mut self) -> Option<String> { self.0.clone() }
-        pub fn set_text(&mut self, s: String) { self.0 = Some(s); }
+        pub fn get_text(&mut self) -> Option<String> { super::mobile::clipboard_get().or_else(|| self.0.clone()) }
+        pub fn set_text(&mut self, s: String) {
+            super::mobile::clipboard_set(&s);
+            self.0 = Some(s);
+        }
     }
 
     /// No system save panel: the file goes to the app's downloads folder.
@@ -81,6 +85,258 @@ mod imp {
 }
 
 pub use imp::{Clipboard, Keychain};
+
+/// A result for an asynchronous request: (status, body), as docs/abi.md §4.7
+/// (200 done, 499 cancelled, 0 failed with the reason as the body).
+pub type Done = Box<dyn FnOnce(i64, Vec<u8>) + Send>;
+
+/// Phones: offer `data` as a file named `name`. iOS: the share sheet (Save
+/// to Files, AirDrop, Mail…); Android: the shared Downloads folder (API 29+,
+/// the app's own Downloads folder before).
+#[cfg(any(target_os = "android", target_os = "ios"))]
+pub fn mobile_save(name: &str, data: &[u8], downloads: &std::path::Path, done: Done) { mobile::save(name, data, downloads, done) }
+
+/// Phones: a text file the user picks. iOS: the document picker; Android has
+/// no picker yet (a NativeActivity cannot receive the result): 0 + reason.
+#[cfg(any(target_os = "android", target_os = "ios"))]
+pub fn mobile_open(done: Done) { mobile::open(done) }
+
+/// Android: the VM and activity, for the services above (the host calls this
+/// once at start).
+#[cfg(target_os = "android")]
+pub fn android_init(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void) { mobile::init(vm, activity) }
+
+#[cfg(target_os = "android")]
+mod mobile {
+    use jni::objects::{JObject, JValue};
+    use std::sync::atomic::{AtomicPtr, Ordering};
+
+    static VM: AtomicPtr<std::ffi::c_void> = AtomicPtr::new(std::ptr::null_mut());
+    static ACT: AtomicPtr<std::ffi::c_void> = AtomicPtr::new(std::ptr::null_mut());
+
+    pub fn init(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void) {
+        VM.store(vm, Ordering::SeqCst);
+        ACT.store(activity, Ordering::SeqCst);
+    }
+
+    fn with_env<R>(f: impl FnOnce(&mut jni::JNIEnv, &JObject) -> jni::errors::Result<R>) -> Option<R> {
+        let (vm, act) = (VM.load(Ordering::SeqCst), ACT.load(Ordering::SeqCst));
+        if vm.is_null() || act.is_null() { return None }
+        let vm = unsafe { jni::JavaVM::from_raw(vm.cast()) }.ok()?;
+        let mut env = vm.attach_current_thread_permanently().ok()?;
+        let r = env.with_local_frame(32, |env| {
+            let act = unsafe { JObject::from_raw(act as jni::sys::jobject) };
+            f(env, &act)
+        });
+        match r {
+            Ok(v) => Some(v),
+            Err(_) => { let _ = env.exception_clear(); None }
+        }
+    }
+
+    fn clipboard_manager<'a>(env: &mut jni::JNIEnv<'a>, act: &JObject) -> jni::errors::Result<JObject<'a>> {
+        let name = env.new_string("clipboard")?;
+        env.call_method(act, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", &[JValue::Object(&name)])?.l()
+    }
+
+    pub fn clipboard_set(s: &str) {
+        with_env(|env, act| {
+            let cm = clipboard_manager(env, act)?;
+            let label = env.new_string("text")?;
+            let text = env.new_string(s)?;
+            let clip = env.call_static_method("android/content/ClipData", "newPlainText",
+                "(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Landroid/content/ClipData;",
+                &[JValue::Object(&label), JValue::Object(&text)])?.l()?;
+            env.call_method(&cm, "setPrimaryClip", "(Landroid/content/ClipData;)V", &[JValue::Object(&clip)])?;
+            Ok(())
+        });
+    }
+
+    pub fn clipboard_get() -> Option<String> {
+        with_env(|env, act| {
+            let cm = clipboard_manager(env, act)?;
+            let clip = env.call_method(&cm, "getPrimaryClip", "()Landroid/content/ClipData;", &[])?.l()?;
+            if clip.is_null() { return Ok(None) }
+            let item = env.call_method(&clip, "getItemAt", "(I)Landroid/content/ClipData$Item;", &[JValue::Int(0)])?.l()?;
+            let cs = env.call_method(&item, "coerceToText", "(Landroid/content/Context;)Ljava/lang/CharSequence;", &[JValue::Object(act)])?.l()?;
+            let s = env.call_method(&cs, "toString", "()Ljava/lang/String;", &[])?.l()?;
+            Ok(Some(env.get_string(&jni::objects::JString::from(s))?.into()))
+        }).flatten()
+    }
+
+    fn sdk_int(env: &mut jni::JNIEnv) -> jni::errors::Result<i32> {
+        env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")?.i()
+    }
+
+    pub fn save(name: &str, data: &[u8], downloads: &std::path::Path, done: super::Done) {
+        // Android 10+: the shared Downloads folder through MediaStore (no permission needed)
+        let saved = with_env(|env, act| {
+            if sdk_int(env)? < 29 { return Ok(None) }
+            let values = env.new_object("android/content/ContentValues", "()V", &[])?;
+            for (k, v) in [("_display_name", name), ("relative_path", "Download/")] {
+                let (k, v) = (env.new_string(k)?, env.new_string(v)?);
+                env.call_method(&values, "put", "(Ljava/lang/String;Ljava/lang/String;)V", &[JValue::Object(&k), JValue::Object(&v)])?;
+            }
+            let resolver = env.call_method(act, "getContentResolver", "()Landroid/content/ContentResolver;", &[])?.l()?;
+            let collection = env.get_static_field("android/provider/MediaStore$Downloads", "EXTERNAL_CONTENT_URI", "Landroid/net/Uri;")?.l()?;
+            let uri = env.call_method(&resolver, "insert", "(Landroid/net/Uri;Landroid/content/ContentValues;)Landroid/net/Uri;",
+                &[JValue::Object(&collection), JValue::Object(&values)])?.l()?;
+            if uri.is_null() { return Ok(None) }
+            let out = env.call_method(&resolver, "openOutputStream", "(Landroid/net/Uri;)Ljava/io/OutputStream;", &[JValue::Object(&uri)])?.l()?;
+            let bytes = env.byte_array_from_slice(data)?;
+            env.call_method(&out, "write", "([B)V", &[JValue::Object(&bytes)])?;
+            env.call_method(&out, "close", "()V", &[])?;
+            Ok(Some(format!("Download/{name}")))
+        }).flatten();
+        match saved {
+            Some(path) => done(200, path.into_bytes()),
+            None => {
+                // before Android 10 (or if MediaStore refused): the app's own folder
+                let p = downloads.join(name);
+                match std::fs::create_dir_all(downloads).and_then(|_| std::fs::write(&p, data)) {
+                    Ok(()) => done(200, p.to_string_lossy().into_owned().into_bytes()),
+                    Err(e) => done(0, e.to_string().into_bytes()),
+                }
+            }
+        }
+    }
+
+    pub fn open(done: super::Done) {
+        done(0, b"no file picker on Android yet".to_vec());
+    }
+}
+
+#[cfg(target_os = "ios")]
+mod mobile {
+    use objc2::rc::Retained;
+    use objc2::runtime::{AnyObject, Bool, NSObject};
+    use objc2::{class, define_class, msg_send, ClassType};
+    use std::sync::Mutex;
+
+    fn ns_string(s: &str) -> *mut AnyObject {
+        let c = std::ffi::CString::new(s.replace('\0', "")).unwrap_or_default();
+        unsafe { msg_send![class!(NSString), stringWithUTF8String: c.as_ptr()] }
+    }
+
+    fn rust_string(ns: *mut AnyObject) -> Option<String> {
+        if ns.is_null() { return None }
+        let p: *const std::ffi::c_char = unsafe { msg_send![ns, UTF8String] };
+        if p.is_null() { None } else { Some(unsafe { std::ffi::CStr::from_ptr(p) }.to_string_lossy().into_owned()) }
+    }
+
+    pub fn clipboard_set(s: &str) {
+        unsafe {
+            let pb: *mut AnyObject = msg_send![class!(UIPasteboard), generalPasteboard];
+            let _: () = msg_send![pb, setString: ns_string(s)];
+        }
+    }
+
+    pub fn clipboard_get() -> Option<String> {
+        unsafe {
+            let pb: *mut AnyObject = msg_send![class!(UIPasteboard), generalPasteboard];
+            let s: *mut AnyObject = msg_send![pb, string];
+            rust_string(s)
+        }
+    }
+
+    /// The view controller to present over (winit's root).
+    fn root() -> Option<*mut AnyObject> {
+        unsafe {
+            let app: *mut AnyObject = msg_send![class!(UIApplication), sharedApplication];
+            let windows: *mut AnyObject = msg_send![app, windows];
+            let n: usize = msg_send![windows, count];
+            for i in 0..n {
+                let w: *mut AnyObject = msg_send![windows, objectAtIndex: i];
+                let key: Bool = msg_send![w, isKeyWindow];
+                if key.as_bool() || i == n - 1 {
+                    let vc: *mut AnyObject = msg_send![w, rootViewController];
+                    if !vc.is_null() { return Some(vc) }
+                }
+            }
+            None
+        }
+    }
+
+    /// iPad presents sheets as popovers, which need an anchor.
+    unsafe fn anchor(vc: *mut AnyObject, over: *mut AnyObject) {
+        let pop: *mut AnyObject = msg_send![vc, popoverPresentationController];
+        if pop.is_null() { return }
+        let view: *mut AnyObject = msg_send![over, view];
+        let _: () = msg_send![pop, setSourceView: view];
+    }
+
+    pub fn save(name: &str, data: &[u8], _downloads: &std::path::Path, done: super::Done) {
+        let dir = std::env::temp_dir().join("ceangal-share");
+        let path = dir.join(name);
+        if let Err(e) = std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(&path, data)) {
+            return done(0, e.to_string().into_bytes());
+        }
+        let Some(over) = root() else { return done(0, b"no window to present the share sheet over".to_vec()) };
+        let done = Mutex::new(Some(done));
+        let shown = path.to_string_lossy().into_owned();
+        unsafe {
+            let url: *mut AnyObject = msg_send![class!(NSURL), fileURLWithPath: ns_string(&shown)];
+            let items: *mut AnyObject = msg_send![class!(NSArray), arrayWithObject: url];
+            let vc: *mut AnyObject = msg_send![class!(UIActivityViewController), alloc];
+            let null: *mut AnyObject = std::ptr::null_mut();
+            let vc: *mut AnyObject = msg_send![vc, initWithActivityItems: items, applicationActivities: null];
+            let block = block2::RcBlock::new(move |_kind: *mut AnyObject, completed: Bool, _items: *mut AnyObject, _err: *mut AnyObject| {
+                if let Some(d) = done.lock().unwrap().take() {
+                    if completed.as_bool() { d(200, shown.clone().into_bytes()) } else { d(499, Vec::new()) }
+                }
+            });
+            let _: () = msg_send![vc, setCompletionWithItemsHandler: &*block];
+            anchor(vc, over);
+            let _: () = msg_send![over, presentViewController: vc, animated: Bool::YES, completion: null];
+        }
+    }
+
+    static PICKED: Mutex<Option<super::Done>> = Mutex::new(None);
+
+    define_class!(
+        // SAFETY: NSObject has no subclassing requirements; no Drop.
+        #[unsafe(super(NSObject))]
+        #[name = "CeangalDocumentPickerDelegate"]
+        struct PickerDelegate;
+
+        impl PickerDelegate {
+            #[unsafe(method(documentPicker:didPickDocumentsAtURLs:))]
+            fn did_pick(&self, _picker: *mut AnyObject, urls: *mut AnyObject) {
+                let Some(done) = PICKED.lock().unwrap().take() else { return };
+                let url: *mut AnyObject = unsafe { msg_send![urls, firstObject] };
+                let path = if url.is_null() { None } else { rust_string(unsafe { msg_send![url, path] }) };
+                match path.map(|p| std::fs::read(p)) {
+                    Some(Ok(b)) => done(200, b),
+                    Some(Err(e)) => done(0, e.to_string().into_bytes()),
+                    None => done(499, Vec::new()),
+                }
+            }
+
+            #[unsafe(method(documentPickerWasCancelled:))]
+            fn cancelled(&self, _picker: *mut AnyObject) {
+                if let Some(done) = PICKED.lock().unwrap().take() { done(499, Vec::new()) }
+            }
+        }
+    );
+
+    pub fn open(done: super::Done) {
+        let Some(over) = root() else { return done(0, b"no window to present the picker over".to_vec()) };
+        *PICKED.lock().unwrap() = Some(done);
+        unsafe {
+            let types: *mut AnyObject = msg_send![class!(NSArray), arrayWithObject: ns_string("public.text")];
+            let picker: *mut AnyObject = msg_send![class!(UIDocumentPickerViewController), alloc];
+            // the import mode (a copy in the app's sandbox): UIDocumentPickerModeImport = 0
+            let picker: *mut AnyObject = msg_send![picker, initWithDocumentTypes: types, inMode: 0usize];
+            let delegate: Retained<PickerDelegate> = msg_send![PickerDelegate::class(), new];
+            let _: () = msg_send![picker, setDelegate: &*delegate];
+            // the picker holds its delegate weakly: keep ours for the app's life
+            std::mem::forget(delegate);
+            anchor(picker, over);
+            let null: *mut AnyObject = std::ptr::null_mut();
+            let _: () = msg_send![over, presentViewController: picker, animated: Bool::YES, completion: null];
+        }
+    }
+}
 
 /// Where a save goes: a system dialog on desktop, `downloads` on mobile.
 pub fn save_dialog(name: &str, downloads: &std::path::Path) -> Option<PathBuf> { imp::save_dialog(name, downloads) }

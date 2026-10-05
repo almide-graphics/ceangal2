@@ -276,9 +276,9 @@ call `ceangal.invalidate()`.
 | [`ceangal.storage`](../api/ceangal.storage.md) | `get` / `set` / `remove` small strings that survive restarts; `secret_*` for tokens and keys (Keychain, Keystore, Credential Manager, libsecret) |
 | [`ceangal.http`](../api/ceangal.http.md) | `get`, `post_json`, `request`: the answer arrives in `on_result` (set `network = true`) |
 | `ceangal.asset(path)`, `asset_text(path)` | files bundled with the app (`[app] assets`) |
-| `ceangal.copy_text(s)` | the clipboard (paste arrives as text in the focused field) |
+| `ceangal.copy_text(s)` | the system clipboard, on every platform (paste arrives as text in the focused field) |
 | `ceangal.open_url(url)` | the system browser |
-| `ceangal.save_file(name, bytes)`, `open_text_file()` | the system's save and open dialogs (a download on the web; phones save into the app's own Downloads folder for now); the result arrives in `on_result` |
+| `ceangal.save_file(name, bytes)`, `open_text_file()` | save and open: the save / open panels on the desktop, a download and a file picker on the web, the share sheet and the document picker on iOS, the shared Downloads folder on Android (no picker there yet); the result arrives in `on_result` |
 | `ceangal.set_title(s)` | the window's title |
 
 Requests (`http`, files) return an id at once. The answer comes later,

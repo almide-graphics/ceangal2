@@ -30,11 +30,22 @@ fn twiced() -> String = "twice " + int.to_string(twice(21)) + " " + int.to_strin
 fn bundled() -> String = "asset: " + (ceangal.asset_text("data/words.txt") ?? "missing")
 
 var shown = storage.get("note") ?? "none"
+var file_req = -1
+var file_status = "no file"
 var req = -1
 var answer = "no answer"
 
 fn result(id: Int, status: Int, body: Bytes) -> Unit =
-  if id == req and not http.is_chunk(status) then answer = "answer " + int.to_string(status) else ()
+  if id == req and not http.is_chunk(status) then answer = "answer " + int.to_string(status)
+  else if id == file_req then file_status = "file " + int.to_string(status) + " " + bytes.to_string_lossy(body)
+  else ()
+
+fn export() -> Unit = { file_req = ceangal.save_file("services.txt", bytes.from_string("exported by ceangal")) }
+fn open_file() -> Unit = { file_req = ceangal.open_text_file() }
+fn copy() -> Unit = ceangal.copy_text("copied by ceangal")
+let keep_export = export
+let keep_open_file = open_file
+let keep_copy = copy
 
 fn save() -> Unit = {
   storage.set("note", "saved")
@@ -55,6 +66,12 @@ fn view() -> v.View =
     v.text(bundled()) |> v.label(bundled()),
     v.text(shown) |> v.label(shown),
     v.text(answer) |> v.label(answer),
+    v.text(file_status) |> v.label(file_status),
+    v.row([
+      v.text("Copy") |> v.px(12.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => copy()) |> v.role(3) |> v.label("Copy"),
+      v.text("Export") |> v.px(12.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => export()) |> v.role(3) |> v.label("Export"),
+      v.text("Open") |> v.px(12.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => open_file()) |> v.role(3) |> v.label("Open"),
+    ]) |> v.gap(8.0),
     v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()) |> v.role(3) |> v.label("Save"),
   ]) |> v.gap(12.0) |> v.padding(24.0)
 

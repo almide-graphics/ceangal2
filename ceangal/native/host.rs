@@ -905,7 +905,10 @@ fn run_windowed() {
     #[cfg(target_os = "android")]
     {
         use winit::platform::android::EventLoopBuilderExtAndroid;
-        if let Some(app) = android_app() { builder.with_android_app(app.clone()); }
+        if let Some(app) = android_app() {
+            builder.with_android_app(app.clone());
+            ceangal_platform::android_init(app.vm_as_ptr(), app.activity_as_ptr());
+        }
     }
     let event_loop = builder.build().expect("event loop");
     let proxy = event_loop.create_proxy();

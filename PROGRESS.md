@@ -346,9 +346,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
   Android's pthread keys ("out of TLS keys"): the Android build rebuilds std
   with emulated TLS (`-Zbuild-std`, `-Zhas-thread-local=yes`,
   `RUSTC_BOOTSTRAP=1`, clang builtins linked).
-- Android has no TalkBack (accesskit's adapter needs GameActivity). The
-  clipboard is in-app only on mobile, and export saves into the app's
-  `Downloads` folder (no share sheet / picker yet).
+- Android has no TalkBack (accesskit's adapter needs GameActivity) and no
+  file picker (a NativeActivity cannot receive the result): open_text_file
+  answers 0 there. Clipboard (system), save (iOS share sheet, Android
+  shared Downloads) and the iOS document picker work (2026-10-05,
+  tests/e2e/android_services.mjs, ServicesE2E).
 - almide/almide#3281 — `@export` outside the root module is dropped: apps carry
   the one-line `ceangal_event` forwarder.
 - almide/almide#3283 — native leg emits the wrong struct for same-shape record

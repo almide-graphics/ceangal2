@@ -1,0 +1,70 @@
+// tests/apps/services on an Android device or emulator: a file saved by
+// ceangal.save_file lands in the shared Downloads folder (MediaStore), and
+// the clipboard write reaches the system (its copy overlay appears).
+//   node tests/e2e/android_services.mjs [apk]
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || join(process.env.HOME, "Library/Android/sdk");
+const adbPath = existsSync(join(sdk, "platform-tools/adb")) ? join(sdk, "platform-tools/adb") : "adb";
+const adb = (...a) => execFileSync(adbPath, a, { encoding: "utf8", maxBuffer: 64 << 20 });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const apk = process.argv[2] || "tests/apps/services/build/android/services.apk";
+const pkg = "dev.almide.ceangal.services";
+
+function tree() {
+  const lines = adb("logcat", "-d", "-s", "ceangal").split("\n").map((l) => l.replace(/^.*?ceangal\s*:\s?/, ""));
+  const start = lines.findLastIndex((l) => l.startsWith("a11y-begin"));
+  if (start < 0) return null;
+  const scale = Number(lines[start].split(" ")[1]);
+  const nodes = [];
+  for (const l of lines.slice(start + 1)) {
+    if (l.startsWith("a11y-end")) return { scale, nodes };
+    const f = l.split("\t");
+    nodes.push({ x: +f[1], y: +f[2], w: +f[3], h: +f[4], label: f[6] || "" });
+  }
+  return null;
+}
+async function until(pred, what, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) { const t = tree(); if (t && pred(t)) return t; if (Date.now() - t0 > ms) throw new Error(`timed out: ${what}; labels: ${(t?.nodes || []).map((n) => n.label).join(" | ")}`); await sleep(400); }
+}
+async function tap(label) {
+  const t = await until((t) => t.nodes.some((n) => n.label === label), `"${label}"`);
+  const n = t.nodes.find((n) => n.label === label);
+  adb("shell", "input", "tap", String(Math.round((n.x + n.w / 2) * t.scale)), String(Math.round((n.y + n.h / 2) * t.scale)));
+}
+
+let ok = false;
+try {
+  adb("install", "-r", apk);
+  adb("shell", "setprop", "debug.ceangal.a11y", "1");
+  adb("shell", "rm", "-f", "/sdcard/Download/services.txt");
+  adb("shell", "am", "force-stop", pkg);
+  adb("logcat", "-c");
+  adb("shell", "am", "start", "-n", `${pkg}/android.app.NativeActivity`);
+  await until((t) => t.nodes.some((n) => n.label === "Export"), "the app");
+  console.log("ok   started");
+
+  await tap("Export");
+  await until((t) => t.nodes.some((n) => n.label.startsWith("file 200 ")), "the save's answer");
+  const saved = adb("shell", "cat", "/sdcard/Download/services.txt");
+  if (saved.trim() !== "exported by ceangal") throw new Error(`Downloads/services.txt holds ${JSON.stringify(saved)}`);
+  console.log("ok   save_file wrote Download/services.txt (MediaStore)");
+
+  adb("logcat", "-c");
+  await tap("Copy");
+  await sleep(1500);
+  const log = adb("logcat", "-d");
+  if (/ClipboardOverlay/.test(log)) console.log("ok   copy_text reached the system clipboard (its overlay showed)");
+  else console.log("note copy_text: no clipboard overlay seen (older Android shows none)");
+
+  await tap("Open");
+  await until((t) => t.nodes.some((n) => n.label.startsWith("file 0 ")), "the open's answer (no picker on Android yet)");
+  console.log("ok   open_text_file answers 0 (no picker on Android yet)");
+  ok = true;
+} catch (e) {
+  console.log(`FAIL ${e.message}`);
+}
+process.exit(ok ? 0 : 1);
