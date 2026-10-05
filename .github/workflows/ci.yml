@@ -384,6 +384,7 @@ jobs:
           tools/ceangal build web --app tests/apps/services
           node tests/e2e/smoke_web.mjs tests/apps/services/build/web --click Save --expect "saved+secret"
           node tests/e2e/smoke_web.mjs tests/apps/services/build/web --expect "twice 42 6"
+          node tests/e2e/smoke_web.mjs tests/apps/services/build/web --expect "asset: bundled words"
           tools/ceangal build native --app tests/apps/services
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs

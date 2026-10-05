@@ -235,6 +235,24 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
 The host's entry point: every event comes through here (docs/abi.md §2).
 Apps do not call it; tests can, to drive an app without a host.
 
+### `asset`
+
+```almide
+pub fn asset(name: String) -> Bytes?
+```
+
+A file bundled with the app (ceangal.toml `assets`): `name` is its path
+inside an assets directory ("data/words.txt"). None when there is no
+such file.
+
+### `asset_text`
+
+```almide
+pub fn asset_text(name: String) -> String?
+```
+
+A bundled text file (UTF-8), none when there is none.
+
 ### `open_url`
 
 ```almide

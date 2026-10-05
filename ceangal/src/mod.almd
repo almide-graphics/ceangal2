@@ -325,6 +325,26 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
   }
 }
 
+// A file bundled with the app (ceangal.toml `assets`): `name` is its path
+// inside an assets directory ("data/words.txt"). None when there is no
+// such file.
+pub fn asset(name: String) -> Bytes? = {
+  let key = bytes.from_string(name)
+  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
+  if n < 0 then none
+  else {
+    var buf = bytes.new(n)
+    let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
+    some(buf)
+  }
+}
+
+// A bundled text file (UTF-8), none when there is none.
+pub fn asset_text(name: String) -> String? = match asset(name) {
+  some(b) => some(bytes.to_string_lossy(b)),
+  none => none,
+}
+
 // Open `url` in the system browser (a new tab on the web).
 pub fn open_url(url: String) -> Unit = {
   let b = bytes.from_string(url)

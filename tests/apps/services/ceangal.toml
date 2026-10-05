@@ -1,10 +1,13 @@
-# The string-level platform services (ceangal.storage, ceangal.http,
-# ceangal.set_title) in a real build: CI clicks Save in headless Chrome and
-# expects the stored values back (tests/e2e/smoke_web.mjs).
+# What an app reaches beyond views, in a real build: ceangal.storage,
+# ceangal.http, ceangal.set_title, a bundled asset, and the app's own Rust /
+# JavaScript extension. CI opens it in headless Chrome, checks the asset
+# and the extension, clicks Save and expects the stored values back
+# (tests/e2e/smoke_web.mjs), and builds it natively.
 [app]
 id = "dev.almide.ceangal.services"
 name = "Services"
 network = true
+assets = ["assets"]
 
 [framework]
 path = "../../.."

@@ -220,6 +220,28 @@ item, the first green CI run on main that deploys Pages, waits for a push
   (written by `ceangal new`). Its Windows / Linux / Android / iOS jobs run
   for the first time when an app uses it.
 
+### Framework: dev loop, releases, services, docs (2026-10-05, ADR 0007)
+- `ceangal dev`: web (serves, rebuilds on save, open pages reload, a
+  failed build's error covers the page until fixed) and desktop (rebuild +
+  restart; a failed build keeps the running app). `tests/e2e/dev.mjs` (web
+  in headless Chrome, and the Mac app) runs in the `framework` CI job.
+- `ceangal --version`, `ceangal doctor [target…]` (tools/doctor.sh: each
+  target's tools, with how to get the missing ones).
+- `.github/workflows/release.yml` on tags: universal macOS, static Linux
+  x86_64/aarch64 (musl), Windows binaries on the release; then
+  `install.sh` / `install.ps1` from the release on three OSes, a new app,
+  built for the web against the tagged framework.
+- `ceangal.storage`, `ceangal.http`, `ceangal.asset(_text)`, `open_url`,
+  `set_title`, `save_file`, `open_text_file`: string-level wrappers over
+  the ABI. `tests/apps/services` checks them and an app's own Rust + JS
+  extension (web in Chrome, native build) in CI.
+- Docs: `docs/guide` (getting started, UI, ceangal.toml, CLI, stores and
+  signing, native extensions); `docs/api` generated from the sources by
+  `tools/gen_api_docs.py`, checked current in CI. `ceangal new` writes a
+  README; doc comments added to the `ceangal` module.
+- `app.yml` imports the Mac signing certificates like this repository's
+  CI (it only passed the identity names before).
+
 ### Brand and feel (follows almide/playground at its v2 brand, 2026-10-02)
 - `tools/build_brand.py` makes every store and app icon from the v2 SVGs in
   `store/brand/` (armadillo mark, rendered by Chrome): iOS / Play 1024,
@@ -249,11 +271,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: `ceangal dev` (rebuild on change) and `ceangal test`. (Done
-   2026-10-05: release v0.1.0; almide-graphics/ceangal-hello builds all six
-   platforms with `app.yml@v0.1.0`; the old ceangal, snaidhm and
-   ceangal-native repositories are archived with a pointer here. The
-   playground stays in this repository, as the goal's layout says.)
+0. Framework: `ceangal test` (an app's own E2E through the a11y tree, as
+   tests/e2e/smoke_web.mjs does for one click). Done 2026-10-05: v0.1.0,
+   ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
+   guide + API reference (ADR 0007).
 1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
    2026-10-05).
 2. M6: store screenshots for iOS from the simulator build (the generator
@@ -263,6 +284,14 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- almide/almide#3417 — `println` output is held until exit in programs
+  built by the standard codegen: `ceangal dev` prints through `dev_say`.
+- almide/almide#3419 — a top-level fn with a `Bytes` parameter as a value
+  does not compile natively: `on_result` handlers are passed as lambdas.
+- almide/almide#3420 — wasm frees a `Bytes` before a value-returning
+  extern call in tail position reads it: such calls are bound to a `let`
+  first (`ceangal.save_file`, the playground's `http_begin` and
+  `runner_gui_text`).
 - almide/toml#2 — almide/toml does not build with Almide 0.66: the CLI
   parses `ceangal.toml` with the `toml` crate (native helper) and reads JSON.
 - almide/almide#3379 — no process run with inherited stdio + exit code: the

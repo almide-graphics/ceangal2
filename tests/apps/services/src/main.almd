@@ -1,7 +1,7 @@
 // Save: a value and a secret written and read back, a title set, and an
 // HTTP request whose answer (any status, 0 when CORS refuses it) shows up.
 // The first line comes from the app's own extension (native/twice.rs,
-// web/boot.js).
+// web/boot.js), the second from a bundled asset.
 
 import ceangal
 import ceangal.view as v
@@ -27,6 +27,8 @@ fn twice_len(s: String) -> Int = {
 
 fn twiced() -> String = "twice " + int.to_string(twice(21)) + " " + int.to_string(twice_len("añb"))
 
+fn bundled() -> String = "asset: " + (ceangal.asset_text("data/words.txt") ?? "missing")
+
 var shown = storage.get("note") ?? "none"
 var req = -1
 var answer = "no answer"
@@ -50,6 +52,7 @@ let keep_save = save
 fn view() -> v.View =
   v.col([
     v.text(twiced()) |> v.label(twiced()),
+    v.text(bundled()) |> v.label(bundled()),
     v.text(shown) |> v.label(shown),
     v.text(answer) |> v.label(answer),
     v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()) |> v.role(3) |> v.label("Save"),

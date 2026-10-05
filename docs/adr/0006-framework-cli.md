@@ -31,7 +31,7 @@ run and packaged for every platform with one tool.
   copyright = ""
 
   [framework]
-  path = "../ceangal2"         # a checkout — or version = "0.1.0" (tag v0.1.0)
+  path = "../ceangal2"         # a checkout — or version = "0.2.0" (tag v0.2.0)
 
   [native]                     # extra Rust for the native builds
   dir = "native"               # @extern(rust) modules
@@ -104,5 +104,6 @@ run and packaged for every platform with one tool.
   one-line description: Flathub's linter findings are warnings until the
   app adds its own metainfo, then they fail the build as for the
   playground.
-- `ceangal dev` (rebuild on change) and `ceangal test` (the app's E2E) are
-  not there yet; the reference apps' E2E stays in `tests/`.
+- `ceangal dev`, binary releases of the CLI and `ceangal doctor` came
+  next (docs/adr/0007). `ceangal test` (the app's E2E) is not there yet;
+  the reference apps' E2E stays in `tests/`.

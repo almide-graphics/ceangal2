@@ -8,7 +8,7 @@ Every pixel is drawn by [snaidhm](snaidhm/) through one small host ABI
 implement that ABI.
 
 ```
-cli/              the ceangal CLI: new, build, run, icons (docs/adr/0006)
+cli/              the ceangal CLI: new, dev, build, run, doctor (docs/adr/0006, 0007)
 apps/playground   the Almide Playground (editor, runner, user GUI programs)
 apps/todo         the demo app
 apps/demo         the M0 demo
@@ -20,25 +20,35 @@ hosts/web/        JS host (WebGPU) — the same ABI for browsers
 abi/              generated ABI manifest (tools/gen_bindings.py)
 tools/            per-platform build and packaging scripts the CLI runs
 store/            store listings, assets, checklists
+docs/guide        the guide; docs/api, the generated API reference
 ```
 
 ## Make an app
 
 ```sh
-tools/ceangal new ~/src/hello --id dev.example.hello   # ceangal.toml, src/main.almd, CI
-cd ~/src/hello
-ceangal run macos          # or web, linux, windows, ios, android
+curl -fsSL https://raw.githubusercontent.com/almide-graphics/ceangal2/main/install.sh | sh
+#   Windows: irm https://raw.githubusercontent.com/almide-graphics/ceangal2/main/install.ps1 | iex
+ceangal new hello && cd hello
+ceangal dev                # http://localhost:8000, rebuilt and reloaded on save
+ceangal dev macos          # the desktop app, restarted on save
+ceangal run ios            # or android, web, linux, windows
 ceangal build android      # store packages: web macos ios android linux windows
+ceangal doctor             # what each platform needs on this machine
 ```
 
-(`tools/ceangal` builds the CLI on first use; put it on your `PATH` or call
-it by path. Inside this repository, set `CEANGAL_SDK` to the checkout before
-`new` so the app uses it instead of a release.) An app is described by
-`ceangal.toml` — identity, icon, assets, permissions, extra Rust — see
-[docs/adr/0006](docs/adr/0006-framework-cli.md). Its CI is one line:
-`uses: almide-graphics/ceangal2/.github/workflows/app.yml@v0.1.0`.
-[ceangal-hello](https://github.com/almide-graphics/ceangal-hello) is that
-app in its own repository, built for every platform by that workflow.
+The [guide](docs/guide/README.md) covers the rest: [getting
+started](docs/guide/getting-started.md), [building UI](docs/guide/ui.md),
+[`ceangal.toml`](docs/guide/ceangal-toml.md), [the CLI](docs/guide/cli.md),
+[stores and signing](docs/guide/stores.md) and [native
+extensions](docs/guide/native.md), plus the generated [API
+reference](docs/api/README.md). An app's CI is one line,
+`uses: almide-graphics/ceangal2/.github/workflows/app.yml@v0.2.0`;
+[ceangal-hello](https://github.com/almide-graphics/ceangal-hello) is an app
+in its own repository, built for every platform by it.
+
+Inside this repository, `tools/ceangal` runs the CLI from the checkout
+(built on first use), and `CEANGAL_SDK=$PWD` makes new apps use the
+checkout instead of a release.
 
 ## Repositories
 
@@ -47,7 +57,8 @@ app in its own repository, built for every platform by that workflow.
   (`apps/playground`), which is built and released from here.
   ceangal and snaidhm stay together here while Almide git dependencies
   cannot name a package in a subdirectory (almide/almide#3381); a release
-  is a tag (`v0.1.0`) that apps pin in `ceangal.toml`.
+  is a tag (`v0.2.0`) that apps pin in `ceangal.toml`, with the CLI's
+  binaries attached (`.github/workflows/release.yml`).
 - **Apps** live in their own repositories, like
   [ceangal-hello](https://github.com/almide-graphics/ceangal-hello).
 - The earlier [ceangal](https://github.com/almide-graphics/ceangal),
