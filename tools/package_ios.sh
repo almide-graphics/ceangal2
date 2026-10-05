@@ -198,6 +198,8 @@ if [ "$what" = e2e ]; then
   # no hardware keyboard: the on-screen one shows, as on a phone (a Simulator
   # app preference, so only on CI machines)
   [ -n "${CI:-}" ] && defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+  # the playground's fixtures test reads the CLI's output for each program
+  [ "$app" = playground ] && node "$root/tests/e2e/ios_fixtures.mjs" "$e2e/fixtures.json"
   TEST_RUNNER_E2E_DIR="$e2e" TEST_RUNNER_E2E_APP="$app" xcodebuild -project "$xproj" -scheme "$app" \
     -configuration Release -sdk iphonesimulator -destination "id=$udid" \
     -derivedDataPath "$out/dd" -resultBundlePath "$e2e/result.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test

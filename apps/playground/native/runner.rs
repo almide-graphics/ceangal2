@@ -49,12 +49,19 @@ fn error_body(phase: &str, error: &str) -> Vec<u8> {
 }
 
 /// stdout / stderr bytes of run `id`, posted line by line (100 / 101).
-/// Tests: `CEANGAL_RUN_LOG=<file>` also appends every run's raw stdout.
+/// Tests: `CEANGAL_RUN_LOG=<file>` also appends every run's raw stdout, and
+/// `<file>.end` gets each console run's final status and body; on Android
+/// (`debug.ceangal.run_log` = 1) both go to logcat, hex-encoded
+/// (`run-out <hex>`, `run-end <status> <hex>`), so the bytes survive.
 pub fn stream_out(id: i64, fd: i32, bytes: &[u8]) {
     if fd == 1 {
         if let Ok(path) = std::env::var("CEANGAL_RUN_LOG") {
             use std::io::Write;
             if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) { let _ = f.write_all(bytes); }
+        }
+        if cfg!(target_os = "android") && crate::sys::test_flag("RUN_LOG") {
+            // logcat truncates long entries
+            for chunk in bytes.chunks(1000) { crate::sys::log_line(&format!("run-out {}", hex(chunk))); }
         }
     }
     let mut lines = LINES.lock().unwrap();
@@ -63,6 +70,18 @@ pub fn stream_out(id: i64, fd: i32, bytes: &[u8]) {
     while let Some(nl) = buf.iter().position(|&b| b == b'\n') {
         let line: Vec<u8> = buf.drain(..=nl).take(nl).collect();
         post_result(id, if fd == 2 { 101 } else { 100 }, line);
+    }
+}
+
+fn hex(b: &[u8]) -> String { b.iter().map(|x| format!("{x:02x}")).collect() }
+
+/// Tests: a console run's end (see stream_out).
+fn log_end(status: i64, body: &[u8]) {
+    if let Ok(path) = std::env::var("CEANGAL_RUN_LOG") {
+        let _ = std::fs::write(format!("{path}.end"), format!("{status} {}", String::from_utf8_lossy(body)));
+    }
+    if cfg!(target_os = "android") && crate::sys::test_flag("RUN_LOG") {
+        crate::sys::log_line(&format!("run-end {status} {}", hex(body)));
     }
 }
 
@@ -187,26 +206,34 @@ pub fn runner_run(fp: i64, fl: i64, ep: i64, el: i64) -> i64 {
     let stop = Arc::new(AtomicBool::new(false));
     let stop2 = stop.clone();
     let id = spawn(move |id| {
+        let r = run_job(id, &files_json, &entry, &stop2);
+        if r.0 != 103 { log_end(r.0, &r.1) }
+        r
+    });
+    STOPS.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, stop);
+    id
+}
+
+fn run_job(id: i64, files_json: &str, entry: &str, stop2: &Arc<AtomicBool>) -> (i64, Vec<u8>) {
+    {
         let t0 = crate::sys::now_ms();
-        let wasm = match cs::compile_project_to_wasm(&files_json, &entry) {
+        let wasm = match cs::compile_project_to_wasm(files_json, entry) {
             Ok(w) => w,
             Err(e) => return (500, error_body("compile", &e)),
         };
         let compile_ms = crate::sys::now_ms() - t0;
         post_result(id, 102, format!("{}", compile_ms.round() as i64).into_bytes());
-        let files = parse_files(&files_json);
+        let files = parse_files(files_json);
         if is_gui(&wasm) {
             // The UI thread starts it on the next frame (runner_gui_place).
             let (data, stdin) = data_files(&files);
             *PENDING.lock().unwrap() = Some((id, wasm, data, stdin));
             return (103, Vec::new());
         }
-        let r = run_console(id, &wasm, &files, &stop2, compile_ms);
+        let r = run_console(id, &wasm, &files, stop2, compile_ms);
         STOPS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
         r
-    });
-    STOPS.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, stop);
-    id
+    }
 }
 
 pub fn runner_stop(id: i64) {

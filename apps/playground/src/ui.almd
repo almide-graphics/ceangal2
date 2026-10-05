@@ -508,6 +508,41 @@ fn tab_bar() -> v.View = {
   v.row(items) |> v.h(34.0) |> v.bg(c(pal.panel)) |> v.clip() |> v.role(9)
 }
 
+// ── Key bar (phones and tablets) ──
+// Above the on-screen keyboard while the code editor has it: Tab, the arrow
+// keys and the symbols code needs that soft keyboards bury. Taps leave the
+// editor focused.
+
+fn press_key(code: Int) -> Unit = {
+  let r = ed.key(st.current(), 0, code, 0)
+  st.set_current(r.0)
+}
+
+fn put_text(s: String) -> Unit = st.set_current(ed.insert(st.current(), s))
+
+let keep_press_key = press_key
+let keep_put_text = put_text
+
+fn key_button(text: String, name: String, f: () -> Unit) -> v.View =
+  v.row([label(text, 16.0, pal.text)]) |> v.justify(v.Center) |> v.align(v.Middle) |> v.h(40.0) |> v.grow(1.0) |> v.rounded(6.0)
+    |> v.bg(c(pal.raised)) |> v.border(1.0, c(pal.border))
+    |> v.on_click(f) |> v.role(3) |> v.label(name)
+
+fn key_bar() -> v.View = {
+  var top: List[v.View] = [
+    key_button("Tab", "Tab key", () => press_key(2)),
+    key_button("←", "Left arrow", () => press_key(10)),
+    key_button("↑", "Up arrow", () => press_key(12)),
+    key_button("↓", "Down arrow", () => press_key(13)),
+    key_button("→", "Right arrow", () => press_key(11)),
+  ]
+  var bottom: List[v.View] = []
+  for sym in ["(", ")", "{", "}", "[", "]"] { list.push(top, key_button(sym, "Insert " + sym, () => put_text(sym))) }
+  for sym in ["\"", "=", "|>", "=>", ":", ".", ",", "_", "+", "-", "<", ">"] { list.push(bottom, key_button(sym, "Insert " + sym, () => put_text(sym))) }
+  v.col([v.row(top) |> v.gap(4.0), v.row(bottom) |> v.gap(4.0)]) |> v.gap(4.0) |> v.px(4.0) |> v.py(4.0)
+    |> v.bg(c(pal.panel)) |> v.keeps_focus() |> v.role(9) |> v.label("Key bar")
+}
+
 // ── Editor + problems ──
 
 fn editor_pane() -> v.View = {
@@ -680,7 +715,11 @@ pub fn root() -> v.View = {
   if narrow or not header_shown then list.push(parts, tab_bar()) else ()
   list.push(parts, body |> v.grow(1.0))
   // phones: the status line gives way to the action bar
-  list.push(parts, if narrow then mobile_bar() else status_bar(narrow))
+  if ceangal.soft_keyboard() and ceangal.is_focused("editor") and not st.mobile_output then {
+    // typing code: the key bar sits on the keyboard in place of the action bar
+    list.push(parts, key_bar())
+    if not narrow then list.push(parts, status_bar(narrow)) else ()
+  } else list.push(parts, if narrow then mobile_bar() else status_bar(narrow))
   if st.examples_open or st.more_open then list.push(parts, menu_backdrop()) else ()
   if st.examples_open then list.push(parts, examples_menu(narrow)) else ()
   if st.more_open then list.push(parts, more_menu()) else ()

@@ -1,17 +1,18 @@
-// Todo — the ceangal demo app. Type a task and press Enter; click a task to
-// toggle it, × to remove it. Runs as an app and inside the playground.
-
 import ceangal
 import ceangal.view as v
 import ceangal.editor as ed
 import snaidhm
 
-type Todo = { id: Int, title: String, done: Bool }
-
 var todos: List[Todo] = [
   { id: 1, title: "Try the playground", done: true },
   { id: 2, title: "Write a ceangal app", done: false },
 ]
+
+// Todo — the ceangal demo app. Type a task and press Enter; click a task to
+// toggle it, × to remove it. Runs as an app and inside the playground.
+
+type Todo = { id: Int, title: String, done: Bool }
+
 var next_id = 3
 var field = ed.text_field("", "What needs doing?")
 

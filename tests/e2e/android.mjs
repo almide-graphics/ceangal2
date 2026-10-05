@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+import { EDIT_TODO_KEYS, autorunLink, programs, reference } from "../lib/fixtures.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || join(homedir(), "Library/Android/sdk");
@@ -152,6 +153,7 @@ async function launch(pkg, { clear = true, data = null } = {}) {
 
 adb("shell", "setprop", "debug.ceangal.a11y", "1");
 adb("shell", "setprop", "debug.ceangal.gui_a11y", "1");
+adb("shell", "setprop", "debug.ceangal.run_log", "1");
 const apps = process.argv.slice(2).length ? process.argv.slice(2) : ["todo", "playground"].filter((a) => existsSync(join(root, `out/android/${a}.apk`)));
 
 for (const app of apps) {
@@ -228,28 +230,69 @@ for (const app of apps) {
       await until((t) => (node(t, "Code editor")?.value || "").includes("ceangal"), "the Todo example in the editor");
     });
 
-    await step("playground: the Todo example runs as a window and takes taps", async () => {
+    await step("playground: the Todo example is edited with the key bar, runs as a window and takes taps", async () => {
       await launch(pkg, { clear: false, data: "https://play.almide.dev/?example=todo" });
-      await until(has("Run"), "the playground", 30000);
+      const t0 = await until(has("Code editor"), "the playground", 30000);
+      // the edit: a tap at the top of the source raises the keyboard and
+      // the key bar; six lines down (the first task); a new task typed in
+      // front of it, its symbols from the key bar
+      const ed = node(t0, "Code editor");
+      adb("shell", "input", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
+      await until(has("Key bar"), "the key bar over the keyboard");
+      shot("playground-keybar");
+      for (let i = 0; i < 6; i++) await tap(tree(), "Down arrow");
+      for (const [how, s] of EDIT_TODO_KEYS) {
+        if (how === "bar") await tap(tree(), `Insert ${s}`);
+        else { adb("shell", "input", "text", s.replace(/ /g, "%s")); await sleep(300); }
+      }
+      await until((t) => (node(t, "Code editor")?.value || "").includes(EDIT_TODO_KEYS.map((k) => k[1]).join("").trim()), "the edit in the editor");
+      adb("shell", "input", "keyevent", "4");   // the keyboard away: the action bar is back
+      await until(has("Run"), "the Run button");
       await tap(tree(), "Run");
       await until(has("Program window"), "the program window", 60000);
-      await untilGui((g) => g.some((n) => n.label === "New task"), "the program's New task field");
+      await untilGui((g) => g.some((n) => n.label === "Edited") && g.some((n) => n.label === "2 tasks left"), "the edited program");
       await tapGui("New task");
       adb("shell", "input", "text", "Buy%smilk");
       await sleep(300);
       adb("shell", "input", "keyevent", "66");
-      // the example starts with one task open: Buy milk makes two, done again one
-      await untilGui((g) => g.some((n) => n.label === "Remove Buy milk") && g.some((n) => n.label === "2 tasks left"), "the program to add the task");
+      // the edited example starts with two tasks open: Buy milk makes three, done again two
+      await untilGui((g) => g.some((n) => n.label === "Remove Buy milk") && g.some((n) => n.label === "3 tasks left"), "the program to add the task");
       await tapGui("Buy milk");
-      await untilGui((g) => g.some((n) => n.label === "1 task left"), "the program to toggle the task");
+      await untilGui((g) => g.some((n) => n.label === "2 tasks left"), "the program to toggle the task");
       shot("playground-gui");
       await tap(tree(), "Stop");
       await until((t) => !has("Program window")(t), "Stop");
+    });
+
+    await step("playground: the fixtures and examples run on the device, matching the CLI", async () => {
+      const bad = [];
+      for (const p of programs()) {
+        await launch(pkg, { clear: false, data: autorunLink(p) });
+        const t0 = Date.now();
+        let end = null, lines = [];
+        while (Date.now() - t0 < 90000) {
+          lines = logcat("ceangal:I").split("\n").map((l) => l.replace(/\r$/, ""));
+          end = lines.find((l) => l.startsWith("run-end "));
+          if (end) break;
+          const pn = panics();
+          if (pn.length) throw new Error(`${p.id}: app panicked: ${pn.join(" | ")}`);
+          await sleep(300);
+        }
+        if (!end) { bad.push(`${p.id}: no result`); continue; }
+        const [, status, hex] = end.split(" ");
+        const body = Buffer.from(hex || "", "hex").toString("utf8");
+        if (status !== "200" || !/"exitCode":0\b/.test(body)) { bad.push(`${p.id}: ${status} ${body.slice(0, 200)}`); continue; }
+        const out = Buffer.concat(lines.filter((l) => l.startsWith("run-out ")).map((l) => Buffer.from(l.slice(8), "hex"))).toString("utf8");
+        const want = reference(p);
+        if (want !== null && out.trimEnd() !== want) bad.push(`${p.id}: drift`);
+      }
+      assert(bad.length === 0, bad.join("; "));
     });
   }
 }
 
 adb("shell", "setprop", "debug.ceangal.a11y", "0");
 adb("shell", "setprop", "debug.ceangal.gui_a11y", "0");
+adb("shell", "setprop", "debug.ceangal.run_log", "0");
 console.log(failed ? `${failed} failed` : "all passed");
 process.exit(failed ? 1 : 0);

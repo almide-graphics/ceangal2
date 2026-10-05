@@ -133,6 +133,18 @@ item, the first green CI run on main that deploys Pages, waits for a push
     menu scrolls, the Todo example runs as a window and takes taps and
     typing). Local: iPhone 17 simulator, iOS 26.5, Xcode 26.6. CI job `ios`
     (macos-26).
+- Key bar (記号入力バー, 2026-10-05): while the on-screen keyboard is up
+  for the code editor, two rows above it — Tab, ← ↑ ↓ →, ( ) { } [ ] and
+  " = |> => : . , _ + - < >. Taps keep the editor focused
+  (`v.keeps_focus`); `ceangal.soft_keyboard()` is true while the keyboard
+  adds to the bottom inset (Back / dismiss hides the bar with it).
+- Every platform's E2E now edits the Todo example before running it (a tap
+  at the top of the source, six lines down, a new task typed in front of
+  the first; on phones its symbols come from the key bar) and checks the
+  program shows the edit; and the fixtures + console examples run on the
+  device on Android and iOS too, stdout compared with the CLI
+  (`tests/lib/fixtures.mjs`; the runner reports runs through logcat /
+  `CEANGAL_RUN_LOG` in test mode).
 - Fixed on every platform along the way: a resized user-program window kept
   drawing its old texture (a freed texture handle's number was reused and
   snaidhm's bind group cache still pointed at the old texture).

@@ -15,6 +15,7 @@ class E2E: XCTestCase {
     let dir = ProcessInfo.processInfo.environment["E2E_DIR"] ?? NSTemporaryDirectory()
     var a11yPath: String { dir + "/a11y.txt" }
     var guiPath: String { dir + "/gui.txt" }
+    var runLogPath: String { dir + "/run.log" }
     var appName: String { ProcessInfo.processInfo.environment["E2E_APP"] ?? "playground" }
 
     override func setUp() { continueAfterFailure = false }
@@ -22,12 +23,15 @@ class E2E: XCTestCase {
     func launch(fresh: Bool = true, url: String = "") {
         try? FileManager.default.removeItem(atPath: a11yPath)
         try? FileManager.default.removeItem(atPath: guiPath)
+        try? FileManager.default.removeItem(atPath: runLogPath)
+        try? FileManager.default.removeItem(atPath: runLogPath + ".end")
         let data = dir + "/data"
         if fresh { try? FileManager.default.removeItem(atPath: data) }
         app = XCUIApplication()
         app.launchEnvironment = [
             "CEANGAL_A11Y": "1", "CEANGAL_A11Y_LOG": a11yPath, "CEANGAL_GUI_A11Y": guiPath,
             "CEANGAL_DATA_DIR": data, "CEANGAL_SECRETS": "file", "CEANGAL_LAUNCH": url,
+            "CEANGAL_RUN_LOG": runLogPath,
         ]
         app.launch()
     }
@@ -112,8 +116,9 @@ class E2E: XCTestCase {
         tapAt(c[0], c[1])
     }
 
-    /// Type on the on-screen keyboard, key by key, then Return.
-    func type(_ text: String) {
+    /// Type on the on-screen keyboard, key by key, then Return (unless
+    /// `enter` is false).
+    func type(_ text: String, enter: Bool = true) {
         let kb = app.keyboards.firstMatch
         XCTAssertTrue(kb.waitForExistence(timeout: 10), "no on-screen keyboard")
         // a fresh simulator's first keyboard can show an introduction panel
@@ -140,8 +145,10 @@ class E2E: XCTestCase {
             }
             key.tap()
         }
-        let ret = kb.buttons["Return"].exists ? kb.buttons["Return"] : kb.keys["Return"]
-        ret.tap()
+        if enter {
+            let ret = kb.buttons["Return"].exists ? kb.buttons["Return"] : kb.keys["Return"]
+            ret.tap()
+        }
         Thread.sleep(forTimeInterval: 0.4)
     }
 
@@ -225,21 +232,69 @@ final class PlaygroundE2E: E2E {
         until("the Todo example in the editor") { t in (self.node(t, "Code editor")?.value ?? "").contains("ceangal") }
     }
 
-    func test3_todoExampleAsWindow() {
+    // The edit every platform makes (tests/lib/fixtures.mjs EDIT_TODO_KEYS):
+    // symbols from the key bar, words from the keyboard.
+    let editKeys: [(String, String)] = [
+        ("bar", "{"), ("keys", " id"), ("bar", ":"), ("keys", " next"), ("bar", "_"), ("keys", "id "), ("bar", "+"),
+        ("keys", " next"), ("bar", "_"), ("keys", "id"), ("bar", ","), ("keys", " title"), ("bar", ":"), ("keys", " "),
+        ("bar", "\""), ("keys", "Edited"), ("bar", "\""), ("bar", ","), ("keys", " done"), ("bar", ":"), ("keys", " false "),
+        ("bar", "}"), ("bar", ","), ("keys", " "),
+    ]
+
+    func test3_todoExampleEditedAsWindow() {
         guard appName == "playground" else { return }
         launch(url: "https://play.almide.dev/?example=todo")
-        until("the playground", timeout: 30, has("Run"))
+        let t0 = until("the playground", timeout: 30, has("Code editor"))
+        // a tap at the top of the source raises the keyboard and the key bar;
+        // six lines down (the first task); a new task typed in front of it
+        let ed = node(t0, "Code editor")!
+        tapAt(ed.x + 4, ed.y + 16)
+        until("the key bar over the keyboard", has("Key bar"))
+        shot("keybar")
+        for _ in 0..<6 { tap("Down arrow") }
+        for (how, text) in editKeys {
+            if how == "bar" { tap("Insert " + text) } else { type(text, enter: false) }
+        }
+        let edit = editKeys.map(\.1).joined().trimmingCharacters(in: .whitespaces)
+        until("the edit in the editor") { t in (self.node(t, "Code editor")?.value ?? "").contains(edit) }
+        // a tap outside the editor puts the keyboard away: the action bar is back
+        tap("Almide")
+        until("the Run button", has("Run"))
         tap("Run")
         until("the program window", timeout: 90, has("Program window"))
-        untilGui("the program's New task field") { g in g.contains { $0.label == "New task" } }
+        untilGui("the edited program") { g in g.contains { $0.label == "Edited" } && g.contains { $0.label == "2 tasks left" } }
         tapGui("New task")
         type("Buy milk")
-        // the example starts with one task open: Buy milk makes two, done again one
-        untilGui("the program to add the task") { g in g.contains { $0.label == "Remove Buy milk" } && g.contains { $0.label == "2 tasks left" } }
+        // the edited example starts with two tasks open: Buy milk makes three, done again two
+        untilGui("the program to add the task") { g in g.contains { $0.label == "Remove Buy milk" } && g.contains { $0.label == "3 tasks left" } }
         tapGui("Buy milk")
-        untilGui("the program to toggle the task") { g in g.contains { $0.label == "1 task left" } }
+        untilGui("the program to toggle the task") { g in g.contains { $0.label == "2 tasks left" } }
         shot("gui")
         tap("Stop")
         until("Stop") { t in !self.has("Program window")(t) }
+    }
+
+    /// The old playground's fixtures and every console example, compiled and
+    /// run on the device; stdout compared with the CLI's (fixtures.json).
+    func test4_fixtures() throws {
+        guard appName == "playground" else { return }
+        struct Fx: Decodable { let id: String; let link: String; let want: String? }
+        let list = try JSONDecoder().decode([Fx].self, from: Data(contentsOf: URL(fileURLWithPath: dir + "/fixtures.json")))
+        var bad: [String] = []
+        for p in list {
+            launch(fresh: false, url: p.link)
+            let end = Date().addingTimeInterval(90)
+            var result: String? = nil
+            while Date() < end {
+                if let r = try? String(contentsOfFile: runLogPath + ".end", encoding: .utf8) { result = r; break }
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+            guard let r = result else { bad.append("\(p.id): no result"); continue }
+            if !r.hasPrefix("200 ") || !r.contains("\"exitCode\":0") { bad.append("\(p.id): \(r.prefix(200))"); continue }
+            let out = (try? String(contentsOfFile: runLogPath, encoding: .utf8)) ?? ""
+            let trimmed = out.replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
+            if let want = p.want, trimmed != want { bad.append("\(p.id): drift") }
+        }
+        XCTAssertTrue(bad.isEmpty, bad.joined(separator: "; "))
     }
 }

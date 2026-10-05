@@ -88,6 +88,8 @@ type View = {
   // events while focused; `text_input` asks the host for IME / soft keyboard.
   focusable: Bool,
   text_input: Bool,
+  // Taps inside leave focus where it is (a key bar above the soft keyboard).
+  keeps_focus: Bool,
   on_key: (Int, Int, Int) -> Bool,           // (phase, key, mods)
   on_text: (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
   on_focus: (Bool) -> Unit,
@@ -105,7 +107,7 @@ fn node(kind: Int, children: List[View], content: String) -> View = {
   kind: kind, children: children, content: content, style: default_style, key: "",
   on_click: () => (), clickable: false, on_pointer: (p) => false, pointer: false,
   on_wheel: (x, y, dx, dy) => false, wheel: false, scroller: false,
-  focusable: false, text_input: false,
+  focusable: false, text_input: false, keeps_focus: false,
   on_key: (phase, key, mods) => false, on_text: (kind, t, c) => false, on_focus: (f) => (),
   paint: (x, y, w, h) => (), label: "", role: 0, value: () => "",
 }
@@ -201,6 +203,7 @@ pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View = { ..
 pub fn scroll_y(v: View, key: String) -> View = { ...v, key: key, scroller: true, style: { ...v.style, clip: true } }
 pub fn focusable(v: View, k: String) -> View = { ...v, key: k, focusable: true }
 pub fn text_input(v: View, k: String) -> View = { ...v, key: k, focusable: true, text_input: true }
+pub fn keeps_focus(v: View) -> View = { ...v, keeps_focus: true }
 pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }
 pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View = { ...v, on_text: f }
 pub fn on_focus(v: View, f: (Bool) -> Unit) -> View = { ...v, on_focus: f }

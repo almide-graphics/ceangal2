@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
+import { EDIT_TODO, autorunLink, programs, reference } from "../lib/fixtures.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const exe = process.platform === "win32" ? ".exe" : "";
@@ -115,21 +116,29 @@ step("export writes a runnable project zip", () => {
   for (const f of ["almide-playground/almide.toml", "almide-playground/src/main.almd"]) assert(zip.includes(Buffer.from(f)), `zip lacks ${f}`);
 });
 
-step("user GUI: the Todo example runs as a window, takes input, stops", () => {
+step("user GUI: the Todo example is edited, runs as a window, takes input, stops", () => {
   const work = mkdtempSync(join(tmpdir(), "pg-gui-"));
   const gui = join(work, "gui.txt");
-  const base = `wait; click ${at("Run")}; wait; frames 2`;
-  const first = session("native-gui-start", base, { launch: "https://x.test/?example=todo", env: { CEANGAL_GUI_A11Y: gui } });
+  const launch = "https://x.test/?example=todo";
+  // the edit: the cursor to the top of the source, six lines down (the
+  // first task), and a new task typed in front of it
+  const box = find(session("native-gui-boot", "wait", { launch }), "Code editor");
+  assert(box, "no code editor");
+  const edit = `click ${box.x + 4} ${box.y + 16}; ${Array(6).fill("key 13 0").join("; ")}; text ${EDIT_TODO}; frames 2`;
+  const base = `wait; ${edit}; click ${at("Run")}; wait; frames 2`;
+  const first = session("native-gui-start", base, { launch, env: { CEANGAL_GUI_A11Y: gui } });
+  assert((find(first, "Code editor")?.value || "").includes(EDIT_TODO.trim()), "the edit is not in the editor");
   const win = find(first, "Program window");
   assert(win, `no program window: ${texts(first)}`);
   const g = () => readFileSync(gui, "utf8").split("\n").filter(Boolean).map((l) => { const [label, x, y, w, h] = l.split("\t"); return { label, x: +x + win.x, y: +y + win.y, w: +w, h: +h }; });
+  assert(g().some((n) => n.label === "Edited") && g().some((n) => n.label === "2 tasks left"), `edited program: ${g().map((n) => n.label)}`);
   const field = g().find((n) => n.label === "New task");
   assert(field, "no New task field");
-  const s = session("native-gui", `${base}; click ${center(field)}; text 牛乳を買う; key 1 0; frames 2`, { launch: "https://x.test/?example=todo", env: { CEANGAL_GUI_A11Y: gui } });
-  assert(g().some((n) => n.label === "牛乳を買う") && g().some((n) => n.label === "2 tasks left"), `program tree ${g().map((n) => n.label)}`);
+  const s = session("native-gui", `${base}; click ${center(field)}; text 牛乳を買う; key 1 0; frames 2`, { launch, env: { CEANGAL_GUI_A11Y: gui } });
+  assert(g().some((n) => n.label === "牛乳を買う") && g().some((n) => n.label === "3 tasks left"), `program tree ${g().map((n) => n.label)}`);
   const item = g().find((n) => n.label === "牛乳を買う");
-  const t = session("native-gui-toggle", `${base}; click ${center(field)}; text 牛乳を買う; key 1 0; frames 2; click ${center(item)}; frames 2; click ${at("Run")}; wait`, { launch: "https://x.test/?example=todo", env: { CEANGAL_GUI_A11Y: gui } });
-  assert(g().some((n) => n.label === "1 task left"), "toggle");
+  const t = session("native-gui-toggle", `${base}; click ${center(field)}; text 牛乳を買う; key 1 0; frames 2; click ${center(item)}; frames 2; click ${at("Run")}; wait`, { launch, env: { CEANGAL_GUI_A11Y: gui } });
+  assert(g().some((n) => n.label === "2 tasks left"), "toggle");
   assert(texts(t).includes("Stopped") && !find(t, "Program window"), `after Stop: ${texts(t)}`);
   rmSync(work, { recursive: true, force: true });
 });
@@ -189,35 +198,12 @@ step("AI: generate, repair once, against a mock provider (real HTTP)", () => {
 // The old playground's fixtures and every example: byte-identical stdout
 // against the CLI (random programs: ran and exited 0).
 if (!process.argv.includes("--skip-fixtures")) step("fixtures and examples run natively, matching the CLI", () => {
-  const fixtures = join(root, "apps/playground/tests/fixtures");
-  const examples = join(root, "apps/playground/assets/examples");
-  const manifest = JSON.parse(readFileSync(join(examples, "manifest.json"), "utf8"));
-  const progs = readdirSync(fixtures).filter((f) => f.endsWith(".almd")).map((f) => ({ id: f, files: { "main.almd": readFileSync(join(fixtures, f), "utf8") } }));
-  for (const cat of manifest.categories) if (cat.id !== "gui") for (const ex of cat.examples) {
-    const files = {};
-    for (const n of ex.files) files[n] = readFileSync(join(examples, ex.id, n), "utf8");
-    progs.push({ id: ex.id, files });
-  }
   const bad = [];
-  for (const p of progs) {
-    const json = JSON.stringify({ v: 1, files: Object.entries(p.files).map(([name, content]) => ({ name, content })) });
-    const code = deflateRawSync(Buffer.from(json)).toString("base64url");
-    const s = session(`native-fx-${p.id}`, "wait; frames 2; wait", { launch: `https://x.test/?autorun=1#code=${code}` });
+  for (const p of programs()) {
+    const s = session(`native-fx-${p.id}`, "wait; frames 2; wait", { launch: autorunLink(p) });
     if (!texts(s).includes("Exited 0")) { bad.push(`${p.id}: ${texts(s).find((t) => /error|Exited|Stopped/.test(t))}`); continue; }
-    // CLI reference
-    const dir = mkdtempSync(join(tmpdir(), "pg-cli-"));
-    mkdirSync(join(dir, "src"));
-    writeFileSync(join(dir, "almide.toml"), '[package]\nname = "fx"\nversion = "0.1.0"\n');
-    for (const [n, c] of Object.entries(p.files)) writeFileSync(n.endsWith(".almd") ? join(dir, "src", n) : join(dir, n), c);
-    const almideArgs = [join(root, "tools/almide"), "run", "src/main.almd"];
-    const run = () => execFileSync(process.platform === "win32" ? "bash" : almideArgs[0], process.platform === "win32" ? almideArgs : almideArgs.slice(1), { cwd: dir, env: { ...process.env, PWD: dir }, encoding: "utf8", maxBuffer: 256 << 20 }).trimEnd();
-    const want = run();
-    // random / clock programs differ run to run (CLI seeding can repeat
-    // within a second, so two equal runs prove nothing)
-    const usesChance = Object.values(p.files).some((c) => /\b(random\.|env\.|time\.(now|millis)|datetime\.now)/.test(c));
-    const deterministic = !usesChance && run() === want;
-    rmSync(dir, { recursive: true, force: true });
-    if (deterministic && s.runLog.trimEnd() !== want) bad.push(`${p.id}: drift`);
+    const want = reference(p);
+    if (want !== null && s.runLog.trimEnd() !== want) bad.push(`${p.id}: drift`);
   }
   assert(bad.length === 0, bad.join("; "));
 });

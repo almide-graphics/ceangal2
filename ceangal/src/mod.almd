@@ -55,6 +55,9 @@ var safe_t = 0.0
 var safe_r = 0.0
 var safe_b = 0.0
 var safe_l = 0.0
+// The bottom inset without the on-screen keyboard (it adds its height to
+// safe_b while it is up): last seen while no text input was active.
+var base_b = 0.0
 var dark_mode = false
 var dirty = true
 var started = false
@@ -176,6 +179,11 @@ fn cycle_focus(back: Bool) -> Unit = {
   } else ()
 }
 
+// The on-screen keyboard is up (phones and tablets, a text input focused by
+// a tap, and the keyboard not put away with Back / the dismiss key): apps
+// can show a key bar above it.
+pub fn soft_keyboard() -> Bool = ime_active and touch_platform() and safe_b > base_b + 40.0
+
 fn touch_platform() -> Bool = {
   if platform_id == 0 then platform_id = sys.platform() else ()
   platform_id == 5 or platform_id == 6
@@ -237,6 +245,7 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     safe_r = float.max(0.0, y)
     safe_b = float.max(0.0, z)
     safe_l = float.max(0.0, w)
+    if not ime_active then base_b = safe_b else ()
     invalidate()
     0
   }
@@ -694,12 +703,18 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
     // node under the pointer, or clears it.
     var f = ""
     var text = false
+    var keep = false
     let n = int.min(list.len(frame_views), list.len(frame_rects))
     for i in 0..<n {
-      if frame_views[i].focusable and inside(frame_rects[i], x, y) then { f = frame_views[i].key; text = frame_views[i].text_input } else ()
+      if inside(frame_rects[i], x, y) then {
+        if frame_views[i].focusable then { f = frame_views[i].key; text = frame_views[i].text_input } else ()
+        if frame_views[i].keeps_focus then keep = true else ()
+      } else ()
     }
-    if id >= 1 then kb_tapped = text else ()
-    focus(f)
+    if not keep then {
+      if id >= 1 then kb_tapped = text else ()
+      focus(f)
+    } else ()
   } else ()
   if target < 0 then false
   else {

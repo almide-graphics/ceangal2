@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { launch } from "../lib/cdp.mjs";
 import { serve } from "../lib/serve.mjs";
 import { encodePng } from "../lib/png.mjs";
+import { EDIT_TODO } from "../lib/fixtures.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const out = join(root, "out/e2e");
@@ -327,17 +328,24 @@ try {
     assert(slow.length === 0, `slow: ${slow.join(", ")}`);
   });
 
-  await step("user GUI: the Todo example runs in the Visual pane, takes input, stops", async () => {
+  await step("user GUI: the Todo example is edited, runs in the Visual pane, takes input, stops", async () => {
     await page.goto(`${url}/tests/e2e/web.html`);
     await ev(`pg.boot({ width: 1200, height: 760 })`, 120000);
     await ev(`pg.click("Examples")`);
     await ev(`pg.clickIn("Examples menu", "Todo app")`);
+    // the edit: the cursor to the top of the source, six lines down (the
+    // first task), and a new task typed in front of it
+    const box = await ev(`pg.find("Code editor")`);
+    await ev(`(async () => { pg.host().click(${box.x + 4}, ${box.y + 16}); await pg.host().settle(); for (let i = 0; i < 6; i++) await pg.key(13, 0); await pg.type(${JSON.stringify(EDIT_TODO)}); })()`);
+    await until(`(pg) => (pg.value("Code editor") || "").includes(${JSON.stringify(EDIT_TODO.trim())})`, 10000)
+      .catch(async (e) => { throw new Error(`${e.message}\n  editor: ${JSON.stringify((await ev(`pg.value("Code editor")`) || "").slice(0, 400))}`); });
     await ev(`pg.click("Run")`);
     await until(`(pg) => pg.texts().includes("Running (window)") || pg.texts().includes("Runtime error")`, 120000);
     if (await ev(`pg.texts().includes("Runtime error")`)) throw new Error(await ev(`pg.value("Program output")`));
     const gui = () => ev(`pg.gui()`);
     await until(`(pg) => { const g = pg.gui(); return (g && g.nodes.some((n) => n.label === "New task")) || pg.texts().includes("Runtime error"); }`, 60000);
     if (await ev(`pg.texts().includes("Runtime error")`)) { await ev(`pg.click("Output")`); throw new Error("program failed: " + (await ev(`pg.value("Program output")`))); }
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "Edited")`, 20000);
     let g = await gui();
     assert(g.w > 300 && g.h > 300, `window ${g.w}x${g.h}`);
     const at = (label) => { const n = g.nodes.find((m) => m.label === label); if (!n) throw new Error(`no ${label} in ${g.nodes.map((m) => m.label)}`); return [g.x + n.x + n.w / 2, g.y + n.y + n.h / 2]; };
@@ -350,11 +358,11 @@ try {
     await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "Buy milk 牛乳")`, 20000);
-    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "2 tasks left")`, 20000);
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "3 tasks left")`, 20000);
     // toggle it, then remove the first task
     g = await gui();
     await click(at("Buy milk 牛乳"));
-    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "1 task left")`, 20000);
+    await until(`(pg) => pg.gui()?.nodes.some((n) => n.label === "2 tasks left")`, 20000);
     g = await gui();
     await click(at("Remove Try the playground"));
     await until(`(pg) => !pg.gui()?.nodes.some((n) => n.label === "Try the playground")`, 20000);
