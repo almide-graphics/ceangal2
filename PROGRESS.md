@@ -234,16 +234,15 @@ item, the first green CI run on main that deploys Pages, waits for a push
   the Examples menu uses one (70% of the screen at most).
 
 ## Blockers
-- Pages needs Settings → Pages → Source "GitHub Actions" once (Human TODO);
-  until then the `pages` job fails.
+- (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
 0. Framework: tag a release (`v0.1.0`) so `[framework] version` resolves —
    until then apps use `path` or `$CEANGAL_SDK`; `ceangal dev` (rebuild on
    change) and `ceangal test`; move the playground into its own repository
    once the reusable workflow has run green for an outside app.
-1. CI is green for every job except `pages` (needs the Pages source setting,
-   Human TODO); then `pages-e2e` runs against the live site.
+1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
+   2026-10-05).
 2. M6: store screenshots for iOS from the simulator build (the generator
    renders the web build today); the Play / App Store data-safety answers
    checked against the final feature set.
@@ -330,7 +329,6 @@ item, the first green CI run on main that deploys Pages, waits for a push
       Mac Installer certs), MAC_CERTS_PASS, MAC_APP_IDENTITY,
       MAC_INSTALLER_IDENTITY, MAC_PROVISIONING_PROFILE_B64, and ASC_KEY_ID /
       ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
-- [ ] GitHub Pages: Settings → Pages → Source "GitHub Actions".
 - [ ] Microsoft Partner Center account; reserve the app name.
 - [ ] Flathub: confirm the app ID `io.github.almide.playground` (or register
       almide.dev and move to `dev.almide.playground`), then the submission PR.
