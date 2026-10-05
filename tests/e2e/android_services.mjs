@@ -1,6 +1,7 @@
-// tests/apps/services on an Android device or emulator: a file saved by
-// ceangal.save_file lands in the shared Downloads folder (MediaStore), and
-// the clipboard write reaches the system (its copy overlay appears).
+// tests/apps/services on an Android device or emulator: what TalkBack sees
+// (the AccessKit tree, read through uiautomator like any accessibility
+// service), a file saved by ceangal.save_file landing in the shared
+// Downloads folder (MediaStore), and the clipboard write reaching the system.
 //   node tests/e2e/android_services.mjs [apk]
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -47,17 +48,28 @@ try {
   await until((t) => t.nodes.some((n) => n.label === "Export"), "the app");
   console.log("ok   started");
 
+  // accessibility services (TalkBack, uiautomator) see the app's views
+  let seen = "";
+  for (let i = 0; i < 10 && !(seen.includes('content-desc="Export"') && seen.includes('content-desc="no file"')); i++) {
+    adb("shell", "uiautomator", "dump", "/sdcard/ui.xml");
+    seen = adb("shell", "cat", "/sdcard/ui.xml");
+    await sleep(500);
+  }
+  for (const want of ['content-desc="Services"', 'content-desc="Export"', 'content-desc="no file"', 'content-desc="twice 42 6"'])
+    if (!seen.includes(want)) throw new Error(`accessibility services do not see ${want}: ${(seen.match(/content-desc="[^"]+"/g) || []).join(" ")}`);
+  console.log("ok   accessibility services see the app (window, buttons, text)");
+
   await tap("Export");
   await until((t) => t.nodes.some((n) => n.label.startsWith("file 200 ")), "the save's answer");
   const saved = adb("shell", "cat", "/sdcard/Download/services.txt");
   if (saved.trim() !== "exported by ceangal") throw new Error(`Downloads/services.txt holds ${JSON.stringify(saved)}`);
   console.log("ok   save_file wrote Download/services.txt (MediaStore)");
 
-  adb("logcat", "-c");
+  const overlays = () => (adb("logcat", "-d").match(/ClipboardOverlay/g) || []).length;
+  const before = overlays();
   await tap("Copy");
   await sleep(1500);
-  const log = adb("logcat", "-d");
-  if (/ClipboardOverlay/.test(log)) console.log("ok   copy_text reached the system clipboard (its overlay showed)");
+  if (overlays() > before) console.log("ok   copy_text reached the system clipboard (its overlay showed)");
   else console.log("note copy_text: no clipboard overlay seen (older Android shows none)");
 
   await tap("Open");

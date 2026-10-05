@@ -105,8 +105,15 @@ pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
             let mut node = Node::new(role_of(n.role));
             let (x, y, w, h) = n.rect;
             node.set_bounds(Rect { x0: x * scale, y0: y * scale, x1: (x + w) * scale, y1: (y + h) * scale });
-            if !n.label.is_empty() { node.set_label(n.label.clone()); }
-            if let Some(v) = &n.value { node.set_value(v.clone()); }
+            // AccessKit reads a Label's text from its value (screen readers got
+            // nothing for plain text when it was the label)
+            if n.role == 4 {
+                let text = n.value.clone().filter(|v| !v.is_empty()).unwrap_or_else(|| n.label.clone());
+                if !text.is_empty() { node.set_value(text); }
+            } else {
+                if !n.label.is_empty() { node.set_label(n.label.clone()); }
+                if let Some(v) = &n.value { node.set_value(v.clone()); }
+            }
             if n.flags & 1 != 0 { node.add_action(Action::Focus); }
             if matches!(n.role, 3 | 8 | 11 | 12 | 15 | 18) { node.add_action(Action::Click); }
             if n.role == 16 { node.add_action(Action::Increment); node.add_action(Action::Decrement); }

@@ -300,13 +300,18 @@ final class PlaygroundE2E: E2E {
     }
 }
 
-/// tests/apps/services: the system clipboard (checked from outside with
-/// `simctl pbpaste`), the share sheet for a saved file, the document picker.
+/// tests/apps/services: what VoiceOver sees, the system clipboard (checked
+/// from outside with `simctl pbpaste`), the share sheet for a saved file,
+/// the document picker.
 final class ServicesE2E: E2E {
     func test1_clipboardShareSheetPicker() {
         guard appName == "services" else { return }
         launch()
         until("the app", has("Copy"))
+        // VoiceOver's view of the app (AccessKit's UIKit adapter): buttons and text
+        XCTAssertTrue(app.buttons["Copy"].waitForExistence(timeout: 10), "VoiceOver does not see the Copy button: \(app.debugDescription)")
+        XCTAssertTrue(app.staticTexts["no file"].exists || app.otherElements["no file"].exists || app.descendants(matching: .any)["no file"].exists,
+                      "VoiceOver does not see the text \"no file\": \(app.debugDescription)")
         tap("Copy")
         shot("copied")
 

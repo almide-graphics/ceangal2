@@ -101,6 +101,24 @@ pub fn mobile_save(name: &str, data: &[u8], downloads: &std::path::Path, done: D
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn mobile_open(done: Done) { mobile::open(done) }
 
+/// Android: AccessKit for TalkBack, on NativeActivity's content view. The
+/// handlers run on Android's UI thread; the host answers through its event
+/// loop (activation: render and `update_if_active` with the whole tree).
+#[cfg(target_os = "android")]
+pub struct AndroidA11y(accesskit_android::InjectingAdapter);
+
+#[cfg(target_os = "android")]
+impl AndroidA11y {
+    pub fn new(
+        activation: impl 'static + accesskit::ActivationHandler + Send,
+        action: impl 'static + accesskit::ActionHandler + Send,
+    ) -> Option<Self> {
+        mobile::content_view(|env, view| accesskit_android::InjectingAdapter::new(env, view, activation, action)).map(AndroidA11y)
+    }
+
+    pub fn update_if_active(&mut self, f: impl FnOnce() -> accesskit::TreeUpdate) { self.0.update_if_active(f) }
+}
+
 /// Android: the VM and activity, for the services above (the host calls this
 /// once at start).
 #[cfg(target_os = "android")]
@@ -132,6 +150,22 @@ mod mobile {
             Ok(v) => Some(v),
             Err(_) => { let _ = env.exception_clear(); None }
         }
+    }
+
+    /// `f` with the activity's content view: the NativeContentView inside
+    /// android.R.id.content (the view input and accessibility go to).
+    pub fn content_view<R>(f: impl FnOnce(&mut jni::JNIEnv, &JObject) -> R) -> Option<R> {
+        let mut f = Some(f);
+        with_env(|env, act| {
+            let window = env.call_method(act, "getWindow", "()Landroid/view/Window;", &[])?.l()?;
+            let decor = env.call_method(&window, "getDecorView", "()Landroid/view/View;", &[])?.l()?;
+            let content_id = env.get_static_field("android/R$id", "content", "I")?.i()?;
+            let content = env.call_method(&decor, "findViewById", "(I)Landroid/view/View;", &[JValue::Int(content_id)])?.l()?;
+            if content.is_null() { return Ok(None) }
+            let n = env.call_method(&content, "getChildCount", "()I", &[])?.i()?;
+            let view = if n > 0 { env.call_method(&content, "getChildAt", "(I)Landroid/view/View;", &[JValue::Int(0)])?.l()? } else { content };
+            Ok(Some((f.take().unwrap())(env, &view)))
+        }).flatten()
     }
 
     fn clipboard_manager<'a>(env: &mut jni::JNIEnv<'a>, act: &JObject) -> jni::errors::Result<JObject<'a>> {

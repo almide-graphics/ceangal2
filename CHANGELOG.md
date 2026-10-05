@@ -28,6 +28,9 @@ release. The release workflow takes the release notes from this file.
   `save_file` opens the share sheet on iOS and saves into the shared
   Downloads folder on Android 10+; `open_text_file` opens the document
   picker on iOS.
+- Screen readers: TalkBack on Android and VoiceOver on iOS see ceangal
+  apps; plain text is read on every platform (it was empty to AccessKit
+  readers before).
 - Releases carry `SHA256SUMS`, which `install.sh` / `install.ps1` verify.
 - Docs: a testing guide; the guide's examples are type-checked in CI;
   every public function is documented.

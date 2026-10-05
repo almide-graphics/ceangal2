@@ -73,12 +73,17 @@ target-specific.
   pinned stable toolchain. It goes away once almide groups its globals.
 
 ## Consequences
-- **No TalkBack yet.** accesskit_winit's Android adapter needs GameActivity,
-  and adopting it would bring back a Java build. The tree still exists, and
-  the Android E2E reads it from logcat (`debug.ceangal.a11y`).
-- Mobile clipboard is in-app only, export goes to the app's folder (no
-  share sheet), and there is no file picker. These are listed as known
-  issues.
+- **TalkBack through AccessKit's injecting adapter.** accesskit_winit's
+  Android adapter needs GameActivity (a Java build), but the
+  `InjectingAdapter` underneath takes any View: `ceangal_platform` puts it
+  on NativeActivity's content view, with the Java delegate from its
+  embedded dex (2026-10-05, ADR 0008). iOS uses accesskit_winit's UIKit
+  adapter. Both are checked in CI through the platform's own accessibility
+  APIs (uiautomator on Android, XCUITest on iOS).
+- Phones use the system clipboard; save goes to the share sheet (iOS) or
+  the shared Downloads folder (Android); iOS has the document picker. A
+  NativeActivity cannot receive an activity result, so Android has no file
+  picker.
 - Tests drive the real app on an emulator through `adb shell input`. Taps go
   to the a11y tree's rects × scale, and the user program's tree is logged
   with `debug.ceangal.gui_a11y`.

@@ -18,6 +18,10 @@ keyring = "4"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
+# TalkBack: AccessKit's adapter injected into NativeActivity's view
+# (accesskit_winit's Android adapter wants a GameActivity)
+accesskit = "0.25"
+accesskit_android = { version = "0.9", features = ["embedded-dex"] }
 
 [target.'cfg(target_os = "ios")'.dependencies]
 objc2 = "0.6"

@@ -57,6 +57,15 @@ ignored.
   them; this repository's CI runs the reference apps' on macOS (web and
   native), Linux and Windows (native).
 
+- **Screen readers on phones.** Android: AccessKit's injecting adapter on
+  NativeActivity's content view (ADR 0004). Both mobile adapters only ask
+  for the tree once a reader connects. ceangal then marks the UI dirty and
+  renders, because a frame with nothing changed builds no tree. Plain text
+  reaches AccessKit as a Label's value, which is where every platform
+  adapter reads it (as a label it was read as empty).
+- The app's name is compiled into native builds (`CEANGAL_APP_NAME`). It
+  is the window title and the name screen readers give the app.
+
 ## Consequences
 - The percentage fix changes layouts that used `w_pct` / `h_pct` /
   `fill()` on in-flow children, where they had no effect before. In this

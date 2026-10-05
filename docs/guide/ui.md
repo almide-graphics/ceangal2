@@ -238,10 +238,9 @@ list such as a log or a chat.
 
 ## Accessibility
 
-Screen readers see the views you describe: VoiceOver on macOS, Narrator
-on Windows, Orca on Linux (through AccessKit), and any reader on the web
-(through an ARIA overlay). iOS VoiceOver and Android TalkBack do not see
-ceangal apps yet: AccessKit has no adapter for them that ceangal can use.
+Screen readers see the views you describe: VoiceOver on macOS and iOS,
+TalkBack on Android, Narrator on Windows, Orca on Linux (all through
+AccessKit), and any reader on the web (through an ARIA overlay).
 
 ```almide
 v.text("×") |> v.on_click(() => remove(id)) |> v.role(3) |> v.label("Remove " + title)

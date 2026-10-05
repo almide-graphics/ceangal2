@@ -38,6 +38,27 @@ pub const EV_A11Y: i64 = 12;
 pub enum UserEvent {
     Wake,
     A11y(accesskit_winit::Event),
+    /// Android's AccessKit adapter (TalkBack) asks for the tree / an action.
+    #[cfg(target_os = "android")]
+    AndroidA11yInit,
+    #[cfg(target_os = "android")]
+    AndroidA11yAction(accesskit::ActionRequest),
+}
+
+#[cfg(target_os = "android")]
+struct AndroidActivation(winit::event_loop::EventLoopProxy<UserEvent>);
+#[cfg(target_os = "android")]
+impl accesskit::ActivationHandler for AndroidActivation {
+    fn request_initial_tree(&mut self) -> Option<accesskit::TreeUpdate> {
+        let _ = self.0.send_event(UserEvent::AndroidA11yInit);
+        None
+    }
+}
+#[cfg(target_os = "android")]
+struct AndroidActions(winit::event_loop::EventLoopProxy<UserEvent>);
+#[cfg(target_os = "android")]
+impl accesskit::ActionHandler for AndroidActions {
+    fn do_action(&mut self, r: accesskit::ActionRequest) { let _ = self.0.send_event(UserEvent::AndroidA11yAction(r)); }
 }
 
 impl From<accesskit_winit::Event> for UserEvent {
@@ -411,6 +432,8 @@ use winit::window::{CursorIcon, Window, WindowId};
 struct Windowed {
     window: Option<Arc<Window>>,
     a11y: Option<accesskit_winit::Adapter>,
+    #[cfg(target_os = "android")]
+    android_a11y: Option<ceangal_platform::AndroidA11y>,
     proxy: winit::event_loop::EventLoopProxy<UserEvent>,
     title: String,
     ctx: Rc<RefCell<GpuContext>>,
@@ -541,6 +564,8 @@ impl Windowed {
         let scale = self.scale;
         let title = self.title.clone();
         if let Some(a) = self.a11y.as_mut() { a.update_if_active(|| crate::a11y::tree_update(scale, &title)); }
+        #[cfg(target_os = "android")]
+        if let Some(a) = self.android_a11y.as_mut() { a.update_if_active(|| crate::a11y::tree_update(scale, &title)); }
     }
 
     fn call(&self, kind: i64, a: i64, b: i64, x: f64, y: f64, z: f64, w: f64) -> i64 {
@@ -636,7 +661,9 @@ impl ApplicationHandler<UserEvent> for Windowed {
             UserEvent::A11y(e) => match e.window_event {
                 accesskit_winit::WindowEvent::InitialTreeRequested => {
                     crate::a11y::set_active(true);
-                    // render once so ceangal builds the tree, then hand it over
+                    // render once so ceangal builds the tree (marked dirty first: a frame
+                    // with nothing changed builds none), then hand it over
+                    self.call(EV_LIFECYCLE, 1, 0, 0.0, 0.0, 0.0, 0.0);
                     self.call(EV_FRAME, 0, 0, crate::sys::now_ms(), 0.0, 0.0, 0.0);
                     self.push_a11y(true);
                 }
@@ -647,6 +674,21 @@ impl ApplicationHandler<UserEvent> for Windowed {
                 }
                 accesskit_winit::WindowEvent::AccessibilityDeactivated => crate::a11y::set_active(false),
             },
+            #[cfg(target_os = "android")]
+            UserEvent::AndroidA11yInit => {
+                crate::a11y::set_active(true);
+                // render once so ceangal builds the tree (marked dirty first: a frame
+                // with nothing changed builds none), then hand it over
+                self.call(EV_LIFECYCLE, 1, 0, 0.0, 0.0, 0.0, 0.0);
+                self.call(EV_FRAME, 0, 0, crate::sys::now_ms(), 0.0, 0.0, 0.0);
+                self.push_a11y(true);
+            }
+            #[cfg(target_os = "android")]
+            UserEvent::AndroidA11yAction(req) => {
+                if let Some(code) = crate::a11y::action_code(req.action) {
+                    self.call(EV_A11Y, req.target_node.0 as i64, code, 0.0, 0.0, 0.0, 0.0);
+                }
+            }
         }
         self.apply_requests();
     }
@@ -654,7 +696,11 @@ impl ApplicationHandler<UserEvent> for Windowed {
     fn resumed(&mut self, el: &ActiveEventLoop) {
         let first = self.window.is_none();
         if first {
-            let title = std::env::var("CEANGAL_TITLE").unwrap_or_else(|_| "ceangal".into());
+            // the app's name (baked in by tools/build_native.sh): the window
+            // title, and what screen readers call the app
+            let title = std::env::var("CEANGAL_TITLE").ok()
+                .or_else(|| option_env!("CEANGAL_APP_NAME").map(String::from))
+                .unwrap_or_else(|| "ceangal".into());
             self.title = title.clone();
             // AccessKit must attach before the window is first shown.
             let mut attrs = Window::default_attributes().with_title(title).with_visible(false);
@@ -665,6 +711,10 @@ impl ApplicationHandler<UserEvent> for Windowed {
             #[cfg(target_os = "ios")]
             ceangal_platform::watch_ios_keyboard();
             self.a11y = Some(accesskit_winit::Adapter::with_event_loop_proxy(el, &window, self.proxy.clone()));
+            #[cfg(target_os = "android")]
+            {
+                self.android_a11y = ceangal_platform::AndroidA11y::new(AndroidActivation(self.proxy.clone()), AndroidActions(self.proxy.clone()));
+            }
             window.set_visible(true);
             self.dark = matches!(window.theme(), Some(winit::window::Theme::Dark));
             self.window = Some(window);
@@ -917,6 +967,8 @@ fn run_windowed() {
     let mut app = Windowed {
         window: None,
         a11y: None,
+        #[cfg(target_os = "android")]
+        android_a11y: None,
         proxy,
         title: String::new(),
         ctx: Rc::new(RefCell::new(GpuContext::new())),

@@ -301,7 +301,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 0. Framework quality (in progress, 2026-10-05): CLI install and `dev` on
    Linux / Windows in CI, release checksums + CHANGELOG, performance
    budgets, mobile clipboard / share / picker, emoji / RTL / complex
-   scripts, iOS VoiceOver / Android TalkBack. Done: v0.1.0, v0.2.0,
+   scripts. Done: iOS VoiceOver / Android TalkBack trees, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
    guide + API reference, manifest checks, standard controls, `ceangal
    test`, checked doc examples (ADR 0007, 0008).
@@ -346,8 +346,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
   Android's pthread keys ("out of TLS keys"): the Android build rebuilds std
   with emulated TLS (`-Zbuild-std`, `-Zhas-thread-local=yes`,
   `RUSTC_BOOTSTRAP=1`, clang builtins linked).
-- Android has no TalkBack (accesskit's adapter needs GameActivity) and no
-  file picker (a NativeActivity cannot receive the result): open_text_file
+- Android has no file picker (a NativeActivity cannot receive the result): open_text_file
   answers 0 there. Clipboard (system), save (iOS share sheet, Android
   shared Downloads) and the iOS document picker work (2026-10-05,
   tests/e2e/android_services.mjs, ServicesE2E).
@@ -434,9 +433,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
       iPhone (Xcode → Settings → Accounts, then Run on the device).
 - [ ] Native: check the API key lands in Keychain / Credential Manager /
       Secret Service (the app asks the OS store; tests use a file instead).
-- [ ] Native: VoiceOver (macOS), Narrator (Windows), Orca (Linux) read the
-      playground through AccessKit. iOS VoiceOver / Android TalkBack: not
-      wired yet (AccessKit has no UIKit adapter; Android needs GameActivity).
+- [ ] Native: VoiceOver (macOS, iOS), TalkBack (Android), Narrator
+      (Windows), Orca (Linux) read the playground through AccessKit, with
+      the real screen reader on (CI checks the tree each one gets, not the
+      speech).
 - [ ] Try the AI panel with a real key for each provider (Claude, OpenAI,
       Gemini): generate, a follow-up, Fix with AI, a wrong key's message.
 - [ ] Check the deployed web playground with a screen reader (VoiceOver) and
