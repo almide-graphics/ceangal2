@@ -22,13 +22,14 @@ mkdir -p "$out"
 build="$(app_build_dir web)"
 (cd "$build" && "$root/tools/almide" build "$APP_ENTRY" --target wasm -o "$out/$APP_KEY.wasm")
 node "$root/tests/wasm_stubs.mjs" "$out/$APP_KEY.wasm"
-# Then shrunk with the pinned wasm-opt -Oz (ADR 0015) unless
+# Then shrunk with the pinned wasm-opt -Oz, repeated until it stops gaining
+# (--converge; ADR 0015), unless
 # CEANGAL_WASM_OPT=0 (`ceangal dev` skips it for quick reloads). The
 # features are the ones Almide's wasm uses; the stub check above runs on
 # Almide's own bytes, which inlining would blur.
 if [ "${CEANGAL_WASM_OPT:-1}" != 0 ]; then
   before=$(wc -c < "$out/$APP_KEY.wasm")
-  "$root/tools/wasm-opt" -Oz --enable-bulk-memory --enable-bulk-memory-opt --enable-sign-ext --enable-mutable-globals \
+  "$root/tools/wasm-opt" -Oz --converge --enable-bulk-memory --enable-bulk-memory-opt --enable-sign-ext --enable-mutable-globals \
     --enable-nontrapping-float-to-int --enable-multivalue --enable-tail-call "$out/$APP_KEY.wasm" -o "$out/$APP_KEY.opt.wasm"
   mv "$out/$APP_KEY.opt.wasm" "$out/$APP_KEY.wasm"
   echo "wasm-opt -Oz: $before → $(wc -c < "$out/$APP_KEY.wasm" | tr -d ' ') bytes"

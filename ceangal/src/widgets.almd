@@ -86,7 +86,7 @@ pub fn title(th: Theme, s: String) -> v.View = v.text(s) |> v.font(26.0) |> v.bo
 // A section's heading.
 pub fn heading(th: Theme, s: String) -> v.View = v.text(s) |> v.font(18.0) |> v.bold() |> v.color(th.text) |> v.role(10)
 // Ordinary text at the theme's size.
-pub fn body(th: Theme, s: String) -> v.View = v.text(s) |> v.font(th.font_size) |> v.color(th.text)
+pub fn body(th: Theme, s: String) -> v.View = v.text(s) |> v.font(th.font_size) |> v.color(th.text) |> v.wrapped()
 // Secondary text: hints, counts, timestamps.
 pub fn caption(th: Theme, s: String) -> v.View = v.text(s) |> v.font(13.0) |> v.color(th.dim)
 // Text that opens `url` in the browser.

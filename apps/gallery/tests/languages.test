@@ -6,5 +6,8 @@ see "עברית: שלום עולם"
 see "हिन्दी: नमस्ते दुनिया, श्री कृष्ण"
 see "ਪੰਜਾਬੀ · ગુજરાતી · తెలుగు · ಕನ್ನಡ · മലയാളം"
 see "Emoji"
+# paragraphs wrap: the list below starts under their last line
+see "Body text wraps onto as many lines as the width needs, breaking after spaces and hyphens, never inside a word that fits."
+see "Inbox"
 wait 1000
 shot "languages.png"

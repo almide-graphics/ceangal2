@@ -29,6 +29,9 @@ bytes": the optimized module is outside what Almide verifies.
   Almide. It downloads the release for the host into `.tools/`, checks
   the SHA-256 written in the script, and runs it. CI and local builds use
   the same binary, with no system install.
+- **`-Oz --converge`**: the passes repeat until the module stops
+  shrinking (about 0.8 KB more on the gallery; added with ADR 0017's text
+  wrapping).
 - **The features are listed explicitly**: bulk memory (and its opt
   variant), sign extension, mutable globals, non-trapping float-to-int,
   multi-value, tail calls. These are what Almide's wasm uses.

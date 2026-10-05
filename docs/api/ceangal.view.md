@@ -453,6 +453,15 @@ pub fn clip(v: View) -> View
 
 Children do not draw outside this view's rect.
 
+### `wrapped`
+
+```almide
+pub fn wrapped(v: View) -> View
+```
+
+Text that wraps onto as many lines as its width needs (breaking where
+Unicode's line breaking rules allow; a "\n" starts a new line).
+
 ## Paint
 
 ### `bg`

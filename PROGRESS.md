@@ -4,6 +4,9 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- テキストビューの折り返し (`v.wrapped()`、`w.body` は既定で折り返し)。
+  1 回目のレイアウト後に幅に応じた行数で高さを決めて再レイアウト。
+  gallery に英語・日本語の段落を追加し web / native で確認。
 - UAX #14 の行分割を実装 (ADR 0017, `ceangal.linebreak`)。Unicode の
   LineBreakTest.txt のうち対象範囲の 8014 行が全て一致 (CI)。エディタの
   ソフトラップが CJK の文字間・禁則・ハイフン後で折り返し、絵文字や結合
@@ -364,6 +367,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
   oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
   `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
   edge; isolate typed in apps/gallery/tests/rtl.test.
+- Wrapping text views (ADR 0017 update): `v.wrapped()`, `w.body` wraps;
+  second layout pass with the rows' heights; paint draws the measured rows.
 - Android E2E: adb commands wait for the device and retry when the
   emulator's connection drops for a moment.
 - Line breaking by UAX #14 (ADR 0017): `ceangal.linebreak` (LB2–LB31
@@ -409,9 +414,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Text: text views (labels) wrap with ceangal.linebreak (layout measure
-   at a width). (Bidi W4–W6 / N0 if needed.) Then the goal's item 2
-   (controls / accessibility).
+0. Goal item 2: controls / accessibility (tooltip, toast / live region,
+   context menu, autocomplete combobox, list virtualization; Dynamic Type /
+   fontScale, reduced motion, high contrast; E2E for the new roles).
+   (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,

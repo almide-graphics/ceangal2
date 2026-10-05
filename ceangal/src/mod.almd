@@ -83,6 +83,9 @@ var started = false
 
 // The last laid-out frame, in paint order, for hit testing.
 var frame_views: List[v.View] = []
+// The height a wrapping text needs at the width it got: by text and style
+// (a second layout pass uses it).
+var wrap_heights: Map[String, Float] = map.new()
 var frame_rects: List[lay.LayoutRect] = []
 // Which frame nodes are inside an overlay (v.overlay: drawn last, hit first).
 var frame_over: List[Bool] = []
@@ -455,9 +458,8 @@ fn render() -> Unit = {
   let inner = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
   let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
   let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
-  let node = to_node(root)
-  let laid = lay.layout(node, width, height)
   frame_views = flatten(root)
+  let laid = layout_with_wraps(root, frame_views)
   frame_over = overlay_marks(frame_views)
   let rects = free_overlays(frame_views, frame_over, apply_scrolls(frame_views, laid))
   frame_rects = rects
@@ -541,6 +543,35 @@ fn a11y_action(id: Int, action: Int) -> Bool = {
 
 // ── View → layout node ──
 
+fn wrap_key(vw: v.View) -> String = {
+  let s = vw.style
+  vw.content + "|" + float.to_string(s.font_size) + (if s.mono then "m" else "") + (if s.bold then "b" else "")
+}
+
+fn wraps(vw: v.View) -> Bool = vw.kind == v.TEXT and vw.style.wrap and vw.style.height == lay.UNDEFINED and vw.style.height_pct == lay.UNDEFINED
+
+// Lay out `root`; then each wrapping text gets the height of its rows at
+// the width it was given, and if one changed the tree is laid out again.
+fn layout_with_wraps(root: v.View, views: List[v.View]) -> List[lay.LayoutRect] = {
+  let laid = lay.layout(to_node(root), width, height)
+  var changed = false
+  for i in 0..<int.min(list.len(views), list.len(laid)) {
+    let vw = views[i]
+    if wraps(vw) then {
+      let s = vw.style
+      let inner = laid[i].w - s.pl - s.pr
+      let rows = list.len(tx.wrap_rows(vw.content, float.max(1.0, inner), s.font_size, s.mono, s.bold))
+      let h = int.to_float(rows) * tx.line_height(s.font_size, s.mono) + s.pt + s.pb
+      if float.abs(h - laid[i].h) > 0.5 then {
+        changed = true
+        if map.len(wrap_heights) > 500 then wrap_heights = map.new() else ()
+        map.insert(wrap_heights, wrap_key(vw), h)
+      } else ()
+    } else ()
+  }
+  if changed then lay.layout(to_node(root), width, height) else laid
+}
+
 fn edges(t: Float, r: Float, b: Float, l: Float) -> lay.Edges = { top: t, right: r, bottom: b, left: l }
 
 fn to_node(view: v.View) -> lay.Node = {
@@ -550,8 +581,13 @@ fn to_node(view: v.View) -> lay.Node = {
   let intrinsic = if view.kind == v.TEXT then tx.measure_style(view.content, s.font_size, s.mono, s.bold) else { w: lay.UNDEFINED, h: lay.UNDEFINED }
   let is_text = view.kind == v.TEXT
   let unset = lay.UNDEFINED
-  let width = if s.width != unset or s.width_pct != unset then s.width else if is_text then intrinsic.w + s.pl + s.pr else unset
-  let height = if s.height != unset or s.height_pct != unset then s.height else if is_text then intrinsic.h + s.pt + s.pb else unset
+  // wrapping text: as wide as its one line at most, shrinking to fit, as
+  // tall as its rows (worked out after a first layout)
+  let wrapping = wraps(view)
+  let width = if s.width != unset or s.width_pct != unset then s.width else if is_text and not wrapping then intrinsic.w + s.pl + s.pr else unset
+  let height = if s.height != unset or s.height_pct != unset then s.height
+    else if wrapping then (match map.get(wrap_heights, wrap_key(view)) { some(h) => h, none => intrinsic.h + s.pt + s.pb })
+    else if is_text then intrinsic.h + s.pt + s.pb else unset
   {
     ...base,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
@@ -562,14 +598,14 @@ fn to_node(view: v.View) -> lay.Node = {
     align_self: s.align_self,
     gap_main: s.gap,
     grow: s.grow,
-    shrink: s.shrink,
+    shrink: if wrapping and s.shrink == 0.0 then 1.0 else s.shrink,
     padding: edges(s.pt, s.pr, s.pb, s.pl),
     margin: edges(s.mt, s.mr, s.mb, s.ml),
     width: width,
     height: height,
     min_width: s.min_width,
     min_height: s.min_height,
-    max_width: s.max_width,
+    max_width: if wrapping and s.max_width == unset and width == unset then intrinsic.w + s.pl + s.pr else s.max_width,
     max_height: s.max_height,
     width_pct: s.width_pct,
     height_pct: s.height_pct,
@@ -579,8 +615,19 @@ fn to_node(view: v.View) -> lay.Node = {
     pos_right: s.pos_right,
     pos_bottom: s.pos_bottom,
     pos_left: s.pos_left,
-    children: list.map(view.children, to_node),
+    children: children_of(view),
   }
+}
+
+// The children's nodes; in a row, a wrapping text starts at the width of
+// its one line and shrinks from there.
+fn children_of(view: v.View) -> List[lay.Node] = {
+  var out: List[lay.Node] = []
+  for c in view.children {
+    let n = to_node(c)
+    list.push(out, if view.kind == v.ROW and wraps(c) and n.width == lay.UNDEFINED then { ...n, basis: n.max_width } else n)
+  }
+  out
 }
 
 // ── Scroll views ──
@@ -815,7 +862,12 @@ fn paint(view: v.View, rects: List[lay.LayoutRect], idx: Int) -> Int = {
   else ()
   if view.kind == v.TEXT then {
     snaidhm.push_clip(x, y, w, h)
-    tx.draw_style(view.content, x + s.pl * k, y + s.pt * k, w - (s.pl + s.pr) * k, h - (s.pt + s.pb) * k, s.font_size * k, s.mono, s.bold, s.fg)
+    if wraps(view) then {
+      // the rows layout measured (logical px), drawn at the pixel scale
+      let bs = tx.wrap_rows(view.content, float.max(1.0, r.w - s.pl - s.pr), s.font_size, s.mono, s.bold)
+      tx.draw_rows(view.content, bs, x + s.pl * k, y + s.pt * k, w - (s.pl + s.pr) * k, tx.line_height(s.font_size, s.mono) * k, s.font_size * k, s.mono, s.bold, s.fg)
+    }
+    else tx.draw_style(view.content, x + s.pl * k, y + s.pt * k, w - (s.pl + s.pr) * k, h - (s.pt + s.pb) * k, s.font_size * k, s.mono, s.bold, s.fg)
     snaidhm.pop_clip()
   } else ()
   if view.kind == v.CUSTOM then view.paint(r.x, r.y, r.w, r.h) else ()

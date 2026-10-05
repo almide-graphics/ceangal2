@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Text that wraps**: `v.wrapped()` (and every `w.body`) wraps onto as
+  many lines as its width needs, with the same line breaking rules. (ADR 0017)
 - **Line breaking by UAX #14** (`ceangal.linebreak`): the editor's soft
   wrap breaks between CJK characters, after hyphens and spaces, never
   before closing punctuation or inside an emoji or conjunct; 8014 lines

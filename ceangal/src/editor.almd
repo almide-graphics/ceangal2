@@ -16,7 +16,6 @@ import self as ui
 import self.view as v
 import self.text as tx
 import self.syntax as syn
-import self.linebreak as lb
 
 type Pos = { line: Int, col: Int }
 
@@ -573,33 +572,7 @@ fn wrap_avail(e: Editor) -> Float = float.max(40.0, e.view_w - gutter_w(e) - pad
 
 // Segment start columns of a line given its glyph end positions `xs`
 // (xs[i] = x after i characters) and characters `cps`. Always starts with 0.
-fn breaks_of(xs: List[Float], cps: List[Int], avail: Float) -> List[Int] = {
-  var bs = [0]
-  if list.len(xs) > 1 and xs[list.len(xs) - 1] > avail then {
-    let ops = lb.opportunities(cps)
-    var stops: List[Bool] = []
-    var start = 0
-    var row_x = 0.0
-    var cand = -1
-    for i in 1..<list.len(xs) {
-      if xs[i] - row_x > avail and i - 1 > start then {
-        // the last opportunity in the row, else the last caret stop
-        var at = cand
-        if at < start + 1 then {
-          if list.len(stops) == 0 then stops = tx.stops(cps) else ()
-          at = i - 1
-          while at > start + 1 and not stops[at] { at = at - 1 }
-        } else ()
-        list.push(bs, at)
-        start = at
-        row_x = xs[at]
-        cand = -1
-      } else ()
-      if i < list.len(ops) and ops[i] != lb.NO then cand = i else ()
-    }
-  } else ()
-  bs
-}
+fn breaks_of(xs: List[Float], cps: List[Int], avail: Float) -> List[Int] = tx.wrap_breaks(xs, cps, avail)
 
 fn line_breaks(e: Editor, l: Int) -> List[Int] =
   if not wrapping(e) then [0]

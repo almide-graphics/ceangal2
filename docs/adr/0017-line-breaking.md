@@ -45,8 +45,17 @@ letter from its marks, and could start a row with "。" or "、".
 - Wrapped Japanese and mixed text in the playground's narrow layout
   breaks between characters and keeps punctuation where Japanese
   typography expects it. `tests/e2e/web.mjs` takes a screenshot of it.
-- Text views (labels) still don't wrap. Wrapping them with the same
-  opportunities is the next step.
+- **Text views wrap too** (update, same day). `v.wrapped()` makes a text
+  view wrap; `w.body` paragraphs wrap by default.
+  - Such a view is at most as wide as its one line, and shrinks to fit.
+    In a row it starts at that width.
+  - After the first layout, each wrapping text gets the height of its rows
+    at the width it was given (`text.wrap_rows`, cached), and the tree is
+    laid out again if a height changed. The layout engine stays free of
+    text measuring.
+  - Paint draws the rows that layout measured, so the two never disagree.
+    A "\n" (any hard break) starts a new row. Rows of a right-to-left
+    paragraph end at the right edge.
 - The wasm grows by about 4.4 KB optimized: the rules about 3 KB, the
   table 1.5 KB. Together with ADR 0016's bidi (about 4.2 KB), the
   budgets move:

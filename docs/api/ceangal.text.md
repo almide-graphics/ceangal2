@@ -260,6 +260,38 @@ pub fn measure_style(s: String, size: Float, mono: Bool, bold: Bool) -> Extent
 
 measure, with the bold font when `bold`.
 
+## Wrapping
+
+### `wrap_breaks`
+
+```almide
+pub fn wrap_breaks(xs: List[Float], cps: List[Int], avail: Float) -> List[Int]
+```
+
+Where a line of characters `cps` wraps at `avail` px, given `xs` (x after
+each character laid end to end, length n + 1): the first character of
+each row, 0 first. A row ends at the last line break opportunity that
+fits (self.linebreak, UAX #14), or at the last caret stop that fits when
+there is none; a hard line break (LF, U+2028…) always ends one.
+
+### `wrap_rows`
+
+```almide
+pub fn wrap_rows(s: String, max_w: Float, size: Float, mono: Bool, bold: Bool) -> List[Int]
+```
+
+The first character of each row `s` wraps into at `max_w` px.
+
+### `draw_rows`
+
+```almide
+pub fn draw_rows(s: String, bs: List[Int], x: Float, y: Float, w: Float, lh: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit
+```
+
+`s` drawn in the rows starting at `bs` (wrap_rows), `lh` px apart, in a
+box `w` px wide at (x, y); rows of a right-to-left paragraph end at the
+right edge.
+
 ## Glyph atlas cache
 
 ```almide
