@@ -1,0 +1,56 @@
+// ceangal.linebreak against Unicode's LineBreakTest.txt (the lines its
+// classification covers exactly; tools/gen_linebreak.py).
+
+import fs
+import self.linebreak
+
+fn hex_list(s: String) -> List[Int] = {
+  var out: List[Int] = []
+  for w in string.split(s, " ") {
+    if w != "" then {
+      var v = 0
+      for c in string.chars(w) {
+        let d = match string.codepoint(c) { some(x) => x, none => 48 }
+        v = v * 16 + (if d >= 65 then d - 55 else d - 48)
+      }
+      list.push(out, v)
+    } else ()
+  }
+  out
+}
+
+// "0" / "1" for each place between two code points: no break / a break.
+fn ours(cps: List[Int]) -> String = {
+  var s = ""
+  let ops = linebreak.opportunities(cps)
+  for i in 1..<list.len(ops) { s = s + (if ops[i] == linebreak.NO then "0" else "1") }
+  s
+}
+
+effect fn failures() -> Int = {
+  var failed = 0
+  for line in string.split(fs.read_text("../tests/linebreak/cases.txt")!, "\n") {
+    let cols = string.split(line, "\t")
+    if list.len(cols) == 2 then {
+      let got = ours(hex_list(cols[0]))
+      if got != cols[1] then {
+        failed = failed + 1
+        if failed <= 30 then println("FAIL ${cols[0]}\n  want ${cols[1]}\n  got  ${got}") else ()
+      } else ()
+    } else ()
+  }
+  failed
+}
+
+test "LineBreakTest.txt: every covered line breaks where Unicode says" {
+  assert_eq(failures()!, 0)
+}
+
+test "a space allows a break after it, not before" {
+  assert(linebreak.opportunities([0x61, 0x20, 0x62]) == [0, 0, 1])
+}
+
+test "CJK breaks between ideographs but not before a closing mark" {
+  // 日本語。
+  assert(linebreak.opportunities([0x65E5, 0x672C, 0x8A9E, 0x3002]) == [0, 1, 1, 0])
+}

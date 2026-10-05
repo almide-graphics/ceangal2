@@ -49,6 +49,15 @@ pub fn take_waiting() -> Bool
 
 Whether text drawn since the last call lacked a font still loading.
 
+### `font_generation`
+
+```almide
+pub fn font_generation() -> Int
+```
+
+How many fonts have loaded: text measured before a fallback font arrived
+(the web fetches them on first use) is stale when this changes.
+
 ## UTF-8
 
 ### `codepoints`

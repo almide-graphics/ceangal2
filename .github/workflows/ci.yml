@@ -32,6 +32,9 @@ jobs:
       - name: bidi levels and display order (tests/bidi/cases.txt, from unicode-bidi)
         working-directory: ceangal
         run: ../tools/almide test src/bidi_test.almd
+      - name: line breaking matches Unicode's LineBreakTest.txt (tests/linebreak/cases.txt)
+        working-directory: ceangal
+        run: ../tools/almide test src/linebreak_test.almd
       - name: Arabic shaping matches HarfBuzz (tests/shaping/arabic.txt)
         working-directory: ceangal
         run: ../tools/almide test src/arabic_test.almd --target wasm

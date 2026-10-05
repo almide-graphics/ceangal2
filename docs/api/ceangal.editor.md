@@ -71,6 +71,7 @@ type Editor = {
   rows: List[Int],        // wrap cache: first visual row of each line, then the total
   rows_ver: Int,          // ... for this version
   rows_w: Float,          // ... and this wrap width
+  rows_fonts: Int,        // ... and these fonts (text.font_generation)
   align_end: Bool,        // right-to-left lines start at the right edge
 }
 ```

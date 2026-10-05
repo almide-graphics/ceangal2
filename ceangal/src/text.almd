@@ -98,6 +98,12 @@ fn load_asset(name: String) -> Bytes = {
   }
 }
 
+var generation = 0
+
+// How many fonts have loaded: text measured before a fallback font arrived
+// (the web fetches them on first use) is stale when this changes.
+pub fn font_generation() -> Int = generation
+
 fn font_at(slot: Int) -> font.Font = {
   if list.len(fonts) == 0 then fonts = list.repeat(font.empty_font(), list.len(FONT_FILES)) else ()
   if not font_tried[slot] then {
@@ -105,7 +111,7 @@ fn font_at(slot: Int) -> font.Font = {
     fonts[slot] = f
     // A missing asset may still be loading (the web fetches fallback fonts
     // the first time they are needed): draw again on the next frame.
-    if f.ok then font_tried[slot] = true else { waiting = true; sys.request_frame() }
+    if f.ok then { font_tried[slot] = true; generation = generation + 1 } else { waiting = true; sys.request_frame() }
     f
   } else fonts[slot]
 }

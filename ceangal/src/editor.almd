@@ -16,6 +16,7 @@ import self as ui
 import self.view as v
 import self.text as tx
 import self.syntax as syn
+import self.linebreak as lb
 
 type Pos = { line: Int, col: Int }
 
@@ -56,6 +57,7 @@ type Editor = {
   rows: List[Int],        // wrap cache: first visual row of each line, then the total
   rows_ver: Int,          // ... for this version
   rows_w: Float,          // ... and this wrap width
+  rows_fonts: Int,        // ... and these fonts (text.font_generation)
   align_end: Bool,        // right-to-left lines start at the right edge
 }
 
@@ -124,6 +126,7 @@ pub fn from_string(s: String) -> Editor = {
   rows: [],
   rows_ver: -1,
   rows_w: 0.0,
+  rows_fonts: -1,
   align_end: false,
 }
 
@@ -557,8 +560,10 @@ fn pos_in_row(e: Editor, row: Int, x: Float) -> Pos = {
 
 // ── Soft wrap ──
 //
-// A wrapped line is drawn as several visual rows ("segments"), broken after
-// the last space that fits (or mid-word when none does). `rows` caches the
+// A wrapped line is drawn as several visual rows ("segments"), broken at
+// the last line break opportunity that fits (UAX #14: after spaces,
+// between CJK characters, after hyphens…), or at the last caret stop that
+// fits when there is none. `rows` caches the
 // first row of every line for the current text and width; everything that
 // maps lines to y goes through row_start / total_rows / row_at.
 
@@ -570,19 +575,29 @@ fn wrap_avail(e: Editor) -> Float = float.max(40.0, e.view_w - gutter_w(e) - pad
 // (xs[i] = x after i characters) and characters `cps`. Always starts with 0.
 fn breaks_of(xs: List[Float], cps: List[Int], avail: Float) -> List[Int] = {
   var bs = [0]
-  var start = 0
-  var row_x = 0.0
-  var space = -1
-  for i in 1..<list.len(xs) {
-    if xs[i] - row_x > avail and i - 1 > start then {
-      let at = if space >= start + 1 then space else i - 1
-      list.push(bs, at)
-      start = at
-      row_x = xs[at]
-      space = -1
-    } else ()
-    if i - 1 < list.len(cps) and cps[i - 1] == 32 then space = i else ()
-  }
+  if list.len(xs) > 1 and xs[list.len(xs) - 1] > avail then {
+    let ops = lb.opportunities(cps)
+    var stops: List[Bool] = []
+    var start = 0
+    var row_x = 0.0
+    var cand = -1
+    for i in 1..<list.len(xs) {
+      if xs[i] - row_x > avail and i - 1 > start then {
+        // the last opportunity in the row, else the last caret stop
+        var at = cand
+        if at < start + 1 then {
+          if list.len(stops) == 0 then stops = tx.stops(cps) else ()
+          at = i - 1
+          while at > start + 1 and not stops[at] { at = at - 1 }
+        } else ()
+        list.push(bs, at)
+        start = at
+        row_x = xs[at]
+        cand = -1
+      } else ()
+      if i < list.len(ops) and ops[i] != lb.NO then cand = i else ()
+    }
+  } else ()
   bs
 }
 
@@ -591,7 +606,8 @@ fn line_breaks(e: Editor, l: Int) -> List[Int] =
   else breaks_of(col_xs(e, e.lines[l]), e.lines[l], wrap_avail(e))
 
 fn rows_fresh(e: Editor) -> Bool =
-  e.rows_ver == e.version and e.rows_w == wrap_avail(e) and list.len(e.rows) == list.len(e.lines) + 1
+  e.rows_ver == e.version and e.rows_w == wrap_avail(e) and e.rows_fonts == tx.font_generation()
+    and list.len(e.rows) == list.len(e.lines) + 1
 
 // Refresh the wrap cache if the text or the width changed.
 pub fn with_rows(e: Editor) -> Editor =
@@ -603,7 +619,7 @@ pub fn with_rows(e: Editor) -> Editor =
       acc = acc + list.len(line_breaks(e, l))
       list.push(rows, acc)
     }
-    { ...e, rows: rows, rows_ver: e.version, rows_w: wrap_avail(e) }
+    { ...e, rows: rows, rows_ver: e.version, rows_w: wrap_avail(e), rows_fonts: tx.font_generation() }
   }
 
 fn row_start(e: Editor, l: Int) -> Int =

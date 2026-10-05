@@ -184,6 +184,11 @@ try {
     await setCode('effect fn main() -> Unit = {\n  let message = "a long line that does not fit on a phone screen at all, so it wraps"\n  println(message)\n}\n');
     await new Promise((r) => setTimeout(r, 300));
     await shot("mobile-wrap");
+    // Japanese has no spaces: it wraps between characters (UAX #14), and a
+    // row never starts with 。 or 、
+    await setCode('// 日本語の文章は空白で区切られないので、行の折り返しは文字と文字の間で起こる。句読点は行頭に来ない。\neffect fn main() -> Unit = println("ok")\n');
+    await new Promise((r) => setTimeout(r, 300));
+    await shot("mobile-wrap-cjk");
     await ev(`pg.click("Output")`);
     await until(`(pg) => !!pg.find("Program output")`);
     await shot("mobile-output");

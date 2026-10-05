@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Line breaking by UAX #14** (`ceangal.linebreak`): the editor's soft
+  wrap breaks between CJK characters, after hyphens and spaces, never
+  before closing punctuation or inside an emoji or conjunct; 8014 lines
+  of Unicode's LineBreakTest.txt pass. Wrapped rows are measured again
+  when a fallback font arrives. (ADR 0017)
 - **Bidi embeddings, overrides and isolates** (LRE…PDF, LRI/RLI/FSI…PDI,
   LRM/RLM/ALM): followed as UAX #9 does, with isolating run sequences;
   1000 random lines match unicode-bidi's order. The caret on a

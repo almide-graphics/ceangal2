@@ -18,7 +18,19 @@ const adbPath = existsSync(join(sdk, "platform-tools/adb")) ? join(sdk, "platfor
 const shots = join(root, "out/e2e");
 mkdirSync(shots, { recursive: true });
 
-const adb = (...args) => execFileSync(adbPath, args, { encoding: "utf8", maxBuffer: 64 << 20 });
+// The CI emulator's adb connection sometimes drops for a moment ("device
+// offline") and comes back: wait for it and try the command again.
+const adb = (...args) => {
+  for (let attempt = 0; ; attempt++) {
+    try { return execFileSync(adbPath, args, { encoding: "utf8", maxBuffer: 64 << 20 }); }
+    catch (e) {
+      const msg = `${e.message} ${e.stderr || ""}`;
+      if (attempt >= 2 || !/device offline|no devices\/emulators found|device '.*' not found/.test(msg)) throw e;
+      console.log(`     (adb: device offline, waiting for it: ${args.join(" ").slice(0, 60)})`);
+      execFileSync(adbPath, ["wait-for-device"], { timeout: 120000 });
+    }
+  }
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let failed = 0;

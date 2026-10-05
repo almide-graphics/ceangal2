@@ -1,0 +1,237 @@
+// Line breaking: where a line may wrap, by the Unicode Line Breaking
+// Algorithm (UAX #14, rules LB2–LB31 except LB28a's aksara classes and
+// LB30b's unassigned pictographs). Classes come from linebreak_data
+// (tools/gen_linebreak.py) over defaults by block; East Asian width by
+// ranges. tests/linebreak/cases.txt has Unicode's LineBreakTest.txt lines
+// that this classification covers exactly; linebreak_test.almd checks
+// every one.
+
+import self.linebreak_data as data
+
+let BK = 0
+let CR = 1
+let LF = 2
+let NL = 3
+let SP = 4
+let ZW = 5
+let CM = 6
+let ZWJ = 7
+let WJ = 8
+let GL = 9
+let BA = 10
+let HY = 11
+let B2 = 12
+let BB = 13
+let CB = 14
+let CL = 15
+let CP = 16
+let EX = 17
+let IN = 18
+let IS = 19
+let NS = 20
+let OP = 21
+let QU = 22
+let SY = 23
+let PR = 24
+let PO = 25
+let NU = 26
+let AL = 27
+let HL = 28
+let ID = 29
+let EB = 30
+let EM = 31
+let RI = 32
+let H2 = 33
+let H3 = 34
+let JL = 35
+let JV = 36
+let JT = 37
+
+// No break before character i / a break is allowed / a break is required.
+pub let NO = 0
+pub let ALLOWED = 1
+pub let MANDATORY = 2
+
+// linebreak_data's table, unpacked on first use: (first, last, value).
+var table: List[(Int, Int, Int)] = []
+
+fn digit(c: Int) -> Int =
+  if c >= 48 and c <= 57 then c - 48 else if c >= 65 and c <= 90 then c - 55
+  else if c >= 97 and c <= 122 then c - 61 else if c == 45 then 62 else 63
+
+fn ranges() -> List[(Int, Int, Int)] = {
+  if list.len(table) == 0 then {
+    let b = bytes.from_string(data.PACKED)
+    let n = bytes.len(b)
+    var p = 0
+    var prev = 0
+    while p < n {
+      var vals: List[Int] = []
+      for k in 0..<3 {
+        var v = 0
+        var scale = 1
+        var more = true
+        while more {
+          let d = digit(bytes.read_u8(b, p))
+          p = p + 1
+          if d >= 32 then { v = v + (d - 32) * scale; scale = scale * 32 } else { v = v + d * scale; more = false }
+        }
+        list.push(vals, v)
+      }
+      let first = prev + vals[0]
+      prev = first + vals[1]
+      list.push(table, (first, prev, vals[2]))
+    }
+  } else ()
+  table
+}
+
+fn default_class(cp: Int) -> Int =
+  if (cp >= 0x3400 and cp <= 0x4DBF) or (cp >= 0x4E00 and cp <= 0x9FFF) or (cp >= 0xF900 and cp <= 0xFAFF)
+    or (cp >= 0x20000 and cp <= 0x3FFFD) or (cp >= 0x1F000 and cp <= 0x1FAFF) or (cp >= 0x1FC00 and cp <= 0x1FFFD) then ID
+  else if cp >= 0xAC00 and cp <= 0xD7A3 then (if (cp - 0xAC00) % 28 == 0 then H2 else H3)
+  else AL
+
+// The class of `cp` + 64 if it is an initial quote + 128 if a final one.
+fn value_of(cp: Int) -> Int = {
+  let t = ranges()
+  var lo = 0
+  var hi = list.len(t) - 1
+  var v = -1
+  while lo <= hi and v < 0 {
+    let m = (lo + hi) / 2
+    if cp < t[m].0 then hi = m - 1 else if cp > t[m].1 then lo = m + 1 else v = t[m].2
+  }
+  if v >= 0 then v else default_class(cp)
+}
+
+// East Asian width F, W or H (by ranges).
+fn east_asian(cp: Int) -> Bool =
+  (cp >= 0x1100 and cp <= 0x115F) or (cp >= 0x2E80 and cp <= 0x303E) or (cp >= 0x3041 and cp <= 0x33FF)
+    or (cp >= 0x3400 and cp <= 0x4DBF) or (cp >= 0x4E00 and cp <= 0x9FFF) or (cp >= 0xA000 and cp <= 0xA4CF)
+    or (cp >= 0xAC00 and cp <= 0xD7A3) or (cp >= 0xF900 and cp <= 0xFAFF) or (cp >= 0xFE30 and cp <= 0xFE4F)
+    or (cp >= 0xFF00 and cp <= 0xFFDC) or (cp >= 0xFFE0 and cp <= 0xFFE6) or (cp >= 0x1F300 and cp <= 0x1F64F)
+    or (cp >= 0x1F900 and cp <= 0x1F9FF) or (cp >= 0x20000 and cp <= 0x3FFFD)
+
+// Whether character k (if there is one) is East Asian.
+fn ea(cps: List[Int], k: Int) -> Bool = k >= 0 and k < list.len(cps) and east_asian(cps[k])
+
+// Whether class k is in the set `bits` (bit k set; the sets are written
+// as numbers, which keeps the code small).
+fn is(k: Int, bits: Int) -> Bool = k >= 0 and int.band(int.bshr(bits, k), 1) == 1
+
+// For each character of `cps`, whether a line may break before it: NO,
+// ALLOWED or MANDATORY (after a hard line break). The first is NO.
+pub fn opportunities(cps: List[Int]) -> List[Int] = {
+  let n = list.len(cps)
+  // classes, quotes; LB9 / LB10: a mark or ZWJ belongs to the character
+  // before it (`base`) and takes its class, else it is AL
+  var raw: List[Int] = []
+  var pi: List[Bool] = []
+  var pf: List[Bool] = []
+  for c in cps {
+    let v = value_of(c)
+    list.push(raw, v % 64)
+    list.push(pi, (v / 64) % 2 == 1)
+    list.push(pf, v / 128 == 1)
+  }
+  var e: List[Int] = []
+  var base: List[Int] = []
+  for i in 0..<n {
+    let k = raw[i]
+    if (k == CM or k == ZWJ) and i > 0 and not is(e[base[i - 1]], 63) then {
+      list.push(e, e[base[i - 1]])
+      list.push(base, base[i - 1])
+    } else {
+      list.push(e, if k == CM or k == ZWJ then AL else k)
+      list.push(base, i)
+    }
+  }
+  var out = [NO]
+  for i in 1..<n {
+    list.push(out, if base[i] != i then NO else rule(i, cps, raw, e, base, pi, pf))
+  }
+  if n == 0 then [] else out
+}
+
+// The base of the character before `i` (-1 at the start).
+fn before(i: Int, base: List[Int]) -> Int = if i <= 0 then -1 else base[i - 1]
+
+// The next character after `i` that is not part of it (n at the end).
+fn after(i: Int, base: List[Int]) -> Int = {
+  var k = i + 1
+  while k < list.len(base) and base[k] != k { k = k + 1 }
+  k
+}
+
+// Whether a run of NU / SY / IS ending at `j` has a NU in it.
+fn number_before(j: Int, e: List[Int], base: List[Int]) -> Bool = {
+  var k = j
+  var found = false
+  while k >= 0 and is(e[k], 76021760) {
+    if e[k] == NU then found = true else ()
+    k = before(k, base)
+  }
+  found
+}
+
+fn rule(i: Int, cps: List[Int], raw: List[Int], e: List[Int], base: List[Int], pi: List[Bool], pf: List[Bool]) -> Int = {
+  let n = list.len(cps)
+  let pb = base[i - 1]
+  let a = e[pb]
+  let b = e[i]
+  let nx = after(i, base)
+  let nb = if nx < n then e[nx] else -1
+  // the last character before i that is not a space
+  var p = pb
+  while p >= 0 and e[p] == SP { p = before(p, base) }
+  let pc = if p >= 0 then e[p] else -1
+  if a == BK then MANDATORY
+  else if a == CR and b == LF then NO
+  else if a == CR or a == LF or a == NL then MANDATORY
+  else if is(b, 63) then NO
+  else if pc == ZW then ALLOWED
+  else if raw[i - 1] == ZWJ then NO
+  else if a == WJ or b == WJ or a == GL then NO
+  else if b == GL and not is(a, 3088) then NO
+  else if is(b, 8617984) then NO
+  else if pc == OP then NO
+  else if pc == QU and pi[p] and (before(p, base) < 0 or is(e[before(p, base)], 6292031)) then NO
+  else if b == QU and pf[i] and (nx >= n or is(nb, 13337407)) then NO
+  else if a == SP and b == IS and nb == NU then ALLOWED
+  else if b == IS then NO
+  else if (pc == CL or pc == CP) and b == NS then NO
+  else if pc == B2 and b == B2 then NO
+  else if a == SP then ALLOWED
+  else if (b == QU and not pi[i]) or (a == QU and not pf[pb]) then NO
+  else if b == QU and (not ea(cps, pb) or not ea(cps, nx)) then NO
+  else if a == QU and (not ea(cps, i) or not ea(cps, before(pb, base))) then NO
+  else if a == CB or b == CB then ALLOWED
+  else if (a == HY or cps[pb] == 0x2010) and b == AL
+    and (before(pb, base) < 0 or is(e[before(pb, base)], 16959)) then NO
+  else if is(b, 1051648) or a == BB then NO
+  else if (a == HY or (a == BA and not ea(cps, pb))) and before(pb, base) >= 0 and e[before(pb, base)] == HL and b != HL then NO
+  else if a == SY and b == HL then NO
+  else if b == IN then NO
+  else if (is(a, 402653184) and b == NU) or (a == NU and is(b, 402653184)) then NO
+  else if (a == PR and is(b, 3758096384)) or (is(a, 3758096384) and b == PO) then NO
+  else if (is(a, 50331648) and is(b, 402653184)) or (is(a, 402653184) and is(b, 50331648)) then NO
+  else if is(a, 50331648) and (b == NU or (is(b, 2099200) and nb == NU)) then NO
+  else if is(a, 50331648) and b == OP and nb == IS and after(nx, base) < n and e[after(nx, base)] == NU then NO
+  else if is(a, 2623488) and b == NU then NO
+  else if is(b, 76120064) and number_before(pb, e, base) then NO
+  else if is(b, 50331648) and number_before(if is(a, 98304) then before(pb, base) else pb, e, base) then NO
+  else if (a == JL and is(b, 128849018880)) or (is(a, 77309411328) and is(b, 206158430208)) or (is(a, 154618822656) and b == JT) then NO
+  else if (is(a, 266287972352) and b == PO) or (a == PR and is(b, 266287972352)) then NO
+  else if is(a, 402653184) and is(b, 402653184) then NO
+  else if a == IS and is(b, 402653184) then NO
+  else if (is(a, 469762048) and b == OP and not ea(cps, i)) or (a == CP and not ea(cps, pb) and is(b, 469762048)) then NO
+  else if a == RI and b == RI then {
+    var count = 0
+    var k = pb
+    while k >= 0 and e[k] == RI { count = count + 1; k = before(k, base) }
+    if count % 2 == 1 then NO else ALLOWED
+  }
+  else if a == EB and b == EM then NO
+  else ALLOWED
+}

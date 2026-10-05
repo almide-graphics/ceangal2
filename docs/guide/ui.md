@@ -188,7 +188,9 @@ shown in visual order by the Unicode Bidirectional Algorithm: the
 paragraph takes the direction of its first letter, numbers stay left to
 right, brackets mirror, and the direction controls work (wrap a name or
 a path in U+2066…U+2069 to isolate it). `ed.with_align_end` starts
-right-to-left lines at a field's right edge. Fallback fonts load the
+right-to-left lines at a field's right edge. Soft-wrapped editors break
+lines where Unicode's line breaking rules allow (between CJK characters,
+not before 。 or 、, after spaces and hyphens). Fallback fonts load the
 first time a character needs them (on the web, after the app starts).
 Not yet: Oriya, Sinhala, Myanmar, Khmer.
 

@@ -4,6 +4,12 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- UAX #14 の行分割を実装 (ADR 0017, `ceangal.linebreak`)。Unicode の
+  LineBreakTest.txt のうち対象範囲の 8014 行が全て一致 (CI)。エディタの
+  ソフトラップが CJK の文字間・禁則・ハイフン後で折り返し、絵文字や結合
+  文字の途中では切らない。web でフォールバックフォント読み込み前の幅で
+  行数をキャッシュして次の行と重なる既存バグも修正。wasm +4.4 KB のため
+  予算を 176 / 158 / 156 KB に (ADR 0017 に理由)。
 - bidi を UAX #9 に沿って作り直し (ADR 0016): 埋め込み・上書き・
   isolate (LRE…PDF, LRI/RLI/FSI…PDI, LRM/RLM/ALM)、isolating run
   sequence、W1/W7・N1/N2・I1/I2・L1。python-bidi (unicode-bidi) を正解に
@@ -358,6 +364,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
   oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
   `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
   edge; isolate typed in apps/gallery/tests/rtl.test.
+- Android E2E: adb commands wait for the device and retry when the
+  emulator's connection drops for a moment.
+- Line breaking by UAX #14 (ADR 0017): `ceangal.linebreak` (LB2–LB31
+  except LB28a / LB30b; classes = block defaults + a 1.5 KB table from
+  `tools/gen_linebreak.py`), 8014 LineBreakTest.txt lines in CI; the
+  editor's soft wrap uses it (caret stops when no opportunity fits);
+  wrap cache keyed on `text.font_generation()`.
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -396,7 +409,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Text (goal order): UAX #14 line breaking. (Bidi W4–W6 / N0 if needed.)
+0. Text: text views (labels) wrap with ceangal.linebreak (layout measure
+   at a width). (Bidi W4–W6 / N0 if needed.) Then the goal's item 2
+   (controls / accessibility).
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
@@ -414,6 +429,12 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- CI Android (API 35 x86_64 emulator): adb sometimes drops for a moment
+  ("device offline") during the playground's key-bar step and is back by
+  the next step (7d8c181, bd47361). The same step runs fine on the local
+  arm64 emulator once past the key bar (program up in 1.6 s).
+  `tests/e2e/android.mjs` now waits for the device and retries the adb
+  command (twice at most).
 - almide/almide#3438 — bidi control characters in a string literal break
   native builds (rustc `text_direction_codepoint_in_literal`): build them
   with `string.from_codepoint`; tests use code point lists.
