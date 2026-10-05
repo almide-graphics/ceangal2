@@ -4,6 +4,12 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- web ビルドに wasm-opt -Oz を導入 (ADR 0015)。Binaryen version_133 を
+  tools/wasm-opt で固定・SHA-256 検証して自動取得。wasm が約 28% 縮小
+  (gallery 230→167 KB)。予算を最適化後のサイズで測るよう変更し、
+  170 / 152 / 150 KB に引き下げ。最適化後のバイトは Almide の検証外なので、
+  web の E2E・Pages E2E・起動時間をすべて最適化版で実行して担保。
+  `--all-features` は V8 が読めない import 形式を出すので機能を明示。
 - RTL 文中の emoji ZWJ 列・国旗・点付きヘブライ文字が崩れないように修正
   (RTL 区間を論理順で整形し、クラスタ単位で右から並べる)。gallery の
   rtl.test に家族絵文字と שָׁלוֹם を入れ、スクショで確認。wasm は
@@ -336,6 +342,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
   drawn and where x becomes a column. apps/gallery's Note field and
   rtl.test (a tap mid-field lands at the word's logical end). One shared
   `packed.hex` for the generated tables.
+- Web builds through a pinned wasm-opt -Oz (ADR 0015): `tools/wasm-opt`
+  (Binaryen version_133, SHA-256 checked), explicit feature list, stub
+  check on Almide's own bytes first, skipped by `ceangal dev`. Budgets on
+  the optimized module: 170 / 152 / 150 KB (were 225 / 204 / 202).
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -375,9 +385,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 
 ## Next
 0. Text (goal order): bidi isolates / embeddings, UAX #14 line breaking.
-   gallery is at its budget (224.9 / 225 KB): find real size savings
-   before or with the next feature (no name section in Almide's wasm;
-   closures→loops gave only ~0.1 KB each). Then controls / accessibility, size (win back
+   (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums

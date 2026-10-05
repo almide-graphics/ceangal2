@@ -60,7 +60,8 @@ engine (`snaidhm/src/otl.almd`) for the Indic scripts.
   | hello | 200 KB | 202 KB | 201.3 KB |
 
   Getting the budgets back down is part of the size work (wasm-opt in
-  release, shared table unpacking).
+  release, shared table unpacking). ADR 0015 then measured the budgets on
+  the wasm-opt build and lowered them to 170 / 152 / 150 KB.
 - Arabic now matches HarfBuzz for the tested words, including marks on
   lam-alef and other ligatures. Text that mixes Arabic with Hebrew in one
   right-to-left run splits into segments, so no joining happens across

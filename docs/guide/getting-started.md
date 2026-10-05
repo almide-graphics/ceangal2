@@ -120,6 +120,10 @@ ceangal build windows   # build/msix: the Microsoft Store package
 ceangal build linux     # build/flatpak: the Flathub bundle
 ```
 
+The web build runs the app's wasm through `wasm-opt -Oz` (Binaryen,
+downloaded once into the SDK's `.tools/`), which makes it about 28%
+smaller; `ceangal dev` skips that step so reloads stay quick.
+
 A desktop OS builds its own platform; iOS and macOS need a Mac. CI runs
 every platform's build, so a Mac is enough day to day: push, and
 `.github/workflows/app.yml` builds the other platforms and uploads each

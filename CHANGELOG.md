@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Smaller web builds**: the app's wasm goes through a pinned `wasm-opt
+  -Oz` (about 28% smaller; the gallery 230 → 167 KB). `ceangal dev` skips
+  it. Size budgets now measure the optimized module. (ADR 0015)
 - Emoji ZWJ sequences, flags and pointed Hebrew inside right-to-left text
   stay whole (clusters are laid out from the right).
 - **`ed.with_align_end`**: a text field or editor whose line reads right

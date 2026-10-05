@@ -62,7 +62,7 @@ fn vals_of(pairs: List[(String, String)]) -> List[String] = list.map(pairs, (p) 
 
 // One web build into `next`, then swapped in; pages reload (or show the error).
 fn build_web(app: mf.App, sdk: String, pairs: List[(String, String)], next: String, live: String) -> Bool = {
-  let env = pairs + [("WEB_OUT", next), ("SKIP_COMPILER", "1")]
+  let env = pairs + [("WEB_OUT", next), ("SKIP_COMPILER", "1"), ("CEANGAL_WASM_OPT", "0")]
   let code = run_tee("bash", [sdk + "/tools/build_web.sh"], app.dir, keys_of(env), vals_of(env))
   if code == 0 and publish(next, live) == 1 then { announce(""); true }
   else { announce(last_output()); false }

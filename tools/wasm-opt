@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Pinned Binaryen wasm-opt (ADR 0015). Downloads the release named below into
+# .tools/ on first use, checks its SHA-256, then execs wasm-opt.
+# `tools/wasm-opt --which` prints the binary's path instead (the web build
+# puts its folder on PATH for `almide build --wasm-opt`).
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ver=version_133
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) plat=arm64-macos sum=ad66da82ac13f163e424b1643f16c6dfcccc98b5966296b43e52d3cab04f84a8 ;;
+  Darwin-x86_64) plat=x86_64-macos sum=13a9b90be775c6389ce3d1f879cb8627bea56708ba8c122983941d53a8199b95 ;;
+  Linux-x86_64) plat=x86_64-linux sum=2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489 ;;
+  Linux-aarch64) plat=aarch64-linux sum=89c07ea56faf38d0fbecf36ca8ec0721756716185f265b568e133d427f299bf8 ;;
+  MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) plat=x86_64-windows sum=17a2cbeac6b5693c5fbafab3838d3c65fd9c1eb38b05f5baec6c657e8c84995b ;;
+  *) echo "tools/wasm-opt: unsupported host $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+esac
+dir="$root/.tools/binaryen-$ver-$plat"
+bin="$dir/binaryen-$ver/bin/wasm-opt"; [[ $plat == *-windows ]] && bin="$bin.exe"
+if [[ ! -x "$bin" ]]; then
+  mkdir -p "$dir"
+  tgz="$dir/binaryen.tar.gz"
+  curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/$ver/binaryen-$ver-$plat.tar.gz" -o "$tgz"
+  got="$( (sha256sum "$tgz" 2>/dev/null || shasum -a 256 "$tgz") | cut -d' ' -f1)"
+  if [[ "$got" != "$sum" ]]; then
+    echo "tools/wasm-opt: checksum mismatch for binaryen-$ver-$plat ($got)" >&2
+    rm -f "$tgz"; exit 1
+  fi
+  tar xzf "$tgz" -C "$dir" && rm -f "$tgz"
+fi
+if [[ "${1:-}" == "--which" ]]; then echo "$bin"; exit 0; fi
+exec "$bin" "$@"
