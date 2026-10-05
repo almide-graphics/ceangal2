@@ -331,17 +331,28 @@ item, the first green CI run on main that deploys Pages, waits for a push
       ID → GitHub secrets ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 /
       IOS_TEAM_ID, Mac certificates for the pkg (Claude can do these steps
       once the membership is active).
-- [ ] Google Play developer account; start the 12-tester / 14-day closed test
-      early (new personal accounts). Upload key → GitHub secrets
-      `ANDROID_KEYSTORE_B64` (base64 .jks), `ANDROID_KEYSTORE_PASS`,
-      `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASS`; enroll in Play App Signing.
+- [ ] Google Play developer account as the organization AID-ON, K.K.
+      (developer name "AID-ON"; organizations skip the 12-tester closed
+      test). Tried 2026-10-05 from hiromi.motodera@aid-on.org and stopped
+      before linking: the Google payments profile "Aid-On" (used by
+      Workspace / Cloud) has 東京都台東区竜泉3-10-2 アミーレ浅草竜泉1003 and
+      the D-U-N-S record the old 広島2-11-8 パレインヴィラ; linking the
+      D-U-N-S changes that profile for every service. First the D&B address
+      update (Tokyo Shoko Research, as for Apple) and the payments profile
+      address, then sign up again (US$25). After approval: upload key →
+      GitHub secrets `ANDROID_KEYSTORE_B64` (base64 .jks),
+      `ANDROID_KEYSTORE_PASS`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASS`
+      (Claude can make the key and set them); enroll in Play App Signing.
 - [ ] Android: try the APK on a real phone (soft keyboard with a Japanese
       IME, notch / gesture bar insets, Vulkan driver).
 - [ ] Mac App Store: GitHub secrets MAC_CERTS_P12_B64 (Apple Distribution +
       Mac Installer certs), MAC_CERTS_PASS, MAC_APP_IDENTITY,
       MAC_INSTALLER_IDENTITY, MAC_PROVISIONING_PROFILE_B64, and ASC_KEY_ID /
       ASC_ISSUER_ID / ASC_KEY_P8 for `altool --validate-app`.
-- [ ] Microsoft Partner Center account; reserve the app name.
+- [ ] Microsoft Partner Center company account (company verification
+      uses the same business records: after the D&B address update); reserve
+      "Almide Playground"; its Publisher value (`CN=…`) → GitHub secret
+      `MSIX_PUBLISHER` (Claude can set it).
 - [ ] Flathub: confirm the app ID `io.github.almide.playground` (or register
       almide.dev and move to `dev.almide.playground`), then the submission PR.
 - [ ] iOS App Store: GitHub secret IOS_TEAM_ID (with the ASC_* key above the
