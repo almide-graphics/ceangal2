@@ -10,10 +10,11 @@ Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
 once by snaidhm.font. Each codepoint is drawn with the first font in the
 style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
-Thai, emoji, Devanagari, Bengali, Tamil: loaded the first time a
+Thai, Devanagari, Bengali, Tamil, symbols: loaded the first time a
 character needs them). Labels and paragraphs are joined and put in visual
 order first (self.bidi); Indic runs are shaped with their font's layout
-tables (self.indic).
+tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
+keycaps) come from the colour emoji font, layer by layer.
 Glyphs are rasterised on first use into snaidhm's coverage
 atlas (shelf-packed); a full atlas is cleared at the start of the next
 frame and refilled lazily.
@@ -54,13 +55,17 @@ The Unicode code points of `s` (decoded from UTF-8).
 ### `Glyph`
 
 ```almide
-type Glyph = { slot: Int, gid: Int, x: Float, y: Float, advance: Float, cluster: Int }
+type Glyph = { slot: Int, gid: Int, x: Float, y: Float, advance: Float, cluster: Int, color: Int }
 ```
 
 One positioned glyph: font slot, glyph id, x of its origin (px from the
-run start), y (px above the baseline), advance (px), and its cluster: the
-index in the shaped code points of the first one it draws (a conjunct or
-ligature draws several; a mark shares its base's).
+run start), y (px above the baseline), advance (px), its cluster (the
+index in the shaped code points of the first one it draws: a conjunct,
+ligature or emoji sequence draws several; a mark shares its base's), and
+its colour, 0xRRGGBBAA (-1: the text's; a colour emoji is a stack of
+glyphs with their own).
+
+## Emoji
 
 ### `shape`
 
@@ -81,6 +86,24 @@ pub fn edges(gs: List[Glyph], n: Int) -> List[Float]
 x of each boundary between code points 0..n of the text `gs` was shaped
 from (n + 1 values): a cluster's start and end, and inside a cluster of
 several code points (a conjunct) evenly spaced between them.
+
+### `stops`
+
+```almide
+pub fn stops(cps: List[Int]) -> List[Bool]
+```
+
+Where the caret may stop in `cps` (n + 1 values): not inside a cluster
+(a conjunct, an emoji sequence). Plain text stops everywhere.
+
+### `backspace_to`
+
+```almide
+pub fn backspace_to(cps: List[Int], col: Int) -> Int
+```
+
+Where Backspace at `col` deletes back to: a whole emoji (with its skin
+tone or ZWJ sequence), otherwise one code point (one sign of a conjunct).
 
 ### `glyphs_in`
 

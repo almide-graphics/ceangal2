@@ -94,7 +94,7 @@ fn languages(th: w.Theme) -> v.View =
     w.body(th, "हिन्दी: नमस्ते दुनिया, श्री कृष्ण"),
     w.body(th, "বাংলা: আমার সোনার বাংলা"),
     w.body(th, "தமிழ்: வணக்கம் உலகம்"),
-    w.body(th, "Emoji 😀 👍🏽 🎉 ❤️"),
+    w.body(th, "Emoji 😀 👍🏽 🎉 ❤️ 👨‍👩‍👧 🇯🇵 #️⃣ 🏳️‍🌈"),
   ])
 
 fn list_card(th: w.Theme) -> v.View =

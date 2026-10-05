@@ -1,0 +1,56 @@
+// Colour glyphs (COLR version 0 with a CPAL palette): a glyph drawn as
+// layers of other glyphs, bottom first, each filled with one palette colour.
+// The layers are ordinary outlines, so the coverage rasteriser draws them.
+
+import self.font as font
+
+// One layer: its glyph and colour, 0xRRGGBBAA (-1: the text's colour).
+type Layer = { gid: Int, color: Int }
+
+// Where a font's COLR and CPAL tables are (0 = absent).
+type Colr = { colr: Int, cpal: Int }
+
+fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
+fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
+fn tag(s: String) -> Int = bytes.read_u32_be(bytes.from_string(s), 0)
+
+// The colour tables of `f`.
+pub fn tables(f: font.Font) -> Colr = { colr: font.table(f, tag("COLR")), cpal: font.table(f, tag("CPAL")) }
+
+// The layers of glyph `gid` ([] when it is not a colour glyph).
+pub fn layers(f: font.Font, t: Colr, gid: Int) -> List[Layer] =
+  if t.colr == 0 or u16(f.data, t.colr) != 0 then []
+  else {
+    let b = f.data
+    let c = t.colr
+    let n = u16(b, c + 2)
+    let bases = c + u32(b, c + 4)
+    let recs = c + u32(b, c + 8)
+    // the base glyph records are sorted by glyph id
+    var lo = 0
+    var hi = n - 1
+    var at = -1
+    while lo <= hi and at < 0 {
+      let mid = (lo + hi) / 2
+      let g = u16(b, bases + mid * 6)
+      if g == gid then at = bases + mid * 6 else if g < gid then lo = mid + 1 else hi = mid - 1
+    }
+    if at < 0 then []
+    else {
+      let first = u16(b, at + 2)
+      let count = u16(b, at + 4)
+      list.map(list.range(0, count), (k) => {
+        let r = recs + (first + k) * 4
+        { gid: u16(b, r), color: palette_color(b, t.cpal, u16(b, r + 2)) }
+      })
+    }
+  }
+
+// Entry `index` of the first palette, as 0xRRGGBBAA (-1 for 0xFFFF, the text colour).
+fn palette_color(b: Bytes, cpal: Int, index: Int) -> Int =
+  if index == 65535 or cpal == 0 or index >= u16(b, cpal + 2) then -1
+  else {
+    let rec = cpal + u32(b, cpal + 8) + (u16(b, cpal + 12) + index) * 4
+    // stored blue, green, red, alpha
+    ((bytes.read_u8(b, rec + 2) * 256 + bytes.read_u8(b, rec + 1)) * 256 + bytes.read_u8(b, rec)) * 256 + bytes.read_u8(b, rec + 3)
+  }

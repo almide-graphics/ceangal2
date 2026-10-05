@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Colour emoji** (Twemoji, COLRv0): skin tones, ZWJ sequences, flags and
+  keycaps, the same on every target; the caret and Backspace treat an
+  emoji as one character. (ADR 0011)
 - **Devanagari, Bengali and Tamil**, shaped with the fonts' OpenType
   tables (GSUB / GPOS) by a new layout engine (`snaidhm.otl`) and an Indic
   shaper (`ceangal.indic`). Conjuncts, half forms, reph, pre-base vowel

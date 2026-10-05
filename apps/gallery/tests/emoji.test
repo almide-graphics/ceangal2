@@ -1,0 +1,11 @@
+# Colour emoji in a text field: a ZWJ sequence and a skin tone are one
+# character to the caret and to Backspace.
+tap "Name"
+type "Hi 👨‍👩‍👧👍🏽"
+see "Hello, Hi 👨‍👩‍👧👍🏽"
+key Backspace
+see "Hello, Hi 👨‍👩‍👧"
+key Left
+type "🇯🇵"
+see "Hello, Hi 🇯🇵👨‍👩‍👧"
+shot "emoji.png"

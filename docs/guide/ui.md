@@ -162,7 +162,11 @@ Text is drawn with the bundled fonts: a UI sans (regular and semibold;
 Latin, Greek, Cyrillic), a monospace font for `mono()`, and fallbacks
 picked per character: Japanese / Chinese, Arabic (letters joined into
 their contextual forms), Hebrew, Thai, Devanagari, Bengali, Tamil, and
-emoji (monochrome, in the text colour). Devanagari, Bengali and Tamil are
+emoji in colour (skin tones, ZWJ sequences such as families, flags,
+keycaps; symbols that are text by default, like ☺ or ✔, stay in the text
+colour unless followed by U+FE0F). A text field treats an emoji as one
+character: the caret never stops inside one, and Backspace removes it
+whole. Devanagari, Bengali and Tamil are
 shaped with their fonts' OpenType tables: conjuncts, half forms, reph,
 pre-base vowel signs and stacked marks come out as HarfBuzz would draw
 them, in labels and in text fields. A line with right-to-left text is
@@ -171,7 +175,7 @@ letter, numbers stay left to right, brackets mirror. Fallback fonts load
 the first time a character needs them (on the web, after the app
 starts). Not yet: other Indic scripts (Gurmukhi, Gujarati, Telugu,
 Kannada, Malayalam…), right-to-left editing in text fields (they keep
-logical order and unjoined letters), and colour emoji.
+logical order and unjoined letters).
 
 ## Input
 

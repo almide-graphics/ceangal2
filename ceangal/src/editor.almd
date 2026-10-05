@@ -338,20 +338,34 @@ fn word_right(e: Editor, p: Pos) -> Pos = {
   }
 }
 
+// One caret stop left / right: past a whole cluster (a conjunct, an emoji).
 fn left_of(e: Editor, p: Pos) -> Pos =
-  if p.col > 0 then { line: p.line, col: p.col - 1 }
-  else if p.line > 0 then { line: p.line - 1, col: line_len(e, p.line - 1) }
+  if p.col > 0 then {
+    let st = tx.stops(e.lines[p.line])
+    var c = p.col - 1
+    while c > 0 and not st[c] { c = c - 1 }
+    { line: p.line, col: c }
+  } else if p.line > 0 then { line: p.line - 1, col: line_len(e, p.line - 1) }
   else p
 
-fn right_of(e: Editor, p: Pos) -> Pos =
-  if p.col < line_len(e, p.line) then { line: p.line, col: p.col + 1 }
-  else if p.line + 1 < list.len(e.lines) then { line: p.line + 1, col: 0 }
+fn right_of(e: Editor, p: Pos) -> Pos = {
+  let n = line_len(e, p.line)
+  if p.col < n then {
+    let st = tx.stops(e.lines[p.line])
+    var c = p.col + 1
+    while c < n and not st[c] { c = c + 1 }
+    { line: p.line, col: c }
+  } else if p.line + 1 < list.len(e.lines) then { line: p.line + 1, col: 0 }
   else p
+}
 
+// Backspace takes a whole emoji, but one sign of a conjunct (as typed).
 fn delete_back(e: Editor, word: Bool) -> Editor =
   if has_selection(e) then replace_selection(e, [], 2)
   else {
-    let target = if word then word_left(e, e.cur) else left_of(e, e.cur)
+    let target = if word then word_left(e, e.cur)
+      else if e.cur.col > 0 then { line: e.cur.line, col: tx.backspace_to(e.lines[e.cur.line], e.cur.col) }
+      else left_of(e, e.cur)
     replace_selection({ ...e, anchor: target }, [], 2)
   }
 
@@ -453,9 +467,15 @@ fn x_of(e: Editor, p: Pos) -> Float = {
 
 fn col_at_x(e: Editor, line: Int, x: Float) -> Int = {
   let xs = col_xs(e, e.lines[line])
+  let st = tx.stops(e.lines[line])
+  // the nearest caret stop (never inside a conjunct or an emoji)
   var best = 0
-  for i in 0..<list.len(xs) {
-    if i > 0 and (xs[i - 1] + xs[i]) * 0.5 <= x then best = i else ()
+  var prev = 0
+  for i in 1..<list.len(xs) {
+    if st[i] then {
+      if (xs[prev] + xs[i]) * 0.5 <= x then best = i else ()
+      prev = i
+    } else ()
   }
   best
 }

@@ -4,20 +4,24 @@
 // once by snaidhm.font. Each codepoint is drawn with the first font in the
 // style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 // cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
-// Thai, emoji, Devanagari, Bengali, Tamil: loaded the first time a
+// Thai, Devanagari, Bengali, Tamil, symbols: loaded the first time a
 // character needs them). Labels and paragraphs are joined and put in visual
 // order first (self.bidi); Indic runs are shaped with their font's layout
-// tables (self.indic).
+// tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
+// keycaps) come from the colour emoji font, layer by layer.
 // Glyphs are rasterised on first use into snaidhm's coverage
 // atlas (shelf-packed); a full atlas is cleared at the start of the next
 // frame and refilled lazily.
 
 import snaidhm
 import snaidhm.font as font
+import snaidhm.otl as otl
+import snaidhm.colr as colr
 import self.layout as lay
 import self.host.sys as sys
 import self.bidi
 import self.indic
+import self.emoji_data as emoji
 
 // Sizes are layout.Size: a second record type with the same fields makes the
 // native leg emit the wrong struct (almide/almide#3283).
@@ -34,13 +38,14 @@ let FONT_EMOJI = 7
 let FONT_DEVANAGARI = 8
 let FONT_BENGALI = 9
 let FONT_TAMIL = 10
+let FONT_COLOR_EMOJI = 11
 
 let FONT_FILES = ["fonts/ui.ttf", "fonts/ui-semibold.ttf", "fonts/mono.ttf", "fonts/cjk.ttf",
                   "fonts/arabic.ttf", "fonts/hebrew.ttf", "fonts/thai.ttf", "fonts/emoji.ttf",
-                  "fonts/devanagari.ttf", "fonts/bengali.ttf", "fonts/tamil.ttf"]
+                  "fonts/devanagari.ttf", "fonts/bengali.ttf", "fonts/tamil.ttf", "fonts/emoji-color.ttf"]
 
 var fonts: List[font.Font] = []
-var font_tried: List[Bool] = list.repeat(false, 11)
+var font_tried: List[Bool] = list.repeat(false, 12)
 
 // A font was needed but has not arrived yet (the web loads fallback fonts
 // on first use): the runtime redraws until it has.
@@ -67,7 +72,8 @@ fn script_font(cp: Int) -> Int =
 
 // Formatting characters that draw nothing: zero-width (non-)joiners and
 // spaces, direction marks, variation selectors, emoji skin-tone modifiers
-// (the emoji font is monochrome), the byte-order mark.
+// outside an emoji (inside one, the colour font draws them), the byte-order
+// mark.
 fn invisible(cp: Int) -> Bool =
   (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2064)
     or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
@@ -129,10 +135,88 @@ pub fn codepoints(s: String) -> List[Int] = {
 // ── Shaping (cmap + advances + fallback) ──
 
 // One positioned glyph: font slot, glyph id, x of its origin (px from the
-// run start), y (px above the baseline), advance (px), and its cluster: the
-// index in the shaped code points of the first one it draws (a conjunct or
-// ligature draws several; a mark shares its base's).
-type Glyph = { slot: Int, gid: Int, x: Float, y: Float, advance: Float, cluster: Int }
+// run start), y (px above the baseline), advance (px), its cluster (the
+// index in the shaped code points of the first one it draws: a conjunct,
+// ligature or emoji sequence draws several; a mark shares its base's), and
+// its colour, 0xRRGGBBAA (-1: the text's; a colour emoji is a stack of
+// glyphs with their own).
+type Glyph = { slot: Int, gid: Int, x: Float, y: Float, advance: Float, cluster: Int, color: Int }
+
+// ── Emoji ──
+
+fn in_ranges(rs: List[(Int, Int)], cp: Int) -> Bool = {
+  var lo = 0
+  var hi = list.len(rs) - 1
+  var hit = false
+  while lo <= hi and not hit {
+    let mid = (lo + hi) / 2
+    let r = rs[mid]
+    if cp < r.0 then hi = mid - 1 else if cp > r.1 then lo = mid + 1 else hit = true
+  }
+  hit
+}
+
+fn regional(cp: Int) -> Bool = cp >= 0x1F1E6 and cp <= 0x1F1FF
+fn skin_tone(cp: Int) -> Bool = cp >= 0x1F3FB and cp <= 0x1F3FF
+fn tag_char(cp: Int) -> Bool = cp >= 0xE0020 and cp <= 0xE007F
+fn keycap_base(cp: Int) -> Bool = (cp >= 0x30 and cp <= 0x39) or cp == 0x23 or cp == 0x2A
+
+// One emoji of a sequence from j: the character, then its variation
+// selector, skin tone and tags.
+fn emoji_element_end(cps: List[Int], j: Int) -> Int = {
+  let n = list.len(cps)
+  var k = j + 1
+  if k < n and cps[k] == 0xFE0F then k = k + 1 else ()
+  if k < n and skin_tone(cps[k]) then k = k + 1 else ()
+  while k < n and tag_char(cps[k]) { k = k + 1 }
+  k
+}
+
+// Where the emoji that starts at i ends (i: none starts there). An emoji is
+// a character shown as emoji by default or asked for with U+FE0F, with its
+// skin tone and tags, joined to more by ZWJ; a flag (two regional
+// indicators); or a keycap (digit, #, * with U+20E3). U+FE0E asks for text.
+fn emoji_end(cps: List[Int], i: Int) -> Int = {
+  let n = list.len(cps)
+  let cp = cps[i]
+  let next = if i + 1 < n then cps[i + 1] else -1
+  if cp < 0x23 or next == 0xFE0E then i
+  else if keycap_base(cp) then {
+    if next == 0x20E3 then i + 2
+    else if next == 0xFE0F and i + 2 < n and cps[i + 2] == 0x20E3 then i + 3
+    else i
+  } else if cp < 0xA9 then i
+  else if regional(cp) then (if regional(next) then i + 2 else i + 1)
+  else if in_ranges(emoji.PRESENTATION, cp) or (in_ranges(emoji.PICTOGRAPHIC, cp) and (next == 0xFE0F or skin_tone(next))) then {
+    var k = emoji_element_end(cps, i)
+    while k + 1 < n and cps[k] == 0x200D and in_ranges(emoji.PICTOGRAPHIC, cps[k + 1]) { k = emoji_element_end(cps, k + 1) }
+    k
+  } else i
+}
+
+// The colour emoji font's sequence ligatures (its ccmp), found once.
+var emoji_stage: List[otl.Entry] = []
+var emoji_stage_made = false
+
+// The glyphs of one emoji sequence in the colour font, after its ligatures:
+// joiners and selectors the font did not fold in draw nothing.
+fn emoji_glyphs(f: font.Font, cps: List[Int]) -> List[Int] = {
+  let lay = otl.layout(f)
+  if not emoji_stage_made then {
+    let feat = (t: String) => { tag: otl.tag(t), mask: 1, manual: false, per_syllable: false }
+    emoji_stage = otl.stage(f, lay, false, [], [feat("ccmp"), feat("locl"), feat("rlig"), feat("liga"), feat("clig"), feat("calt")])
+    emoji_stage_made = true
+  } else ()
+  let buf = list.map(cps, (cp) => {
+    let g = font.glyph_index(f, cp)
+    { gid: g, cp: cp, cluster: 0, mask: 1, cat: 0, pos: 0, syl: 0, gclass: otl.glyph_class(f, lay, g), ligated: false, multiplied: false }
+  })
+  let out = otl.substitute(f, lay, emoji_stage, buf)
+  list.map(list.filter(out, (g) => g.ligated or not (g.cp == 0x200D or g.cp == 0xFE0F or tag_char(g.cp) or g.cp == 0x20E3)), (g) => g.gid)
+}
+
+// Emoji sequences shaped already: by text.
+var emoji_cache: Map[String, List[Int]] = map.new()
 
 // Indic runs shaped already, in font units (shaping runs every lookup of
 // the font): by font slot and text.
@@ -164,7 +248,34 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
     let cp = cps[i]
     let sc = if cp < 0x0900 then -1 else indic.script_of(cp)
     let slot_i = if sc >= 0 then FONT_DEVANAGARI + sc else -1
-    if slot_i >= 0 and font_at(slot_i).ok then {
+    let e_end = if cp < 0x23 or (cp < 0xA9 and not keycap_base(cp)) or sc >= 0 then i else emoji_end(cps, i)
+    if e_end > i and font_at(FONT_COLOR_EMOJI).ok then {
+      // an emoji: its glyphs (one, after the font's ligatures), each as its colour layers
+      let f = font_at(FONT_COLOR_EMOJI)
+      let k = size / f.units_per_em
+      let seq = list.slice(cps, i, e_end)
+      let key = string.join(list.map(seq, (c) => int.to_string(c)), ",")
+      let gids = match map.get(emoji_cache, key) {
+        some(gs) => gs,
+        none => {
+          let gs = emoji_glyphs(f, seq)
+          if map.len(emoji_cache) > 1000 then emoji_cache = map.new() else ()
+          map.insert(emoji_cache, key, gs)
+          gs
+        },
+      }
+      let ct = colr.tables(f)
+      for gid in gids {
+        let a = font.advance(f, gid) * k
+        let ls = colr.layers(f, ct, gid)
+        if list.len(ls) == 0 then list.push(out, { slot: FONT_COLOR_EMOJI, gid: gid, x: x, y: 0.0, advance: a, cluster: i, color: -1 })
+        else {
+          for l in ls { list.push(out, { slot: FONT_COLOR_EMOJI, gid: l.gid, x: x, y: 0.0, advance: a, cluster: i, color: l.color }) }
+        }
+        x = x + a
+      }
+      i = e_end
+    } else if slot_i >= 0 and font_at(slot_i).ok then {
       var j = i + 1
       while j < n and (indic.script_of(cps[j]) == sc or indic.joins_run(cps[j])) { j = j + 1 }
       let f = font_at(slot_i)
@@ -172,7 +283,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
       var adv = 0.0
       for g in shape_indic(slot_i, sc, list.slice(cps, i, j)) {
         list.push(out, { slot: slot_i, gid: g.gid, x: x + int.to_float(g.x) * k, y: int.to_float(g.y) * k,
-                         advance: int.to_float(g.advance) * k, cluster: i + g.cluster })
+                         advance: int.to_float(g.advance) * k, cluster: i + g.cluster, color: -1 })
         adv = adv + int.to_float(g.advance) * k
       }
       x = x + adv
@@ -195,7 +306,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
       let f = font_at(slot)
       let adv = if cp == 9 then font.advance(f, font.glyph_index(f, 32)) * 4.0 else font.advance(f, gid)
       let a = adv * size / f.units_per_em
-      list.push(out, { slot: slot, gid: gid, x: x, y: 0.0, advance: a, cluster: i })
+      list.push(out, { slot: slot, gid: gid, x: x, y: 0.0, advance: a, cluster: i, color: -1 })
       x = x + a
       i = i + 1
     }
@@ -240,6 +351,31 @@ pub fn edges(gs: List[Glyph], n: Int) -> List[Float] = {
   while list.len(out) <= n { list.push(out, x) }
   out
 }
+
+// Where the caret may stop in `cps` (n + 1 values): not inside a cluster
+// (a conjunct, an emoji sequence). Plain text stops everywhere.
+pub fn stops(cps: List[Int]) -> List[Bool] = {
+  let n = list.len(cps)
+  if not list.any(cps, (c) => c >= 0x0300) then list.repeat(true, n + 1)
+  else {
+    var out = list.repeat(false, n + 1)
+    out[0] = true
+    out[n] = true
+    for g in shape(cps, 16.0, false, false) { if g.cluster >= 0 and g.cluster <= n then out[g.cluster] = true else () }
+    out
+  }
+}
+
+// Where Backspace at `col` deletes back to: a whole emoji (with its skin
+// tone or ZWJ sequence), otherwise one code point (one sign of a conjunct).
+pub fn backspace_to(cps: List[Int], col: Int) -> Int =
+  if col <= 0 then 0
+  else {
+    let st = stops(cps)
+    var s = col - 1
+    while s > 0 and not st[s] { s = s - 1 }
+    if emoji_end(cps, s) >= col then s else col - 1
+  }
 
 // The glyphs of the code points from c0 up to c1 (by cluster; shaping
 // keeps clusters in order, so this is a slice).
@@ -364,7 +500,11 @@ pub fn draw_run(gs: List[Glyph], x: Float, baseline: Float, size: Float, c: snai
           if e.w > 0 then {
             let gx = float.round(x + g.x) + int.to_float(e.left)
             let gy = float.round(baseline - g.y) - int.to_float(e.top)
-            snaidhm.glyph(gx, gy, int.to_float(e.w), int.to_float(e.h), e.ax, e.ay, e.w, e.h, c)
+            // a colour layer keeps its colour, faded with the text's alpha
+            let col = if g.color < 0 then c
+              else snaidhm.rgba(int.to_float(int.bshr(g.color, 24) % 256) / 255.0, int.to_float(int.bshr(g.color, 16) % 256) / 255.0,
+                                int.to_float(int.bshr(g.color, 8) % 256) / 255.0, int.to_float(g.color % 256) / 255.0 * c.a)
+            snaidhm.glyph(gx, gy, int.to_float(e.w), int.to_float(e.h), e.ax, e.ay, e.w, e.h, col)
           } else ()
         },
         none => (),

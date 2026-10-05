@@ -280,6 +280,12 @@ item, the first green CI run on main that deploys Pages, waits for a push
   field is a `ceangal test` (apps/gallery/tests/indic.test). Wasm budgets
   rise by 45 KB; the 10k-line editor frame got faster (p95 13.4 → 11.8 ms
   native).
+- Colour emoji (ADR 0011): Twemoji Mozilla COLRv0 drawn layer by layer
+  (`snaidhm/src/colr.almd`), UTS #51 sequences from generated emoji data,
+  the font's ccmp through `otl`; caret stops / Backspace by cluster
+  (`text.stops`, `backspace_to`; apps/gallery/tests/emoji.test).
+- `ceangal dev` on Windows runs the app from a copy (the build could not
+  replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
   shared Downloads; TalkBack (AccessKit injecting adapter) and iOS
   VoiceOver trees checked in CI.
@@ -316,9 +322,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: colour emoji, RTL editing in
+0. Framework: RTL editing in
    text fields, an Android file picker (needs an activity result), a
-   dropdown / menu control. Done: Indic shaping (ADR 0010), iOS VoiceOver / Android TalkBack trees,
+   dropdown / menu control. Done: Indic shaping (ADR 0010), colour emoji (ADR 0011), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,

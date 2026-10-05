@@ -12,7 +12,9 @@ face), then subset:
                                              (ceangal.text joins letters through them)
   hebrew.ttf                  Noto Sans Hebrew
   thai.ttf                    Noto Sans Thai
-  emoji.ttf                   Noto Emoji     monochrome emoji (drawn in the text colour)
+  emoji.ttf                   Noto Emoji     monochrome emoji: symbols in text presentation
+  emoji-color.ttf             Twemoji Mozilla  colour emoji (COLRv0 layers, CPAL palette, its GSUB
+                                             for ZWJ sequences, flags, keycaps, skin tones)
   devanagari.ttf / bengali.ttf / tamil.ttf   Noto Sans Devanagari / Bengali / Tamil,
                                              with their OpenType layout (GSUB, GPOS, GDEF):
                                              ceangal.indic shapes them
@@ -21,13 +23,14 @@ The UI faces also cover Greek and Cyrillic. Fallback fonts are loaded the
 first time a character needs them (lazily on the web).
 
 Usage (needs fonttools):  python3 tools/build_fonts.py <dir with upstream .ttf> [name…]
-(names: ui mono cjk arabic hebrew thai emoji devanagari bengali tamil; default all)
+(names: ui mono cjk arabic hebrew thai emoji emoji-color devanagari bengali tamil; default all)
 Upstream files from https://github.com/google/fonts: ofl/inter/Inter[opsz,wght].ttf,
 ofl/jetbrainsmono/JetBrainsMono[wght].ttf, ofl/notosansjp/NotoSansJP[wght].ttf,
 ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf, ofl/notosanshebrew/NotoSansHebrew[wdth,wght].ttf,
 ofl/notosansthai/NotoSansThai[wdth,wght].ttf, ofl/notoemoji/NotoEmoji[wght].ttf,
 ofl/notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf, ofl/notosansbengali/NotoSansBengali[wdth,wght].ttf,
-ofl/notosanstamil/NotoSansTamil[wdth,wght].ttf.
+ofl/notosanstamil/NotoSansTamil[wdth,wght].ttf; Twemoji.Mozilla.ttf from
+https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0 (CC-BY 4.0 art, Apache-2.0 build).
 """
 import os
 import sys
@@ -90,7 +93,7 @@ def build(src, dst, axes, unicodes, keep_layout=True, all_features=False):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "."
-    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji", "devanagari", "bengali", "tamil"}
+    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji", "emoji-color", "devanagari", "bengali", "tamil"}
     os.makedirs(OUT, exist_ok=True)
     f = lambda n: os.path.join(src, n)
     o = lambda n: os.path.join(OUT, n)
@@ -111,6 +114,9 @@ def main():
     if "emoji" in want:
         emoji = TTFont(f("NotoEmoji[wght].ttf")).getBestCmap().keys()
         build(f("NotoEmoji[wght].ttf"), o("emoji.ttf"), {"wght": 400}, sorted(emoji), keep_layout=False)
+    if "emoji-color" in want:
+        emoji = TTFont(f("Twemoji.Mozilla.ttf")).getBestCmap().keys()
+        build(f("Twemoji.Mozilla.ttf"), o("emoji-color.ttf"), {}, sorted(emoji), all_features=True)
     # Indic: the fonts' own layout tables do the conjuncts, half forms, reph and marks
     for name, family, cps in [("devanagari", "NotoSansDevanagari", DEVANAGARI), ("bengali", "NotoSansBengali", BENGALI), ("tamil", "NotoSansTamil", TAMIL)]:
         if name in want:
