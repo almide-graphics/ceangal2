@@ -235,3 +235,17 @@ pub fn dev_kill(id: i64) {
         let _ = c.wait();
     }
 }
+
+/// The path to start the app from. Windows keeps a running .exe locked, so
+/// the next build could not replace it: there the app runs from a copy, two
+/// of them taking turns (the one just closed may not be released yet).
+pub fn dev_runnable(exe: &str, turn: i64) -> String {
+    if !exe.to_ascii_lowercase().ends_with(".exe") {
+        return exe.to_string();
+    }
+    let copy = format!("{}.dev{}.exe", &exe[..exe.len() - 4], turn % 2);
+    match std::fs::copy(exe, &copy) {
+        Ok(_) => copy,
+        Err(_) => exe.to_string(),
+    }
+}

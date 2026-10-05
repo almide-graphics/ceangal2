@@ -28,6 +28,10 @@ fn spawn(cmd: String, args: List[String], dir: String, keys: List[String], vals:
 fn exit_code(id: Int) -> Int = _
 @extern(rust, "crate::dev", "dev_kill")
 fn kill(id: Int) -> Unit = _
+// Where to start the build from: on Windows a copy (a running .exe cannot be
+// replaced by the next build).
+@extern(rust, "crate::dev", "dev_runnable")
+fn runnable(exe: String, turn: Int) -> String = _
 
 // What a change to rebuilds after: the sources (the entry's directory),
 // ceangal.toml, and the asset, native and web paths it names. Not the whole
@@ -102,8 +106,12 @@ pub effect fn desktop(app: mf.App, sdk: String, pairs: List[(String, String)], e
   if build() != 0 then err("the build failed")
   else {
     var seen = stamp(paths)
-    let start = () => spawn(exe, [], app.dir, ["CEANGAL_ASSETS"], [assets])
-    var pid = start()
+    var turn = 0
+    let start = (n: Int) => {
+      let path = runnable(exe, n)
+      spawn(path, [], app.dir, ["CEANGAL_ASSETS"], [assets])
+    }
+    var pid = start(turn)
     say("ceangal dev: " + app.name + " is running — edits rebuild and restart it (close it or Ctrl+C to stop)")
     var running = pid >= 0
     while running {
@@ -114,7 +122,8 @@ pub effect fn desktop(app: mf.App, sdk: String, pairs: List[(String, String)], e
         say("ceangal dev: rebuilding…")
         if build() == 0 then {
           if pid >= 0 then kill(pid) else ()
-          pid = start()
+          turn = turn + 1
+          pid = start(turn)
           say("ceangal dev: restarted")
         } else say("ceangal dev: the build failed — the running app is the last good build")
         seen = if stamp(paths) == seen then seen else ""
