@@ -13,16 +13,21 @@ face), then subset:
   hebrew.ttf                  Noto Sans Hebrew
   thai.ttf                    Noto Sans Thai
   emoji.ttf                   Noto Emoji     monochrome emoji (drawn in the text colour)
+  devanagari.ttf / bengali.ttf / tamil.ttf   Noto Sans Devanagari / Bengali / Tamil,
+                                             with their OpenType layout (GSUB, GPOS, GDEF):
+                                             ceangal.indic shapes them
 
 The UI faces also cover Greek and Cyrillic. Fallback fonts are loaded the
 first time a character needs them (lazily on the web).
 
 Usage (needs fonttools):  python3 tools/build_fonts.py <dir with upstream .ttf> [name…]
-(names: ui mono cjk arabic hebrew thai emoji; default all)
+(names: ui mono cjk arabic hebrew thai emoji devanagari bengali tamil; default all)
 Upstream files from https://github.com/google/fonts: ofl/inter/Inter[opsz,wght].ttf,
 ofl/jetbrainsmono/JetBrainsMono[wght].ttf, ofl/notosansjp/NotoSansJP[wght].ttf,
 ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf, ofl/notosanshebrew/NotoSansHebrew[wdth,wght].ttf,
-ofl/notosansthai/NotoSansThai[wdth,wght].ttf, ofl/notoemoji/NotoEmoji[wght].ttf.
+ofl/notosansthai/NotoSansThai[wdth,wght].ttf, ofl/notoemoji/NotoEmoji[wght].ttf,
+ofl/notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf, ofl/notosansbengali/NotoSansBengali[wdth,wght].ttf,
+ofl/notosanstamil/NotoSansTamil[wdth,wght].ttf.
 """
 import os
 import sys
@@ -44,6 +49,10 @@ PUNCT = [0x20, 0x2E, 0x2C, 0x3A, 0x3B, 0x21, 0x3F, 0x28, 0x29, 0xA0, 0x200C, 0x2
 ARABIC = list(range(0x600, 0x700)) + list(range(0x750, 0x780)) + list(range(0xFB50, 0xFE00)) + list(range(0xFE70, 0xFF00)) + PUNCT
 HEBREW = list(range(0x590, 0x600)) + list(range(0xFB1D, 0xFB50)) + PUNCT
 THAI = list(range(0xE00, 0xE80)) + PUNCT
+INDIC_COMMON = PUNCT + [0x0964, 0x0965, 0x00A0, 0x2010, 0x2013, 0x2014]
+DEVANAGARI = list(range(0x900, 0x980)) + list(range(0xA8E0, 0xA900)) + INDIC_COMMON
+BENGALI = list(range(0x980, 0xA00)) + INDIC_COMMON
+TAMIL = list(range(0xB80, 0xC00)) + INDIC_COMMON
 MONO_EXTRA = list(range(0x2500, 0x2580)) + list(range(0x2190, 0x2200)) + list(range(0x2200, 0x2300))
 
 
@@ -61,12 +70,13 @@ def cjk_codepoints():
     return sorted(cps)
 
 
-def build(src, dst, axes, unicodes, keep_layout=True):
+def build(src, dst, axes, unicodes, keep_layout=True, all_features=False):
     font = TTFont(src)
     if "fvar" in font:
         font = instancer.instantiateVariableFont(font, axes, updateFontNames=False)
     opts = subset.Options()
-    opts.layout_features = ["kern", "liga", "calt", "ccmp", "locl", "mark", "mkmk"] if keep_layout else []
+    opts.layout_features = ["*"] if all_features else ["kern", "liga", "calt", "ccmp", "locl", "mark", "mkmk"] if keep_layout else []
+    opts.layout_scripts = ["*"]
     opts.name_IDs = [0, 1, 2, 3, 4, 5, 6, 13, 14]
     opts.notdef_outline = True
     opts.glyph_names = False
@@ -80,7 +90,7 @@ def build(src, dst, axes, unicodes, keep_layout=True):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else "."
-    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji"}
+    want = set(sys.argv[2:]) or {"ui", "mono", "cjk", "arabic", "hebrew", "thai", "emoji", "devanagari", "bengali", "tamil"}
     os.makedirs(OUT, exist_ok=True)
     f = lambda n: os.path.join(src, n)
     o = lambda n: os.path.join(OUT, n)
@@ -101,6 +111,10 @@ def main():
     if "emoji" in want:
         emoji = TTFont(f("NotoEmoji[wght].ttf")).getBestCmap().keys()
         build(f("NotoEmoji[wght].ttf"), o("emoji.ttf"), {"wght": 400}, sorted(emoji), keep_layout=False)
+    # Indic: the fonts' own layout tables do the conjuncts, half forms, reph and marks
+    for name, family, cps in [("devanagari", "NotoSansDevanagari", DEVANAGARI), ("bengali", "NotoSansBengali", BENGALI), ("tamil", "NotoSansTamil", TAMIL)]:
+        if name in want:
+            build(f(family + "[wdth,wght].ttf"), o(name + ".ttf"), {"wght": 400, "wdth": 100}, cps, all_features=True)
 
 
 if __name__ == "__main__":

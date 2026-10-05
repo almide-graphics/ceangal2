@@ -269,6 +269,17 @@ item, the first green CI run on main that deploys Pages, waits for a push
   presentation forms), Hebrew, Thai, monochrome emoji; one-line bidi;
   fallback fonts lazy on the web (CJK too). Not yet: Indic shaping,
   colour emoji, RTL editing.
+
+### Framework: text shaping and the rest of the quality list (2026-10-06)
+- OpenType layout engine (`snaidhm/src/otl.almd`: GDEF, GSUB 1/2/4/5/6/7,
+  GPOS 1/2/4/6/8/9) and an Indic shaper (`ceangal/src/indic.almd`) for
+  Devanagari, Bengali and Tamil (ADR 0010). 203 words match HarfBuzz
+  exactly (glyphs, clusters, offsets; `tests/shaping/indic.txt` from
+  `tools/gen_shaping_cases.py`, checked in CI). Glyphs carry clusters;
+  the editor uses `text.edges` / `glyphs_in`. Typing Hindi into a text
+  field is a `ceangal test` (apps/gallery/tests/indic.test). Wasm budgets
+  rise by 45 KB; the 10k-line editor frame got faster (p95 13.4 → 11.8 ms
+  native).
 - Phones: system clipboard, iOS share sheet / document picker, Android
   shared Downloads; TalkBack (AccessKit injecting adapter) and iOS
   VoiceOver trees checked in CI.
@@ -305,9 +316,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: Indic shaping (GSUB/GPOS), colour emoji, RTL editing in
+0. Framework: colour emoji, RTL editing in
    text fields, an Android file picker (needs an activity result), a
-   dropdown / menu control. Done: iOS VoiceOver / Android TalkBack trees,
+   dropdown / menu control. Done: Indic shaping (ADR 0010), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,

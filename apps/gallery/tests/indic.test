@@ -1,0 +1,10 @@
+# Devanagari typed into a text field: shaped as it is typed (conjuncts, the
+# pre-base matra), echoed in a label, and edited with the keyboard.
+tap "Name"
+type "नमस्ते श्रीमती"
+see "Hello, नमस्ते श्रीमती"
+key Backspace
+key Backspace
+type "न्"
+see "Hello, नमस्ते श्रीमन्"
+shot "indic.png"

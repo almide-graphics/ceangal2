@@ -161,14 +161,17 @@ including under the safe areas.
 Text is drawn with the bundled fonts: a UI sans (regular and semibold;
 Latin, Greek, Cyrillic), a monospace font for `mono()`, and fallbacks
 picked per character: Japanese / Chinese, Arabic (letters joined into
-their contextual forms), Hebrew, Thai, and emoji (monochrome, in the text
-colour). A line with right-to-left text is shown in visual order: the
-paragraph takes the direction of its first letter, numbers stay left to
-right, brackets mirror. Fallback fonts load the first time a character
-needs them (on the web, after the app starts). Not yet: scripts that need
-OpenType shaping (Devanagari and other Indic scripts), right-to-left
-editing in text fields (they keep logical order and unjoined letters), and
-colour emoji.
+their contextual forms), Hebrew, Thai, Devanagari, Bengali, Tamil, and
+emoji (monochrome, in the text colour). Devanagari, Bengali and Tamil are
+shaped with their fonts' OpenType tables: conjuncts, half forms, reph,
+pre-base vowel signs and stacked marks come out as HarfBuzz would draw
+them, in labels and in text fields. A line with right-to-left text is
+shown in visual order: the paragraph takes the direction of its first
+letter, numbers stay left to right, brackets mirror. Fallback fonts load
+the first time a character needs them (on the web, after the app
+starts). Not yet: other Indic scripts (Gurmukhi, Gujarati, Telugu,
+Kannada, Malayalam…), right-to-left editing in text fields (they keep
+logical order and unjoined letters), and colour emoji.
 
 ## Input
 

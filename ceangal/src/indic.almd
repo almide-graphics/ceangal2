@@ -1,0 +1,611 @@
+// Indic shaping (Devanagari, Bengali, Tamil): the font's own layout tables
+// make the conjuncts, half forms, reph and mark positions; this module does
+// what they assume a shaper did first, following the OpenType Indic spec as
+// HarfBuzz implements it:
+//
+//   split matras are decomposed, the text is cut into syllables (a broken
+//   one gets a dotted circle), each syllable's base consonant is found,
+//   pre-base matras and the reph's Ra are reordered, each glyph is given
+//   the features that apply to it (half before the base, below / above /
+//   post-base forms after it, rphf on the reph), the basic features run one
+//   at a time, the matra and reph move to their final places, then the
+//   presentation features and GPOS (kerning, marks) run.
+//
+// tests/shaping/indic.txt has HarfBuzz's output for a list of words
+// (tools/gen_shaping_cases.py); indic_test.almd checks this module against it.
+
+import snaidhm.font as font
+import snaidhm.otl as otl
+import self.indic_data as data
+
+// Scripts
+pub let DEVANAGARI = 0
+pub let BENGALI = 1
+pub let TAMIL = 2
+
+// Categories (indic_data's, plus joiners)
+let X = 0
+let C = 1
+let V = 2
+let N = 3
+let H = 4
+let M = 5
+let SM = 6
+let ZWNJ = 7
+let ZWJ = 8
+let PH = 9
+
+// Positions in a syllable, in the order glyphs are sorted into
+let POS_START = 0
+let POS_RA_TO_BECOME_REPH = 1
+let POS_PRE_M = 2
+let POS_PRE_C = 3
+let POS_BASE_C = 4
+let POS_AFTER_MAIN = 5
+let POS_ABOVE_C = 6
+let POS_BEFORE_SUB = 7
+let POS_BELOW_C = 8
+let POS_AFTER_SUB = 9
+let POS_BEFORE_POST = 10
+let POS_POST_C = 11
+let POS_AFTER_POST = 12
+let POS_FINAL_C = 13
+let POS_SMVD = 14
+let POS_END = 15
+
+// Feature masks
+let GLOBAL = 1
+let RPHF = 2
+let PREF = 4
+let BLWF = 8
+let ABVF = 16
+let HALF = 32
+let PSTF = 64
+let INIT = 128
+
+// The script a code point belongs to (-1 = none of these).
+pub fn script_of(cp: Int) -> Int =
+  if (cp >= 0x0900 and cp <= 0x097F) or (cp >= 0xA8E0 and cp <= 0xA8FF) then DEVANAGARI
+  else if cp >= 0x0980 and cp <= 0x09FF then BENGALI
+  else if cp >= 0x0B80 and cp <= 0x0BFF then TAMIL
+  else -1
+
+// Characters that belong to whichever Indic run they are in.
+pub fn joins_run(cp: Int) -> Bool = cp == 0x200C or cp == 0x200D or cp == 0x25CC or cp == 0x0964 or cp == 0x0965
+
+fn ra_of(script: Int) -> Int = if script == DEVANAGARI then 0x0930 else if script == BENGALI then 0x09B0 else 0x0BB0
+fn virama_of(script: Int) -> Int = if script == DEVANAGARI then 0x094D else if script == BENGALI then 0x09CD else 0x0BCD
+fn script_tags(script: Int) -> List[Int] =
+  if script == DEVANAGARI then [otl.tag("dev2"), otl.tag("deva")]
+  else if script == BENGALI then [otl.tag("bng2"), otl.tag("beng")]
+  else [otl.tag("tml2"), otl.tag("taml")]
+
+// (category, matra side) of a code point.
+fn props(cp: Int) -> (Int, Int) =
+  if cp == 0x200C then (ZWNJ, 0)
+  else if cp == 0x200D then (ZWJ, 0)
+  else if cp == 0x25CC or cp == 0x00A0 then (PH, 0)
+  else match list.find(data.RANGES, (r) => cp >= r.0 and cp <= r.1) {
+    some(r) => (r.2, r.3),
+    none => (X, 0),
+  }
+
+// Where a matra goes, by its side (HarfBuzz's table for these scripts).
+fn matra_pos(script: Int, side: Int) -> Int =
+  if side == 1 then POS_PRE_M
+  else if side == 2 then (if script == DEVANAGARI then POS_AFTER_SUB else POS_AFTER_POST)
+  else if side == 3 then POS_AFTER_SUB
+  else if side == 4 then (if script == TAMIL then POS_AFTER_POST else POS_AFTER_SUB)
+  else POS_END
+
+// Canonical decompositions the shaper needs: split matras and the nukta
+// letters that do not recompose.
+fn decompose(cp: Int) -> List[Int] =
+  if cp >= 0x0958 and cp <= 0x095F then [[0x0915, 0x0916, 0x0917, 0x091C, 0x0921, 0x0922, 0x092B, 0x092F][cp - 0x0958], 0x093C]
+  else if cp == 0x09CB then [0x09C7, 0x09BE]
+  else if cp == 0x09CC then [0x09C7, 0x09D7]
+  else if cp == 0x09DC then [0x09A1, 0x09BC]
+  else if cp == 0x09DD then [0x09A2, 0x09BC]
+  else if cp == 0x0BCA then [0x0BC6, 0x0BBE]
+  else if cp == 0x0BCB then [0x0BC7, 0x0BBE]
+  else if cp == 0x0BCC then [0x0BC6, 0x0BD7]
+  else [cp]
+
+// ── Plans: the lookups of each stage, per font ──
+
+type Plan = {
+  ok: Bool, script: Int, lay: otl.Layout,
+  pre: List[otl.Entry], basic: List[List[otl.Entry]], other: List[otl.Entry], gpos: List[otl.Entry],
+  rphf: List[otl.Entry], blwf: List[otl.Entry], pstf: List[otl.Entry], pref: List[otl.Entry], vatu: List[otl.Entry],
+}
+
+fn feat(t: String, mask: Int, manual: Bool, per: Bool) -> otl.Feature = { tag: otl.tag(t), mask: mask, manual: manual, per_syllable: per }
+
+fn make_plan(f: font.Font, script: Int) -> Plan = {
+  let lay = otl.layout(f)
+  let tags = script_tags(script)
+  let one = (t: String, mask: Int) => otl.stage(f, lay, false, tags, [feat(t, mask, true, true)])
+  let basic_tags = ["nukt", "akhn", "rphf", "rkrf", "pref", "blwf", "abvf", "half", "pstf", "vatu", "cjct"]
+  let basic_masks = [GLOBAL, GLOBAL, RPHF, GLOBAL, PREF, BLWF, ABVF, HALF, PSTF, GLOBAL, GLOBAL]
+  {
+    ok: lay.gsub != 0,
+    script: script,
+    lay: lay,
+    pre: otl.stage(f, lay, false, tags, [feat("locl", GLOBAL, false, true), feat("ccmp", GLOBAL, false, true)]),
+    basic: list.map(list.range(0, list.len(basic_tags)), (k) => one(basic_tags[k], basic_masks[k])),
+    other: otl.stage(f, lay, false, tags, [
+      feat("init", INIT, true, true), feat("pres", GLOBAL, true, true), feat("abvs", GLOBAL, true, true),
+      feat("blws", GLOBAL, true, true), feat("psts", GLOBAL, true, true), feat("haln", GLOBAL, true, true),
+      feat("rlig", GLOBAL, false, false), feat("calt", GLOBAL, false, false), feat("clig", GLOBAL, false, false),
+      feat("liga", GLOBAL, false, false), feat("rclt", GLOBAL, false, false),
+    ]),
+    gpos: otl.stage(f, lay, true, tags, [
+      feat("abvm", GLOBAL, false, false), feat("blwm", GLOBAL, false, false), feat("dist", GLOBAL, false, false),
+      feat("kern", GLOBAL, false, false), feat("mark", GLOBAL, false, false), feat("mkmk", GLOBAL, false, false),
+    ]),
+    rphf: one("rphf", RPHF),
+    blwf: one("blwf", BLWF),
+    pstf: one("pstf", PSTF),
+    pref: one("pref", PREF),
+    vatu: one("vatu", GLOBAL),
+  }
+}
+
+// Plans are made once per (font, script); fonts are told apart by their
+// glyph count and size, which is enough for the few bundled ones.
+var plans: List[(Int, Plan)] = []
+
+fn plan_for(f: font.Font, script: Int) -> Plan = {
+  let key = (bytes.len(f.data) * 4 + script) * 65536 + f.num_glyphs
+  match list.find(plans, (p) => p.0 == key) {
+    some(p) => p.1,
+    none => {
+      let p = make_plan(f, script)
+      list.push(plans, (key, p))
+      p
+    },
+  }
+}
+
+// A consonant's position from the forms the font has for it (HarfBuzz's
+// consonant_position_from_face).
+fn consonant_position(f: font.Font, pl: Plan, gid: Int, virama: Int) -> Int = {
+  let w = (es: List[otl.Entry], gs: List[Int]) => otl.would_substitute(f, pl.lay, es, gs)
+  if w(pl.blwf, [virama, gid]) or w(pl.blwf, [gid, virama]) or w(pl.vatu, [virama, gid]) or w(pl.vatu, [gid, virama]) then POS_BELOW_C
+  else if w(pl.pstf, [virama, gid]) or w(pl.pstf, [gid, virama]) then POS_POST_C
+  else if w(pl.pref, [virama, gid]) or w(pl.pref, [gid, virama]) then POS_POST_C
+  else POS_BASE_C
+}
+
+// ── Syllables ──
+
+fn is_joiner_cp(cp: Int) -> Bool = cp == 0x200C or cp == 0x200D
+fn is_consonant(g: otl.Info) -> Bool = g.cat == C or g.cat == V or g.cat == PH
+fn is_joiner(g: otl.Info) -> Bool = g.cat == ZWJ or g.cat == ZWNJ
+
+// cn: C ZWJ? N{0,2}, starting at a consonant j.
+fn cn_end(cats: List[Int], j: Int) -> Int = {
+  let n = list.len(cats)
+  var k = j + 1
+  if k < n and cats[k] == ZWJ and k + 1 < n and cats[k + 1] == N then k = k + 1 else ()
+  var nk = 0
+  while k < n and cats[k] == N and nk < 2 { k = k + 1; nk = nk + 1 }
+  k
+}
+
+// halant group: (ZWJ|ZWNJ)? H (ZWJ N?)?; -1 when there is none at k.
+fn halant_end(cats: List[Int], k: Int) -> Int = {
+  let n = list.len(cats)
+  var p = k
+  if p + 1 < n and (cats[p] == ZWJ or cats[p] == ZWNJ) and cats[p + 1] == H then p = p + 1 else ()
+  if p < n and cats[p] == H then {
+    p = p + 1
+    if p < n and cats[p] == ZWJ then {
+      p = p + 1
+      if p < n and cats[p] == N then p = p + 1 else ()
+    } else ()
+    p
+  } else -1
+}
+
+// A final halant group, or any number of matra groups.
+fn halant_or_matras(cats: List[Int], k: Int) -> Int = {
+  let n = list.len(cats)
+  let h = halant_end(cats, k)
+  if h >= 0 then (if h < n and cats[h] == ZWNJ then h + 1 else h)
+  else {
+    var at = k
+    var more = true
+    while more {
+      var p = at
+      while p < n and (cats[p] == ZWJ or cats[p] == ZWNJ) { p = p + 1 }
+      if p < n and cats[p] == M then {
+        p = p + 1
+        if p < n and cats[p] == N then p = p + 1 else ()
+        if p < n and cats[p] == H then p = p + 1 else ()
+        at = p
+      } else more = false
+    }
+    at
+  }
+}
+
+// Syllable modifiers at the end: (ZWJ|ZWNJ)? SM SM? ZWNJ?
+fn tail_end(cats: List[Int], k: Int) -> Int = {
+  let n = list.len(cats)
+  var p = k
+  if p + 1 < n and (cats[p] == ZWJ or cats[p] == ZWNJ) and cats[p + 1] == SM then p = p + 1 else ()
+  if p < n and cats[p] == SM then {
+    p = p + 1
+    if p < n and cats[p] == SM then p = p + 1 else ()
+    if p < n and cats[p] == ZWNJ then p = p + 1 else ()
+    p
+  } else k
+}
+
+// Consonants joined by halants after a first base-like character at i.
+fn chain_end(cats: List[Int], k0: Int) -> Int = {
+  let n = list.len(cats)
+  var k = k0
+  var more = true
+  while more {
+    let h = halant_end(cats, k)
+    if h >= 0 and h < n and cats[h] == C then k = cn_end(cats, h) else more = false
+  }
+  k
+}
+
+// The syllable starting at i: (end, kind) — kind 0 a syllable to reorder,
+// 1 a broken one (needs a dotted circle), 2 anything else (one character).
+fn syllable_at(cats: List[Int], i: Int) -> (Int, Int) = {
+  let n = list.len(cats)
+  let k = cats[i]
+  if k == C or k == PH then (tail_end(cats, halant_or_matras(cats, chain_end(cats, cn_end(cats, i)))), 0)
+  else if k == V then {
+    var p = i + 1
+    if p < n and cats[p] == N then p = p + 1 else ()
+    var more = true
+    while more {
+      if p < n and cats[p] == ZWJ then p = p + 1
+      else {
+        let h = halant_end(cats, p)
+        if h >= 0 and h < n and cats[h] == C then p = cn_end(cats, h) else more = false
+      }
+    }
+    (tail_end(cats, halant_or_matras(cats, p)), 0)
+  } else if k == N or k == H or k == M or k == SM then {
+    var p = i
+    if cats[p] == N then p = p + 1 else ()
+    let e = tail_end(cats, halant_or_matras(cats, chain_end(cats, p)))
+    (int.max(e, i + 1), 1)
+  } else (i + 1, 2)
+}
+
+// ── Clusters ──
+
+// Clusters from s to e (exclusive) become one (HarfBuzz's merge_clusters,
+// which also takes in neighbours already in the clusters at either end).
+fn merge_clusters(b: List[otl.Info], s: Int, e: Int) -> List[otl.Info] =
+  if e - s < 2 then b
+  else {
+    var out = b
+    var cl = out[s].cluster
+    for k in s..<e { cl = int.min(cl, out[k].cluster) }
+    var e2 = e
+    while e2 < list.len(out) and out[e2 - 1].cluster == out[e2].cluster { e2 = e2 + 1 }
+    var s2 = s
+    while s2 > 0 and out[s2 - 1].cluster == out[s2].cluster { s2 = s2 - 1 }
+    for k in s2..<e2 { out[k] = { ...out[k], cluster: cl } }
+    out
+  }
+
+fn move_glyph(b: List[otl.Info], from: Int, to: Int) -> List[otl.Info] = {
+  let g = b[from]
+  let rest = list.take(b, from) + list.drop(b, from + 1)
+  list.take(rest, to) + [g] + list.drop(rest, to)
+}
+
+// ── Initial reordering ──
+
+fn initial_reorder(f: font.Font, pl: Plan, buf: List[otl.Info], start: Int, end: Int, virama: Int) -> List[otl.Info] = {
+  var b = buf
+  let ra = ra_of(pl.script)
+  // consonant positions from the font
+  for i in start..<end {
+    if b[i].pos == POS_BASE_C then b[i] = { ...b[i], pos: consonant_position(f, pl, b[i].gid, virama) } else ()
+  }
+  // reph: Ra, Halant at the start, when the font has a reph for it
+  var base = end
+  var has_reph = false
+  var limit = start
+  if list.len(pl.rphf) > 0 and start + 3 <= end and b[start].cp == ra and b[start + 1].cat == H and not is_joiner(b[start + 2])
+     and otl.would_substitute(f, pl.lay, pl.rphf, [b[start].gid, b[start + 1].gid]) then {
+    limit = start + 2
+    while limit < end and is_joiner(b[limit]) { limit = limit + 1 }
+    base = start
+    has_reph = true
+  } else ()
+  // the base: the last consonant that has no below- or post-base form
+  var i = end
+  var seen_below = false
+  var done = false
+  while not done {
+    i = i - 1
+    if is_consonant(b[i]) then {
+      if b[i].pos != POS_BELOW_C and (b[i].pos != POS_POST_C or seen_below) then { base = i; done = true }
+      else {
+        if b[i].pos == POS_BELOW_C then seen_below = true else ()
+        base = i
+      }
+    } else if start < i and b[i].cat == ZWJ and b[i - 1].cat == H then done = true
+    else ()
+    if i <= limit then done = true else ()
+  }
+  if has_reph and base == start and limit - base <= 2 then has_reph = false else ()
+  // positions: before the base pre-base, the base, final consonants, the reph
+  for k in start..<base { b[k] = { ...b[k], pos: int.min(POS_PRE_C, b[k].pos) } }
+  if base < end then b[base] = { ...b[base], pos: POS_BASE_C } else ()
+  var fin = false
+  for k in base + 1..<end {
+    if not fin and b[k].cat == M then {
+      fin = true
+      var found = false
+      for j in k + 1..<end {
+        if not found and is_consonant(b[j]) then { b[j] = { ...b[j], pos: POS_FINAL_C }; found = true } else ()
+      }
+    } else ()
+  }
+  if has_reph then b[start] = { ...b[start], pos: POS_RA_TO_BECOME_REPH } else ()
+  // joiners, nuktas and halants move with the character before them
+  var last_pos = POS_START
+  for k in start..<end {
+    let g = b[k]
+    if g.cat == ZWJ or g.cat == ZWNJ or g.cat == N or g.cat == H then {
+      var p = last_pos
+      if g.cat == H and p == POS_PRE_M then {
+        var j = k
+        var found = false
+        while j > start and not found {
+          if b[j - 1].pos != POS_PRE_M then { p = b[j - 1].pos; found = true } else ()
+          j = j - 1
+        }
+      } else ()
+      b[k] = { ...g, pos: p }
+    } else if g.pos != POS_SMVD then last_pos = g.pos
+    else ()
+  }
+  // post-base consonants take what is before them since the last consonant or matra
+  var last = base
+  for k in base + 1..<end {
+    if is_consonant(b[k]) then {
+      for j in last + 1..<k {
+        if b[j].pos < POS_SMVD then b[j] = { ...b[j], pos: b[k].pos } else ()
+      }
+      last = k
+    } else if b[k].cat == M then last = k
+    else ()
+  }
+  // sort by position (stable), remembering where each glyph came from
+  let idx = list.range(0, end - start)
+  let order = list.sort_by(idx, (k) => b[start + k].pos * 4096 + k)
+  let sorted = list.map(order, (k) => b[start + k])
+  for k in 0..<list.len(sorted) { b[start + k] = sorted[k] }
+  base = end
+  var bf = false
+  for k in start..<end {
+    if not bf and b[k].pos == POS_BASE_C then { base = k; bf = true } else ()
+  }
+  // post-base glyphs that moved: their clusters merge
+  var seen = list.repeat(false, end - start)
+  for k in base..<end {
+    let rel = k - start
+    if not seen[rel] then {
+      var mn = k
+      var mx = k
+      var j = start + order[rel]
+      seen[rel] = true
+      while j != k {
+        mn = int.min(mn, j)
+        mx = int.max(mx, j)
+        seen[j - start] = true
+        j = start + order[j - start]
+      }
+      b = merge_clusters(b, int.max(base, mn), mx + 1)
+    } else ()
+  }
+  // masks
+  for k in start..<end {
+    if b[k].pos == POS_RA_TO_BECOME_REPH then b[k] = { ...b[k], mask: int.bor(b[k].mask, RPHF) } else ()
+  }
+  for k in start..<base { b[k] = { ...b[k], mask: int.bor(b[k].mask, int.bor(HALF, BLWF)) } }
+  for k in base + 1..<end { b[k] = { ...b[k], mask: int.bor(b[k].mask, BLWF + ABVF + PSTF) } }
+  // a ZWNJ stops half forms of what it follows
+  for k in start + 1..<end {
+    if b[k].cat == ZWNJ then {
+      var j = k
+      var more = true
+      while more {
+        j = j - 1
+        b[j] = { ...b[j], mask: int.band(b[j].mask, int.bnot(HALF)) }
+        if j <= start or is_consonant(b[j]) then more = false else ()
+      }
+    } else ()
+  }
+  b
+}
+
+// ── Final reordering ──
+
+fn final_reorder(pl: Plan, buf: List[otl.Info], start: Int, end: Int) -> List[otl.Info] = {
+  var b = buf
+  let script = pl.script
+  // the base again
+  var base = start
+  var bf = false
+  while base < end and not bf {
+    if b[base].pos >= POS_BASE_C then bf = true else base = base + 1
+  }
+  if base == end and start < base and b[base - 1].cat == ZWJ then base = base - 1 else ()
+  if base < end then {
+    while start < base and (b[base].cat == N or b[base].cat == H) { base = base - 1 }
+  } else ()
+  // pre-base matras: after the last halant before the base (a half form
+  // that did not form), else they stay first
+  if start + 1 < end and start < base then {
+    var new_pos = if base == end then base - 2 else base - 1
+    if script != TAMIL then {
+      var searching = true
+      while searching {
+        while new_pos > start and not (b[new_pos].cat == M or b[new_pos].cat == H) { new_pos = new_pos - 1 }
+        if b[new_pos].cat == H and b[new_pos].pos != POS_PRE_M then {
+          if new_pos + 1 < end and b[new_pos + 1].cat == ZWJ and new_pos > start then new_pos = new_pos - 1
+          else searching = false
+        } else { new_pos = start; searching = false }
+      }
+    } else ()
+    if start < new_pos and b[new_pos].pos != POS_PRE_M then {
+      var i = new_pos
+      while i > start {
+        if b[i - 1].pos == POS_PRE_M then {
+          let old = i - 1
+          if old < base and base <= new_pos then base = base - 1 else ()
+          b = move_glyph(b, old, new_pos)
+          b = merge_clusters(b, new_pos, int.min(end, base + 1))
+          new_pos = new_pos - 1
+        } else ()
+        i = i - 1
+      }
+    } else {
+      var done = false
+      for i in start..<base {
+        if not done and b[i].pos == POS_PRE_M then { b = merge_clusters(b, i, int.min(end, base + 1)); done = true } else ()
+      }
+    }
+  } else ()
+  // reph: to its place for the script, once the font has made it
+  if start + 1 < end and b[start].pos == POS_RA_TO_BECOME_REPH and b[start].ligated and not b[start].multiplied then {
+    // after the first explicit halant before the base
+    var target = -1
+    if script != TAMIL then {
+      var p = start + 1
+      while p < base and b[p].cat != H { p = p + 1 }
+      if p < base and b[p].cat == H then target = (if p + 1 < base and is_joiner(b[p + 1]) then p + 1 else p) else ()
+    } else ()
+    // Bengali: after the below-base forms
+    if target < 0 and script == BENGALI then {
+      var p = base
+      while p + 1 < end and not (b[p + 1].pos == POS_POST_C or b[p + 1].pos == POS_AFTER_POST or b[p + 1].pos == POS_SMVD) { p = p + 1 }
+      if p < end then target = p else ()
+    } else ()
+    // otherwise at the end, before syllable modifiers (and a matra's halant)
+    if target < 0 then {
+      var p = end - 1
+      while p > start and b[p].pos == POS_SMVD { p = p - 1 }
+      if b[p].cat == H then {
+        for k in base + 1..<p { if b[k].cat == M then p = p - 1 else () }
+      } else ()
+      target = p
+    } else ()
+    b = merge_clusters(b, start, target + 1)
+    b = move_glyph(b, start, target)
+    if start < base and base <= target then base = base - 1 else ()
+  } else ()
+  b
+}
+
+// ── Shaping ──
+
+// A shaped glyph, in font units: pen x and y of its origin, its advance,
+// and the index of the first code point of its cluster.
+type Out = { gid: Int, x: Int, y: Int, advance: Int, cluster: Int }
+
+// Whether the character before a pre-base matra makes it word-internal.
+fn letterlike(cp: Int, cat: Int) -> Bool =
+  cat != X or (cp >= 0x41 and cp <= 0x5A) or (cp >= 0x61 and cp <= 0x7A) or (cp >= 0xC0 and not (cp >= 0x2000 and cp <= 0x206F) and not (cp >= 0x3000 and cp <= 0x303F))
+
+// Shape `cps`, all of one script, with font `f`.
+pub fn shape(f: font.Font, script: Int, cps: List[Int]) -> List[Out] = {
+  let pl = plan_for(f, script)
+  let lay = pl.lay
+  // characters (decomposed), each remembering its index in `cps`
+  var chars: List[(Int, Int)] = []
+  for (i, cp) in list.enumerate(cps) {
+    for d in decompose(cp) { list.push(chars, (d, i)) }
+  }
+  let cats = list.map(chars, (c) => props(c.0).0)
+  // glyphs, marks merged into the cluster before them
+  var buf: List[otl.Info] = []
+  var syl = 0
+  var i = 0
+  let dotted = font.glyph_index(f, 0x25CC)
+  while i < list.len(chars) {
+    let (end, kind) = syllable_at(cats, i)
+    syl = syl + 1
+    if kind == 1 and dotted != 0 then
+      list.push(buf, { gid: dotted, cp: 0x25CC, cluster: chars[i].1, mask: GLOBAL, cat: PH, pos: POS_BASE_C, syl: syl,
+                       gclass: otl.glyph_class(f, lay, dotted), ligated: false, multiplied: false })
+    else ()
+    for k in i..<end {
+      let (cp, src) = chars[k]
+      let (cat, side) = props(cp)
+      let pos = if cat == C or cat == V or cat == PH then POS_BASE_C
+        else if cat == M then matra_pos(script, side)
+        else if cat == SM then POS_SMVD
+        else POS_END
+      let gid = font.glyph_index(f, cp)
+      let mark = cat == N or cat == H or cat == M or cat == SM or cp == 0x200D
+      let cl = if mark and list.len(buf) > 0 then buf[list.len(buf) - 1].cluster else src
+      list.push(buf, { gid: gid, cp: cp, cluster: cl, mask: GLOBAL, cat: cat, pos: pos, syl: if kind == 2 then 0 else syl,
+                       gclass: otl.glyph_class(f, lay, gid), ligated: false, multiplied: false })
+    }
+    i = end
+  }
+  // ccmp, locl
+  buf = otl.substitute(f, lay, pl.pre, buf)
+  // initial reordering, syllable by syllable
+  let virama = font.glyph_index(f, virama_of(script))
+  buf = each_syllable(buf, (b, s, e) => initial_reorder(f, pl, b, s, e, virama))
+  for st in pl.basic { buf = otl.substitute(f, lay, st, buf) }
+  buf = each_syllable(buf, (b, s, e) => final_reorder(pl, b, s, e))
+  // init on a pre-base matra that starts a word
+  for k in 0..<list.len(buf) {
+    let g = buf[k]
+    let first = k == 0 or buf[k - 1].syl != g.syl
+    if first and g.syl != 0 and g.pos == POS_PRE_M and (k == 0 or not letterlike(buf[k - 1].cp, buf[k - 1].cat)) then
+      buf[k] = { ...g, mask: int.bor(g.mask, INIT) }
+    else ()
+  }
+  buf = otl.substitute(f, lay, pl.other, buf)
+  // positions
+  let space = font.glyph_index(f, 32)
+  let pos0 = list.map(buf, (g) => { xa: if is_joiner_cp(g.cp) then 0 else float.to_int(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
+  let pos = otl.position(f, lay, pl.gpos, buf, pos0)
+  var out: List[Out] = []
+  var pen = 0
+  for k in 0..<list.len(buf) {
+    let p = pos[k]
+    let g = buf[k]
+    let gid = if is_joiner_cp(g.cp) then space else g.gid
+    let xa = if is_joiner_cp(g.cp) then 0 else p.xa
+    if p.attach >= 0 and p.attach < list.len(out) then {
+      let at = out[p.attach]
+      list.push(out, { gid: gid, x: at.x + p.xo, y: at.y + p.yo, advance: xa, cluster: g.cluster })
+    } else list.push(out, { gid: gid, x: pen + p.xo, y: p.yo, advance: xa, cluster: g.cluster })
+    pen = pen + xa
+  }
+  out
+}
+
+// Run `f` over each syllable of the buffer (consecutive glyphs with one
+// non-zero syllable number).
+fn each_syllable(buf: List[otl.Info], f: (List[otl.Info], Int, Int) -> List[otl.Info]) -> List[otl.Info] = {
+  var b = buf
+  var s = 0
+  while s < list.len(b) {
+    var e = s + 1
+    while e < list.len(b) and b[e].syl == b[s].syl { e = e + 1 }
+    if b[s].syl != 0 then b = f(b, s, e) else ()
+    s = e
+  }
+  b
+}

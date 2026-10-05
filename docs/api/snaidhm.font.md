@@ -7,7 +7,7 @@ _TrueType parsing and glyph rasterising._
 TrueType font reading and glyph rasterisation, in Almide.
 
 Reads the tables a UI needs (head, hhea, maxp, cmap 4/12, hmtx, loca,
-glyf — simple and composite glyphs) straight from the font's bytes and
+glyf — simple and composite glyphs; GSUB / GPOS are self.otl's) straight from the font's bytes and
 rasterises outlines with signed-area coverage accumulation (the font-rs
 method): every line segment adds its exact area contribution to the cells
 it crosses, and a running sum per row yields anti-aliased coverage.
@@ -53,6 +53,14 @@ let TAG_HEAD
 ```
 
 'head' 'hhea' 'maxp' 'cmap' 'hmtx' 'loca' 'glyf' as big-endian u32
+
+### `table`
+
+```almide
+pub fn table(f: Font, t: Int) -> Int
+```
+
+Where table `t` (a tag as a big-endian u32) starts in the font's bytes (0 = absent).
 
 ### `parse`
 

@@ -442,10 +442,8 @@ fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
 
 // x of each column boundary of a line (length cols+1), logical px.
 fn col_xs(e: Editor, cps: List[Int]) -> List[Float] = {
-  let gs = tx.shape(shown(e, cps), e.font_size, not e.single_line, false)
-  var xs: List[Float] = [0.0]
-  for g in gs { list.push(xs, g.x + g.advance) }
-  xs
+  let shown_cps = shown(e, cps)
+  tx.edges(tx.shape(shown_cps, e.font_size, not e.single_line, false), list.len(shown_cps))
 }
 
 fn x_of(e: Editor, p: Pos) -> Float = {
@@ -847,17 +845,17 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
     let pre_n = if on_cursor_line then list.len(e.preedit) else 0
     if pre_n > 0 then cps = list.take(cps, e.cur.col) + e.preedit + list.drop(cps, e.cur.col) else ()
     let gs = tx.shape(cps, size, mono, false)
-    // gx(i): x after i glyphs (device px)
-    let gx = (i: Int) => if i <= 0 then 0.0 else gs[int.min(i, list.len(gs)) - 1].x + gs[int.min(i, list.len(gs)) - 1].advance
-    var xs: List[Float] = [0.0]
-    for g in gs { list.push(xs, (g.x + g.advance) / k) }
+    // gx(i): x before code point i (device px)
+    let ex = tx.edges(gs, list.len(cps))
+    let gx = (i: Int) => ex[int.max(0, int.min(i, list.len(cps)))]
+    let xs = list.map(ex, (v) => v / k)
     let bs = if wrapping(e) then breaks_of(xs, cps, wrap_avail(e)) else [0]
     let spans = if e.syntax then {
       let (sp, next) = syn.lex(e.lines[l], st)
       st = next
       sp
     } else []
-    let n_all = list.len(gs)
+    let n_all = list.len(cps)
     for j in 0..<list.len(bs) {
       let c0 = bs[j]
       let c1 = if j + 1 < list.len(bs) then bs[j + 1] else n_all
@@ -883,17 +881,17 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
             let s1 = if pre_n > 0 and sp.stop > e.cur.col then sp.stop + pre_n else sp.stop
             let r0 = int.max(s0, c0)
             let r1 = int.min(s1, c1)
-            if r1 > r0 then tx.draw_run(list.slice(gs, r0, r1), sx, base, size, th.colors[sp.kind]) else ()
+            if r1 > r0 then tx.draw_run(tx.glyphs_in(gs, r0, r1), sx, base, size, th.colors[sp.kind]) else ()
           }
           if pre_n > 0 then {
             let r0 = int.max(e.cur.col, c0)
             let r1 = int.min(e.cur.col + pre_n, c1)
-            if r1 > r0 then tx.draw_run(list.slice(gs, r0, r1), sx, base, size, th.text) else ()
+            if r1 > r0 then tx.draw_run(tx.glyphs_in(gs, r0, r1), sx, base, size, th.text) else ()
           } else ()
         } else {
           let st_i = if l < list.len(e.line_style) then e.line_style[l] else 0
           let col = if st_i > 0 and st_i < list.len(th.styles) then th.styles[st_i] else th.text
-          tx.draw_run(list.slice(gs, c0, c1), sx, base, size, col)
+          tx.draw_run(tx.glyphs_in(gs, c0, c1), sx, base, size, col)
         }
         // preedit underline
         if pre_n > 0 then {

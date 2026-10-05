@@ -1,0 +1,48 @@
+import fs
+import snaidhm.font as font
+import self.indic
+
+// HarfBuzz's glyphs for the line's words (tools/gen_shaping_cases.py):
+// gid:cluster:x_advance:x_offset:y_offset each.
+fn ours(f: font.Font, script: Int, cps: List[Int]) -> String = {
+  let gs = indic.shape(f, script, cps)
+  var pen = 0
+  var parts: List[String] = []
+  for g in gs {
+    list.push(parts, "${g.gid}:${g.cluster}:${g.advance}:${g.x - pen}:${g.y}")
+    pen = pen + g.advance
+  }
+  string.join(parts, " ")
+}
+
+effect fn check_all() -> Int = {
+  let lines = string.split(fs.read_text("../tests/shaping/indic.txt")!, "\n")
+  var fonts: List[(String, font.Font)] = []
+  var failed = 0
+  for line in lines {
+    let cols = string.split(line, "\t")
+    if list.len(cols) == 3 then {
+      let name = cols[0]
+      let f = match list.find(fonts, (p) => p.0 == name) {
+        some(p) => p.1,
+        none => {
+          let loaded = font.parse(fs.read_bytes_raw("../assets/fonts/" + name + ".ttf")!)
+          list.push(fonts, (name, loaded))
+          loaded
+        },
+      }
+      let cps = list.map(string.chars(cols[1]), (c) => match string.codepoint(c) { some(v) => v, none => 0 })
+      let script = indic.script_of(match list.find(cps, (c) => indic.script_of(c) >= 0) { some(c) => c, none => 0 })
+      let got = ours(f, script, cps)
+      if got != cols[2] then {
+        failed = failed + 1
+        println("FAIL ${name} ${cols[1]}\n  want ${cols[2]}\n  got  ${got}")
+      } else ()
+    } else ()
+  }
+  failed
+}
+
+test "Indic words shape as HarfBuzz shapes them" {
+  assert_eq(check_all()!, 0)
+}

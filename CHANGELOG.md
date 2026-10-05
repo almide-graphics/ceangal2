@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Devanagari, Bengali and Tamil**, shaped with the fonts' OpenType
+  tables (GSUB / GPOS) by a new layout engine (`snaidhm.otl`) and an Indic
+  shaper (`ceangal.indic`). Conjuncts, half forms, reph, pre-base vowel
+  signs and stacked marks match HarfBuzz on 203 test words, in labels and
+  text fields. (ADR 0010)
 - **Standard controls** (`ceangal.widgets`): buttons, checkbox, switch,
   radio group, segmented control, slider, progress bar, text field, text
   styles, card, list row, dialog; light / dark / system themes. Keyboard,

@@ -35,6 +35,9 @@ jobs:
       - name: font engine
         working-directory: snaidhm
         run: ../tools/almide test src/font_test.almd
+      - name: Indic shaping matches HarfBuzz (tests/shaping/indic.txt)
+        working-directory: ceangal
+        run: ../tools/almide test src/indic_test.almd --target wasm
       - name: playground units
         working-directory: apps/playground
         run: ../../tools/almide test src/deflate_test.almd && ../../tools/almide test src/zip_test.almd

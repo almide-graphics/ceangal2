@@ -36,7 +36,8 @@ right-to-left text read backwards.
 
 ## Consequences
 - Scripts that need real shaping (Devanagari, Bengali and the other Indic
-  scripts, Myanmar, Khmer) and colour emoji are not supported. They need a
+  scripts, Myanmar, Khmer) and colour emoji are not supported (Devanagari,
+  Bengali and Tamil since ADR 0010). They need a
   GSUB/GPOS interpreter and a colour-glyph path (COLR or bitmaps), which
   are larger projects.
 - Text fields show right-to-left text in logical order and Arabic

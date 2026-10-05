@@ -10,8 +10,10 @@ Fonts are bundled assets (assets/fonts, read through sys.asset_*) parsed
 once by snaidhm.font. Each codepoint is drawn with the first font in the
 style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
-Thai, emoji: loaded the first time a character needs them). Labels and
-paragraphs are joined and put in visual order first (self.bidi).
+Thai, emoji, Devanagari, Bengali, Tamil: loaded the first time a
+character needs them). Labels and paragraphs are joined and put in visual
+order first (self.bidi); Indic runs are shaped with their font's layout
+tables (self.indic).
 Glyphs are rasterised on first use into snaidhm's coverage
 atlas (shelf-packed); a full atlas is cleared at the start of the next
 frame and refilled lazily.
@@ -52,11 +54,13 @@ The Unicode code points of `s` (decoded from UTF-8).
 ### `Glyph`
 
 ```almide
-type Glyph = { slot: Int, gid: Int, x: Float, advance: Float }
+type Glyph = { slot: Int, gid: Int, x: Float, y: Float, advance: Float, cluster: Int }
 ```
 
-One positioned glyph: font slot, glyph id, pen x (px from the run start)
-and advance (px).
+One positioned glyph: font slot, glyph id, x of its origin (px from the
+run start), y (px above the baseline), advance (px), and its cluster: the
+index in the shaped code points of the first one it draws (a conjunct or
+ligature draws several; a mark shares its base's).
 
 ### `shape`
 
@@ -65,7 +69,27 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
 ```
 
 Glyphs for `cps` at `size` px, with fallback fonts (UI → CJK → mono, or
-mono → CJK → UI for code) and x positions.
+mono → CJK → UI for code) and x positions. Devanagari, Bengali and Tamil
+runs are shaped as a whole (self.indic); other text glyph by glyph.
+
+### `edges`
+
+```almide
+pub fn edges(gs: List[Glyph], n: Int) -> List[Float]
+```
+
+x of each boundary between code points 0..n of the text `gs` was shaped
+from (n + 1 values): a cluster's start and end, and inside a cluster of
+several code points (a conjunct) evenly spaced between them.
+
+### `glyphs_in`
+
+```almide
+pub fn glyphs_in(gs: List[Glyph], c0: Int, c1: Int) -> List[Glyph]
+```
+
+The glyphs of the code points from c0 up to c1 (by cluster; shaping
+keeps clusters in order, so this is a slice).
 
 ### `display`
 

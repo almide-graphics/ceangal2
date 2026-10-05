@@ -1,0 +1,691 @@
+// OpenType layout: GDEF glyph classes, GSUB substitutions and GPOS
+// positioning, run over a glyph buffer. A shaper picks the lookups (by
+// script and feature, self.stage), gives each glyph the mask bits of the
+// features that apply to it, and runs the stages in order (substitute,
+// then position).
+//
+// Lookups read: GSUB single, multiple, ligature, context and chained
+// context (formats 1–3), extension; GPOS single, pair, mark-to-base,
+// mark-to-mark, chained context, extension. Glyphs are skipped as the
+// lookup flags say (base / ligature / mark classes, mark attachment
+// class, mark filtering sets), and zero-width joiners the way HarfBuzz
+// skips them.
+
+import self.font as font
+
+// One glyph in the buffer. `cp` is the character it came from (the first
+// one, for a ligature); `cluster` the index of the first character of its
+// cluster; `mask` the features that apply to it; `cat`, `pos` and `syl` the
+// shaper's own (category, position, syllable: lookups of per-syllable
+// features match within one syllable).
+type Info = {
+  gid: Int, cp: Int, cluster: Int, mask: Int, cat: Int, pos: Int, syl: Int,
+  gclass: Int, ligated: Bool, multiplied: Bool,
+}
+
+// A glyph's position, in font units: advance, offset, and the glyph a mark
+// is attached to (-1 = none; its offset is then from that glyph's origin).
+type Pos = { xa: Int, ya: Int, xo: Int, yo: Int, attach: Int }
+
+// Where a font's layout tables are (0 = absent).
+type Layout = { gdef: Int, classes: Int, mark_classes: Int, mark_sets: Int, gsub: Int, gpos: Int }
+
+// A feature a shaper asks for: the glyphs whose mask has `mask` take it.
+// `manual`: ZWJ / ZWNJ are not skipped (Indic basic features);
+// `per_syllable`: matches stay inside a syllable.
+type Feature = { tag: Int, mask: Int, manual: Bool, per_syllable: Bool }
+
+// One lookup of a stage, with the mask of the features that use it.
+type Entry = { lookup: Int, mask: Int, auto_zwj: Bool, auto_zwnj: Bool, per_syllable: Bool }
+
+fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
+fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.read_u16_be(b, p); if v >= 32768 then v - 65536 else v }
+fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
+
+// A four-letter tag as a big-endian u32 ('GSUB', 'dev2'…).
+pub fn tag(s: String) -> Int = {
+  let b = bytes.from_string(s)
+  bytes.read_u32_be(b, 0)
+}
+
+// ── Coverage and class tables ──
+
+// The coverage index of glyph `g` in the coverage table at `off` (-1 = not covered).
+fn coverage(b: Bytes, off: Int, g: Int) -> Int = {
+  let fmt = u16(b, off)
+  let n = u16(b, off + 2)
+  var lo = 0
+  var hi = n - 1
+  var found = -1
+  if fmt == 1 then {
+    while lo <= hi and found < 0 {
+      let mid = (lo + hi) / 2
+      let v = u16(b, off + 4 + mid * 2)
+      if v == g then found = mid else if v < g then lo = mid + 1 else hi = mid - 1
+    }
+  } else if fmt == 2 then {
+    while lo <= hi and found < 0 {
+      let mid = (lo + hi) / 2
+      let r = off + 4 + mid * 6
+      if g < u16(b, r) then hi = mid - 1
+      else if g > u16(b, r + 2) then lo = mid + 1
+      else found = u16(b, r + 4) + g - u16(b, r)
+    }
+  } else ()
+  found
+}
+
+// The class of glyph `g` in the class definition at `off` (0 when absent).
+fn class_of(b: Bytes, off: Int, g: Int) -> Int =
+  if off == 0 then 0
+  else {
+    let fmt = u16(b, off)
+    if fmt == 1 then {
+      let start = u16(b, off + 2)
+      if g >= start and g < start + u16(b, off + 4) then u16(b, off + 6 + (g - start) * 2) else 0
+    } else if fmt == 2 then {
+      var lo = 0
+      var hi = u16(b, off + 2) - 1
+      var found = 0
+      var done = false
+      while lo <= hi and not done {
+        let mid = (lo + hi) / 2
+        let r = off + 4 + mid * 6
+        if g < u16(b, r) then hi = mid - 1
+        else if g > u16(b, r + 2) then lo = mid + 1
+        else { found = u16(b, r + 4); done = true }
+      }
+      found
+    } else 0
+  }
+
+// ── Tables ──
+
+// The layout tables of `f`.
+pub fn layout(f: font.Font) -> Layout = {
+  let b = f.data
+  let gdef = font.table(f, tag("GDEF"))
+  let at = (rel: Int) => if gdef == 0 or rel == 0 then 0 else gdef + rel
+  {
+    gdef: gdef,
+    classes: if gdef == 0 then 0 else at(u16(b, gdef + 4)),
+    mark_classes: if gdef == 0 then 0 else at(u16(b, gdef + 10)),
+    mark_sets: if gdef == 0 or u16(b, gdef + 2) < 2 then 0 else at(u16(b, gdef + 12)),
+    gsub: font.table(f, tag("GSUB")),
+    gpos: font.table(f, tag("GPOS")),
+  }
+}
+
+// The GDEF class of glyph `g`: 1 base, 2 ligature, 3 mark, 4 component (0 unknown).
+pub fn glyph_class(f: font.Font, lay: Layout, g: Int) -> Int = class_of(f.data, lay.classes, g)
+
+// The default language system of the first of `scripts` the table has
+// (then 'DFLT'); 0 when none.
+fn lang_sys(b: Bytes, table: Int, scripts: List[Int]) -> Int = {
+  let sl = table + u16(b, table + 4)
+  let n = u16(b, sl)
+  var found = 0
+  for t in scripts + [tag("DFLT")] {
+    if found == 0 then {
+      for k in 0..<n {
+        let rec = sl + 2 + k * 6
+        if found == 0 and u32(b, rec) == t then {
+          let script = sl + u16(b, rec + 4)
+          let dl = u16(b, script)
+          if dl != 0 then found = script + dl else ()
+        } else ()
+      }
+    } else ()
+  }
+  found
+}
+
+// The lookups feature `ftag` lists under the language system `ls`.
+fn feature_lookups(b: Bytes, table: Int, ls: Int, ftag: Int) -> List[Int] = {
+  let fl = table + u16(b, table + 6)
+  var out: List[Int] = []
+  for k in 0..<u16(b, ls + 4) {
+    let fi = u16(b, ls + 6 + k * 2)
+    let rec = fl + 2 + fi * 6
+    if u32(b, rec) == ftag then {
+      let feat = fl + u16(b, rec + 4)
+      for m in 0..<u16(b, feat + 2) { list.push(out, u16(b, feat + 4 + m * 2)) }
+    } else ()
+  }
+  out
+}
+
+// The lookups of `features` in the GSUB (or GPOS) table for the first of
+// `scripts` the font has, in lookup order, each with the mask of the
+// features that use it. Applied together, as one stage.
+pub fn stage(f: font.Font, lay: Layout, gpos: Bool, scripts: List[Int], features: List[Feature]) -> List[Entry] = {
+  let table = if gpos then lay.gpos else lay.gsub
+  if table == 0 then []
+  else {
+    let b = f.data
+    let ls = lang_sys(b, table, scripts)
+    if ls == 0 then []
+    else {
+      var entries: List[Entry] = []
+      for ft in features {
+        for li in feature_lookups(b, table, ls, ft.tag) {
+          match list.find_index(entries, (e) => e.lookup == li) {
+            some(k) => {
+              let e = entries[k]
+              entries[k] = { ...e, mask: int.bor(e.mask, ft.mask), auto_zwj: e.auto_zwj and not ft.manual,
+                             auto_zwnj: e.auto_zwnj and not ft.manual, per_syllable: e.per_syllable or ft.per_syllable }
+            },
+            none => list.push(entries, { lookup: li, mask: ft.mask, auto_zwj: not ft.manual, auto_zwnj: not ft.manual, per_syllable: ft.per_syllable }),
+          }
+        }
+      }
+      list.sort_by(entries, (e) => e.lookup)
+    }
+  }
+}
+
+// ── Lookups ──
+
+type Lookup = { kind: Int, flag: Int, subs: List[Int], set: Int }
+
+fn lookup_at(b: Bytes, table: Int, gpos: Bool, idx: Int) -> Lookup = {
+  let ll = table + u16(b, table + 8)
+  let lk = ll + u16(b, ll + 2 + idx * 2)
+  let kind = u16(b, lk)
+  let flag = u16(b, lk + 2)
+  let n = u16(b, lk + 4)
+  let ext = (gpos and kind == 9) or (not gpos and kind == 7)
+  var subs: List[Int] = []
+  var real = kind
+  for k in 0..<n {
+    let s = lk + u16(b, lk + 6 + k * 2)
+    if ext then { real = u16(b, s + 2); list.push(subs, s + u32(b, s + 4)) } else list.push(subs, s)
+  }
+  { kind: real, flag: flag, subs: subs, set: if int.band(flag, 16) != 0 then u16(b, lk + 6 + n * 2) else 0 }
+}
+
+type Ctx = { b: Bytes, lay: Layout, table: Int, gpos: Bool, mask: Int, zwj: Bool, zwnj: Bool, per_syllable: Bool }
+
+fn in_mark_set(c: Ctx, set: Int, g: Int) -> Bool =
+  if c.lay.mark_sets == 0 or set >= u16(c.b, c.lay.mark_sets + 2) then false
+  else coverage(c.b, c.lay.mark_sets + u32(c.b, c.lay.mark_sets + 4 + set * 4), g) >= 0
+
+// Whether the lookup skips glyph `g`: 0 no, 1 yes, 2 only when it does not
+// match (a joiner the lookup may look through).
+fn skip_kind(c: Ctx, lk: Lookup, g: Info, context: Bool) -> Int = {
+  let cls = g.gclass
+  let fl = lk.flag
+  let by_class = (int.band(fl, 2) != 0 and cls == 1) or (int.band(fl, 4) != 0 and cls == 2) or (int.band(fl, 8) != 0 and cls == 3)
+    or (cls == 3 and int.band(fl, 16) != 0 and not in_mark_set(c, lk.set, g.gid))
+    or (cls == 3 and int.band(fl, 16) == 0 and int.bshr(fl, 8) != 0 and class_of(c.b, c.lay.mark_classes, g.gid) != int.bshr(fl, 8))
+  if by_class then 1
+  else {
+    let ignore_zwnj = c.gpos or (context and c.zwnj)
+    let ignore_zwj = context or c.zwj
+    if (g.cp == 0x200C and ignore_zwnj) or (g.cp == 0x200D and ignore_zwj) then 2 else 0
+  }
+}
+
+// What a sequence element matches: glyph ids (kind 0), classes of a class
+// definition (1), coverage tables (2), or anything (3).
+type Seq = { kind: Int, cd: Int, vals: List[Int] }
+
+fn seq_ok(b: Bytes, s: Seq, k: Int, g: Int) -> Bool =
+  if s.kind == 0 then s.vals[k] == g
+  else if s.kind == 1 then class_of(b, s.cd, g) == s.vals[k]
+  else if s.kind == 2 then coverage(b, s.vals[k], g) >= 0
+  else true
+
+fn any_seq() -> Seq = { kind: 3, cd: 0, vals: [0] }
+
+// The next glyph from `from` in direction `dir` the lookup sees that
+// matches element k of `s` (-1 = none). Input glyphs (context false) need
+// the lookup's mask and the syllable `syl` (0 = any).
+fn step(c: Ctx, lk: Lookup, buf: List[Info], from: Int, dir: Int, s: Seq, k: Int, context: Bool, syl: Int) -> Int = {
+  var j = from + dir
+  var res = -2
+  let n = list.len(buf)
+  while res == -2 {
+    if j < 0 or j >= n then res = -1
+    else {
+      let g = buf[j]
+      let sk = skip_kind(c, lk, g, context)
+      if sk == 1 then j = j + dir
+      else {
+        let hit = (context or int.band(g.mask, c.mask) != 0) and (syl == 0 or g.syl == syl) and seq_ok(c.b, s, k, g.gid)
+        if hit then res = j
+        else if sk == 2 then j = j + dir
+        else res = -1
+      }
+    }
+  }
+  res
+}
+
+// The positions of an input sequence that starts at i (whose first glyph
+// matched already) and goes on with `rest`: [] when it does not match.
+fn match_input(c: Ctx, lk: Lookup, buf: List[Info], i: Int, rest: Seq) -> List[Int] = {
+  var ps = [i]
+  var j = i
+  var good = true
+  let syl = if c.per_syllable then buf[i].syl else 0
+  for k in 0..<list.len(rest.vals) {
+    if good then {
+      j = step(c, lk, buf, j, 1, rest, k, false, syl)
+      if j < 0 then good = false else list.push(ps, j)
+    } else ()
+  }
+  if good then ps else []
+}
+
+// Whether `s` matches the glyphs before (dir -1) or after (dir 1) `from`.
+fn match_around(c: Ctx, lk: Lookup, buf: List[Info], from: Int, dir: Int, s: Seq) -> Bool = {
+  var j = from
+  var good = true
+  for k in 0..<list.len(s.vals) {
+    if good then {
+      j = step(c, lk, buf, j, dir, s, k, true, 0)
+      if j < 0 then good = false else ()
+    } else ()
+  }
+  good
+}
+
+fn words(b: Bytes, p: Int, n: Int) -> List[Int] = list.map(list.range(0, n), (k) => u16(b, p + k * 2))
+fn offsets(b: Bytes, base: Int, p: Int, n: Int) -> List[Int] = list.map(list.range(0, n), (k) => base + u16(b, p + k * 2))
+fn records(b: Bytes, p: Int, n: Int) -> List[(Int, Int)] = list.map(list.range(0, n), (k) => (u16(b, p + k * 4), u16(b, p + k * 4 + 2)))
+
+// A matched context rule: the input positions and the lookups to run at them.
+type Match = { ps: List[Int], recs: List[(Int, Int)] }
+
+fn no_match() -> Match = { ps: [], recs: [] }
+
+fn try_rule(c: Ctx, lk: Lookup, buf: List[Info], i: Int, back: Seq, rest: Seq, ahead: Seq, recs: List[(Int, Int)]) -> Match = {
+  let ps = match_input(c, lk, buf, i, rest)
+  if list.len(ps) == 0 then no_match()
+  else if not match_around(c, lk, buf, i, -1, back) then no_match()
+  else if not match_around(c, lk, buf, ps[list.len(ps) - 1], 1, ahead) then no_match()
+  else { ps: ps, recs: recs }
+}
+
+fn empty_seq() -> Seq = { kind: 0, cd: 0, vals: [] }
+
+// Context (chain: chained context) subtable `s` at glyph i, any format.
+fn context_match(c: Ctx, lk: Lookup, s: Int, buf: List[Info], i: Int, chain: Bool) -> Match = {
+  let b = c.b
+  let g = buf[i].gid
+  let fmt = u16(b, s)
+  if fmt == 3 and not chain then {
+    let gc = u16(b, s + 2)
+    let covs = offsets(b, s, s + 6, gc)
+    if gc == 0 or coverage(b, covs[0], g) < 0 then no_match()
+    else try_rule(c, lk, buf, i, empty_seq(), { kind: 2, cd: 0, vals: list.drop(covs, 1) }, empty_seq(), records(b, s + 6 + gc * 2, u16(b, s + 4)))
+  } else if fmt == 3 then {
+    let bc = u16(b, s + 2)
+    let back = offsets(b, s, s + 4, bc)
+    let ip = s + 4 + bc * 2
+    let ic = u16(b, ip)
+    let input = offsets(b, s, ip + 2, ic)
+    let ap = ip + 2 + ic * 2
+    let ac = u16(b, ap)
+    let ahead = offsets(b, s, ap + 2, ac)
+    let rp = ap + 2 + ac * 2
+    if ic == 0 or coverage(b, input[0], g) < 0 then no_match()
+    else try_rule(c, lk, buf, i, { kind: 2, cd: 0, vals: back }, { kind: 2, cd: 0, vals: list.drop(input, 1) }, { kind: 2, cd: 0, vals: ahead }, records(b, rp + 2, u16(b, rp)))
+  } else if fmt == 1 or fmt == 2 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    if ci < 0 then no_match()
+    else {
+      // format 2: rule sets by class; chained context has three class definitions
+      let back_cd = if fmt == 2 and chain then s + u16(b, s + 4) else 0
+      let in_cd = if fmt == 2 then s + u16(b, s + (if chain then 6 else 4)) else 0
+      let ahead_cd = if fmt == 2 and chain then s + u16(b, s + 8) else 0
+      let count_at = if fmt == 1 then s + 4 else if chain then s + 10 else s + 6
+      let set_index = if fmt == 1 then ci else class_of(b, in_cd, g)
+      let kind = if fmt == 1 then 0 else 1
+      if set_index >= u16(b, count_at) or u16(b, count_at + 2 + set_index * 2) == 0 then no_match()
+      else {
+        let set = s + u16(b, count_at + 2 + set_index * 2)
+        var res = no_match()
+        for k in 0..<u16(b, set) {
+          if list.len(res.ps) == 0 then {
+            let r = set + u16(b, set + 2 + k * 2)
+            if chain then {
+              let bc = u16(b, r)
+              let ip = r + 2 + bc * 2
+              let ic = u16(b, ip)
+              let ap = ip + 2 + int.max(0, ic - 1) * 2
+              let ac = u16(b, ap)
+              let rp = ap + 2 + ac * 2
+              res = try_rule(c, lk, buf, i, { kind: kind, cd: back_cd, vals: words(b, r + 2, bc) },
+                             { kind: kind, cd: in_cd, vals: words(b, ip + 2, int.max(0, ic - 1)) },
+                             { kind: kind, cd: ahead_cd, vals: words(b, ap + 2, ac) }, records(b, rp + 2, u16(b, rp)))
+            } else {
+              let gc = u16(b, r)
+              let lc = u16(b, r + 2)
+              res = try_rule(c, lk, buf, i, empty_seq(), { kind: kind, cd: in_cd, vals: words(b, r + 4, int.max(0, gc - 1)) },
+                             empty_seq(), records(b, r + 4 + int.max(0, gc - 1) * 2, lc))
+            }
+          } else ()
+        }
+        res
+      }
+    }
+  } else no_match()
+}
+
+// Match positions after a nested lookup changed the buffer's length by d
+// at match index si (HarfBuzz's adjustment).
+fn shift_positions(ps: List[Int], si: Int, d: Int) -> List[Int] =
+  if d == 0 then ps
+  else if d < 0 then {
+    let k = int.min(0 - d, list.len(ps) - si - 1)
+    list.take(ps, si + 1) + list.map(list.drop(ps, si + 1 + k), (x) => x + d)
+  } else {
+    let p0 = ps[si]
+    list.take(ps, si + 1) + list.map(list.range(1, d + 1), (k) => p0 + k) + list.map(list.drop(ps, si + 1), (x) => x + d)
+  }
+
+// ── GSUB ──
+
+type Step = { buf: List[Info], next: Int, ok: Bool }
+
+fn with_gid(c: Ctx, g: Info, gid: Int) -> Info = { ...g, gid: gid, gclass: class_of(c.b, c.lay.classes, gid) }
+
+fn replace_at(buf: List[Info], i: Int, g: Info) -> List[Info] = {
+  var out = buf
+  out[i] = g
+  out
+}
+
+// The first subtable of `lk` that applies at glyph i.
+fn gsub_apply(c: Ctx, lk: Lookup, buf: List[Info], i: Int) -> Step = {
+  var res = { buf: buf, next: i + 1, ok: false }
+  for s in lk.subs {
+    if not res.ok then res = gsub_sub(c, lk, s, buf, i) else ()
+  }
+  res
+}
+
+fn gsub_sub(c: Ctx, lk: Lookup, s: Int, buf: List[Info], i: Int) -> Step = {
+  let b = c.b
+  let g = buf[i].gid
+  let no = { buf: buf, next: i + 1, ok: false }
+  let fmt = u16(b, s)
+  if lk.kind == 1 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    if ci < 0 then no
+    else {
+      let ng = if fmt == 1 then int.band(g + i16(b, s + 4), 65535) else u16(b, s + 6 + ci * 2)
+      { buf: replace_at(buf, i, with_gid(c, buf[i], ng)), next: i + 1, ok: true }
+    }
+  } else if lk.kind == 2 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    if ci < 0 then no
+    else {
+      let seq = s + u16(b, s + 6 + ci * 2)
+      let gids = words(b, seq + 2, u16(b, seq))
+      let n = list.len(gids)
+      if n == 1 then { buf: replace_at(buf, i, with_gid(c, buf[i], gids[0])), next: i + 1, ok: true }
+      else {
+        let made = list.map(gids, (ng) => { ...with_gid(c, buf[i], ng), multiplied: true })
+        { buf: list.take(buf, i) + made + list.drop(buf, i + 1), next: i + n, ok: true }
+      }
+    }
+  } else if lk.kind == 4 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    if ci < 0 then no
+    else {
+      let set = s + u16(b, s + 6 + ci * 2)
+      var res = no
+      for k in 0..<u16(b, set) {
+        if not res.ok then {
+          let lig = set + u16(b, set + 2 + k * 2)
+          let cc = u16(b, lig + 2)
+          let ps = match_input(c, lk, buf, i, { kind: 0, cd: 0, vals: words(b, lig + 4, int.max(0, cc - 1)) })
+          if list.len(ps) > 0 then res = ligate(c, buf, ps, u16(b, lig)) else ()
+        } else ()
+      }
+      res
+    }
+  } else if lk.kind == 5 or lk.kind == 6 then {
+    let m = context_match(c, lk, s, buf, i, lk.kind == 6)
+    if list.len(m.ps) == 0 then no else gsub_records(c, buf, m)
+  } else no
+}
+
+// Matched glyphs ps become one ligature glyph; glyphs skipped between them
+// stay, and the clusters from the first to the last merge.
+fn ligate(c: Ctx, buf: List[Info], ps: List[Int], lg: Int) -> Step = {
+  let first = ps[0]
+  let last = ps[list.len(ps) - 1]
+  var cl = buf[first].cluster
+  for k in first...last { cl = int.min(cl, buf[k].cluster) }
+  // neighbours in the clusters at either end merge too
+  var lo = first
+  while lo > 0 and buf[lo - 1].cluster == buf[first].cluster { lo = lo - 1 }
+  var hi = last
+  while hi + 1 < list.len(buf) and buf[hi + 1].cluster == buf[last].cluster { hi = hi + 1 }
+  var out: List[Info] = []
+  for k in 0..<list.len(buf) {
+    if k == first then list.push(out, { ...with_gid(c, buf[k], lg), ligated: true, multiplied: false, cluster: cl })
+    else if k > first and k <= last and list.contains(ps, k) then ()
+    else if k >= lo and k <= hi then list.push(out, { ...buf[k], cluster: cl })
+    else list.push(out, buf[k])
+  }
+  { buf: out, next: last - (list.len(ps) - 1) + 1, ok: true }
+}
+
+fn gsub_records(c: Ctx, buf: List[Info], m: Match) -> Step = {
+  var bb = buf
+  var ps = m.ps
+  var end = ps[list.len(ps) - 1] + 1
+  for r in m.recs {
+    let (si, li) = r
+    if si < list.len(ps) then {
+      let n0 = list.len(bb)
+      let st = gsub_apply(c, lookup_at(c.b, c.table, false, li), bb, ps[si])
+      if st.ok then {
+        let d = list.len(st.buf) - n0
+        bb = st.buf
+        end = int.max(end + d, ps[si] + 1)
+        ps = shift_positions(ps, si, d)
+      } else ()
+    } else ()
+  }
+  { buf: bb, next: end, ok: true }
+}
+
+// Run a GSUB stage over the buffer.
+pub fn substitute(f: font.Font, lay: Layout, entries: List[Entry], buf: List[Info]) -> List[Info] = {
+  var bb = buf
+  for e in entries {
+    let c = { b: f.data, lay: lay, table: lay.gsub, gpos: false, mask: e.mask, zwj: e.auto_zwj, zwnj: e.auto_zwnj, per_syllable: e.per_syllable }
+    let lk = lookup_at(c.b, lay.gsub, false, e.lookup)
+    var i = 0
+    while i < list.len(bb) {
+      let g = bb[i]
+      if int.band(g.mask, e.mask) != 0 and skip_kind(c, lk, g, false) != 1 then {
+        let st = gsub_apply(c, lk, bb, i)
+        // a deleted glyph leaves i at the next one
+        if st.ok then {
+          let shrank = list.len(st.buf) < list.len(bb)
+          bb = st.buf
+          i = int.max(st.next, if shrank then i else i + 1)
+        } else i = i + 1
+      } else i = i + 1
+    }
+  }
+  bb
+}
+
+// Whether any lookup of the stage turns `gids` (on their own) into
+// something else: how a shaper asks the font which forms it has.
+pub fn would_substitute(f: font.Font, lay: Layout, entries: List[Entry], gids: List[Int]) -> Bool = {
+  let buf = list.map(gids, (g) => { gid: g, cp: 0, cluster: 0, mask: -1, cat: 0, pos: 0, syl: 0,
+                                     gclass: class_of(f.data, lay.classes, g), ligated: false, multiplied: false })
+  var hit = false
+  for e in entries {
+    if not hit then {
+      let c = { b: f.data, lay: lay, table: lay.gsub, gpos: false, mask: -1, zwj: false, zwnj: false, per_syllable: false }
+      let lk = lookup_at(c.b, lay.gsub, false, e.lookup)
+      let st = gsub_apply(c, lk, buf, 0)
+      // the whole sequence must take part
+      if st.ok and (list.len(gids) == 1 or list.len(st.buf) < list.len(buf) or lk.kind == 5 or lk.kind == 6) then hit = true else ()
+    } else ()
+  }
+  hit
+}
+
+// ── GPOS ──
+
+type PStep = { pos: List[Pos], next: Int, ok: Bool }
+
+fn value_size(vf: Int) -> Int = {
+  var n = 0
+  for k in 0..<8 { if int.band(vf, int.bshl(1, k)) != 0 then n = n + 2 else () }
+  n
+}
+
+// Add the value record (format vf) at p to a position.
+fn add_value(b: Bytes, vf: Int, p: Int, ps: Pos) -> Pos = {
+  var q = p
+  var r = ps
+  if int.band(vf, 1) != 0 then { r = { ...r, xo: r.xo + i16(b, q) }; q = q + 2 } else ()
+  if int.band(vf, 2) != 0 then { r = { ...r, yo: r.yo + i16(b, q) }; q = q + 2 } else ()
+  if int.band(vf, 4) != 0 then { r = { ...r, xa: r.xa + i16(b, q) }; q = q + 2 } else ()
+  if int.band(vf, 8) != 0 then { r = { ...r, ya: r.ya + i16(b, q) } } else ()
+  r
+}
+
+fn anchor(b: Bytes, a: Int) -> (Int, Int) = (i16(b, a + 2), i16(b, a + 4))
+
+fn gpos_apply(c: Ctx, lk: Lookup, buf: List[Info], pos: List[Pos], i: Int) -> PStep = {
+  var res = { pos: pos, next: i + 1, ok: false }
+  for s in lk.subs {
+    if not res.ok then res = gpos_sub(c, lk, s, buf, pos, i) else ()
+  }
+  res
+}
+
+fn gpos_sub(c: Ctx, lk: Lookup, s: Int, buf: List[Info], pos: List[Pos], i: Int) -> PStep = {
+  let b = c.b
+  let g = buf[i].gid
+  let no = { pos: pos, next: i + 1, ok: false }
+  let fmt = u16(b, s)
+  if lk.kind == 1 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    if ci < 0 then no
+    else {
+      let vf = u16(b, s + 4)
+      let p = if fmt == 1 then s + 6 else s + 8 + ci * value_size(vf)
+      var out = pos
+      out[i] = add_value(b, vf, p, pos[i])
+      { pos: out, next: i + 1, ok: true }
+    }
+  } else if lk.kind == 2 then {
+    let ci = coverage(b, s + u16(b, s + 2), g)
+    let j = if ci < 0 then -1 else step(c, lk, buf, i, 1, any_seq(), 0, false, 0)
+    if j < 0 then no
+    else {
+      let vf1 = u16(b, s + 4)
+      let vf2 = u16(b, s + 6)
+      let sz1 = value_size(vf1)
+      let sz2 = value_size(vf2)
+      var rec = -1
+      if fmt == 1 then {
+        let set = s + u16(b, s + 10 + ci * 2)
+        let n = u16(b, set)
+        let size = 2 + sz1 + sz2
+        var lo = 0
+        var hi = n - 1
+        while lo <= hi and rec < 0 {
+          let mid = (lo + hi) / 2
+          let r = set + 2 + mid * size
+          let v = u16(b, r)
+          if v == buf[j].gid then rec = r + 2 else if v < buf[j].gid then lo = mid + 1 else hi = mid - 1
+        }
+      } else if fmt == 2 then {
+        let c1 = class_of(b, s + u16(b, s + 8), g)
+        let c2 = class_of(b, s + u16(b, s + 10), buf[j].gid)
+        if c1 < u16(b, s + 12) and c2 < u16(b, s + 14) then rec = s + 16 + (c1 * u16(b, s + 14) + c2) * (sz1 + sz2) else ()
+      } else ()
+      if rec < 0 then no
+      else {
+        var out = pos
+        out[i] = add_value(b, vf1, rec, pos[i])
+        out[j] = add_value(b, vf2, rec + sz1, pos[j])
+        { pos: out, next: if vf2 != 0 then j + 1 else j, ok: true }
+      }
+    }
+  } else if lk.kind == 4 then {
+    let mc = coverage(b, s + u16(b, s + 2), g)
+    // the base: the glyph before, past other marks
+    var k = i - 1
+    while k >= 0 and (buf[k].gclass == 3 or buf[k].cp == 0x200C or buf[k].cp == 0x200D) { k = k - 1 }
+    let bc = if mc < 0 or k < 0 then -1 else coverage(b, s + u16(b, s + 4), buf[k].gid)
+    if bc < 0 then no
+    else {
+      let classes = u16(b, s + 6)
+      let ma = s + u16(b, s + 8)
+      let ba = s + u16(b, s + 10)
+      let mrec = ma + 2 + mc * 4
+      let boff = u16(b, ba + 2 + (bc * classes + u16(b, mrec)) * 2)
+      if boff == 0 then no else attach(b, pos, i, k, ba + boff, ma + u16(b, mrec + 2))
+    }
+  } else if lk.kind == 6 then {
+    let m1 = coverage(b, s + u16(b, s + 2), g)
+    // the mark before, past marks the lookup skips
+    var j = i - 1
+    while j >= 0 and buf[j].gclass == 3 and int.band(lk.flag, 16) != 0 and not in_mark_set(c, lk.set, buf[j].gid) { j = j - 1 }
+    let m2 = if m1 < 0 or j < 0 or buf[j].gclass != 3 then -1 else coverage(b, s + u16(b, s + 4), buf[j].gid)
+    if m2 < 0 then no
+    else {
+      let classes = u16(b, s + 6)
+      let m1a = s + u16(b, s + 8)
+      let m2a = s + u16(b, s + 10)
+      let mrec = m1a + 2 + m1 * 4
+      let off = u16(b, m2a + 2 + (m2 * classes + u16(b, mrec)) * 2)
+      if off == 0 then no else attach(b, pos, i, j, m2a + off, m1a + u16(b, mrec + 2))
+    }
+  } else if lk.kind == 7 or lk.kind == 8 then {
+    let m = context_match(c, lk, s, buf, i, lk.kind == 8)
+    if list.len(m.ps) == 0 then no
+    else {
+      var out = pos
+      for r in m.recs {
+        let (si, li) = r
+        if si < list.len(m.ps) then out = gpos_apply(c, lookup_at(b, c.table, true, li), buf, out, m.ps[si]).pos else ()
+      }
+      { pos: out, next: m.ps[list.len(m.ps) - 1] + 1, ok: true }
+    }
+  } else no
+}
+
+// Mark i hangs from glyph `to`: its anchor `ma` on that glyph's anchor `ta`.
+fn attach(b: Bytes, pos: List[Pos], i: Int, to: Int, ta: Int, ma: Int) -> PStep = {
+  let (tx, ty) = anchor(b, ta)
+  let (mx, my) = anchor(b, ma)
+  var out = pos
+  out[i] = { ...pos[i], xo: tx - mx, yo: ty - my, attach: to }
+  { pos: out, next: i + 1, ok: true }
+}
+
+// Run a GPOS stage: the positions of the buffer's glyphs, starting from
+// their advances in `pos`.
+pub fn position(f: font.Font, lay: Layout, entries: List[Entry], buf: List[Info], pos: List[Pos]) -> List[Pos] = {
+  var out = pos
+  for e in entries {
+    let c = { b: f.data, lay: lay, table: lay.gpos, gpos: true, mask: e.mask, zwj: e.auto_zwj, zwnj: e.auto_zwnj, per_syllable: e.per_syllable }
+    let lk = lookup_at(c.b, lay.gpos, true, e.lookup)
+    var i = 0
+    while i < list.len(buf) {
+      let g = buf[i]
+      if int.band(g.mask, e.mask) != 0 and skip_kind(c, lk, g, false) != 1 then {
+        let st = gpos_apply(c, lk, buf, out, i)
+        if st.ok then { out = st.pos; i = int.max(st.next, i + 1) } else i = i + 1
+      } else i = i + 1
+    }
+  }
+  out
+}
