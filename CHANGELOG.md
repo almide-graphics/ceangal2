@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- Emoji ZWJ sequences, flags and pointed Hebrew inside right-to-left text
+  stay whole (clusters are laid out from the right).
 - **`ed.with_align_end`**: a text field or editor whose line reads right
   to left starts it at the right edge; clicks and the caret follow.
 - **Arabic shaped with the font's OpenType tables**, as HarfBuzz does:

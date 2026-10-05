@@ -24,3 +24,9 @@ tap "Note"
 type "ب"
 see "Note = مرحباب"
 shot "rtl-aligned.png"
+# An emoji ZWJ sequence and pointed Hebrew in right-to-left text stay whole
+# (clusters are laid out from the right, not code points reversed).
+key End
+type " 👨‍👩‍👧 שָׁלוֹם"
+see "Note = مرحباب 👨‍👩‍👧 שָׁלוֹם"
+shot "rtl-emoji.png"

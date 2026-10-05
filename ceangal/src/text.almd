@@ -99,7 +99,7 @@ fn load_asset(name: String) -> Bytes = {
 }
 
 fn font_at(slot: Int) -> font.Font = {
-  if list.len(fonts) == 0 then fonts = list.map(FONT_FILES, (f) => font.empty_font()) else ()
+  if list.len(fonts) == 0 then fonts = list.repeat(font.empty_font(), list.len(FONT_FILES)) else ()
   if not font_tried[slot] then {
     let f = font.parse(load_asset(FONT_FILES[slot]))
     fonts[slot] = f
@@ -241,12 +241,16 @@ fn emoji_glyphs(f: font.Font, cps: List[Int]) -> List[Int] = {
     emoji_stage = otl.stage(f, lay, false, [], [feat("ccmp"), feat("locl"), feat("rlig"), feat("liga"), feat("clig"), feat("calt")])
     emoji_stage_made = true
   } else ()
-  let buf = list.map(cps, (cp) => {
+  var buf: List[otl.Info] = []
+  for cp in cps {
     let g = font.glyph_index(f, cp)
-    { gid: g, cp: cp, cluster: 0, mask: 1, cat: 0, pos: 0, syl: 0, gclass: otl.glyph_class(f, lay, g), ligated: false, multiplied: false, comp: 0 }
-  })
-  let out = otl.substitute(f, lay, emoji_stage, buf)
-  list.map(list.filter(out, (g) => g.ligated or not (g.cp == 0x200D or g.cp == 0xFE0F or tag_char(g.cp) or g.cp == 0x20E3)), (g) => g.gid)
+    list.push(buf, { gid: g, cp: cp, cluster: 0, mask: 1, cat: 0, pos: 0, syl: 0, gclass: otl.glyph_class(f, lay, g), ligated: false, multiplied: false, comp: 0 })
+  }
+  var gids: List[Int] = []
+  for g in otl.substitute(f, lay, emoji_stage, buf) {
+    if g.ligated or not (g.cp == 0x200D or g.cp == 0xFE0F or tag_char(g.cp) or g.cp == 0x20E3) then list.push(gids, g.gid) else ()
+  }
+  gids
 }
 
 // Emoji sequences shaped already: by text.
@@ -256,8 +260,15 @@ var emoji_cache: Map[String, List[Int]] = map.new()
 // the font): by font slot and text.
 var indic_cache: Map[String, List[indic.Out]] = map.new()
 
+// A cache key for a run of code points.
+fn key_of(cps: List[Int]) -> String = {
+  var key = ""
+  for c in cps { key = key + int.to_string(c) + "," }
+  key
+}
+
 fn shape_indic(slot: Int, script: Int, cps: List[Int]) -> List[indic.Out] = {
-  let key = int.to_string(slot) + ":" + string.join(list.map(cps, (c) => int.to_string(c)), ",")
+  let key = int.to_string(slot) + ":" + key_of(cps)
   match map.get(indic_cache, key) {
     some(gs) => gs,
     none => {
@@ -288,7 +299,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
       let f = font_at(FONT_COLOR_EMOJI)
       let k = size / f.units_per_em
       let seq = list.slice(cps, i, e_end)
-      let key = string.join(list.map(seq, (c) => int.to_string(c)), ",")
+      let key = key_of(seq)
       let gids = match map.get(emoji_cache, key) {
         some(gs) => gs,
         none => {
@@ -417,8 +428,7 @@ pub fn backspace_to(cps: List[Int], col: Int) -> Int =
 var arabic_cache: Map[String, List[arabic.Out]] = map.new()
 
 fn shape_arabic(cps: List[Int]) -> List[arabic.Out] = {
-  var key = ""
-  for c in cps { key = key + int.to_string(c) + "," }
+  let key = key_of(cps)
   match map.get(arabic_cache, key) {
     some(gs) => gs,
     none => {
@@ -476,12 +486,25 @@ pub fn shape_line(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int
           adv = adv + int.to_float(g.advance) * sc
         }
       } else {
-        // right to left: reversed and mirrored, glyph by glyph
+        // shaped in logical order; right to left, the clusters are then laid
+        // out from the right, each as shaped (an emoji sequence, a letter
+        // with its points) and brackets mirrored
         var run: List[Int] = []
-        for j in lo..<hi { list.push(run, if k == 1 then bidi.mirror(cps[hi - 1 - (j - lo)]) else cps[j]) }
-        for g in shape(run, size, mono, bold) {
-          list.push(out, { ...g, x: g.x + x, cluster: if k == 1 then hi - 1 - g.cluster else lo + g.cluster })
-          adv = float.max(adv, g.x + g.advance)
+        for j in lo..<hi { list.push(run, if k == 1 then bidi.mirror(cps[j]) else cps[j]) }
+        let gs = shape(run, size, mono, bold)
+        for g in gs { adv = float.max(adv, g.x + g.advance) }
+        let m = list.len(gs)
+        var i = 0
+        while i < m {
+          var j = i + 1
+          while j < m and gs[j].cluster == gs[i].cluster { j = j + 1 }
+          let c0 = gs[i].x
+          let c1 = if j < m then gs[j].x else adv
+          for t in i..<j {
+            let g = gs[t]
+            list.push(out, { ...g, x: x + (if k == 1 then adv - c1 + g.x - c0 else g.x), cluster: lo + g.cluster })
+          }
+          i = j
         }
       }
       x = x + adv
@@ -538,11 +561,13 @@ pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) 
       c = e
     }
     // the caret after a character: on its trailing side (left, when right to left)
-    let caret = list.map(list.range(0, n + 1), (p) =>
-      if n == 0 then 0.0
-      else if p == 0 then (if lv[0] % 2 == 1 then right[0] else left[0])
-      else if lv[p - 1] % 2 == 1 then left[p - 1]
-      else right[p - 1])
+    var caret: List[Float] = []
+    for p in 0..<(n + 1) {
+      list.push(caret, if n == 0 then 0.0
+        else if p == 0 then (if lv[0] % 2 == 1 then right[0] else left[0])
+        else if lv[p - 1] % 2 == 1 then left[p - 1]
+        else right[p - 1])
+    }
     { caret: caret, left: left, right: right, glyphs: gs, ordered: false }
   }
 }
@@ -574,7 +599,9 @@ pub fn geo_spans(g: LineGeo, a: Int, b: Int) -> List[(Float, Float)] =
   if b <= a then []
   else if g.ordered then [(g.caret[a], g.caret[b])]
   else {
-    let rects = list.sort_by(list.map(list.range(a, b), (k) => (g.left[k], g.right[k])), (r) => r.0)
+    var spans: List[(Float, Float)] = []
+    for k in a..<b { list.push(spans, (g.left[k], g.right[k])) }
+    let rects = list.sort_by(spans, (r) => r.0)
     var out: List[(Float, Float)] = []
     for r in rects {
       let m = list.len(out)
@@ -586,7 +613,12 @@ pub fn geo_spans(g: LineGeo, a: Int, b: Int) -> List[(Float, Float)] =
 
 // The glyphs that draw characters a..b.
 pub fn geo_glyphs(g: LineGeo, a: Int, b: Int) -> List[Glyph] =
-  if g.ordered then glyphs_in(g.glyphs, a, b) else list.filter(g.glyphs, (x) => x.cluster >= a and x.cluster < b)
+  if g.ordered then glyphs_in(g.glyphs, a, b)
+  else {
+    var out: List[Glyph] = []
+    for x in g.glyphs { if x.cluster >= a and x.cluster < b then list.push(out, x) else () }
+    out
+  }
 
 // The caret position in 0..n nearest to x that `allowed` allows (a caret stop).
 pub fn geo_nearest(g: LineGeo, x: Float, allowed: List[Bool]) -> Int = {
@@ -629,8 +661,11 @@ pub fn line_height(size: Float, mono: Bool) -> Float = {
 }
 
 // The width of `s` on one line at `size`.
-pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float =
-  list.fold(shape_line(codepoints(s), size, mono, bold, -1), 0.0, (w, g) => float.max(w, g.x + g.advance))
+pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float = {
+  var w = 0.0
+  for g in shape_line(codepoints(s), size, mono, bold, -1) { w = float.max(w, g.x + g.advance) }
+  w
+}
 
 // The size of `s` drawn on one line.
 pub fn measure(s: String, size: Float, mono: Bool) -> Extent =

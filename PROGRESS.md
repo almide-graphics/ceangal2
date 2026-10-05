@@ -4,6 +4,10 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- RTL 文中の emoji ZWJ 列・国旗・点付きヘブライ文字が崩れないように修正
+  (RTL 区間を論理順で整形し、クラスタ単位で右から並べる)。gallery の
+  rtl.test に家族絵文字と שָׁלוֹם を入れ、スクショで確認。wasm は
+  クロージャをループ化して予算内 (gallery 224.9 / 225 KB、余裕ほぼなし)。
 - テキストフィールドの RTL 右寄せオプション `ed.with_align_end` を追加。
   描画とクリック位置の両方に同じずらしを入れ、gallery の Note 欄で
   「中央をタップすると論理末尾に入る」ことを web / native で検査
@@ -370,8 +374,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Text (goal order): bidi isolates / embeddings, emoji ZWJ sequences inside RTL text,
-   UAX #14 line breaking. Then controls / accessibility, size (win back
+0. Text (goal order): bidi isolates / embeddings, UAX #14 line breaking.
+   gallery is at its budget (224.9 / 225 KB): find real size savings
+   before or with the next feature (no name section in Almide's wasm;
+   closures→loops gave only ~0.1 KB each). Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
    Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums

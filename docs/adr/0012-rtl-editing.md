@@ -45,8 +45,11 @@ a field read backwards, and Arabic stayed unjoined.
   to left (each row, when wrapped) ends at the right edge. The shift is
   added where lines are drawn and where x is turned into a column, so
   the geometry stays left-based (2026-10-06).
-- An emoji ZWJ sequence inside right-to-left text is reordered character
-  by character (the reduced bidi treats its parts as neutrals). The
+- An emoji ZWJ sequence inside right-to-left text was reordered character
+  by character (the reduced bidi treats its parts as neutrals). Since
+  2026-10-06, `text.shape_line` shapes a right-to-left segment in logical
+  order and lays its clusters out from the right, so a ZWJ sequence, a
+  flag or a Hebrew letter with its points stays whole. The
   ADR 0009 limits still apply: no explicit embeddings or isolates.
 - `apps/gallery/tests/rtl.test` types Hebrew and Arabic, moves with the
   arrows, inserts mid-word and deletes a lam-alef's alef, on the web and
