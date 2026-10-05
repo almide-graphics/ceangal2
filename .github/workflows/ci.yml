@@ -112,6 +112,10 @@ jobs:
       - run: node tests/e2e/native.mjs
       - name: ceangal test native (the Todo app's tests, headless on lavapipe)
         run: tools/ceangal test native --app apps/todo
+      - name: ceangal dev (linux) — an edit restarts the app (a virtual X display)
+        run: |
+          sudo apt-get install -y xvfb >/dev/null
+          xvfb-run -a node tests/e2e/dev.mjs --desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -140,6 +144,8 @@ jobs:
       - run: node tests/e2e/native.mjs --bin out/playground.exe
       - name: ceangal test native (the Todo app's tests, headless on WARP)
         run: tools/ceangal test native --app apps/todo
+      - name: ceangal dev (windows) — an edit restarts the app
+        run: node tests/e2e/dev.mjs --desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:

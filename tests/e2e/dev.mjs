@@ -92,7 +92,10 @@ try {
   if (page) await page.close().catch(() => {});
   dev.kill();
   await sleep(500);
-  if (desktop) spawn(process.platform === "win32" ? "taskkill" : "pkill", process.platform === "win32" ? ["/F", "/IM", "devcheck.exe"] : ["-f", join(app, "build/native/devcheck")]);
+  if (desktop) {
+    if (process.platform === "win32") for (const im of ["devcheck.exe", "ceangal.exe"]) spawn("taskkill", ["/F", "/IM", im]);
+    else spawn("pkill", ["-f", join(app, "build/native/devcheck")]);
+  }
   try { rmSync(work, { recursive: true, force: true }); } catch {}
 }
 process.exit(ok ? 0 : 1);
