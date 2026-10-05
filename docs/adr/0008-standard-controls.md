@@ -46,6 +46,17 @@ ignored.
   type or form (IDs by Android's rules, versions, colours, the build
   number range) or a missing path is an error before any build.
 
+- **`ceangal test`**: an app's `tests/*.test`, one step per line (tap,
+  type, key, see, not, wait, shot), views found by accessible label. The
+  same file runs on the web build in headless Chrome
+  (`tests/e2e/app_test.mjs`) and on the native build headless (a runner in
+  `ceangal/native/host.rs`, `CEANGAL_TEST`, with the accessibility tree
+  forced on). A text format rather than an Almide or JS API: the steps are
+  what a user does, both runners can read it, and a failure prints the
+  line and every label on screen. `ceangal new` writes one; `app.yml` runs
+  them; this repository's CI runs the reference apps' on macOS (web and
+  native), Linux and Windows (native).
+
 ## Consequences
 - The percentage fix changes layouts that used `w_pct` / `h_pct` /
   `fill()` on in-flow children, where they had no effect before. In this

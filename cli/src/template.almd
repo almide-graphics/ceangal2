@@ -72,6 +72,7 @@ ceangal dev            # the web build at http://localhost:8000, reloaded on sav
 ceangal dev macos      # the desktop app, restarted on save (or linux / windows)
 ceangal run ios        # the simulator (or android: an emulator or a device)
 ceangal build android  # web native macos ios ios-sim android linux windows
+ceangal test           # tests/*.test on the web build and the native build
 ceangal doctor         # what each platform needs on this machine
 ```
 
@@ -79,6 +80,16 @@ ceangal doctor         # what each platform needs on this machine
 - `ceangal.toml`: its identity and settings ([reference](https://github.com/almide-graphics/ceangal2/blob/main/docs/guide/ceangal-toml.md))
 - `.github/workflows/app.yml`: CI builds every platform on each push
 - Store icons, listing and signing: [stores](https://github.com/almide-graphics/ceangal2/blob/main/docs/guide/stores.md)
+"
+
+let TEST = "# `ceangal test` runs this against the web build and the native build:
+# each line is a step, views are found by their accessible labels
+# (docs/guide/testing.md).
+see \"Count\"
+tap \"Count\"
+see \"1\"
+tap \"Count\"
+see \"2\"
 "
 
 // almide.toml is written by every `ceangal` command for editors and
@@ -119,6 +130,8 @@ pub effect fn create(dir: String, id_given: String, name_given: String, version:
     fs.write(dir + "/src/main.almd", fill(MAIN, id, name, key, framework))!
     fs.write(dir + "/.github/workflows/app.yml", string.replace(WORKFLOW, "__VERSION__", version))!
     fs.write(dir + "/README.md", fill(README, id, name, key, framework))!
+    fs.mkdir_p(dir + "/tests")!
+    fs.write(dir + "/tests/count.test", TEST)!
     fs.write(dir + "/.gitignore", GITIGNORE)!
     ok("Created " + name + " (" + id + ") in " + dir + "\n\n  cd " + dir + "\n  ceangal dev           # http://localhost:8000, rebuilt and reloaded on save\n  ceangal run macos     # or web, linux, windows, ios, android")
   }

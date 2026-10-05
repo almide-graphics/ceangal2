@@ -1,0 +1,22 @@
+# The standard controls by label, as `ceangal test` runs them on the web
+# and natively (docs/guide/testing.md).
+see "status: ready"
+tap "Save"
+see "status: saved"
+tap "Subscribe to updates"
+see "status: subscribed on"
+tap "Large"
+see "status: size 2"
+key Up
+see "status: size 1"
+tap "Name"
+type "Ada"
+see "Hello, Ada"
+tap "Delete"
+see "Delete everything?"
+tap "Keep"
+see "status: kept"
+not "Delete everything?"
+tap "Lists"
+tap "Inbox, 3 new"
+see "status: inbox"

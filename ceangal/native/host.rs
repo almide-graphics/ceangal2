@@ -214,8 +214,15 @@ fn run_headless(out: &str) {
     let ctx = Rc::new(RefCell::new(GpuContext::new()));
     ctx.borrow_mut().set_offscreen((w * scale).ceil() as u32, (h * scale).ceil() as u32);
     let mut t = 0.0;
+    let test = std::env::var("CEANGAL_TEST").ok();
+    // a test finds views by their accessible labels: build the tree
+    if test.is_some() { crate::a11y::ACTIVE.with(|a| a.set(true)); }
     call(&ctx, EV_INIT, 0, 0, w, h, scale, 0.0);
     settle(&ctx, &mut t);
+    if let Some(file) = test {
+        let code = run_test(&ctx, &mut t, &file, out);
+        std::process::exit(code);
+    }
     let script = std::env::var("CEANGAL_SCRIPT").unwrap_or_default();
     for cmd in script.split(';').map(str::trim).filter(|c| !c.is_empty()) {
         let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
@@ -273,6 +280,124 @@ fn run_headless(out: &str) {
     }
     wait_idle(&ctx, &mut t, 120.0);
     snapshot(&ctx, out);
+}
+
+// ── `ceangal test` ───────────────────────────────────────────────────────
+//
+// An app test (tests/<name>.test) run headless: one step per line, views
+// found by their accessible labels, as tests/e2e/app_test.mjs does on the
+// web. Steps:
+//   tap "Label"        press and release on the view with that label
+//   type "text"        typed text, into the focused view
+//   key Enter          a key, with modifiers as Shift+Tab, Ctrl+A, Cmd+Z
+//   see "text"         some view's label or value contains the text
+//   not "text"         no view's label or value contains it
+//   wait 500           let 500 ms (of virtual time) pass
+//   shot "name.png"    a screenshot, next to the output PNG
+// Returns the exit code: 0 when every step passed.
+
+fn test_arg(rest: &str) -> String {
+    let r = rest.trim();
+    if r.len() >= 2 && r.starts_with('"') && r.ends_with('"') {
+        r[1..r.len() - 1].replace("\\\"", "\"").replace("\\n", "\n")
+    } else {
+        r.to_string()
+    }
+}
+
+fn test_key(spec: &str) -> Option<(i64, f64)> {
+    let mut mods = 0.0;
+    let mut name = spec;
+    for part in spec.split('+') {
+        match part {
+            "Shift" => mods += 1.0,
+            "Ctrl" => mods += 2.0,
+            "Alt" => mods += 4.0,
+            "Cmd" | "Meta" => mods += 8.0,
+            _ => name = part,
+        }
+    }
+    let code = match name {
+        "Enter" => 1, "Tab" => 2, "Backspace" => 3, "Delete" => 4, "Escape" => 5,
+        "Left" => 10, "Right" => 11, "Up" => 12, "Down" => 13, "Home" => 14, "End" => 15,
+        "PageUp" => 16, "PageDown" => 17, "Space" => 60,
+        "A" => 20, "C" => 21, "V" => 22, "X" => 23, "Z" => 24, "Y" => 25, "S" => 26,
+        _ => return None,
+    };
+    Some((code, mods))
+}
+
+fn test_tree() -> Vec<crate::a11y::Node> { crate::a11y::TREE.with(|t| t.borrow().committed.clone()) }
+
+fn test_texts() -> Vec<String> {
+    test_tree().iter().map(|n| match &n.value { Some(v) if !v.is_empty() => format!("{} = {v}", n.label), _ => n.label.clone() }).collect()
+}
+
+fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -> i32 {
+    let src = match std::fs::read_to_string(file) {
+        Ok(s) => s,
+        Err(e) => { eprintln!("ceangal test: cannot read {file}: {e}"); return 2; }
+    };
+    let dir = std::path::Path::new(out).parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    let mut steps = 0;
+    for (i, raw) in src.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') { continue; }
+        let (cmd, rest) = line.split_once(' ').unwrap_or((line, ""));
+        let arg = test_arg(rest);
+        let fail = |msg: String| -> i32 {
+            println!("FAIL {file}:{}: {line}\n     {msg}\n     on screen: {:?}", i + 1, test_texts());
+            0
+        };
+        let ok = match cmd {
+            "tap" => match test_tree().into_iter().find(|n| n.label == arg) {
+                Some(n) => {
+                    let (x, y) = (n.rect.0 + n.rect.2 / 2.0, n.rect.1 + n.rect.3 / 2.0);
+                    call(ctx, EV_POINTER, 1, 0, x, y, 0.0, 0.0);
+                    call(ctx, EV_POINTER, 0, 0, x, y, 1.0, 0.0);
+                    call(ctx, EV_POINTER, 2, 0, x, y, 0.0, 0.0);
+                    true
+                }
+                None => { fail(format!("no view labelled {arg:?}")); false }
+            },
+            "type" => { text_event(ctx, 0, &arg, 0); true }
+            "key" => match test_key(&arg) {
+                Some((code, mods)) => {
+                    call(ctx, EV_KEY, 0, code, mods, 0.0, 0.0, 0.0);
+                    call(ctx, EV_KEY, 1, code, mods, 0.0, 0.0, 0.0);
+                    true
+                }
+                None => { fail(format!("unknown key {arg:?}")); false }
+            },
+            "see" | "not" => {
+                wait_idle(ctx, t, 30.0);
+                let found = test_texts().iter().any(|s| s.contains(&arg));
+                if found == (cmd == "see") { true } else {
+                    fail(if cmd == "see" { format!("{arg:?} is not on screen") } else { format!("{arg:?} is on screen") });
+                    false
+                }
+            }
+            "wait" => {
+                let ms: f64 = arg.parse().unwrap_or(100.0);
+                let end = *t + ms;
+                while *t < end { call(ctx, EV_FRAME, 0, 0, *t, 0.0, 0.0, 0.0); *t += 16.0; }
+                true
+            }
+            "shot" => { settle(ctx, t); snapshot(ctx, &dir.join(&arg).to_string_lossy()); true }
+            _ => { fail(format!("unknown step {cmd:?} (tap, type, key, see, not, wait, shot)")); false }
+        };
+        if !ok {
+            settle(ctx, t);
+            snapshot(ctx, out);
+            return 1;
+        }
+        settle(ctx, t);
+        steps += 1;
+    }
+    settle(ctx, t);
+    snapshot(ctx, out);
+    println!("ok   {file}: {steps} steps");
+    0
 }
 
 // ── Windowed ─────────────────────────────────────────────────────────────

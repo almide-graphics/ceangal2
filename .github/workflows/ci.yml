@@ -110,6 +110,8 @@ jobs:
           key: native-playground-${{ runner.os }}-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
       - run: tools/build_native.sh
       - run: node tests/e2e/native.mjs
+      - name: ceangal test native (the Todo app's tests, headless on lavapipe)
+        run: tools/ceangal test native --app apps/todo
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -136,6 +138,8 @@ jobs:
           key: native-playground-${{ runner.os }}-${{ hashFiles('.almide-version', 'apps/playground/compiler/Cargo.lock') }}
       - run: tools/build_native.sh -o out/playground.exe
       - run: node tests/e2e/native.mjs --bin out/playground.exe
+      - name: ceangal test native (the Todo app's tests, headless on WARP)
+        run: tools/ceangal test native --app apps/todo
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -392,7 +396,16 @@ jobs:
         run: |
           tools/ceangal build web --app apps/gallery
           node tests/e2e/gallery.mjs out/gallery/web --shots out/framework-gallery
-          tools/ceangal build native --app apps/gallery
+      - name: ceangal test (the reference apps' and the new app's tests, web and native)
+        run: |
+          tools/ceangal test --app apps/gallery
+          tools/ceangal test --app apps/todo
+          tools/ceangal test --app "$RUNNER_TEMP/hello-app"
+          # a failing step fails the run and names the line
+          printf 'tap "Count"\nsee "42"\n' > "$RUNNER_TEMP/hello-app/tests/wrong.test"
+          ! tools/ceangal test web --app "$RUNNER_TEMP/hello-app" > out.txt 2>&1
+          grep -q 'wrong.test:2: see "42"' out.txt
+          rm "$RUNNER_TEMP/hello-app/tests/wrong.test"
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs
       - name: ceangal dev (macos) — an edit restarts the app

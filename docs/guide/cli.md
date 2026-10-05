@@ -8,6 +8,7 @@ ceangal new <dir> [--id ID] [--name NAME]
 ceangal dev [web|macos|linux|windows] [--port N]
 ceangal build <target>
 ceangal run <target>
+ceangal test [web|native|all] [file.test…]
 ceangal doctor [target…]
 ceangal icons
 ceangal info
@@ -69,6 +70,12 @@ debug key (Android), which is enough for testing.
 | `macos`, `linux`, `windows`, `native` | builds and starts the desktop app |
 | `ios` | builds for the simulator, boots one (`IOS_SIM` = a device UDID or the first iPhone), installs and launches it |
 | `android` | builds for the connected device's or emulator's ABI, installs, launches, and follows its log |
+
+## `test [web|native|all] [file.test…]`
+
+Builds the app and runs its tests (`tests/*.test`, or the files named) on
+the web build in headless Chrome and on the native build headless. See
+[Testing](testing.md).
 
 ## `doctor [target…]`
 

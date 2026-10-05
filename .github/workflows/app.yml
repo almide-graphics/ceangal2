@@ -57,6 +57,8 @@ jobs:
         with: { node-version: 22 }
       - uses: dtolnay/rust-toolchain@stable
       - run: sdk/tools/ceangal build web --app "$APP"
+      - name: the app's tests (tests/*.test) on the web build
+        run: if ls "$APP"/tests/*.test >/dev/null 2>&1; then sdk/tools/ceangal test web --app "$APP"; fi
       - name: the page starts in headless Chrome (WebGPU)
         run: |
           web="$(sdk/tools/ceangal env --app "$APP" | sed -n "s/^export APP_WEB_OUT='\(.*\)'$/\1/p")"
@@ -92,6 +94,8 @@ jobs:
             echo "MAC_INSTALLER_IDENTITY=${{ secrets.MAC_INSTALLER_IDENTITY }}" >> "$GITHUB_ENV"
           fi
       - run: sdk/tools/ceangal build macos --app "$APP"
+      - name: the app's tests (tests/*.test) on the native build
+        run: if ls "$APP"/tests/*.test >/dev/null 2>&1; then sdk/tools/ceangal test native --app "$APP"; fi
       - name: the sandboxed app starts
         run: |
           app="$(ls -d "$OUT"/macos/*.app | head -1)"

@@ -258,6 +258,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
   absolute left+right / top+bottom stretch (tests added).
 - `apps/gallery` + `tests/e2e/gallery.mjs` (CI `framework` job). The
   `ceangal new` template uses the controls.
+- `ceangal test`: tests/*.test (tap / type / key / see / not / wait /
+  shot by accessible label) on the web build (headless Chrome) and the
+  native build (headless); gallery, todo and the template have tests; CI
+  runs them on macOS, Linux and Windows. docs/guide/testing.md.
+- The guide's code examples are type-checked in CI
+  (tools/check_doc_examples.py); every public function has a comment
+  (gen_api_docs.py --check).
 - `ceangal.toml` checks: unknown keys warn with a suggestion; types, ID /
   version / colour / build forms and paths are errors
   (`tests/cli/manifest_check.sh`).
@@ -291,10 +298,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: `ceangal test` (an app's own E2E through the a11y tree, as
-   tests/e2e/smoke_web.mjs does for one click). Done 2026-10-05: v0.1.0,
+0. Framework quality (in progress, 2026-10-05): CLI install and `dev` on
+   Linux / Windows in CI, release checksums + CHANGELOG, performance
+   budgets, mobile clipboard / share / picker, emoji / RTL / complex
+   scripts, iOS VoiceOver / Android TalkBack. Done: v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
-   guide + API reference (ADR 0007).
+   guide + API reference, manifest checks, standard controls, `ceangal
+   test`, checked doc examples (ADR 0007, 0008).
 1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
    2026-10-05).
 2. M6: store screenshots for iOS from the simulator build (the generator

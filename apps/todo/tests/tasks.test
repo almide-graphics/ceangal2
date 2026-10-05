@@ -1,0 +1,13 @@
+# Add a task, finish it, clear the finished ones.
+see "1 task left"
+tap "New task"
+type "Buy milk"
+key Enter
+see "Buy milk"
+see "2 tasks left"
+tap "Buy milk"
+see "1 task left"
+tap "Clear completed"
+not "Buy milk"
+not "Try the playground"
+see "Write a ceangal app"

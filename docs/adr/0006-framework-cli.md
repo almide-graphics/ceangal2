@@ -105,5 +105,4 @@ run and packaged for every platform with one tool.
   app adds its own metainfo, then they fail the build as for the
   playground.
 - `ceangal dev`, binary releases of the CLI and `ceangal doctor` came
-  next (docs/adr/0007). `ceangal test` (the app's E2E) is not there yet;
-  the reference apps' E2E stays in `tests/`.
+  next (docs/adr/0007), then `ceangal test` (docs/adr/0008).

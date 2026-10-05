@@ -29,6 +29,8 @@ let USAGE = "usage: ceangal <command> [options]
                                       the page) or macos / linux / windows (restarts)
   build <target>                      web native macos ios ios-sim android linux windows
   run <target>                        web macos linux windows ios android
+  test [web|native|all] [file.test…]  the app's tests (tests/*.test), on the web build
+                                      in headless Chrome and the native build headless
   doctor [target…]                    what each target needs, and what is missing
   icons                               every platform's icons from icon.png
   env [--pwsh]                        the app's settings as shell exports
@@ -121,6 +123,47 @@ fn script(app: mf.App, sdk: String, name: String, args: List[String]) -> Int =
 fn check(code: Int, what: String) -> Result[Unit, String] =
   if code != 0 then err(what + " failed (exit " + int.to_string(code) + ")") else ok(())
 
+// The app's tests: the files named, else every tests/*.test.
+effect fn test_files(app: mf.App, given: List[String]) -> Result[List[String], String] =
+  if not list.is_empty(given) then ok(list.map(given, (f) => mf.absolute(app.dir, f)))
+  else if not fs.exists(app.dir + "/tests") then ok([])
+  else {
+    let names = fs.list_dir(app.dir + "/tests")!
+    ok(list.map(list.sort(list.filter(names, (n) => string.ends_with(n, ".test"))), (n) => app.dir + "/tests/" + n))
+  }
+
+// `ceangal test [web|native|all] [file.test…]`: the app's tests against its
+// web build (headless Chrome) and/or its native build (headless).
+effect fn run_tests(app: mf.App, sdk: String, target: String, given: List[String]) -> Result[Unit, String] = {
+  let files = test_files(app, given)!
+  if list.is_empty(files) then err("no tests: write tests/<name>.test (docs/guide/testing.md)")
+  else {
+    let shots = app.out + "/test"
+    var failed = 0
+    if target == "web" or target == "all" then {
+      build(app, sdk, "web")!
+      dev.say("ceangal test web: " + int.to_string(list.len(files)) + " file(s)")
+      if tool(app, sdk, "node", [sdk + "/tests/e2e/app_test.mjs", app.web_out] + files + ["--shots", shots + "/web"]) != 0 then failed = failed + 1 else ()
+    } else ()
+    if target == "native" or target == "all" then {
+      let exe = build_native(app, sdk)!
+      let sep = if sh.os() == "windows" then ";" else ":"
+      let assets = string.join(app.assets + [sdk + "/assets"], sep)
+      dev.say("ceangal test native: " + int.to_string(list.len(files)) + " file(s)")
+      fs.mkdir_p(shots + "/native")!
+      for f in files {
+        let name = match list.last(string.split(f, "/")) { some(n) => string.replace(n, ".test", ""), none => "test" }
+        let code = sh.run_env(exe, [], app.dir, ["CEANGAL_HEADLESS", "CEANGAL_TEST", "CEANGAL_ASSETS", "CEANGAL_SIZE"],
+          [shots + "/native/" + name + ".png", f, assets, "420x860"])
+        if code != 0 then failed = failed + 1 else ()
+      }
+    } else ()
+    if target != "web" and target != "native" and target != "all" then err("ceangal test runs web, native or all (\"" + target + "\" is not one)")
+    else if failed > 0 then err("tests failed (screenshots in " + shots + ")")
+    else ok(())
+  }
+}
+
 fn build_native(app: mf.App, sdk: String) -> Result[String, String] = {
   let exe = app.out + "/native/" + app.key + (if sh.os() == "windows" then ".exe" else "")
   check(script(app, sdk, "build_native.sh", ["-o", exe]), "the native build")!
@@ -197,6 +240,11 @@ effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
     else if cmd == "build" or cmd == "run" then match list.get(o.words, 1) {
       some(t) => if cmd == "build" then build(app, sdk, t) else run(app, sdk, t),
       none => err("usage: ceangal " + cmd + " <target>"),
+    }
+    else if cmd == "test" then {
+      let target = match list.get(o.words, 1) { some(t) => if string.ends_with(t, ".test") then "all" else t, none => "all" }
+      let given = list.filter(list.drop(o.words, 1), (w) => string.ends_with(w, ".test"))
+      run_tests(app, sdk, target, given)
     }
     else if cmd == "dev" then {
       let target = match list.get(o.words, 1) { some(t) => t, none => "web" }
