@@ -24,17 +24,22 @@ fn run_tee(cmd: String, args: List[String], dir: String, keys: List[String], val
 fn last_output() -> String = _
 @extern(rust, "crate::dev", "dev_spawn")
 fn spawn(cmd: String, args: List[String], dir: String, keys: List[String], vals: List[String]) -> Int = _
-@extern(rust, "crate::dev", "dev_alive")
-fn alive(id: Int) -> Int = _
+@extern(rust, "crate::dev", "dev_exit_code")
+fn exit_code(id: Int) -> Int = _
 @extern(rust, "crate::dev", "dev_kill")
 fn kill(id: Int) -> Unit = _
 
-// What a change to rebuilds after: the app's directory (build output, VCS
-// and dependency folders are skipped) and the asset / web paths it names
-// outside it.
-pub fn watched(app: mf.App) -> List[String] =
-  [app.dir] + list.filter(app.assets + app.web_files + [app.web_boot, app.web_prebuild, app.native_dir],
-    (p) => p != "" and not string.starts_with(p, app.dir + "/"))
+// What a change to rebuilds after: the sources (the entry's directory),
+// ceangal.toml, and the asset, native and web paths it names. Not the whole
+// app directory: logs, notes and build output land there too, and a file
+// written on every rebuild (a log of `ceangal dev` itself) would rebuild
+// forever.
+pub fn watched(app: mf.App) -> List[String] = {
+  let entry = mf.absolute(app.dir, app.entry)
+  let parts = string.split(entry, "/")
+  let src = string.join(list.take(parts, list.len(parts) - 1), "/")
+  [src, app.dir + "/ceangal.toml"] + list.filter(app.assets + app.web_files + [app.web_boot, app.web_prebuild, app.native_dir], (p) => p != "")
+}
 
 // After a change: the stamp once the files stay put for a moment (a save
 // can be several writes: truncate, write, rename).
@@ -90,7 +95,7 @@ pub effect fn web(app: mf.App, sdk: String, pairs: List[(String, String)], port:
 
 // The desktop: build, start, and on each change build again and restart the
 // app with the new build (a failed build keeps the running one). Closing the
-// app ends `ceangal dev`.
+// app ends `ceangal dev`; a crash does not: it says so and waits for an edit.
 pub effect fn desktop(app: mf.App, sdk: String, pairs: List[(String, String)], exe: String, assets: String) -> Result[Unit, String] = {
   let paths = watched(app)
   let build = () => run_tee("bash", [sdk + "/tools/build_native.sh", "-o", exe], app.dir, keys_of(pairs), vals_of(pairs))
@@ -108,13 +113,19 @@ pub effect fn desktop(app: mf.App, sdk: String, pairs: List[(String, String)], e
         seen = settled(paths, now)
         say("ceangal dev: rebuilding…")
         if build() == 0 then {
-          kill(pid)
+          if pid >= 0 then kill(pid) else ()
           pid = start()
           say("ceangal dev: restarted")
         } else say("ceangal dev: the build failed — the running app is the last good build")
         seen = if stamp(paths) == seen then seen else ""
-      } else if alive(pid) == 0 then running = false
-      else ()
+      } else if pid >= 0 then {
+        let code = exit_code(pid)
+        if code == 0 then running = false
+        else if code != -1 then {
+          say("ceangal dev: the app exited with " + int.to_string(code) + " (output above) — save an edit to start it again")
+          pid = -1
+        } else ()
+      } else ()
     }
     ok(())
   }

@@ -39,7 +39,9 @@ release. The release workflow takes the release notes from this file.
 - Docs: a testing guide; the guide's examples are type-checked in CI;
   every public function is documented.
 - CLI: output before a child process is no longer delayed; the framework
-  download is quiet.
+  download is quiet; `ceangal new` writes a Windows framework path TOML
+  can read; `ceangal dev` watches only what the build reads (a log in the
+  app directory no longer rebuilds forever) and survives a crashing app.
 
 ## 0.2.0 — 2026-10-05
 

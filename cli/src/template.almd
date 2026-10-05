@@ -121,7 +121,8 @@ pub effect fn create(dir: String, id_given: String, name_given: String, version:
     let id = if id_given != "" then id_given else "dev.example." + key
     let name = if name_given != "" then name_given else title_of(base)
     let framework = match env.get("CEANGAL_SDK") {
-      some(p) => "path = \"" + p + "\"",
+      // forward slashes: a Windows path's backslashes are escapes in TOML
+      some(p) => "path = \"" + string.replace(p, "\\", "/") + "\"",
       none => "version = \"" + version + "\"",
     }
     fs.mkdir_p(dir + "/src")!

@@ -219,10 +219,14 @@ pub fn dev_spawn(cmd: &str, args: &[String], dir: &str, keys: &[String], vals: &
     }
 }
 
-/// 1 while the spawned process runs.
-pub fn dev_alive(id: i64) -> i64 {
+/// -1 while the spawned process runs, else its exit code (-2 when killed
+/// by a signal or unknown).
+pub fn dev_exit_code(id: i64) -> i64 {
     let mut g = CHILDREN.lock().unwrap();
-    match g.get_or_insert_with(HashMap::new).get_mut(&id) { Some(c) => matches!(c.try_wait(), Ok(None)) as i64, None => 0 }
+    match g.get_or_insert_with(HashMap::new).get_mut(&id) {
+        Some(c) => match c.try_wait() { Ok(None) => -1, Ok(Some(s)) => s.code().map(|c| c as i64).unwrap_or(-2), Err(_) => -2 },
+        None => -2,
+    }
 }
 
 pub fn dev_kill(id: i64) {

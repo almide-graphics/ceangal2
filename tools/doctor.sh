@@ -72,7 +72,8 @@ target() {
         || echo "  note     builds are signed with a debug key until ANDROID_KEYSTORE is set (docs/guide/stores.md)" ;;
     linux)
       check "flatpak-builder (Flatpak packages)" "sudo apt install flatpak-builder (then: flatpak remote-add --user flathub …)" has flatpak-builder
-      check "Vulkan loader (the app draws with wgpu)" "sudo apt install libvulkan1 mesa-vulkan-drivers" sh -c "ldconfig -p | grep -q libvulkan.so.1" ;;
+      check "Vulkan loader (the app draws with wgpu)" "sudo apt install libvulkan1 mesa-vulkan-drivers" sh -c "ldconfig -p | grep -q libvulkan.so.1"
+      check "xkbcommon (keyboard input under X11 and Wayland)" "sudo apt install libxkbcommon-x11-0" sh -c "ldconfig -p | grep -q libxkbcommon-x11.so" ;;
     windows)
       check "PowerShell" "https://aka.ms/powershell" sh -c "command -v pwsh || command -v powershell"
       check "Windows SDK (makeappx, signtool)" "install the Windows 10/11 SDK (Visual Studio Installer)" \

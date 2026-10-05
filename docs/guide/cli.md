@@ -26,9 +26,9 @@ The app pins the framework version of the CLI that made it. With
 
 ## `dev`
 
-Builds the app, then keeps watching it: the app's directory (except build
-output, `.git` and `node_modules`) and the asset, web and native paths
-`ceangal.toml` names outside it.
+Builds the app, then keeps watching it: its sources (the entry's
+directory), `ceangal.toml`, and the asset, native and web paths
+`ceangal.toml` names.
 
 - `ceangal dev` (or `dev web`) serves the web build at
   `http://localhost:8000` (`--port` changes it). After each change it
@@ -39,7 +39,9 @@ output, `.git` and `node_modules`) and the asset, web and native paths
 - `ceangal dev macos` (or `linux`, `windows`, `native`) builds the desktop
   app and starts it. After each change it rebuilds, and if the build
   succeeds it closes the app and starts the new build. A failed build
-  leaves the running app alone. Closing the app ends `ceangal dev`.
+  leaves the running app alone. Closing the app ends `ceangal dev`; if the
+  app crashes, `ceangal dev` says so and starts it again after the next
+  edit.
 
 The app's state does not survive a rebuild. What it keeps in
 `ceangal.storage` does.

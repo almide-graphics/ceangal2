@@ -117,7 +117,7 @@ jobs:
         run: tools/ceangal test native --app apps/todo
       - name: ceangal dev (linux) — an edit restarts the app (a virtual X display)
         run: |
-          sudo apt-get install -y xvfb >/dev/null
+          sudo apt-get install -y xvfb libxkbcommon-x11-0 >/dev/null
           xvfb-run -a node tests/e2e/dev.mjs --desktop
       - uses: actions/upload-artifact@v4
         if: always()
