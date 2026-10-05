@@ -273,8 +273,13 @@ for (const app of apps) {
       // the key bar; six lines down (the first task); a new task typed in
       // front of it, its symbols from the key bar
       const ed = node(t0, "Code editor");
-      adb("shell", "input", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
-      await until(has("Key bar"), "the key bar over the keyboard");
+      // the emulator's keyboard (Gboard) is sometimes restarting under a
+      // Play services configuration refresh when the tap lands: tap again
+      for (let attempt = 0; ; attempt++) {
+        adb("shell", "input", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
+        try { await until(has("Key bar"), "the key bar over the keyboard", 10000); break; }
+        catch (e) { if (attempt >= 2) throw e; console.log("     (no keyboard yet: tapping the editor again)"); }
+      }
       shot("playground-keybar");
       for (let i = 0; i < 6; i++) await tap(tree(), "Down arrow");
       for (const [how, s] of EDIT_TODO_KEYS) {

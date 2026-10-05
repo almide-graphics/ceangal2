@@ -1,0 +1,13 @@
+# A tooltip shows when the keyboard focuses its control (and when the
+# pointer rests on it); a toast shows for a few seconds and is announced
+# (a status: a polite live region).
+tap "Cancel"
+key Tab
+see "Asks before deleting everything"
+tap "Save"
+not "Asks before deleting everything"
+tap "Notify"
+see "Saved to drafts"
+shot "toast.png"
+wait 4500
+not "Saved to drafts"

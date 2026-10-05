@@ -16,7 +16,7 @@ export const KEYS = {
 };
 export const LETTER_KEYS = { a: 20, c: 21, v: 22, x: 23, z: 24, y: 25, s: 26, f: 27, o: 28, n: 29, w: 30 };
 export const CURSORS = ["default", "text", "pointer", "grab", "ew-resize", "ns-resize"];
-export const ROLES = { 1: "application", 2: "group", 3: "button", 4: "note", 5: "textbox", 6: "list", 7: "listitem", 8: "tab", 9: "tablist", 10: "heading", 11: "link", 12: "checkbox", 13: "img", 14: "textbox", 15: "switch", 16: "slider", 17: "dialog", 18: "radio", 19: "radiogroup", 20: "progressbar", 21: "combobox", 22: "listbox", 23: "option", 24: "menu", 25: "menuitem" };
+export const ROLES = { 1: "application", 2: "group", 3: "button", 4: "note", 5: "textbox", 6: "list", 7: "listitem", 8: "tab", 9: "tablist", 10: "heading", 11: "link", 12: "checkbox", 13: "img", 14: "textbox", 15: "switch", 16: "slider", 17: "dialog", 18: "radio", 19: "radiogroup", 20: "progressbar", 21: "combobox", 22: "listbox", 23: "option", 24: "menu", 25: "menuitem", 26: "status", 27: "alert", 28: "tooltip" };
 
 const enc = new TextEncoder();
 
@@ -225,7 +225,30 @@ export class DomUi {
       frag.appendChild(el);
     }
     this.a11yRoot.replaceChildren(frag);
+    this.announce(nodes || []);
     void focus;
+  }
+
+  // Statuses (role 26) and alerts (27) are read out through live regions
+  // that stay in the page: the tree's own nodes are rebuilt each commit,
+  // and screen readers announce changes to a region, not new regions.
+  announce(nodes) {
+    if (!this.live) {
+      this.live = {};
+      for (const [k, politeness] of [[26, "polite"], [27, "assertive"]]) {
+        const el = document.createElement("div");
+        el.setAttribute("aria-live", politeness);
+        el.setAttribute("aria-atomic", "true");
+        Object.assign(el.dataset, { ceangalLive: politeness });
+        Object.assign(el.style, { position: "fixed", width: "1px", height: "1px", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" });
+        document.body.appendChild(el);
+        this.live[k] = el;
+      }
+    }
+    for (const k of [26, 27]) {
+      const text = nodes.filter((n) => n.role === k).map((n) => n.label).join(" ");
+      if (this.live[k].textContent !== text) this.live[k].textContent = text;
+    }
   }
 
   cursor(k) { this.canvas.style.cursor = CURSORS[k] || "default"; }

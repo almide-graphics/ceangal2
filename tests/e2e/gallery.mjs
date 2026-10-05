@@ -96,6 +96,21 @@ try {
   await waitFor(async () => (await nodes()).some((n) => n.label === "Hello, Ada"), "typed text in the app");
   console.log("ok   a text field takes typed text");
 
+  // a toast is a status, read out through the page's polite live region;
+  // a tooltip shows with keyboard focus, as a tooltip
+  await click("Notify");
+  await expectNode("Saved to drafts", (n) => n.role === "status", "a toast is a status");
+  await waitFor(() => ev(`document.querySelector("[data-ceangal-live=polite]")?.textContent === "Saved to drafts"`), "the toast in the polite live region");
+  console.log("ok   a toast is announced (polite live region)");
+  await click("Cancel"); await key("Tab", "Tab");
+  await expectNode("Asks before deleting everything", (n) => n.role === "tooltip", "a tooltip shows on keyboard focus, as a tooltip");
+  await click("Save");
+  await waitFor(async () => !(await find("Asks before deleting everything")), "the tooltip goes when focus moves by pointer");
+  const del = await find("Delete");
+  await mouse("mouseMoved", del.x, del.y);
+  await expectNode("Asks before deleting everything", (n) => n.role === "tooltip", "a tooltip shows when the pointer rests on its control");
+  await mouse("mouseMoved", 6, 6);
+
   // a dialog: opens over the page, its buttons work, the backdrop dismisses
   await click("Delete"); await expectStatus("asking", "a button opens the dialog");
   await expectNode("Delete everything?", (n) => n.role === "dialog", "the dialog is announced as a dialog");

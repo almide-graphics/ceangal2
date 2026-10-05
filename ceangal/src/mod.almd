@@ -160,6 +160,30 @@ pub fn invalidate() -> Unit = {
   sys.request_frame()
 }
 
+// ── Toasts ──
+
+let TOAST_MS = 4000.0
+var toast_text = ""
+var toast_until = 0.0
+
+// Show `text` for a few seconds (of frame time: the host's clock) in a
+// bubble at the bottom of the window.
+// Screen readers announce it: it is a status (role 26), a polite live
+// region.
+pub fn toast(text: String) -> Unit = {
+  toast_text = text
+  toast_until = frame_time + TOAST_MS
+  sys.request_frame_after(TOAST_MS + 20.0)
+  invalidate()
+}
+
+fn toast_view() -> v.View =
+  v.row([
+    v.text(toast_text) |> v.wrapped() |> v.font(14.0) |> v.color(snaidhm.rgba(1.0, 1.0, 1.0, 1.0))
+      |> v.pad(10.0, 16.0, 10.0, 16.0) |> v.bg(snaidhm.rgba(0.13, 0.14, 0.18, 0.94)) |> v.rounded(10.0)
+      |> v.shadow(12.0, 4.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.3)) |> v.max_w(480.0) |> v.role(26),
+  ]) |> v.justify(v.Center) |> v.overlay() |> v.left(16.0) |> v.right(16.0) |> v.bottom(24.0 + safe_b) |> v.role(-1)
+
 // ── Popups ──
 
 // Open the popup of the control with `key` (one at a time), with entry
@@ -301,9 +325,12 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     invalidate()
     0
   } else if kind == 3 then frame(x)
-  else if kind == 4 then { if pointer(a, b, x, y, float.to_int(z), float.to_int(w)) then 1 else 0 }
+  else if kind == 4 then {
+    if a == 0 then keyboard_used = false else ()
+    if pointer(a, b, x, y, float.to_int(z), float.to_int(w)) then 1 else 0
+  }
   else if kind == 5 then { if wheel(x, y, z, w, b) then 1 else 0 }
-  else if kind == 6 then { if key(a, b, float.to_int(x)) then 1 else 0 }
+  else if kind == 6 then { keyboard_used = true; if key(a, b, float.to_int(x)) then 1 else 0 }
   else if kind == 7 then {
     let t = event_string()
     let fi = find_key(focus_key)
@@ -447,6 +474,10 @@ fn frame(t: Float) -> Int = {
   let animating = current.on_frame(t) or flinging
   // a font still loading: draw again until it is there
   if tx.take_waiting() then dirty = true else ()
+  // a toast's time is up; the pointer has rested long enough for a tooltip
+  let now = frame_time
+  if toast_text != "" and now >= toast_until then dirty = true else ()
+  if hover_pending and now - hover_since >= TOOLTIP_DELAY_MS then { hover_pending = false; dirty = true } else ()
   if dirty or animating then {
     dirty = false
     render()
@@ -455,7 +486,9 @@ fn frame(t: Float) -> Int = {
 }
 
 fn render() -> Unit = {
-  let inner = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
+  if toast_text != "" and frame_time >= toast_until then toast_text = "" else ()
+  let page = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
+  let inner = if toast_text != "" then v.with_child(page, toast_view()) else page
   let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
   let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
   frame_views = flatten(root)
@@ -625,7 +658,10 @@ fn children_of(view: v.View) -> List[lay.Node] = {
   var out: List[lay.Node] = []
   for c in view.children {
     let n = to_node(c)
-    list.push(out, if view.kind == v.ROW and wraps(c) and n.width == lay.UNDEFINED then { ...n, basis: n.max_width } else n)
+    if view.kind == v.ROW and wraps(c) and n.width == lay.UNDEFINED then {
+      let one = tx.measure_style(c.content, c.style.font_size, c.style.mono, c.style.bold).w + c.style.pl + c.style.pr
+      list.push(out, { ...n, basis: if n.max_width == lay.UNDEFINED then one else float.min(one, n.max_width) })
+    } else list.push(out, n)
   }
   out
 }
@@ -933,6 +969,21 @@ fn hover_at(x: Float, y: Float) -> String = {
 
 // The mouse is over the clickable view with `key` (never on touch screens).
 pub fn is_hovered(key: String) -> Bool = key != "" and key == hover_key
+
+let TOOLTIP_DELAY_MS = 600.0
+
+// Whether the last input was a key (not a press): focus that came from the
+// keyboard shows tooltips and focus rings.
+var keyboard_used = false
+
+// Whether the control with `key` has focus that the keyboard moved there.
+pub fn keyboard_focused(key: String) -> Bool = keyboard_used and is_focused(key)
+var hover_since = 0.0
+var hover_pending = false
+
+// Whether the pointer has rested on the view with `key` long enough for its
+// tooltip (0.6 s).
+pub fn hover_rested(key: String) -> Bool = is_hovered(key) and frame_time - hover_since >= TOOLTIP_DELAY_MS
 // The view with `key` is being pressed (mouse button or finger down on it).
 pub fn is_pressed(key: String) -> Bool = key != "" and key == pressed_key
 
@@ -959,7 +1010,14 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
   } else ()
   if id == 0 then {
     let h = if phase == 5 then "" else hover_at(x, y)
-    if h != hover_key then { hover_key = h; invalidate() } else ()
+    if h != hover_key then {
+      hover_key = h
+      hover_since = frame_time
+      // a tooltip shows after the pointer rests: draw again then
+      hover_pending = h != ""
+      if h != "" then sys.request_frame_after(TOOLTIP_DELAY_MS + 10.0) else ()
+      invalidate()
+    } else ()
   } else ()
   last_x = x
   last_y = y

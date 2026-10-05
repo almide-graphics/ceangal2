@@ -89,7 +89,7 @@ const ROOT: u64 = u64::MAX;
 
 fn role_of(r: i64) -> accesskit::Role {
     use accesskit::Role::*;
-    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, 15 => Switch, 16 => Slider, 17 => Dialog, 18 => RadioButton, 19 => RadioGroup, 20 => ProgressIndicator, 21 => ComboBox, 22 => ListBox, 23 => ListBoxOption, 24 => Menu, 25 => MenuItem, _ => GenericContainer }
+    match r { 1 => Window, 3 => Button, 4 => Label, 5 => TextInput, 6 => List, 7 => ListItem, 8 => Tab, 9 => TabList, 10 => Heading, 11 => Link, 12 => CheckBox, 13 => Image, 14 => MultilineTextInput, 15 => Switch, 16 => Slider, 17 => Dialog, 18 => RadioButton, 19 => RadioGroup, 20 => ProgressIndicator, 21 => ComboBox, 22 => ListBox, 23 => ListBoxOption, 24 => Menu, 25 => MenuItem, 26 => Status, 27 => Alert, 28 => Tooltip, _ => GenericContainer }
 }
 
 pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
@@ -118,6 +118,9 @@ pub fn tree_update(scale: f64, title: &str) -> accesskit::TreeUpdate {
             if matches!(n.role, 3 | 8 | 11 | 12 | 15 | 18 | 21 | 23 | 25) { node.add_action(Action::Click); }
             if n.role == 16 { node.add_action(Action::Increment); node.add_action(Action::Decrement); }
             if n.flags & 8 != 0 { node.set_toggled(Toggled::True); } else if matches!(n.role, 12 | 15 | 18) { node.set_toggled(Toggled::False); }
+            // statuses and alerts are live regions: their changes are read out
+            if n.role == 26 { node.set_live(accesskit::Live::Polite); }
+            if n.role == 27 { node.set_live(accesskit::Live::Assertive); }
             if n.flags & 4 != 0 { node.set_selected(true); }
             if n.flags & 16 != 0 { node.set_disabled(); }
             // a control with a popup (dropdown, menu button): open or not

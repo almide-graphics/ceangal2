@@ -83,6 +83,21 @@ fn activates(view: v.View, f: () -> Unit) -> v.View =
 
 // A screen's title: large, bold, announced as a heading.
 pub fn title(th: Theme, s: String) -> v.View = v.text(s) |> v.font(26.0) |> v.bold() |> v.color(th.text) |> v.role(10)
+// `control` (which needs a key, as every control has) with a tooltip:
+// `text` in a bubble under it while the pointer rests on it or the
+// keyboard has focused it. Screen readers get the text as a tooltip
+// (role 28) while it shows.
+pub fn tooltip(th: Theme, text: String, control: v.View) -> v.View = {
+  let key = control.key
+  if not (ui.hover_rested(key) or ui.keyboard_focused(key)) then control
+  else {
+    let r = ui.rect_of(key)
+    v.with_child(control,
+      v.text(text) |> v.font(12.0) |> v.color(th.bg) |> v.pad(5.0, 8.0, 5.0, 8.0) |> v.bg(th.text) |> v.rounded(6.0)
+        |> v.overlay() |> v.top(float.max(r.h, 24.0) + 6.0) |> v.left(0.0) |> v.role(28))
+  }
+}
+
 // A section's heading.
 pub fn heading(th: Theme, s: String) -> v.View = v.text(s) |> v.font(18.0) |> v.bold() |> v.color(th.text) |> v.role(10)
 // Ordinary text at the theme's size.

@@ -4,6 +4,13 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- トースト (`ceangal.toast`) とツールチップ (`w.tooltip`) を追加 (ADR 0018)。
+  スクリーンリーダー向けに status / alert / tooltip ロールを全ホストに追加し、
+  web ではページに常駐する live region でトーストを読み上げ。gallery の
+  announce.test (web / native) と Chrome E2E で確認。
+- Android CI の失敗は、エミュレータ上で Play 開発者サービスが Gboard の
+  設定更新を走らせ、キーボードのプロセスが再起動していたため
+  (logcat で確認)。テストでタップを再試行し、adb 切断時も待って再試行。
 - テキストビューの折り返し (`v.wrapped()`、`w.body` は既定で折り返し)。
   1 回目のレイアウト後に幅に応じた行数で高さを決めて再レイアウト。
   gallery に英語・日本語の段落を追加し web / native で確認。
@@ -367,6 +374,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
   oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
   `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
   edge; isolate typed in apps/gallery/tests/rtl.test.
+- Toasts, tooltips, live regions (ADR 0018): roles 26 status / 27 alert
+  / 28 tooltip on every host, persistent web live regions,
+  `ceangal.toast`, `w.tooltip`, `hover_rested` / `keyboard_focused`;
+  gallery announce.test + Chrome E2E.
 - Wrapping text views (ADR 0017 update): `v.wrapped()`, `w.body` wraps;
   second layout pass with the rows' heights; paint draws the measured rows.
 - Android E2E: adb commands wait for the device and retry when the
@@ -414,8 +425,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Goal item 2: controls / accessibility (tooltip, toast / live region,
-   context menu, autocomplete combobox, list virtualization; Dynamic Type /
+0. Goal item 2: controls / accessibility (context menu (with long press,
+   which touch tooltips will share), autocomplete combobox, list virtualization; Dynamic Type /
    fontScale, reduced motion, high contrast; E2E for the new roles).
    (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
@@ -435,6 +446,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- CI Android: Play services refreshes Gboard's configuration a few
+  minutes after boot and restarts the keyboard process (19e02aa: no
+  keyboard after the editor tap). The E2E taps again (3 tries).
 - CI Android (API 35 x86_64 emulator): adb sometimes drops for a moment
   ("device offline") during the playground's key-bar step and is back by
   the next step (7d8c181, bd47361). The same step runs fine on the local

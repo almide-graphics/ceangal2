@@ -126,6 +126,19 @@ pub fn invalidate() -> Unit
 
 Ask for a new frame (state changed outside an event handler).
 
+## Toasts
+
+### `toast`
+
+```almide
+pub fn toast(text: String) -> Unit
+```
+
+Show `text` for a few seconds (of frame time: the host's clock) in a
+bubble at the bottom of the window.
+Screen readers announce it: it is a status (role 26), a polite live
+region.
+
 ## Popups
 
 ### `open_popup`
@@ -378,6 +391,23 @@ pub fn is_hovered(key: String) -> Bool
 ```
 
 The mouse is over the clickable view with `key` (never on touch screens).
+
+### `keyboard_focused`
+
+```almide
+pub fn keyboard_focused(key: String) -> Bool
+```
+
+Whether the control with `key` has focus that the keyboard moved there.
+
+### `hover_rested`
+
+```almide
+pub fn hover_rested(key: String) -> Bool
+```
+
+Whether the pointer has rested on the view with `key` long enough for its
+tooltip (0.6 s).
 
 ### `is_pressed`
 

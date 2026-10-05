@@ -90,6 +90,17 @@ pub fn title(th: Theme, s: String) -> v.View
 
 A screen's title: large, bold, announced as a heading.
 
+### `tooltip`
+
+```almide
+pub fn tooltip(th: Theme, text: String, control: v.View) -> v.View
+```
+
+`control` (which needs a key, as every control has) with a tooltip:
+`text` in a bubble under it while the pointer rests on it or the
+keyboard has focused it. Screen readers get the text as a tooltip
+(role 28) while it shows.
+
 ### `heading`
 
 ```almide

@@ -6,6 +6,10 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Toasts and tooltips**: `ceangal.toast(text)` (announced by screen
+  readers through a live region) and `w.tooltip(th, text, control)` (after
+  the pointer rests, or on keyboard focus). New accessibility roles:
+  status, alert, tooltip. (ADR 0018)
 - **Text that wraps**: `v.wrapped()` (and every `w.body`) wraps onto as
   many lines as its width needs, with the same line breaking rules. (ADR 0017)
 - **Line breaking by UAX #14** (`ceangal.linebreak`): the editor's soft

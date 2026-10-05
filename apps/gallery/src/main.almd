@@ -64,9 +64,10 @@ fn controls(th: w.Theme) -> v.View =
       v.wrap_row([
         w.button(th, "Save", () => say("saved")),
         w.secondary_button(th, "Cancel", () => say("cancelled")),
-        w.danger_button(th, "Delete", () => open_dialog()),
+        w.tooltip(th, "Asks before deleting everything", w.danger_button(th, "Delete", () => open_dialog())),
         w.text_button(th, "Learn more", () => say("learn")),
         w.button_enabled(th, "Unavailable", false, () => say("should not happen")),
+        w.secondary_button(th, "Notify", () => ceangal.toast("Saved to drafts")),
       ]) |> v.gap(10.0),
     ]),
     w.card(th, [
