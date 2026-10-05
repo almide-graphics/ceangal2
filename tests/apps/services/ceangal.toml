@@ -5,3 +5,12 @@
 id = "dev.almide.ceangal.services"
 name = "Services"
 network = true
+
+[framework]
+path = "../../.."
+
+[native]
+dir = "native"
+
+[web]
+boot = "web/boot.js"

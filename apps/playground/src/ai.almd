@@ -361,7 +361,10 @@ fn header(id: Int, name: String, v: String) -> Unit = {
 fn begin(url: String) -> Int = {
   let mb = bytes.from_string("POST")
   let ub = bytes.from_string(url)
-  net.http_begin(bytes.data_ptr(mb), bytes.len(mb), bytes.data_ptr(ub), bytes.len(ub))
+  // bound, not returned directly: a value-returning call in tail position
+  // sees its Bytes already freed on wasm (almide/almide#3420)
+  let id = net.http_begin(bytes.data_ptr(mb), bytes.len(mb), bytes.data_ptr(ub), bytes.len(ub))
+  id
 }
 
 fn start_stream() -> Unit = {

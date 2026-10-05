@@ -343,7 +343,10 @@ pub fn set_title(title: String) -> Unit = {
 // cancelled, 0 when it failed (the body is why).
 pub fn save_file(name: String, data: Bytes) -> Int = {
   let n = bytes.from_string(name)
-  file.file_save(bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(data), bytes.len(data))
+  // bound, not returned directly: a value-returning call in tail position
+  // sees its Bytes already freed on wasm (almide/almide#3420)
+  let id = file.file_save(bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(data), bytes.len(data))
+  id
 }
 
 // Ask the user for a text file (the system picker). Returns a request id;

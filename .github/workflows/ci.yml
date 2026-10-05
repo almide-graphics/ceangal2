@@ -379,10 +379,12 @@ jobs:
         run: |
           MAC_ARCHS=arm64 tools/ceangal build macos --app "$RUNNER_TEMP/hello-app"
           CEANGAL_EXIT_AFTER_MS=3000 "$RUNNER_TEMP/hello-app/build/macos/Hello App.app/Contents/MacOS/hello"
-      - name: platform services (storage, secrets, HTTP) in a web build
+      - name: platform services (storage, secrets, HTTP) and an app's own native / JS extension
         run: |
           tools/ceangal build web --app tests/apps/services
           node tests/e2e/smoke_web.mjs tests/apps/services/build/web --click Save --expect "saved+secret"
+          node tests/e2e/smoke_web.mjs tests/apps/services/build/web --expect "twice 42 6"
+          tools/ceangal build native --app tests/apps/services
       - name: ceangal dev (web) — an edit reloads the page, a broken one shows its error
         run: node tests/e2e/dev.mjs
       - name: ceangal dev (macos) — an edit restarts the app

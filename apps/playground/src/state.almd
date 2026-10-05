@@ -728,6 +728,8 @@ pub fn gui_place(x: Float, y: Float, w: Float, h: Float) -> Int = {
 pub fn gui_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Bool = runner.runner_gui_event(kind, a, b, x, y, z, w) == 1
 pub fn gui_text(kind: Int, s: String, cursor: Int) -> Bool = {
   let b = bytes.from_string(s)
-  runner.runner_gui_text(kind, bytes.data_ptr(b), bytes.len(b), cursor) == 1
+  // bound first: almide/almide#3420
+  let r = runner.runner_gui_text(kind, bytes.data_ptr(b), bytes.len(b), cursor)
+  r == 1
 }
 pub fn gui_ime(i: Int) -> Float = runner.runner_gui_ime(i)

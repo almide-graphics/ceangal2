@@ -1,11 +1,31 @@
 // Save: a value and a secret written and read back, a title set, and an
 // HTTP request whose answer (any status, 0 when CORS refuses it) shows up.
+// The first line comes from the app's own extension (native/twice.rs,
+// web/boot.js).
 
 import ceangal
 import ceangal.view as v
 import ceangal.storage as storage
 import ceangal.http as http
 import snaidhm
+
+@extern(wasm, "twice", "int")
+@extern(rust, "crate::twice", "twice_int")
+fn twice(n: Int) -> Int = _
+
+@extern(wasm, "twice", "text_len")
+@extern(rust, "crate::twice", "twice_text_len")
+fn twice_text_len(ptr: Int, len: Int) -> Int = _
+
+fn twice_len(s: String) -> Int = {
+  let b = bytes.from_string(s)
+  // bound, not returned directly: a value-returning call in tail position
+  // sees its Bytes already freed on wasm (almide/almide#3420)
+  let n = twice_text_len(bytes.data_ptr(b), bytes.len(b))
+  n
+}
+
+fn twiced() -> String = "twice " + int.to_string(twice(21)) + " " + int.to_string(twice_len("añb"))
 
 var shown = storage.get("note") ?? "none"
 var req = -1
@@ -29,6 +49,7 @@ let keep_save = save
 
 fn view() -> v.View =
   v.col([
+    v.text(twiced()) |> v.label(twiced()),
     v.text(shown) |> v.label(shown),
     v.text(answer) |> v.label(answer),
     v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()) |> v.role(3) |> v.label("Save"),
