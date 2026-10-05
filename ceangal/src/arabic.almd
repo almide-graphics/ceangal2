@@ -1,0 +1,270 @@
+// Arabic shaping with the font's own tables, as HarfBuzz's Arabic shaper
+// does it: each letter's form (isolated, final, medial, initial) from the
+// joining types of its neighbours (marks are transparent), the form
+// features one stage each, then the required ligatures (lam-alef…),
+// contextual alternates, ligatures, and GPOS: kerning and marks (on bases,
+// ligature parts and other marks).
+//
+// A run is shaped in logical order and returned in display order (right to
+// left reversed), with pen positions from the left. tests/shaping/arabic.txt
+// has HarfBuzz's output for a list of words; arabic_test.almd checks this
+// module against it.
+
+import snaidhm.font as font
+import snaidhm.otl as otl
+import self.arabic_data as data
+import self.bidi
+
+// Joining types
+let JT_U = 0
+let JT_L = 1
+let JT_R = 2
+let JT_D = 3
+let JT_T = 4
+let JT_C = 5
+
+// Actions (and the feature masks they set)
+let NONE = 0
+let ISOL = 1
+let FINA = 2
+let FIN2 = 3
+let FIN3 = 4
+let MEDI = 5
+let MED2 = 6
+let INIT = 7
+let GLOBAL = 1
+
+fn action_mask(a: Int) -> Int = if a == NONE then 0 else int.bshl(1, a)
+
+// Whether a code point is shaped by this module (the Arabic blocks).
+pub fn is_arabic(cp: Int) -> Bool =
+  (cp >= 0x0600 and cp <= 0x06FF) or (cp >= 0x0750 and cp <= 0x077F) or (cp >= 0x0860 and cp <= 0x08FF)
+    or (cp >= 0xFB50 and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF)
+
+// arabic_data's table, unpacked on first use: (first, last, joining type).
+var unpacked: List[(Int, Int, Int)] = []
+
+fn ranges() -> List[(Int, Int, Int)] = {
+  if list.len(unpacked) == 0 then {
+    let b = bytes.from_string(data.PACKED)
+    var k = 0
+    while k + 9 <= bytes.len(b) {
+      list.push(unpacked, (hex(b, k, 4), hex(b, k + 4, 4), hex(b, k + 8, 1)))
+      k = k + 9
+    }
+  } else ()
+  unpacked
+}
+
+fn hex(b: Bytes, p: Int, n: Int) -> Int = {
+  var v = 0
+  for k in 0..<n {
+    let c = bytes.read_u8(b, p + k)
+    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
+  }
+  v
+}
+
+// Combining classes of the marks, unpacked on first use: (first, last, class).
+var classes: List[(Int, Int, Int)] = []
+
+// A mark's class in arabic_data (221 and 231: a hamza-like mark).
+fn raw_ccc(cp: Int) -> Int = {
+  if list.len(classes) == 0 then {
+    let b = bytes.from_string(data.CCC)
+    var k = 0
+    while k + 10 <= bytes.len(b) {
+      list.push(classes, (hex(b, k, 4), hex(b, k + 4, 4), hex(b, k + 8, 2)))
+      k = k + 10
+    }
+  } else ()
+  var c = 0
+  for e in classes { if cp >= e.0 and cp <= e.1 then c = e.2 else () }
+  c
+}
+
+// A mark's combining class as HarfBuzz orders Arabic marks (0: not a mark).
+fn ccc(cp: Int) -> Int = {
+  let c = raw_ccc(cp)
+  if c == 221 or c == 231 then c - 1 else c
+}
+
+// Whether HarfBuzz moves the mark to the front of its run (hamza above / below…).
+fn mcm(cp: Int) -> Bool = {
+  let c = raw_ccc(cp)
+  c == 221 or c == 231
+}
+
+// The indices of `cps` with each run of marks in canonical order (by
+// class, stable), then the hamza-like marks of class 220, then 230, moved
+// to its front.
+fn ordered(cps: List[Int]) -> List[Int] = {
+  var out: List[Int] = []
+  var i = 0
+  let n = list.len(cps)
+  while i < n {
+    var j = i
+    while j < n and ccc(cps[j]) != 0 { j = j + 1 }
+    if j == i then { list.push(out, i); i = i + 1 }
+    else {
+      var run: List[Int] = []
+      for k in i..<j {
+        var p = list.len(run)
+        list.push(run, k)
+        while p > 0 and ccc(cps[run[p - 1]]) > ccc(cps[k]) { run[p] = run[p - 1]; p = p - 1 }
+        run[p] = k
+      }
+      // only a leading group of them moves (HarfBuzz's reorder_marks)
+      var front: List[Int] = []
+      for cc in [220, 230] {
+        var f0 = 0
+        while f0 < list.len(run) and ccc(cps[run[f0]]) != cc { f0 = f0 + 1 }
+        var m = f0
+        while m < list.len(run) and ccc(cps[run[m]]) == cc and mcm(cps[run[m]]) { m = m + 1 }
+        front = front + list.slice(run, f0, m)
+        run = list.take(run, f0) + list.drop(run, m)
+      }
+      out = out + front + run
+      i = j
+    }
+  }
+  out
+}
+
+fn joining(cp: Int) -> Int = {
+  var t = JT_U
+  for r in ranges() { if cp >= r.0 and cp <= r.1 then t = r.2 else () }
+  t
+}
+
+// HarfBuzz's joining state machine: for each state and joining type
+// (U, L, R, D; join-causing counts as D), the action for the previous
+// letter, for this one, and the next state, three digits each.
+let STATES = "000012011012000012011012000012721723000012521523"
+
+fn state_at(state: Int, jt: Int, k: Int) -> Int = bytes.read_u8(bytes.from_string(STATES), state * 12 + jt * 3 + k) - 48
+
+// The form action of each character (NONE for transparent ones).
+fn actions(cps: List[Int]) -> List[Int] = {
+  var out = list.repeat(NONE, list.len(cps))
+  var prev = -1
+  var state = 0
+  for i in 0..<list.len(cps) {
+    let jt0 = joining(cps[i])
+    if jt0 != JT_T then {
+      let jt = if jt0 == JT_C then JT_D else jt0
+      let pa = state_at(state, jt, 0)
+      if pa != NONE and prev >= 0 then out[prev] = pa else ()
+      out[i] = state_at(state, jt, 1)
+      prev = i
+      state = state_at(state, jt, 2)
+    } else ()
+  }
+  out
+}
+
+// ── Plans ──
+
+type Plan = { lay: otl.Layout, pre: List[otl.Entry], forms: List[List[otl.Entry]], req: List[otl.Entry], rest: List[otl.Entry], gpos: List[otl.Entry] }
+
+fn feat(t: String, mask: Int, manual: Bool) -> otl.Feature = { tag: otl.tag(t), mask: mask, manual: manual, per_syllable: false }
+
+fn make_plan(f: font.Font) -> Plan = {
+  let lay = otl.layout(f)
+  let tags = [otl.tag("arab")]
+  let form_tags = ["isol", "fina", "fin2", "fin3", "medi", "med2", "init"]
+  var forms: List[List[otl.Entry]] = []
+  for k in 0..<7 { list.push(forms, otl.stage(f, lay, false, tags, [feat(form_tags[k], action_mask(k + 1), false)])) }
+  {
+    lay: lay,
+    pre: otl.stage(f, lay, false, tags, [feat("ccmp", GLOBAL, true), feat("locl", GLOBAL, true)]),
+    forms: forms,
+    req: otl.stage(f, lay, false, tags, [feat("rlig", GLOBAL, true), feat("rclt", GLOBAL, true), feat("calt", GLOBAL, true)]),
+    rest: otl.stage(f, lay, false, tags, [feat("mset", GLOBAL, false), feat("liga", GLOBAL, false), feat("clig", GLOBAL, false)]),
+    gpos: otl.stage(f, lay, true, tags, [feat("kern", GLOBAL, false), feat("mark", GLOBAL, false), feat("mkmk", GLOBAL, false),
+                                         feat("curs", GLOBAL, false), feat("dist", GLOBAL, false)]),
+  }
+}
+
+var plans: List[(Int, Plan)] = []
+
+fn plan_for(f: font.Font) -> Plan = {
+  let key = bytes.len(f.data) * 65536 + f.num_glyphs
+  match list.find(plans, (p) => p.0 == key) {
+    some(p) => p.1,
+    none => {
+      let p = make_plan(f)
+      list.push(plans, (key, p))
+      p
+    },
+  }
+}
+
+// ── Shaping ──
+
+// A shaped glyph, in font units: x of its origin from the run's left, y,
+// advance, and the index of the first code point of its cluster.
+type Out = { gid: Int, x: Int, y: Int, advance: Int, cluster: Int }
+
+// Characters that join the cluster before them: marks and ZWJ.
+fn continues(cp: Int) -> Bool = cp == 0x200D or (joining(cp) == JT_T and cp != 0x200C)
+
+// Shape `cps` (logical order, right to left) with font `f`: glyphs in
+// display order, left to right.
+pub fn shape(f: font.Font, cps: List[Int]) -> List[Out] = {
+  let pl = plan_for(f)
+  let lay = pl.lay
+  // marks in canonical order, brackets mirrored (the run reads right to left)
+  let idx = ordered(cps)
+  var chars: List[Int] = []
+  for k in idx { list.push(chars, cps[k]) }
+  let acts = actions(chars)
+  var buf: List[otl.Info] = []
+  for i in 0..<list.len(chars) {
+    let cp0 = chars[i]
+    let src = idx[i]
+    let cp = bidi.mirror(cp0)
+    let gid = font.glyph_index(f, cp)
+    let cl = if continues(cp0) and list.len(buf) > 0 then buf[list.len(buf) - 1].cluster else src
+    list.push(buf, { gid: gid, cp: cp0, cluster: cl, mask: int.bor(GLOBAL, action_mask(acts[i])), cat: 0, pos: 0, syl: 0,
+                     gclass: otl.glyph_class(f, lay, gid), ligated: false, multiplied: false, comp: 0 })
+  }
+  buf = otl.substitute(f, lay, pl.pre, buf)
+  for st in pl.forms { buf = otl.substitute(f, lay, st, buf) }
+  buf = otl.substitute(f, lay, pl.req, buf)
+  buf = otl.substitute(f, lay, pl.rest, buf)
+  // marks take no width (HarfBuzz zeroes them by GDEF class after GPOS)
+  var pos0: List[otl.Pos] = []
+  for g in buf {
+    list.push(pos0, { xa: if g.cp == 0x200C or g.cp == 0x200D then 0 else float.to_int(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
+  }
+  var pos = otl.position(f, lay, pl.gpos, buf, pos0)
+  for k in 0..<list.len(buf) { if buf[k].gclass == 3 then pos[k] = { ...pos[k], xa: 0 } else () }
+  // display order: reversed; pens from the left
+  let n = list.len(buf)
+  var xs = list.repeat(0, n)
+  var ys = list.repeat(0, n)
+  var pen = 0
+  var k = n - 1
+  while k >= 0 {
+    xs[k] = pen + pos[k].xo
+    ys[k] = pos[k].yo
+    pen = pen + pos[k].xa
+    k = k - 1
+  }
+  // attached marks hang from their base (attachments point to earlier glyphs)
+  for i in 0..<n {
+    let a = pos[i].attach
+    if a >= 0 and a < n then { xs[i] = xs[a] + pos[i].xo; ys[i] = ys[a] + pos[i].yo } else ()
+  }
+  let space = font.glyph_index(f, 32)
+  var out: List[Out] = []
+  var j = n - 1
+  while j >= 0 {
+    let g = buf[j]
+    let hidden = g.cp == 0x200C or g.cp == 0x200D
+    list.push(out, { gid: if hidden then space else g.gid, x: xs[j], y: ys[j], advance: pos[j].xa, cluster: g.cluster })
+    j = j - 1
+  }
+  out
+}

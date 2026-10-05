@@ -11,8 +11,9 @@ once by snaidhm.font. Each codepoint is drawn with the first font in the
 style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
 Thai, the Indic scripts, symbols: loaded the first time a
-character needs them). Labels and paragraphs are joined and put in visual
-order first (self.bidi); Indic runs are shaped with their font's layout
+character needs them). Lines are put in display order first (self.bidi,
+shape_line), Arabic runs shaped with their font's tables (self.arabic);
+Indic runs are shaped with their font's layout
 tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
 keycaps) come from the colour emoji font, layer by layer.
 Glyphs are rasterised on first use into snaidhm's coverage
@@ -113,6 +114,20 @@ pub fn backspace_to(cps: List[Int], col: Int) -> Int
 Where Backspace at `col` deletes back to: a whole emoji (with its skin
 tone or ZWJ sequence), otherwise one code point (one sign of a conjunct).
 
+## Lines: bidi, then each run shaped
+
+### `shape_line`
+
+```almide
+pub fn shape_line(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) -> List[Glyph]
+```
+
+The glyphs of one line `cps` (logical order) in display order: the text
+cut into segments of one bidi level (and, right to left, Arabic or not),
+the segments put in display order, each right-to-left one reversed,
+Arabic shaped with its font (joined letters, lam-alef, marks). Clusters
+are indices in `cps`. `base`: the paragraph direction (-1 from the text).
+
 ## Lines for editing
 
 ### `LineGeo`
@@ -195,15 +210,6 @@ pub fn glyphs_in(gs: List[Glyph], c0: Int, c1: Int) -> List[Glyph]
 
 The glyphs of the code points from c0 up to c1 (by cluster; shaping
 keeps clusters in order, so this is a slice).
-
-### `display`
-
-```almide
-pub fn display(s: String) -> List[Int]
-```
-
-`s` as it is shown on one line: Arabic joined, right-to-left runs in
-visual order (self.bidi).
 
 ### `ascent`
 

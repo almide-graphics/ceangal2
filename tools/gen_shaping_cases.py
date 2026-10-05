@@ -74,7 +74,40 @@ WORDS = {
 }
 
 
+ARABIC = {
+    "arabic": [
+        "مرحبا", "العربية", "السلام عليكم", "لا", "لأ", "لإ", "لآ", "الله", "بِسْمِ اللَّهِ", "مُحَمَّد",
+        "كتب", "كَتَبَ", "مدرسة", "شكرا", "فارسی", "می‌خواهم", "اردو", "پاکستان", "گفتگو", "ژاله",
+        "ب‍ب", "ب‌ب", "قلّم", "ىٰ", "ءَ", "سـلام", "فى", "ئ", "ﻻ", "(كتب)", "نحن نكتب",
+        "لِلْ", "بَيْتٌ", "يَّ", "مستشفى", "تحتاج", "إسلام", "أهلا وسهلا",
+    ],
+}
+
+
+def write(cases, dst, direction=None):
+    out = []
+    for name, words in cases.items():
+        blob = hb.Blob.from_file_path(os.path.join(ROOT, "assets", "fonts", name + ".ttf"))
+        font = hb.Font(hb.Face(blob))
+        for w in words:
+            buf = hb.Buffer()
+            buf.add_codepoints([ord(c) for c in w])
+            buf.guess_segment_properties()
+            if direction:
+                buf.direction = direction
+            hb.shape(font, buf, {})
+            glyphs = " ".join(
+                f"{i.codepoint}:{i.cluster}:{p.x_advance}:{p.x_offset}:{p.y_offset}"
+                for i, p in zip(buf.glyph_infos, buf.glyph_positions))
+            out.append(f"{name}\t{w}\t{glyphs}")
+    path = os.path.join(ROOT, "tests", "shaping", dst)
+    open(path, "w", encoding="utf-8").write("\n".join(out) + "\n")
+    print(f"{os.path.relpath(path, ROOT)}: {len(out)} cases")
+
+
 def main():
+    # Arabic runs are shaped right to left as a whole (neutrals included)
+    write(ARABIC, "arabic.txt", "rtl")
     out = []
     for name, words in WORDS.items():
         blob = hb.Blob.from_file_path(os.path.join(ROOT, "assets", "fonts", name + ".ttf"))

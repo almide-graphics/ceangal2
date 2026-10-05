@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Arabic shaped with the font's OpenType tables**, as HarfBuzz does:
+  joining forms, lam-alef and other ligatures, marks placed over letters
+  and ligatures, kerning. 38 test words and phrases match HarfBuzz
+  exactly. `text.shape_line` lays out a mixed-direction line;
+  `text.display` is removed. (ADR 0014)
 - **Gurmukhi, Gujarati, Telugu, Kannada and Malayalam**, shaped like the
   other Indic scripts (reph by script, pre-base-reordering Ra, Malayalam's
   dot reph): 363 words in eight scripts match HarfBuzz. (ADR 0010)

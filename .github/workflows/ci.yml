@@ -29,9 +29,12 @@ jobs:
       - name: layout engine (Yoga-derived)
         working-directory: ceangal
         run: ../tools/almide test src/layout_test.almd
-      - name: bidi and Arabic joining
+      - name: bidi levels and display order
         working-directory: ceangal
         run: ../tools/almide test src/bidi_test.almd
+      - name: Arabic shaping matches HarfBuzz (tests/shaping/arabic.txt)
+        working-directory: ceangal
+        run: ../tools/almide test src/arabic_test.almd --target wasm
       - name: font engine
         working-directory: snaidhm
         run: ../tools/almide test src/font_test.almd

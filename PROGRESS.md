@@ -4,6 +4,12 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- Arabic を presentation forms から font の GSUB/GPOS へ移行 (ADR 0014)。
+  HarfBuzz の Arabic shaper を移植し、38 語・句で glyph・位置まで完全一致
+  (CI で検査)。lam-alef や合字の上の記号も正しく置かれる。bidi は並べ替え
+  専用になり、行は `text.shape_line` で区間ごとに整形。wasm が約 10 KB
+  増えたため、削れるだけ削ったうえで予算を gallery 225 / todo 204 /
+  hello 202 KB に上げた (理由は ADR 0014。性能・サイズ項目で戻す)。
 - Indic を 8 文字に拡大: Gurmukhi / Gujarati / Telugu / Kannada /
   Malayalam を追加。363 語で HarfBuzz と glyph・cluster・位置まで完全一致
   (CI で検査)。文字表を圧縮文字列にして wasm を約 5 KB 削減し、予算内に収めた。
@@ -310,6 +316,13 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - RTL editing (ADR 0012): `bidi.layout` (logical, per character),
   `text.LineGeo` (caret / spans / glyphs / nearest), wrapped rows reordered
   on their own, visual arrows (apps/gallery/tests/rtl.test).
+- Arabic through the font's GSUB / GPOS (ADR 0014): `ceangal.arabic`
+  (HarfBuzz's joining state machine, mark reordering, form / rlig / calt /
+  liga stages, GPOS kern / mark / mkmk / curs), otl GPOS 5
+  (mark-to-ligature, `Info.comp`), bidi reduced to levels / order,
+  `text.shape_line` (segments by level and script, then display order),
+  LineGeo sharing a cluster's width among its characters. 38 HarfBuzz
+  cases (`tests/shaping/arabic.txt`, CI). Budgets +5 / +4 / +2 KB.
 - `ceangal dev` on Windows runs the app from a copy (the build could not
   replace the locked .exe).
 - Phones: system clipboard, iOS share sheet / document picker, Android
@@ -348,7 +361,11 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
+0. Text (goal order): RTL paragraph right-alignment option for fields,
+   bidi isolates / embeddings, emoji ZWJ sequences inside RTL text,
+   UAX #14 line breaking. Then controls / accessibility, size (win back
+   ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
+   Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
    mobile clipboard / share / picker, text beyond Latin, release checksums
    + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
    ceangal-hello, `ceangal dev`, binary releases, doctor, services API,

@@ -5,7 +5,7 @@
 // then position).
 //
 // Lookups read: GSUB single, multiple, ligature, context and chained
-// context (formats 1–3), extension; GPOS single, pair, mark-to-base,
+// context (formats 1–3), extension; GPOS single, pair, mark-to-base, mark-to-ligature,
 // mark-to-mark, chained context, extension. Glyphs are skipped as the
 // lookup flags say (base / ligature / mark classes, mark attachment
 // class, mark filtering sets), and zero-width joiners the way HarfBuzz
@@ -17,10 +17,11 @@ import self.font as font
 // one, for a ligature); `cluster` the index of the first character of its
 // cluster; `mask` the features that apply to it; `cat`, `pos` and `syl` the
 // shaper's own (category, position, syllable: lookups of per-syllable
-// features match within one syllable).
+// features match within one syllable); `comp`, for a mark that was between
+// the parts of a ligature, which part it followed (1-based; 0 = none).
 type Info = {
   gid: Int, cp: Int, cluster: Int, mask: Int, cat: Int, pos: Int, syl: Int,
-  gclass: Int, ligated: Bool, multiplied: Bool,
+  gclass: Int, ligated: Bool, multiplied: Bool, comp: Int,
 }
 
 // A glyph's position, in font units: advance, offset, and the glyph a mark
@@ -470,6 +471,9 @@ fn ligate(c: Ctx, buf: List[Info], ps: List[Int], lg: Int) -> Step = {
   for k in 0..<list.len(buf) {
     if k == first then list.push(out, { ...with_gid(c, buf[k], lg), ligated: true, multiplied: false, cluster: cl })
     else if k > first and k <= last and list.contains(ps, k) then ()
+    else if k > first and k < last then
+      // a mark between the parts: remember which part it followed
+      list.push(out, { ...buf[k], cluster: cl, comp: list.len(list.filter(ps, (q) => q < k)) })
     else if k >= lo and k <= hi then list.push(out, { ...buf[k], cluster: cl })
     else list.push(out, buf[k])
   }
@@ -523,7 +527,7 @@ pub fn substitute(f: font.Font, lay: Layout, entries: List[Entry], buf: List[Inf
 // something else: how a shaper asks the font which forms it has.
 pub fn would_substitute(f: font.Font, lay: Layout, entries: List[Entry], gids: List[Int]) -> Bool = {
   let buf = list.map(gids, (g) => { gid: g, cp: 0, cluster: 0, mask: -1, cat: 0, pos: 0, syl: 0,
-                                     gclass: class_of(f.data, lay.classes, g), ligated: false, multiplied: false })
+                                     gclass: class_of(f.data, lay.classes, g), ligated: false, multiplied: false, comp: 0 })
   var hit = false
   for e in entries {
     if not hit then {
@@ -632,6 +636,24 @@ fn gpos_sub(c: Ctx, lk: Lookup, s: Int, buf: List[Info], pos: List[Pos], i: Int)
       let mrec = ma + 2 + mc * 4
       let boff = u16(b, ba + 2 + (bc * classes + u16(b, mrec)) * 2)
       if boff == 0 then no else attach(b, pos, i, k, ba + boff, ma + u16(b, mrec + 2))
+    }
+  } else if lk.kind == 5 then {
+    // mark to ligature: the anchor of the part the mark belongs to
+    let mc = coverage(b, s + u16(b, s + 2), g)
+    var k = i - 1
+    while k >= 0 and (buf[k].gclass == 3 or buf[k].cp == 0x200C or buf[k].cp == 0x200D) { k = k - 1 }
+    let lc = if mc < 0 or k < 0 then -1 else coverage(b, s + u16(b, s + 4), buf[k].gid)
+    if lc < 0 then no
+    else {
+      let classes = u16(b, s + 6)
+      let ma = s + u16(b, s + 8)
+      let la = s + u16(b, s + 10)
+      let attach_tab = la + u16(b, la + 2 + lc * 2)
+      let parts = u16(b, attach_tab)
+      let part = if buf[i].comp > 0 then int.min(parts, buf[i].comp) - 1 else parts - 1
+      let mrec = ma + 2 + mc * 4
+      let off = if parts == 0 then 0 else u16(b, attach_tab + 2 + (part * classes + u16(b, mrec)) * 2)
+      if off == 0 then no else attach(b, pos, i, k, attach_tab + off, ma + u16(b, mrec + 2))
     }
   } else if lk.kind == 6 then {
     let m1 = coverage(b, s + u16(b, s + 2), g)

@@ -1,0 +1,36 @@
+import fs
+import snaidhm.font as font
+import self.arabic
+
+// HarfBuzz's glyphs for each line's words, right to left
+// (tools/gen_shaping_cases.py): gid:cluster:x_advance:x_offset:y_offset.
+fn ours(f: font.Font, cps: List[Int]) -> String = {
+  var pen = 0
+  var parts: List[String] = []
+  for g in arabic.shape(f, cps) {
+    list.push(parts, "${g.gid}:${g.cluster}:${g.advance}:${g.x - pen}:${g.y}")
+    pen = pen + g.advance
+  }
+  string.join(parts, " ")
+}
+
+effect fn check_all() -> Int = {
+  let f = font.parse(fs.read_bytes_raw("../assets/fonts/arabic.ttf")!)
+  var failed = 0
+  for line in string.split(fs.read_text("../tests/shaping/arabic.txt")!, "\n") {
+    let cols = string.split(line, "\t")
+    if list.len(cols) == 3 then {
+      let cps = list.map(string.chars(cols[1]), (c) => match string.codepoint(c) { some(v) => v, none => 0 })
+      let got = ours(f, cps)
+      if got != cols[2] then {
+        failed = failed + 1
+        println("FAIL ${cols[1]}\n  want ${cols[2]}\n  got  ${got}")
+      } else ()
+    } else ()
+  }
+  failed
+}
+
+test "Arabic words shape as HarfBuzz shapes them" {
+  assert_eq(check_all()!, 0)
+}

@@ -61,7 +61,8 @@ Hindi, Bengali and Tamil together are read by over a billion people.
   same engine. Oriya and Sinhala need a font and their rows in the script
   table.
 - Arabic still joins through presentation forms. Moving it to the font's
-  GSUB (init / medi / fina, mark positioning) would now be possible.
+  GSUB (init / medi / fina, mark positioning) would now be possible. (Done
+  in ADR 0014.)
 
 ## Update (2026-10-06): eight scripts
 Gurmukhi, Gujarati, Telugu, Kannada and Malayalam were added, each with

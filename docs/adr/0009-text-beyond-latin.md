@@ -19,7 +19,8 @@ right-to-left text read backwards.
 - **Arabic joining through presentation forms** (`ceangal/src/bidi.almd`):
   each letter's contextual form (isolated, initial, medial, final) by its
   joining type, lam-alef ligatures, marks transparent. This covers Arabic,
-  Persian and Urdu letters without a GSUB interpreter.
+  Persian and Urdu letters without a GSUB interpreter. (Replaced by the
+  font's GSUB / GPOS in ADR 0014.)
 - **A reduced Unicode Bidirectional Algorithm** for one line: paragraph
   direction from the first strong character, numbers as left-to-right runs
   inside right-to-left text, neutrals taking the direction of their

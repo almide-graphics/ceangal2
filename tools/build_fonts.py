@@ -113,9 +113,9 @@ def main():
         build(f("JetBrainsMono[wght].ttf"), o("mono.ttf"), {"wght": 400}, LATIN + MONO_EXTRA, keep_layout=False)
     if "cjk" in want:
         build(f("NotoSansJP[wght].ttf"), o("cjk.ttf"), {"wght": 400}, cjk_codepoints(), keep_layout=False)
-    # shaping is ceangal.text's (joining via presentation forms, bidi): no layout tables
+    # Arabic: its layout tables join the letters, form lam-alef and place marks (ceangal.arabic)
     if "arabic" in want:
-        build(f("NotoSansArabic[wdth,wght].ttf"), o("arabic.ttf"), {"wght": 400, "wdth": 100}, ARABIC, keep_layout=False)
+        build(f("NotoSansArabic[wdth,wght].ttf"), o("arabic.ttf"), {"wght": 400, "wdth": 100}, ARABIC, all_features=True)
     if "hebrew" in want:
         build(f("NotoSansHebrew[wdth,wght].ttf"), o("hebrew.ttf"), {"wght": 400, "wdth": 100}, HEBREW, keep_layout=False)
     if "thai" in want:

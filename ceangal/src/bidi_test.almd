@@ -1,74 +1,54 @@
-// ceangal.bidi: joining and visual order for one line.
+// ceangal.bidi: levels and display order for one line.
 
 import self.bidi
 
+fn shown(cps: List[Int]) -> List[Int] = list.map(bidi.order_of(bidi.levels(cps, -1)), (k) => cps[k])
+
 test "left-to-right text is unchanged" {
-  assert(bidi.visual([0x61, 0x62, 0x20, 0x31]) == [0x61, 0x62, 0x20, 0x31])
+  assert(shown([0x61, 0x62, 0x20, 0x31]) == [0x61, 0x62, 0x20, 0x31])
+  assert(not bidi.has_rtl([0x61, 0x62]))
 }
 
 test "Hebrew is reversed" {
   // שלום
-  assert(bidi.visual([0x05E9, 0x05DC, 0x05D5, 0x05DD]) == [0x05DD, 0x05D5, 0x05DC, 0x05E9])
+  assert(shown([0x05E9, 0x05DC, 0x05D5, 0x05DD]) == [0x05DD, 0x05D5, 0x05DC, 0x05E9])
 }
 
 test "Hebrew inside English keeps the English order" {
   // "ab שלום cd"
-  let got = bidi.visual([0x61, 0x62, 0x20, 0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x63, 0x64])
+  let got = shown([0x61, 0x62, 0x20, 0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x63, 0x64])
   assert(got == [0x61, 0x62, 0x20, 0x05DD, 0x05D5, 0x05DC, 0x05E9, 0x20, 0x63, 0x64])
 }
 
 test "numbers in right-to-left text stay left to right" {
-  // "שלום 123" → "123 םולש"
-  let got = bidi.visual([0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x31, 0x32, 0x33])
-  assert(got == [0x31, 0x32, 0x33, 0x20, 0x05DD, 0x05D5, 0x05DC, 0x05E9])
+  // "של 123"
+  let got = shown([0x05E9, 0x05DC, 0x20, 0x31, 0x32, 0x33])
+  assert(got == [0x31, 0x32, 0x33, 0x20, 0x05DC, 0x05E9])
 }
 
-test "brackets are mirrored in right-to-left runs" {
-  // "(שלום)" shows as "(םולש)"
-  let got = bidi.visual([0x28, 0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x29])
-  assert(got == [0x28, 0x05DD, 0x05D5, 0x05DC, 0x05E9, 0x29])
+test "English inside right-to-left text keeps its order" {
+  // "שלום ab": the paragraph reads right to left, "ab" is level 2
+  let cps = [0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x61, 0x62]
+  assert(bidi.levels(cps, -1) == [1, 1, 1, 1, 1, 2, 2])
+  assert(bidi.order_of(bidi.levels(cps, -1)) == [5, 6, 4, 3, 2, 1, 0])
 }
 
-test "Arabic letters join, lam-alef is one ligature" {
-  // سلام: seen initial, lam-alef final, meem isolated
-  assert(bidi.join_arabic([0x0633, 0x0644, 0x0627, 0x0645]) == [0xFEB3, 0xFEFC, 0xFEE1])
+test "Arabic marks go with their letter" {
+  // beh, fatha: one right-to-left run
+  assert(bidi.levels([0x0628, 0x064E], -1) == [1, 1])
 }
 
-test "Arabic joining: medial and final forms, right-joining letters" {
-  // بيت: beh initial, yeh medial, teh final
-  assert(bidi.join_arabic([0x0628, 0x064A, 0x062A]) == [0xFE91, 0xFEF4, 0xFE96])
-  // دب: dal does not join forward, so beh stands alone
-  assert(bidi.join_arabic([0x062F, 0x0628]) == [0xFEA9, 0xFE8F])
-}
-
-test "harakat do not break joining" {
-  // بَت (fatha between): beh initial, fatha, teh final
-  assert(bidi.join_arabic([0x0628, 0x064E, 0x062A]) == [0xFE91, 0x064E, 0xFE96])
-}
-
-test "layout keeps one entry per character, in logical order" {
-  // "ab שלום": the Hebrew run is level 1 and shown reversed after "ab "
-  let l = bidi.layout([0x61, 0x62, 0x20, 0x05E9, 0x05DC, 0x05D5, 0x05DD], -1)
-  assert(l.levels == [0, 0, 0, 1, 1, 1, 1])
-  assert(l.order == [0, 1, 2, 6, 5, 4, 3])
-  assert(list.len(l.shapes) == 7)
-}
-
-test "layout of a right-to-left paragraph puts English runs at level 2" {
-  // "שלום ab"
-  let l = bidi.layout([0x05E9, 0x05DC, 0x05D5, 0x05DD, 0x20, 0x61, 0x62], -1)
-  assert(l.levels == [1, 1, 1, 1, 1, 2, 2])
-  assert(l.order == [5, 6, 4, 3, 2, 1, 0])
-}
-
-test "layout keeps the length through a lam-alef ligature" {
-  // لا: lam + alef → the ligature, then U+200B in the alef's place
-  let l = bidi.layout([0x0644, 0x0627], -1)
-  assert(l.shapes == [0xFEFB, 0x200B])
-  assert(l.order == [1, 0])
+test "a given paragraph direction wins over the text's" {
+  assert(bidi.levels([0x61, 0x62], 1) == [2, 2])
 }
 
 test "the paragraph direction is the first strong character's" {
   assert(bidi.direction([0x31, 0x20, 0x05D0]) == 1)
   assert(bidi.direction([0x61, 0x05D0]) == 0)
+}
+
+test "brackets mirror" {
+  assert(bidi.mirror(0x28) == 0x29)
+  assert(bidi.mirror(0x5D) == 0x5B)
+  assert(bidi.mirror(0x61) == 0x61)
 }

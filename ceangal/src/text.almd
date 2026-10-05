@@ -5,8 +5,9 @@
 // style's fallback chain that has it (UI: ui → cjk → mono; code: mono →
 // cjk → ui), after the font for its script when it has one (Arabic, Hebrew,
 // Thai, the Indic scripts, symbols: loaded the first time a
-// character needs them). Labels and paragraphs are joined and put in visual
-// order first (self.bidi); Indic runs are shaped with their font's layout
+// character needs them). Lines are put in display order first (self.bidi,
+// shape_line), Arabic runs shaped with their font's tables (self.arabic);
+// Indic runs are shaped with their font's layout
 // tables (self.indic); emoji (with their skin tones, ZWJ sequences, flags,
 // keycaps) come from the colour emoji font, layer by layer.
 // Glyphs are rasterised on first use into snaidhm's coverage
@@ -21,6 +22,7 @@ import self.layout as lay
 import self.host.sys as sys
 import self.bidi
 import self.indic
+import self.arabic
 import self.emoji_data as emoji
 
 // Sizes are layout.Size: a second record type with the same fields makes the
@@ -249,7 +251,7 @@ fn emoji_glyphs(f: font.Font, cps: List[Int]) -> List[Int] = {
   } else ()
   let buf = list.map(cps, (cp) => {
     let g = font.glyph_index(f, cp)
-    { gid: g, cp: cp, cluster: 0, mask: 1, cat: 0, pos: 0, syl: 0, gclass: otl.glyph_class(f, lay, g), ligated: false, multiplied: false }
+    { gid: g, cp: cp, cluster: 0, mask: 1, cat: 0, pos: 0, syl: 0, gclass: otl.glyph_class(f, lay, g), ligated: false, multiplied: false, comp: 0 }
   })
   let out = otl.substitute(f, lay, emoji_stage, buf)
   list.map(list.filter(out, (g) => g.ligated or not (g.cp == 0x200D or g.cp == 0xFE0F or tag_char(g.cp) or g.cp == 0x20E3)), (g) => g.gid)
@@ -417,6 +419,82 @@ pub fn backspace_to(cps: List[Int], col: Int) -> Int =
     if emoji_end(cps, s) >= col then s else col - 1
   }
 
+// ── Lines: bidi, then each run shaped ──
+
+// Arabic runs shaped already, in font units: by text.
+var arabic_cache: Map[String, List[arabic.Out]] = map.new()
+
+fn shape_arabic(cps: List[Int]) -> List[arabic.Out] = {
+  var key = ""
+  for c in cps { key = key + int.to_string(c) + "," }
+  match map.get(arabic_cache, key) {
+    some(gs) => gs,
+    none => {
+      let gs = arabic.shape(font_at(FONT_ARABIC), cps)
+      if map.len(arabic_cache) > 1000 then arabic_cache = map.new() else ()
+      map.insert(arabic_cache, key, gs)
+      gs
+    },
+  }
+}
+
+// Whether the Arabic font draws `cp` within an Arabic run (letters, marks,
+// joiners, and the spaces and punctuation between them).
+fn arabic_run_char(cp: Int) -> Bool =
+  arabic.is_arabic(cp) or cp == 0x200C or cp == 0x200D
+    or (not bidi.has_rtl([cp]) and font.glyph_index(font_at(FONT_ARABIC), cp) != 0)
+
+// The glyphs of one line `cps` (logical order) in display order: the text
+// cut into segments of one bidi level (and, right to left, Arabic or not),
+// the segments put in display order, each right-to-left one reversed,
+// Arabic shaped with its font (joined letters, lam-alef, marks). Clusters
+// are indices in `cps`. `base`: the paragraph direction (-1 from the text).
+pub fn shape_line(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) -> List[Glyph] =
+  if base != 1 and not bidi.has_rtl(cps) then shape(cps, size, mono, bold)
+  else {
+    let lv = bidi.levels(cps, base)
+    let n = list.len(cps)
+    let has_arabic = font_at(FONT_ARABIC).ok and list.any(cps, (c) => arabic.is_arabic(c))
+    // kind of each character: 0 left to right, 1 right to left, 2 Arabic
+    var kinds: List[Int] = []
+    for i in 0..<n {
+      list.push(kinds, if lv[i] % 2 == 0 then 0 else if has_arabic and arabic_run_char(cps[i]) then 2 else 1)
+    }
+    var starts: List[Int] = []
+    var seg_lv: List[Int] = []
+    for i in 0..<n {
+      if i == 0 or lv[i] != lv[i - 1] or kinds[i] != kinds[i - 1] then { list.push(starts, i); list.push(seg_lv, lv[i]) } else ()
+    }
+    list.push(starts, n)
+    var out: List[Glyph] = []
+    var x = 0.0
+    for sg in bidi.order_of(seg_lv) {
+      let lo = starts[sg]
+      let hi = starts[sg + 1]
+      let k = kinds[lo]
+      var adv = 0.0
+      if k == 2 then {
+        let f = font_at(FONT_ARABIC)
+        let sc = size / f.units_per_em
+        for g in shape_arabic(list.slice(cps, lo, hi)) {
+          list.push(out, { slot: FONT_ARABIC, gid: g.gid, x: x + int.to_float(g.x) * sc, y: int.to_float(g.y) * sc,
+                           advance: int.to_float(g.advance) * sc, cluster: lo + g.cluster, color: -1 })
+          adv = adv + int.to_float(g.advance) * sc
+        }
+      } else {
+        // right to left: reversed and mirrored, glyph by glyph
+        var run: List[Int] = []
+        for j in lo..<hi { list.push(run, if k == 1 then bidi.mirror(cps[hi - 1 - (j - lo)]) else cps[j]) }
+        for g in shape(run, size, mono, bold) {
+          list.push(out, { ...g, x: g.x + x, cluster: if k == 1 then hi - 1 - g.cluster else lo + g.cluster })
+          adv = float.max(adv, g.x + g.advance)
+        }
+      }
+      x = x + adv
+    }
+    out
+  }
+
 // ── Lines for editing ──
 
 // A line laid out for editing, in px from its start: where the caret goes
@@ -435,21 +513,43 @@ pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) 
     let ex = edges(gs, n)
     { caret: ex, left: list.take(ex, n), right: list.drop(ex, 1), glyphs: gs, ordered: true }
   } else {
-    let l = bidi.layout(cps, base)
-    let gs = shape(list.map(l.order, (k) => l.shapes[k]), size, mono, bold)
-    let ev = edges(gs, n)
-    // character k is shown at position inv[k]
-    var inv = list.repeat(0, n)
-    for v in 0..<n { inv[l.order[v]] = v }
-    let left = list.map(list.range(0, n), (k) => ev[inv[k]])
-    let right = list.map(list.range(0, n), (k) => ev[inv[k] + 1])
+    let lv = bidi.levels(cps, base)
+    let gs = shape_line(cps, size, mono, bold, base)
+    // each cluster's extent on screen (its first character's index → [x0, x1])
+    var x0 = list.repeat(-1.0, n + 1)
+    var x1 = list.repeat(-1.0, n + 1)
+    for g in gs {
+      let c = g.cluster
+      if c >= 0 and c < n and g.advance > 0.0 then {
+        x0[c] = if x0[c] < 0.0 then g.x else float.min(x0[c], g.x)
+        x1[c] = float.max(x1[c], g.x + g.advance)
+      } else ()
+    }
+    // a cluster's characters share its width, in reading order
+    var left = list.repeat(0.0, n)
+    var right = list.repeat(0.0, n)
+    var c = 0
+    while c < n {
+      var e = c + 1
+      while e < n and x1[e] < 0.0 { e = e + 1 }
+      let s0 = if x0[c] >= 0.0 then x0[c] else (if c > 0 then right[c - 1] else 0.0)
+      let s1 = if x1[c] >= 0.0 then x1[c] else s0
+      let m = int.to_float(e - c)
+      for j in c..<e {
+        let t0 = int.to_float(j - c) / m
+        let t1 = int.to_float(j - c + 1) / m
+        if lv[c] % 2 == 1 then { left[j] = s1 - (s1 - s0) * t1; right[j] = s1 - (s1 - s0) * t0 }
+        else { left[j] = s0 + (s1 - s0) * t0; right[j] = s0 + (s1 - s0) * t1 }
+      }
+      c = e
+    }
     // the caret after a character: on its trailing side (left, when right to left)
     let caret = list.map(list.range(0, n + 1), (p) =>
       if n == 0 then 0.0
-      else if p == 0 then (if l.levels[0] % 2 == 1 then right[0] else left[0])
-      else if l.levels[p - 1] % 2 == 1 then left[p - 1]
+      else if p == 0 then (if lv[0] % 2 == 1 then right[0] else left[0])
+      else if lv[p - 1] % 2 == 1 then left[p - 1]
       else right[p - 1])
-    { caret: caret, left: left, right: right, glyphs: list.map(gs, (g) => { ...g, cluster: l.order[int.min(g.cluster, n - 1)] }), ordered: false }
+    { caret: caret, left: left, right: right, glyphs: gs, ordered: false }
   }
 }
 
@@ -458,7 +558,7 @@ pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) 
 pub fn direction(cps: List[Int]) -> Int = bidi.direction(cps)
 
 // The embedding level of each character of `cps` (odd: right to left).
-pub fn levels(cps: List[Int]) -> List[Int] = bidi.layout(cps, -1).levels
+pub fn levels(cps: List[Int]) -> List[Int] = bidi.levels(cps, -1)
 
 // x after each character in logical order, as if laid end to end (n + 1
 // values): where a line breaks when it wraps.
@@ -522,10 +622,6 @@ fn first_at(gs: List[Glyph], c: Int) -> Int = {
   lo
 }
 
-// `s` as it is shown on one line: Arabic joined, right-to-left runs in
-// visual order (self.bidi).
-pub fn display(s: String) -> List[Int] = bidi.visual(codepoints(s))
-
 // Line metrics of the primary font at `size`: ascent and full line height.
 pub fn ascent(size: Float, mono: Bool) -> Float = {
   let f = font_at(if mono then FONT_MONO else FONT_UI)
@@ -540,7 +636,7 @@ pub fn line_height(size: Float, mono: Bool) -> Float = {
 
 // The width of `s` on one line at `size`.
 pub fn width(s: String, size: Float, mono: Bool, bold: Bool) -> Float =
-  list.fold(shape(display(s), size, mono, bold), 0.0, (w, g) => float.max(w, g.x + g.advance))
+  list.fold(shape_line(codepoints(s), size, mono, bold, -1), 0.0, (w, g) => float.max(w, g.x + g.advance))
 
 // The size of `s` drawn on one line.
 pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
@@ -618,7 +714,7 @@ pub fn draw(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono
 pub fn draw_style(s: String, x: Float, y: Float, w: Float, h: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit = {
   let lh = line_height(size, mono)
   let baseline = float.round(y + (h - lh) * 0.5 + ascent(size, mono))
-  draw_run(shape(display(s), size, mono, bold), x, baseline, size, c)
+  draw_run(shape_line(codepoints(s), size, mono, bold, -1), x, baseline, size, c)
 }
 
 // Draw shaped glyphs with the pen starting at (x, baseline), physical px.

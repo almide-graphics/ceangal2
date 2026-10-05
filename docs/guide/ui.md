@@ -170,8 +170,9 @@ including under the safe areas.
 
 Text is drawn with the bundled fonts: a UI sans (regular and semibold;
 Latin, Greek, Cyrillic), a monospace font for `mono()`, and fallbacks
-picked per character: Japanese / Chinese, Arabic (letters joined into
-their contextual forms), Hebrew, Thai, Devanagari, Bengali, Gurmukhi,
+picked per character: Japanese / Chinese, Arabic (shaped with its font's
+OpenType tables as HarfBuzz does: joined letters, lam-alef, marks placed
+over letters and ligatures), Hebrew, Thai, Devanagari, Bengali, Gurmukhi,
 Gujarati, Tamil, Telugu, Kannada, Malayalam, and
 emoji in colour (skin tones, ZWJ sequences such as families, flags,
 keycaps; symbols that are text by default, like ☺ or ✔, stay in the text

@@ -11,7 +11,10 @@ a field read backwards, and Arabic stayed unjoined.
   `bidi.layout(cps, base)` returns, for each character in logical order,
   its shape (joined, mirrored in right-to-left runs; a lam-alef's alef
   becomes U+200B, drawn by the lam), its embedding level, and the display
-  order. `bidi.visual` (labels) is the same algorithm.
+  order. `bidi.visual` (labels) is the same algorithm. (Since ADR 0014:
+  `bidi.levels` / `order_of` give the levels and order, and
+  `text.shape_line` shapes the line, with Arabic run through the font's
+  tables.)
 - **`text.LineGeo`** holds what editing needs, in logical positions:
   - the caret x at each position 0..n (on the trailing side of the
     character before it: its left edge when that character is right to

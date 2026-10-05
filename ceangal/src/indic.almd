@@ -712,7 +712,7 @@ pub fn shape(f: font.Font, script: Int, cps: List[Int]) -> List[Out] = {
     syl = syl + 1
     if kind == 1 and dotted != 0 then
       list.push(buf, { gid: dotted, cp: 0x25CC, cluster: chars[i].1, mask: GLOBAL, cat: PH, pos: POS_BASE_C, syl: syl,
-                       gclass: otl.glyph_class(f, lay, dotted), ligated: false, multiplied: false })
+                       gclass: otl.glyph_class(f, lay, dotted), ligated: false, multiplied: false, comp: 0 })
     else ()
     for k in i..<end {
       let (cp, src) = chars[k]
@@ -725,7 +725,7 @@ pub fn shape(f: font.Font, script: Int, cps: List[Int]) -> List[Out] = {
       let mark = cat == N or cat == H or cat == M or cat == SM or cp == 0x200D
       let cl = if mark and list.len(buf) > 0 then buf[list.len(buf) - 1].cluster else src
       list.push(buf, { gid: gid, cp: cp, cluster: cl, mask: GLOBAL, cat: cat, pos: pos, syl: if kind == 2 then 0 else syl,
-                       gclass: otl.glyph_class(f, lay, gid), ligated: false, multiplied: false })
+                       gclass: otl.glyph_class(f, lay, gid), ligated: false, multiplied: false, comp: 0 })
     }
     i = end
   }
