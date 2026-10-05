@@ -134,8 +134,9 @@ class E2E: XCTestCase {
             var tries = 0
             while !key.waitForExistence(timeout: 1) && tries < 3 {
                 // the other case: Shift switches the letters
-                let shift = kb.buttons["shift"].exists ? kb.buttons["shift"] : kb.keys["shift"]
-                if shift.exists { shift.tap() }
+                // (named "shift" or "Shift" depending on the iOS version)
+                let shift = [kb.buttons["shift"], kb.keys["shift"], kb.buttons["Shift"], kb.keys["Shift"]].first { $0.exists }
+                if let shift { shift.tap() } else { Thread.sleep(forTimeInterval: 0.5) }
                 key = kb.keys[s]
                 tries += 1
             }
