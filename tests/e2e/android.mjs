@@ -93,6 +93,15 @@ async function untilGui(pred, what, ms = 20000) {
   throw new Error(`timed out waiting for ${what}; program labels: ${guiTree().map((n) => n.label).join(" | ")}`);
 }
 
+async function keyboardShown(ms = 15000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    if (/mInputShown=true/.test(adb("shell", "dumpsys", "input_method"))) { await sleep(500); return; }
+    await sleep(200);
+  }
+  throw new Error("the soft keyboard did not come up");
+}
+
 /** Tap a node of the user program: its rect is relative to the program window. */
 // A slow device lays out over several frames (insets, the soft keyboard):
 // read the box until it stops moving before tapping it.
@@ -171,6 +180,9 @@ for (const app of apps) {
     });
     await step("todo: type a task with the soft keyboard, Enter adds it", async () => {
       await tap(tree(), "New task");
+      // type only once the keyboard is up and bound to the field: text sent
+      // earlier is lost in part (CI once got "ilk")
+      await keyboardShown();
       adb("shell", "input", "text", "Buy%smilk");
       await sleep(300);
       adb("shell", "input", "keyevent", "66");
