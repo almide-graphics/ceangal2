@@ -10,7 +10,18 @@ import { join } from "node:path";
 
 const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || join(process.env.HOME, "Library/Android/sdk");
 const adbPath = existsSync(join(sdk, "platform-tools/adb")) ? join(sdk, "platform-tools/adb") : "adb";
-const adb = (...a) => execFileSync(adbPath, a, { encoding: "utf8", maxBuffer: 64 << 20 });
+// The CI emulator's adb connection sometimes drops for a moment: try a
+// failed command twice more, after waiting for the device.
+const adb = (...a) => {
+  for (let attempt = 0; ; attempt++) {
+    try { return execFileSync(adbPath, a, { encoding: "utf8", maxBuffer: 64 << 20 }); }
+    catch (e) {
+      if (attempt >= 2) throw e;
+      console.log(`     (adb failed, trying again: ${a.join(" ").slice(0, 60)})`);
+      execFileSync(adbPath, ["wait-for-device"], { timeout: 120000 });
+    }
+  }
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const apk = process.argv[2] || "out/gallery/android/gallery.apk";
 const pkg = "dev.almide.ceangal.gallery";

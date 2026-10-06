@@ -10,7 +10,18 @@ import { join } from "node:path";
 
 const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || join(process.env.HOME, "Library/Android/sdk");
 const adbPath = existsSync(join(sdk, "platform-tools/adb")) ? join(sdk, "platform-tools/adb") : "adb";
-const adb = (...a) => execFileSync(adbPath, a, { encoding: "utf8", maxBuffer: 64 << 20 });
+// The CI emulator's adb connection sometimes drops for a moment: try a
+// failed command twice more, after waiting for the device.
+const adb = (...a) => {
+  for (let attempt = 0; ; attempt++) {
+    try { return execFileSync(adbPath, a, { encoding: "utf8", maxBuffer: 64 << 20 }); }
+    catch (e) {
+      if (attempt >= 2) throw e;
+      console.log(`     (adb failed, trying again: ${a.join(" ").slice(0, 60)})`);
+      execFileSync(adbPath, ["wait-for-device"], { timeout: 120000 });
+    }
+  }
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const apk = process.argv[2] || "tests/apps/services/build/android/services.apk";
 const pkg = "dev.almide.ceangal.services";
@@ -102,7 +113,8 @@ try {
   if (saved.trim() !== "exported by ceangal") throw new Error(`Downloads/services.txt holds ${JSON.stringify(saved)}`);
   console.log("ok   save_file wrote Download/services.txt (MediaStore)");
 
-  const overlays = () => (adb("logcat", "-d").match(/ClipboardOverlay/g) || []).length;
+  // (filtered on the device; adbd logs the command itself, which is not one)
+  const overlays = () => adb("logcat", "-d", "-e", "ClipboardOverlay").split("\n").filter((l) => /ClipboardOverlay/.test(l) && !/adbd/.test(l)).length;
   const before = overlays();
   await tap("Copy");
   await sleep(1500);
