@@ -555,9 +555,11 @@ accounts, submission, the v0.3.0 tag; see Human TODO). Weak spots found
 and worth doing next:
 1. Thai, Lao, Khmer and Myanmar word breaking (UAX #14 LB1 needs a
    dictionary): today these break only at spaces (ADR 0017).
-2. Layout: `build_lines` still copies child nodes (Almide value lists).
-   A layout that works on indices would take the gallery's frame from 3.1 ms
-   further down (ADR 0022).
+2. Layout: `let child = node.children[i]` copies the subtree natively
+   (`for c in list` and direct `list[i].field` borrow instead). Tried
+   2026-10-06: with the size memo in place it made no measurable difference
+   (3.27 → 3.25 ms), so it was not kept. What remains of the 3.1 ms is
+   spread over measure_node / build_lines.
 3. iOS VoiceOver: text fields have no text-field trait in accesskit_ios.
    Consider a custom trait or an upstream report (Known issues).
 4. Remove the almide workarounds once a release after v0.66.0 ships the
