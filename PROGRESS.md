@@ -583,9 +583,17 @@ item, the first green CI run on main that deploys Pages, waits for a push
   no text-field trait (UIKit has none public), so VoiceOver reads its label
   and value only; a slider has the adjustable trait but XCUITest lists it
   as an element with a value. GalleryE2E checks what is there.
-- **almide issue status (checked 2026-10-06):** #3296, #3417, #3419,
-  #3420, #3424 and #3433 are closed on almide's main, but the latest release
-  is still v0.66.0 (2026-10-03), which predates the fixes. The workarounds
+- CI Android: the API 35 emulator has a hardware keyboard, so Gboard showed
+  only its suggestion strip and the app (rightly) saw no on-screen
+  keyboard: the key-bar step failed now and then. The E2E sets
+  `show_ime_with_hard_keyboard` to 1. On a device with a keyboard attached
+  the key bar stays hidden, as it should.
+- **almide issue status (checked 2026-10-06):** #3296, #3297, #3346,
+  #3347, #3349, #3350, #3358, #3359, #3379, #3381, #3417, #3419, #3420,
+  #3424 and #3433 are all closed on almide's main. The latest release is
+  still v0.66.0 (2026-10-03), which predates the fixes. #3297 (a fn with a
+  function parameter used as a value) came back natively for `vkey`;
+  `widgets.vkey` was reshaped to avoid it. almide/toml#2 is still open. The workarounds
   below stay until a release with them; then bump `.almide-version` and
   remove them. #3296 still bites on 0.66.0: `keep_open_popup_at`
   (widgets) and `keep_geo_spans` (editor) were added today. #3438 is open.
