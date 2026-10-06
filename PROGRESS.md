@@ -8,9 +8,12 @@ Read at the start of every session; update at the end.
   スクリーンリーダー向けに status / alert / tooltip ロールを全ホストに追加し、
   web ではページに常駐する live region でトーストを読み上げ。gallery の
   announce.test (web / native) と Chrome E2E で確認。
-- Android CI の失敗は、エミュレータ上で Play 開発者サービスが Gboard の
-  設定更新を走らせ、キーボードのプロセスが再起動していたため
-  (logcat で確認)。テストでタップを再試行し、adb 切断時も待って再試行。
+- Android CI の失敗 (キーバーが出ない) の原因を特定: 新しい Gboard が
+  adb で注入したタップをスタイラスとみなし、キーボードの代わりに手書き
+  入力 (「Try out your stylus」画面やフローティングのツールバー) を出して
+  いた。E2E で `stylus_handwriting_enabled` を 0 にし、タップを
+  `input touchscreen tap` で送るよう修正。ローカルの arm64 エミュレータで
+  も、これまで「環境要因」とされていたキーバーの step が通るようになった。
 - テキストビューの折り返し (`v.wrapped()`、`w.body` は既定で折り返し)。
   1 回目のレイアウト後に幅に応じた行数で高さを決めて再レイアウト。
   gallery に英語・日本語の段落を追加し web / native で確認。
@@ -380,8 +383,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
   gallery announce.test + Chrome E2E.
 - Wrapping text views (ADR 0017 update): `v.wrapped()`, `w.body` wraps;
   second layout pass with the rows' heights; paint draws the measured rows.
-- Android E2E: adb commands wait for the device and retry when the
-  emulator's connection drops for a moment.
+- Android E2E: no stylus handwriting, touchscreen taps (the key-bar step
+  now passes on the local arm64 emulator too); adb commands wait for the
+  device and retry when the emulator's connection drops for a moment.
 - Line breaking by UAX #14 (ADR 0017): `ceangal.linebreak` (LB2–LB31
   except LB28a / LB30b; classes = block defaults + a 1.5 KB table from
   `tools/gen_linebreak.py`), 8014 LineBreakTest.txt lines in CI; the
@@ -446,9 +450,12 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
-- CI Android: Play services refreshes Gboard's configuration a few
-  minutes after boot and restarts the keyboard process (19e02aa: no
-  keyboard after the editor tap). The E2E taps again (3 tries).
+- CI / local Android: Gboard took adb's injected taps for a stylus and
+  opened handwriting (the "Try out your stylus" sheet, or a floating
+  toolbar) instead of the keyboard, so the playground's key bar never
+  appeared (19e02aa, fb1b532, and always on the local arm64 emulator). The
+  E2E turns `stylus_handwriting_enabled` off and taps with
+  `input touchscreen tap`; it still taps again if no keyboard comes.
 - CI Android (API 35 x86_64 emulator): adb sometimes drops for a moment
   ("device offline") during the playground's key-bar step and is back by
   the next step (7d8c181, bd47361). The same step runs fine on the local

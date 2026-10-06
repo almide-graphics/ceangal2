@@ -140,7 +140,7 @@ async function tapGui(label) {
     const n = guiTree().find((g) => g.label === label);
     return win && n ? { t, win, n } : null;
   }, `program node "${label}"`);
-  adb("shell", "input", "tap", String(Math.round((win.x + n.x + n.w / 2) * t.scale)), String(Math.round((win.y + n.y + n.h / 2) * t.scale)));
+  adb("shell", "input", "touchscreen", "tap", String(Math.round((win.x + n.x + n.w / 2) * t.scale)), String(Math.round((win.y + n.y + n.h / 2) * t.scale)));
   await sleep(500);
 }
 
@@ -152,7 +152,7 @@ async function tap(t0, label) {
   const t = await settled(() => { const t = tree(); const n = t && node(t, label); return n ? { scale: t.scale, n } : null; }, `"${label}"`);
   const n = t.n;
   const s = t.scale;
-  adb("shell", "input", "tap", String(Math.round((n.x + n.w / 2) * s)), String(Math.round((n.y + n.h / 2) * s)));
+  adb("shell", "input", "touchscreen", "tap", String(Math.round((n.x + n.w / 2) * s)), String(Math.round((n.y + n.h / 2) * s)));
   await sleep(500);
 }
 
@@ -172,6 +172,10 @@ async function launch(pkg, { clear = true, data = null } = {}) {
   for (let i = 0; i < 100 && !pid(); i++) await sleep(100);
 }
 
+// Gboard takes injected taps for a stylus and opens handwriting (or its
+// "try out your stylus" sheet) instead of the keyboard: turn that off, and
+// send taps as touchscreen events.
+adb("shell", "settings", "put", "secure", "stylus_handwriting_enabled", "0");
 adb("shell", "setprop", "debug.ceangal.a11y", "1");
 adb("shell", "setprop", "debug.ceangal.gui_a11y", "1");
 adb("shell", "setprop", "debug.ceangal.run_log", "1");
@@ -276,7 +280,7 @@ for (const app of apps) {
       // the emulator's keyboard (Gboard) is sometimes restarting under a
       // Play services configuration refresh when the tap lands: tap again
       for (let attempt = 0; ; attempt++) {
-        adb("shell", "input", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
+        adb("shell", "input", "touchscreen", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
         try { await until(has("Key bar"), "the key bar over the keyboard", 10000); break; }
         catch (e) { if (attempt >= 2) throw e; console.log("     (no keyboard yet: tapping the editor again)"); }
       }

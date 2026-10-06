@@ -35,7 +35,7 @@ async function until(pred, what, ms = 20000) {
 async function tap(label) {
   const t = await until((t) => t.nodes.some((n) => n.label === label), `"${label}"`);
   const n = t.nodes.find((n) => n.label === label);
-  adb("shell", "input", "tap", String(Math.round((n.x + n.w / 2) * t.scale)), String(Math.round((n.y + n.h / 2) * t.scale)));
+  adb("shell", "input", "touchscreen", "tap", String(Math.round((n.x + n.w / 2) * t.scale)), String(Math.round((n.y + n.h / 2) * t.scale)));
 }
 
 // The system picker (DocumentsUI) on screen: its nodes, by uiautomator.
@@ -58,12 +58,12 @@ async function pickFile(name) {
   for (let i = 0; i < 20; i++) {
     const xml = screen();
     const at = find(xml, "text", name);
-    if (at) { adb("shell", "input", "tap", String(at[0]), String(at[1])); return; }
+    if (at) { adb("shell", "input", "touchscreen", "tap", String(at[0]), String(at[1])); return; }
     // the roots drawer, then Downloads
     const roots = find(xml, "content-desc", "Show roots");
     const downloads = find(xml, "text", "Downloads");
-    if (downloads) adb("shell", "input", "tap", String(downloads[0]), String(downloads[1]));
-    else if (roots) adb("shell", "input", "tap", String(roots[0]), String(roots[1]));
+    if (downloads) adb("shell", "input", "touchscreen", "tap", String(downloads[0]), String(downloads[1]));
+    else if (roots) adb("shell", "input", "touchscreen", "tap", String(roots[0]), String(roots[1]));
     await sleep(800);
   }
   throw new Error(`${name} not found in the picker`);
@@ -72,6 +72,8 @@ async function pickFile(name) {
 let ok = false;
 try {
   adb("install", "-r", apk);
+  // injected taps as a finger, not a stylus (Gboard's handwriting)
+  adb("shell", "settings", "put", "secure", "stylus_handwriting_enabled", "0");
   adb("shell", "setprop", "debug.ceangal.a11y", "1");
   adb("shell", "rm", "-f", "/sdcard/Download/services.txt");
   adb("shell", "am", "force-stop", pkg);
