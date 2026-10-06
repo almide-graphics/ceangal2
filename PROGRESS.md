@@ -4,6 +4,29 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+### 最初に読む: 優先順ごとの現状 (2026-10-06 時点)
+0. **Android CI**: キーボード高をホストが直接報告する修正で一度緑
+   (run 37403088995) になったが、その後の run でキーバーの step が再発
+   (タイミング依存)。アプリ側の inset / IME 要求を CI ログに出す診断を追加して
+   調査中。詳細は下の最新項目。
+1. **テキスト**: 済 (bidi UAX #9、UAX #14、Arabic / Indic の HarfBuzz 一致、
+   RTL・emoji、折り返し)。
+2. **コントロール・アクセシビリティ**: tooltip (タッチは長押し)、toast と
+   live region、コンテキストメニュー (右クリック・長押し・メニューキー /
+   Shift+F10)、autocomplete、仮想リスト (キーボード対応)、表示設定 (文字サイズ・
+   視差効果・コントラスト、全プラットフォーム)。TalkBack / VoiceOver の
+   E2E を CI に追加。
+3. **性能・サイズ**: wasm-opt、レイアウト 10.0→3.1 ms、Unicode 表の圧縮で
+   各 app 2.6 KB 減。予算は gallery 185 / todo 160 / hello 158 KB。
+4. **M6**: iOS シミュレータのストア用スクショ (iPhone 6.9"、iPad 13")、
+   データセーフティ回答案の確認済み。提出は人間の作業。
+5. **almide issue**: 主要なものは almide の main で修正済みだが未リリース
+   (v0.66.0 のまま)。回避策は維持。
+6. **ドキュメント / v0.3.0**: guide・API リファレンス更新、CHANGELOG の
+   Unreleased が v0.3.0 のノート。タグ付けの手順は Human TODO に記載。
+
+### 作業ログ (最新が上)
+
 - 表示設定をデスクトップでも読み取り (macOS: 視差効果を減らす / コントラスト
   を上げる、Windows: テキストサイズ・アニメーション・ハイコントラスト、
   Linux: GNOME の gsettings)。macOS と Android はローカルでビルド確認、
