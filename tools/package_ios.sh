@@ -202,6 +202,8 @@ if [ "$what" = e2e ] || [ "$what" = shots ]; then
   # app preference, so only on CI machines)
   [ -n "${CI:-}" ] && defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
   if [ "$what" = shots ]; then
+    # the language takes effect after a restart (the iPad's status bar shows the date)
+    xcrun simctl shutdown "$udid"; xcrun simctl boot "$udid"; xcrun simctl bootstatus "$udid" -b >/dev/null
     # Apple's marketing status bar
     xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
       --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
@@ -209,7 +211,7 @@ if [ "$what" = e2e ] || [ "$what" = shots ]; then
       -configuration Release -sdk iphonesimulator -destination "id=$udid" -only-testing:"${app}UITests/StoreShots" \
       -derivedDataPath "$out/dd" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test -quiet
     xcrun simctl status_bar "$udid" clear
-    dest="$root/store/$app/screenshots/ios-sim/$(echo "$model" | tr 'A-Z ' 'a-z-')"
+    dest="$root/store/$app/screenshots/ios-sim/$(echo "$model" | tr 'A-Z' 'a-z' | sed -E 's/[^a-z0-9]+/-/g; s/-$//')"
     rm -rf "$dest"; mkdir -p "$dest"
     for f in "$e2e"/store-*.png; do cp "$f" "$dest/${f##*/store-}"; done
     ls "$dest"

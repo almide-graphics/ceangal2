@@ -11,6 +11,9 @@ Read at the start of every session; update at the end.
   data-declarations.md) は追加機能 (クリップボード・共有・ファイル選択・
   表示設定の読み取り) がいずれも端末外へ送らないため変更不要と確認。
   **提出は人間の作業**。
+- playground の Visual (HTML 表示) で、空白のない境界 (`</strong>.` など)
+  にも単語間の隙間が入っていたのを修正 (スクショで発見)。ストア用
+  スクショ一式 (デスクトップ生成分 + iPad 13" シミュレータ分) を撮り直し。
 - wasm サイズ削減と予算引き下げ: emoji / Arabic / Indic の Unicode 表を
   固定幅 16 進から差分の可変長 base-32 (tools/packing.py、行分割表と同じ
   形式) に変更し、デコーダを `packed.rows` に一本化。文字列 3.8 → 1.5 KB、

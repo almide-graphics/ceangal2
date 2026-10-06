@@ -72,20 +72,30 @@ fn parse(text: String) -> List[HNode] = {
 
 type Style = { size: Float, bold: Bool, mono: Bool, color: snaidhm.Color }
 
-fn inline_views(nodes: List[HNode], st: Style) -> List[v.View] = {
-  var out: List[v.View] = []
+// Each piece of text (or a line break) and whether whitespace comes before
+// it; pieces with none between them (a word, then "." after </strong>) stay
+// together.
+// Whitespace at the end of the last text, for the piece after it.
+var space_pending = false
+
+fn inline_views(nodes: List[HNode], st: Style) -> List[(v.View, Bool)] = {
+  var out: List[(v.View, Bool)] = []
   for nd in nodes {
     match nd {
       Text(t) => {
         // collapse whitespace; one view per word keeps wrapping possible
-        for w in string.split(string.replace(string.replace(t, "\n", " "), "\t", " "), " ") {
+        let words = string.split(string.replace(string.replace(t, "\n", " "), "\t", " "), " ")
+        for k in 0..<list.len(words) {
+          let w = words[k]
           if w != "" then {
             var tv = v.text(w) |> v.font(st.size) |> v.color(st.color)
             if st.bold then tv = tv |> v.bold() else ()
             if st.mono then tv = tv |> v.mono() |> v.bg(snaidhm.rgba(0.5, 0.55, 0.8, 0.15)) |> v.px(3.0) |> v.rounded(3.0) else ()
-            list.push(out, tv)
+            list.push(out, (tv, k > 0 or space_pending))
+            space_pending = false
           } else ()
         }
+        if list.len(words) > 1 and words[list.len(words) - 1] == "" then space_pending = true else ()
       },
       El(tag, ch) => {
         let s2 = if tag == "strong" or tag == "b" then { ...st, bold: true }
@@ -93,7 +103,7 @@ fn inline_views(nodes: List[HNode], st: Style) -> List[v.View] = {
           else if tag == "a" then { ...st, color: snaidhm.hex(0x7AA2F7) }
           else if tag == "em" or tag == "i" then { ...st, color: snaidhm.with_alpha(st.color, 0.85) }
           else st
-        if tag == "br" then list.push(out, v.empty() |> v.w_pct(100.0) |> v.h(0.0))
+        if tag == "br" then list.push(out, (v.empty() |> v.w_pct(100.0) |> v.h(0.0), true))
         else out = out + inline_views(ch, s2)
       },
     }
@@ -101,7 +111,22 @@ fn inline_views(nodes: List[HNode], st: Style) -> List[v.View] = {
   out
 }
 
-fn flow(views: List[v.View]) -> v.View = v.wrap_row(views) |> v.gap(5.0)
+// The pieces as a wrapping line, a gap where there was whitespace.
+fn flow(pieces: List[(v.View, Bool)]) -> v.View = {
+  var items: List[v.View] = []
+  var word: List[v.View] = []
+  for i in 0..<list.len(pieces) {
+    let (pv, spaced) = pieces[i]
+    if spaced and list.len(word) > 0 then {
+      list.push(items, if list.len(word) == 1 then word[0] else v.row(word))
+      word = []
+    } else ()
+    list.push(word, pv)
+  }
+  if list.len(word) > 0 then list.push(items, if list.len(word) == 1 then word[0] else v.row(word)) else ()
+  space_pending = false
+  v.wrap_row(items) |> v.gap(5.0)
+}
 
 fn block(nd: HNode, base: Style, depth: Int) -> List[v.View] = match nd {
   Text(t) => [flow(inline_views([Text(t)], base))],
