@@ -49,6 +49,19 @@ Controls also had no tooltips.
 - Touch devices don't show tooltips yet: a long press is the platforms'
   gesture for them, and context menus will use it too. They should be
   decided together.
+  **Update (2026-10-06):** decided. A long press on a control with a
+  tooltip shows it while the finger stays down and for 1.5 s after it
+  lifts, and doesn't press the control:
+  - `w.tooltip` gives the control a context handler (ADR 0019) that acts
+    only for a touch (`ceangal.context_by_touch()`), so a right-click does
+    nothing;
+  - a control that already has a context menu keeps it, and gets no touch
+    tooltip;
+  - a new touch anywhere puts the tooltip away.
+
+  `ceangal test` gets a `hold "Label"` step (a finger held 0.6 s).
+  `announce.test` checks the tooltip, that the control is not pressed, and
+  that the tooltip goes, on the web and natively.
 - `w.alert` is not added yet: role 27 is in place for an error banner.
 - The runtime grows by about 1.5 KB of optimized wasm (the toast, hover
   timing and the roles), in every app. Each budget rises by 4 KB, which

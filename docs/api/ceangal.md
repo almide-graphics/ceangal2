@@ -472,3 +472,29 @@ pub fn is_pressed(key: String) -> Bool
 The view with `key` is being pressed (mouse button or finger down on it).
 
 ## Context gestures
+
+### `context_by_touch`
+
+```almide
+pub fn context_by_touch() -> Bool
+```
+
+Whether the last context gesture (`v.on_context`) was a touch held still
+rather than a right-click.
+
+### `hold_tooltip`
+
+```almide
+pub fn hold_tooltip(key: String) -> Unit
+```
+
+Show the tooltip of the control with `key` for the current long press:
+while the finger stays down and 1.5 s after it lifts.
+
+### `tooltip_held`
+
+```almide
+pub fn tooltip_held(key: String) -> Bool
+```
+
+Whether a long press is showing the tooltip of the control with `key`.

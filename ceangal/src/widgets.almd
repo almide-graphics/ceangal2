@@ -99,12 +99,16 @@ fn activates(view: v.View, f: () -> Unit) -> v.View =
 // A screen's title: large, bold, announced as a heading.
 pub fn title(th: Theme, s: String) -> v.View = v.text(s) |> v.font(26.0) |> v.bold() |> v.color(th.text) |> v.role(10)
 // `control` (which needs a key, as every control has) with a tooltip:
-// `text` in a bubble under it while the pointer rests on it or the
-// keyboard has focused it. Screen readers get the text as a tooltip
-// (role 28) while it shows.
-pub fn tooltip(th: Theme, text: String, control: v.View) -> v.View = {
-  let key = control.key
-  if not (ui.hover_rested(key) or ui.keyboard_focused(key)) then control
+// `text` in a bubble under it while the pointer rests on it, the keyboard
+// has focused it, or a finger holds it (a long press, which doesn't press
+// the control). Screen readers get the text as a tooltip (role 28) while
+// it shows.
+pub fn tooltip(th: Theme, text: String, control0: v.View) -> v.View = {
+  let key = control0.key
+  // a long press shows it on touch screens; a right-click does nothing
+  let control = if control0.context then control0
+    else control0 |> v.on_context((x, y) => if ui.context_by_touch() then ui.hold_tooltip(key) else ())
+  if not (ui.hover_rested(key) or ui.keyboard_focused(key) or ui.tooltip_held(key)) then control
   else {
     let r = ui.rect_of(key)
     v.with_child(control,

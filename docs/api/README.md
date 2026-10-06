@@ -8,7 +8,7 @@ The guides are in [../guide](../guide/README.md).
 
 | module | | entries |
 |---|---|---|
-| [`ceangal`](ceangal.md) | the app: run, focus, keyboard, viewport, clipboard | 50 |
+| [`ceangal`](ceangal.md) | the app: run, focus, keyboard, viewport, clipboard | 53 |
 | [`ceangal.view`](ceangal.view.md) | views and modifiers: text, col, row, styles, events, accessibility | 78 |
 | [`ceangal.widgets`](ceangal.widgets.md) | standard controls: buttons, checkboxes, switches, sliders, dialogs… | 35 |
 | [`ceangal.editor`](ceangal.editor.md) | a multi-line text editor view | 41 |

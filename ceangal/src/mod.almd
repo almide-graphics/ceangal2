@@ -519,6 +519,7 @@ fn frame(t: Float) -> Int = {
   let now = frame_time
   if toast_text != "" and now >= toast_until then dirty = true else ()
   if hover_pending and now - hover_since >= TOOLTIP_DELAY_MS then { hover_pending = false; dirty = true } else ()
+  if tip_key != "" and tip_until >= 0.0 and now >= tip_until then { tip_key = ""; dirty = true } else ()
   fire_long_press()
   if dirty or animating then {
     dirty = false
@@ -1064,6 +1065,21 @@ var lp_x = 0.0
 var lp_y = 0.0
 var lp_t = 0.0
 var lp_fired = false
+var context_touch = false     // the last context gesture was a long press
+var tip_key = ""              // the control whose tooltip a long press shows
+var tip_until = 0.0           // ... until then (frame time; -1 while held)
+let TIP_AFTER_MS = 1500.0
+
+// Whether the last context gesture (`v.on_context`) was a touch held still
+// rather than a right-click.
+pub fn context_by_touch() -> Bool = context_touch
+
+// Show the tooltip of the control with `key` for the current long press:
+// while the finger stays down and 1.5 s after it lifts.
+pub fn hold_tooltip(key: String) -> Unit = { tip_key = key; tip_until = -1.0 }
+
+// Whether a long press is showing the tooltip of the control with `key`.
+pub fn tooltip_held(key: String) -> Bool = key != "" and key == tip_key
 
 // The topmost view with a context handler at (x, y) (overlays first).
 fn context_at(x: Float, y: Float) -> Int = {
@@ -1082,6 +1098,8 @@ fn context_at(x: Float, y: Float) -> Int = {
 // handler becomes a long press (checked by frame()).
 fn track_long_press(phase: Int, id: Int, x: Float, y: Float) -> Unit =
   if phase == 0 then {
+    // a new touch puts away a tooltip a long press left
+    if tip_key != "" then { tip_key = ""; dirty = true } else ()
     if context_at(x, y) >= 0 then {
       lp_id = id
       lp_x = x
@@ -1101,6 +1119,7 @@ fn fire_long_press() -> Unit =
       lp_fired = true
       pressed = -1
       pressed_key = ""
+      context_touch = true
       frame_views[c].on_context(lp_x, lp_y)
       dirty = true
     } else lp_id = -1
@@ -1110,13 +1129,21 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
   // a right-click: the context handler under the pointer, and nothing else
   if id == 0 and phase == 0 and int.band(buttons, 2) != 0 and context_at(x, y) >= 0 then {
     right_swallow = true
+    context_touch = false
     frame_views[context_at(x, y)].on_context(x, y)
     invalidate()
     true
   } else if right_swallow and id == 0 and phase == 2 then { right_swallow = false; true }
   // a touch that became a long press: the rest of it does nothing
   else if lp_fired and id == lp_id then {
-    if phase == 2 or phase == 3 then { lp_fired = false; lp_id = -1 } else ()
+    if phase == 2 or phase == 3 then {
+      lp_fired = false
+      lp_id = -1
+      if tip_key != "" and tip_until < 0.0 then {
+        tip_until = frame_time + TIP_AFTER_MS
+        sys.request_frame_after(TIP_AFTER_MS + 20.0)
+      } else ()
+    } else ()
     true
   } else {
     if id >= 1 then track_long_press(phase, id, x, y) else ()

@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Touch tooltips**: a long press on a control shows its `w.tooltip`
+  without pressing it; `ceangal test` gets a `hold "Label"` step. (ADR 0018)
+- **Keyboard detection**: hosts report the on-screen keyboard's height
+  (event 11's `a`), so `ceangal.soft_keyboard()` no longer guesses from the
+  bottom inset.
 - **Display preferences**: text views, fields and editors follow the
   system's text size (Dynamic Type, Android's font scale, the browser's font
   size); `ceangal.font_scale()`, `reduce_motion()` (momentum stops),

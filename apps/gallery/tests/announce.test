@@ -11,3 +11,10 @@ see "Saved to drafts"
 shot "toast.png"
 wait 4500
 not "Saved to drafts"
+# a long press shows the tooltip on touch screens, without pressing the
+# control, and it goes 1.5 s after the finger lifts
+hold "Delete"
+see "Asks before deleting everything"
+not "Delete everything?"
+wait 2000
+not "Asks before deleting everything"

@@ -408,6 +408,23 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                 }
                 None => { fail(format!("no view labelled {arg:?}")); false }
             },
+            // a finger held still for 0.6 s (a long press), then lifted
+            "hold" => match test_tree().into_iter().find(|n| n.label == arg) {
+                Some(n) => {
+                    let (x, y) = (n.rect.0 + n.rect.2 / 2.0, n.rect.1 + n.rect.3 / 2.0);
+                    call(ctx, EV_POINTER, 0, 1, x, y, 1.0, 0.0);
+                    // the runtime times a long press by the clock, not frames
+                    let start = std::time::Instant::now();
+                    while start.elapsed() < std::time::Duration::from_millis(600) {
+                        call(ctx, EV_FRAME, 0, 0, *t, 0.0, 0.0, 0.0);
+                        *t += 16.0;
+                        std::thread::sleep(std::time::Duration::from_millis(16));
+                    }
+                    call(ctx, EV_POINTER, 2, 1, x, y, 0.0, 0.0);
+                    true
+                }
+                None => { fail(format!("no view labelled {arg:?}")); false }
+            },
             "type" => { text_event(ctx, 0, &arg, 0); true }
             "key" => match test_key(&arg) {
                 Some((code, mods)) => {
@@ -437,7 +454,7 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                 Ok(b) => { call(ctx, EV_APPEARANCE, 0, b, 0.0, 0.0, 0.0, 0.0); true }
                 Err(w) => { fail(format!("unknown preference {w:?} (a text size in %, reduce-motion, more-contrast)")); false }
             },
-            _ => { fail(format!("unknown step {cmd:?} (tap, context, type, key, see, not, wait, shot, prefer)")); false }
+            _ => { fail(format!("unknown step {cmd:?} (tap, context, hold, type, key, see, not, wait, shot, prefer)")); false }
         };
         if !ok {
             settle(ctx, t);

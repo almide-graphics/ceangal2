@@ -46,7 +46,7 @@ for (const file of files) {
       let arg = sp < 0 ? "" : line.slice(sp + 1).trim();
       if (arg.length >= 2 && arg.startsWith('"') && arg.endsWith('"')) arg = arg.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, "\n");
       const fail = async (msg) => { console.log(`FAIL ${file}:${i + 1}: ${line}\n     ${msg}\n     on screen: ${JSON.stringify(await texts())}`); ok = false; };
-      if (cmd === "tap" || cmd === "context") {
+      if (cmd === "tap" || cmd === "context" || cmd === "hold") {
         let n = null;
         await until(async () => (n = (await nodes()).findLast((x) => x.label === arg)));
         if (!n) { await fail(`no view labelled ${JSON.stringify(arg)}`); break; }
@@ -57,9 +57,16 @@ for (const file of files) {
           await sleep(120);
           n = (await nodes()).findLast((x) => x.label === arg) || n;
         }
-        // context: a right-click
-        const [button, down] = cmd === "tap" ? ["left", 1] : ["right", 2];
-        for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await page.send("Input.dispatchMouseEvent", { type, x: n.x, y: n.y, button, buttons: type === "mousePressed" ? down : 0, clickCount: 1 });
+        if (cmd === "hold") {
+          // a finger held still, then lifted
+          await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: n.x, y: n.y }] });
+          await sleep(700);
+          await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        } else {
+          // context: a right-click
+          const [button, down] = cmd === "tap" ? ["left", 1] : ["right", 2];
+          for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await page.send("Input.dispatchMouseEvent", { type, x: n.x, y: n.y, button, buttons: type === "mousePressed" ? down : 0, clickCount: 1 });
+        }
       } else if (cmd === "type") {
         await page.send("Input.insertText", { text: arg });
       } else if (cmd === "key") {
@@ -88,7 +95,7 @@ for (const file of files) {
           { name: "prefers-contrast", value: words.includes("more-contrast") ? "more" : "no-preference" }] });
         await ev(`document.documentElement.style.fontSize = "${pct * 0.16}px"; dispatchEvent(new Event("resize"))`);
       } else {
-        await fail(`unknown step ${JSON.stringify(cmd)} (tap, context, type, key, see, not, wait, shot, prefer)`);
+        await fail(`unknown step ${JSON.stringify(cmd)} (tap, context, hold, type, key, see, not, wait, shot, prefer)`);
       }
       if (ok) steps++;
       await sleep(30);
