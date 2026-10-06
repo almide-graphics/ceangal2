@@ -4,6 +4,13 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- M6: iOS シミュレータでのストア用スクショ (`tools/package_ios.sh playground
+  shots`、E2E.swift の StoreShots)。iPhone 17 Pro Max (6.9", 1320×2868、
+  ステータスバー 9:41 固定) で 5 シーンを store/playground/screenshots/
+  ios-sim/ に保存。データセーフティ回答案 (store/playground/
+  data-declarations.md) は追加機能 (クリップボード・共有・ファイル選択・
+  表示設定の読み取り) がいずれも端末外へ送らないため変更不要と確認。
+  **提出は人間の作業**。
 - wasm サイズ削減と予算引き下げ: emoji / Arabic / Indic の Unicode 表を
   固定幅 16 進から差分の可変長 base-32 (tools/packing.py、行分割表と同じ
   形式) に変更し、デコーダを `packed.rows` に一本化。文字列 3.8 → 1.5 KB、
@@ -502,9 +509,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
    test`, checked doc examples (ADR 0007, 0008).
 1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
    2026-10-05).
-2. M6: store screenshots for iOS from the simulator build (the generator
-   renders the web build today); the Play / App Store data-safety answers
-   checked against the final feature set.
+2. M6: done for iPhone 6.9" (simulator shots) and data-safety check; an
+   iPad 13" set can be made with IOS_SIM="iPad Pro 13-inch (M5)".
 3. M4 rest: a native AI test against a mock server on Windows / Linux;
    AccessKit checked with screen readers (Human TODO).
 

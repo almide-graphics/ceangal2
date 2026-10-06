@@ -4,7 +4,7 @@
 # target takes the prebuilt executable, the assets, the icon and the privacy
 # manifest. Xcode signs, archives and exports.
 #
-#   tools/package_ios.sh [app] [sim|archive|e2e|all]     (default: all)
+#   tools/package_ios.sh [app] [sim|archive|e2e|shots|all]     (default: all)
 # The app: `ceangal build ios`, else [app] (a directory or apps/<name>), else
 # $CEANGAL_APP. Output in $APP_OUT/ios/<key>:
 #     <Name>.xcodeproj
@@ -12,6 +12,9 @@
 #     archive: <key>.xcarchive           (device, Release)
 #     e2e:     the UI tests (tests/e2e/ios) in a simulator (IOS_SIM, default
 #              "iPhone 17"); screenshots and the result in e2e/
+#     shots:   store screenshots from the simulator (IOS_SIM; the App Store's
+#              6.9" size is "iPhone 17 Pro Max") into
+#              store/<app>/screenshots/ios-sim/<model>/
 #
 # Signing (from secrets in CI): IOS_TEAM_ID, and an App Store Connect API key
 # (ASC_KEY_ID, ASC_ISSUER_ID, the .p8 at
@@ -176,7 +179,7 @@ if [ "$what" = sim ] || [ "$what" = all ]; then
   echo "built $out/build/sim/$app.app"
 fi
 
-if [ "$what" = e2e ]; then
+if [ "$what" = e2e ] || [ "$what" = shots ]; then
   e2e="$out/e2e"; rm -rf "$e2e"; mkdir -p "$e2e"
   # A simulator of our own, in English with the QWERTY keyboard (the tests
   # type on it), so the user's simulators keep their settings.
@@ -198,11 +201,25 @@ if [ "$what" = e2e ]; then
   # no hardware keyboard: the on-screen one shows, as on a phone (a Simulator
   # app preference, so only on CI machines)
   [ -n "${CI:-}" ] && defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
-  # the playground's fixtures test reads the CLI's output for each program
-  [ "$app" = playground ] && node "$root/tests/e2e/ios_fixtures.mjs" "$e2e/fixtures.json"
-  TEST_RUNNER_E2E_DIR="$e2e" TEST_RUNNER_E2E_APP="$app" xcodebuild -project "$xproj" -scheme "$app" \
-    -configuration Release -sdk iphonesimulator -destination "id=$udid" \
-    -derivedDataPath "$out/dd" -resultBundlePath "$e2e/result.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test
+  if [ "$what" = shots ]; then
+    # Apple's marketing status bar
+    xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+      --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+    TEST_RUNNER_E2E_DIR="$e2e" TEST_RUNNER_E2E_APP="$app" TEST_RUNNER_E2E_SHOTS=1 xcodebuild -project "$xproj" -scheme "$app" \
+      -configuration Release -sdk iphonesimulator -destination "id=$udid" -only-testing:"${app}UITests/StoreShots" \
+      -derivedDataPath "$out/dd" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test -quiet
+    xcrun simctl status_bar "$udid" clear
+    dest="$root/store/$app/screenshots/ios-sim/$(echo "$model" | tr 'A-Z ' 'a-z-')"
+    rm -rf "$dest"; mkdir -p "$dest"
+    for f in "$e2e"/store-*.png; do cp "$f" "$dest/${f##*/store-}"; done
+    ls "$dest"
+  else
+    # the playground's fixtures test reads the CLI's output for each program
+    [ "$app" = playground ] && node "$root/tests/e2e/ios_fixtures.mjs" "$e2e/fixtures.json"
+    TEST_RUNNER_E2E_DIR="$e2e" TEST_RUNNER_E2E_APP="$app" xcodebuild -project "$xproj" -scheme "$app" \
+      -configuration Release -sdk iphonesimulator -destination "id=$udid" \
+      -derivedDataPath "$out/dd" -resultBundlePath "$e2e/result.xcresult" CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO test
+  fi
 fi
 
 if [ "$what" = archive ] || [ "$what" = all ]; then

@@ -374,3 +374,29 @@ final class GalleryE2E: E2E {
         shot("tooltip")
     }
 }
+
+/// Store screenshots from the simulator (tools/package_ios.sh <app> shots):
+/// the playground's scenes, the same launch URLs as
+/// tools/store_screenshots.mjs, as the iOS app draws them — safe areas,
+/// status bar and all. Runs only when E2E_SHOTS is set.
+final class StoreShots: E2E {
+    func test1_scenes() {
+        guard appName == "playground", ProcessInfo.processInfo.environment["E2E_SHOTS"] != nil else { return }
+        let scenes = [
+            ("fireworks", "?example=hanabi&autorun=1&theme=dark"),
+            ("markdown", "?example=mini-markdown&autorun=1&theme=light"),
+            ("todo-gui", "?example=todo&autorun=1&theme=dark"),
+            ("maze", "?example=maze&autorun=1&theme=light"),
+            ("code", "?example=pattern-matching&theme=dark"),
+        ]
+        for (i, (name, query)) in scenes.enumerated() {
+            launch(url: "https://play.almide.dev/" + query)
+            until("the playground (\(name))", timeout: 30, has("Almide"))
+            // the program compiles and runs, and its window settles
+            Thread.sleep(forTimeInterval: query.contains("autorun") ? 6 : 2)
+            let png = XCUIScreen.main.screenshot().pngRepresentation
+            try? png.write(to: URL(fileURLWithPath: dir + "/store-\(i + 1)-\(name).png"))
+            app.terminate()
+        }
+    }
+}
