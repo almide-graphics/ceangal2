@@ -42,3 +42,21 @@ causes:
   | hello | 159.2 KB | 160 KB |
 
   The next control will need a budget increase, or a cut somewhere else.
+
+## Update (2026-10-06): smaller tables, lower budgets
+The Unicode tables for emoji, Arabic joining and mark classes, and Indic
+categories were written as fixed-width hex. They now use the line-break
+table's encoding, which `tools/packing.py` writes for every generator:
+- each row stores its distance from the previous one, so most numbers are
+  one or two base-32 digits;
+- one decoder (`ceangal.packed.rows`) reads all four tables.
+
+The strings shrink from 3.8 KB to 1.5 KB. The conversion was checked row
+by row, and the HarfBuzz, LineBreakTest and bidi suites pass. Every app is
+about 2.6 KB smaller, and each budget comes down 2 KB:
+
+| App | Optimized wasm | Budget before | Budget now |
+|---|---|---|---|
+| gallery | 183.3 KB | 186 KB | 184 KB |
+| todo | 159.1 KB | 162 KB | 160 KB |
+| hello | 156.7 KB | 160 KB | 158 KB |

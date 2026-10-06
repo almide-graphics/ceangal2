@@ -1,12 +1,37 @@
-// Tables generated into hex strings (indic_data, emoji_data, arabic_data):
-// a string costs far less wasm than a list literal.
+// Tables the gen_*.py tools write into strings (emoji_data, arabic_data,
+// indic_data, linebreak_data): a string costs far less wasm than a list
+// literal. tools/packing.py describes the encoding: rows of (first − the
+// previous row's last, last − first, values…), each number little-endian
+// base 32 in the digits 0-9 A-Z a-z - _ (32 and up: another digit follows).
 
-// The number written by the `n` hex digits (0-9, A-F) at `p` in `b`.
-pub fn hex(b: Bytes, p: Int, n: Int) -> Int = {
+fn digit(c: Int) -> Int =
+  if c >= 48 and c <= 57 then c - 48 else if c >= 65 and c <= 90 then c - 55
+  else if c >= 97 and c <= 122 then c - 61 else if c == 45 then 62 else 63
+
+// The rows of `s`, `k` numbers each: the first and last code point, then the
+// row's k − 2 values.
+pub fn rows(s: String, k: Int) -> List[List[Int]] = {
+  let b = bytes.from_string(s)
+  let n = bytes.len(b)
+  var out: List[List[Int]] = []
+  var row: List[Int] = []
+  var p = 0
+  var prev = 0
   var v = 0
-  for k in 0..<n {
-    let c = bytes.read_u8(b, p + k)
-    v = v * 16 + (if c >= 65 then c - 55 else c - 48)
+  var scale = 1
+  while p < n {
+    let d = digit(bytes.read_u8(b, p))
+    p = p + 1
+    if d >= 32 then { v = v + (d - 32) * scale; scale = scale * 32 }
+    else {
+      let x = v + d * scale
+      v = 0
+      scale = 1
+      let i = list.len(row)
+      list.push(row, if i == 0 then prev + x else if i == 1 then row[0] + x else x)
+      if i == 1 then prev = row[1] else ()
+      if list.len(row) == k then { list.push(out, row); row = [] } else ()
+    }
   }
-  v
+  out
 }

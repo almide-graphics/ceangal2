@@ -4,6 +4,12 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- wasm サイズ削減と予算引き下げ: emoji / Arabic / Indic の Unicode 表を
+  固定幅 16 進から差分の可変長 base-32 (tools/packing.py、行分割表と同じ
+  形式) に変更し、デコーダを `packed.rows` に一本化。文字列 3.8 → 1.5 KB、
+  各 app 約 2.6 KB 減。予算を gallery 186→184、todo 162→160、
+  hello 160→158 KB に引き下げ (ADR 0022 追記)。HarfBuzz / LineBreakTest /
+  bidi の適合テストは全て一致。
 - レイアウトの性能改善 (ADR 0022): gallery の 1 フレームが 10.0 ms →
   3.1 ms (Mac, headless)。flex の採寸が木の深さに対して指数的だったのを
   レイアウト内メモ化で解消し、フラット化したビュー一覧が部分木ごと

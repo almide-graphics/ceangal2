@@ -123,12 +123,7 @@ var unpacked: List[(Int, Int, Int, Int)] = []
 
 fn ranges() -> List[(Int, Int, Int, Int)] = {
   if list.len(unpacked) == 0 then {
-    let b = bytes.from_string(data.PACKED)
-    var k = 0
-    while k + 10 <= bytes.len(b) {
-      list.push(unpacked, (packed.hex(b, k, 4), packed.hex(b, k + 4, 4), packed.hex(b, k + 8, 1), packed.hex(b, k + 9, 1)))
-      k = k + 10
-    }
+    for r in packed.rows(data.PACKED, 4) { list.push(unpacked, (r[0], r[1], r[2], r[3])) }
   } else ()
   unpacked
 }

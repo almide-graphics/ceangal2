@@ -185,15 +185,10 @@ fn pictographic() -> List[(Int, Int)] = {
   pict_ranges
 }
 
-// (first, last) pairs from 10 hex digits each.
+// (first, last) pairs from an emoji_data table.
 fn unpack_ranges(s: String) -> List[(Int, Int)] = {
-  let b = bytes.from_string(s)
   var out: List[(Int, Int)] = []
-  var k = 0
-  while k + 10 <= bytes.len(b) {
-    list.push(out, (packed.hex(b, k, 5), packed.hex(b, k + 5, 5)))
-    k = k + 10
-  }
+  for r in packed.rows(s, 2) { list.push(out, (r[0], r[1])) }
   out
 }
 

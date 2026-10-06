@@ -47,12 +47,7 @@ var unpacked: List[(Int, Int, Int)] = []
 
 fn ranges() -> List[(Int, Int, Int)] = {
   if list.len(unpacked) == 0 then {
-    let b = bytes.from_string(data.PACKED)
-    var k = 0
-    while k + 9 <= bytes.len(b) {
-      list.push(unpacked, (packed.hex(b, k, 4), packed.hex(b, k + 4, 4), packed.hex(b, k + 8, 1)))
-      k = k + 9
-    }
+    for r in packed.rows(data.PACKED, 3) { list.push(unpacked, (r[0], r[1], r[2])) }
   } else ()
   unpacked
 }
@@ -63,12 +58,7 @@ var classes: List[(Int, Int, Int)] = []
 // A mark's class in arabic_data (221 and 231: a hamza-like mark).
 fn raw_ccc(cp: Int) -> Int = {
   if list.len(classes) == 0 then {
-    let b = bytes.from_string(data.CCC)
-    var k = 0
-    while k + 10 <= bytes.len(b) {
-      list.push(classes, (packed.hex(b, k, 4), packed.hex(b, k + 4, 4), packed.hex(b, k + 8, 2)))
-      k = k + 10
-    }
+    for r in packed.rows(data.CCC, 3) { list.push(classes, (r[0], r[1], r[2])) }
   } else ()
   var c = 0
   for e in classes { if cp >= e.0 and cp <= e.1 then c = e.2 else () }
