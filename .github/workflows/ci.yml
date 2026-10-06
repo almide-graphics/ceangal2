@@ -351,7 +351,7 @@ jobs:
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
-        run: tools/build_android.sh todo && tools/build_android.sh playground && tools/build_android.sh tests/apps/services x86_64
+        run: tools/build_android.sh todo && tools/build_android.sh playground && tools/build_android.sh tests/apps/services x86_64 && tools/build_android.sh gallery x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -369,7 +369,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          script: node tests/e2e/android.mjs && node tests/e2e/android_services.mjs
+          script: node tests/e2e/android.mjs && node tests/e2e/android_services.mjs && node tests/e2e/android_gallery.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

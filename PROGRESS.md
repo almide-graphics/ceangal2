@@ -4,6 +4,11 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- TalkBack から見た gallery の E2E (tests/e2e/android_gallery.mjs、CI の
+  android ジョブに追加): ボタン・チェックボックス・スイッチ・ラジオ・
+  ドロップダウン (Spinner)・スライダー・プログレス・テキスト欄のクラス、
+  トーストの文言、長押しツールチップ、仮想リスト (ListView, 10000 items) を
+  uiautomator で確認。ローカル arm64 エミュレータで通過。
 - タッチ端末のツールチップ: 長押しで表示 (指を離して 1.5 秒後に消える、
   コントロールは押されない)。テスト言語に `hold "Label"` を追加し、
   announce.test (web / native) で確認 (ADR 0018 追記)。
