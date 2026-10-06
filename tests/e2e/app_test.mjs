@@ -76,8 +76,19 @@ for (const file of files) {
       } else if (cmd === "shot") {
         await sleep(100);
         await shot(arg);
+      } else if (cmd === "prefer") {
+        // the system's display preferences, through the browser's own media
+        // features and root font size (what the web host reads)
+        const words = arg.split(/\s+/).filter(Boolean);
+        const bad = words.find((w) => !["reduce-motion", "more-contrast"].includes(w) && !/^\d+%?$/.test(w));
+        if (bad) { await fail(`unknown preference ${JSON.stringify(bad)} (a text size in %, reduce-motion, more-contrast)`); break; }
+        const pct = parseInt(words.find((w) => /^\d/.test(w)) || "100");
+        await page.send("Emulation.setEmulatedMedia", { features: [
+          { name: "prefers-reduced-motion", value: words.includes("reduce-motion") ? "reduce" : "no-preference" },
+          { name: "prefers-contrast", value: words.includes("more-contrast") ? "more" : "no-preference" }] });
+        await ev(`document.documentElement.style.fontSize = "${pct * 0.16}px"; dispatchEvent(new Event("resize"))`);
       } else {
-        await fail(`unknown step ${JSON.stringify(cmd)} (tap, context, type, key, see, not, wait, shot)`);
+        await fail(`unknown step ${JSON.stringify(cmd)} (tap, context, type, key, see, not, wait, shot, prefer)`);
       }
       if (ok) steps++;
       await sleep(30);

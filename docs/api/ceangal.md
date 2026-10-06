@@ -280,6 +280,34 @@ pub fn is_dark() -> Bool
 The system's dark appearance (it changes while the app runs: a new frame
 follows).
 
+### `font_scale`
+
+```almide
+pub fn font_scale() -> Float
+```
+
+The system's text size as a factor of the normal one (Dynamic Type,
+Android's font scale, the browser's font size; 0.8–2.0). Text views and
+editors are drawn that much larger.
+
+### `reduce_motion`
+
+```almide
+pub fn reduce_motion() -> Bool
+```
+
+The system asks for less motion: scrolling stops when the finger lifts,
+and apps should skip animations.
+
+### `high_contrast`
+
+```almide
+pub fn high_contrast() -> Bool
+```
+
+The system asks for more contrast: the standard themes strengthen borders
+and secondary text.
+
 ### `pixel_scale`
 
 ```almide

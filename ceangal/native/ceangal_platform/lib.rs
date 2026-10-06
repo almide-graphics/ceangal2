@@ -536,3 +536,64 @@ pub fn watch_ios_keyboard() { ios_keyboard::watch() }
 
 #[cfg(target_os = "ios")]
 pub fn ios_keyboard_height() -> f64 { ios_keyboard::height() }
+
+/// Android: the user's display preferences as event 11's `b` — 1 reduce
+/// motion (animations off), 2 more contrast (API 34+), + 256 × the font scale
+/// in %.
+#[cfg(target_os = "android")]
+pub fn android_prefs(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void) -> i64 {
+    use jni::objects::{JObject, JValue};
+    let Ok(vm) = (unsafe { jni::JavaVM::from_raw(vm.cast()) }) else { return 0 };
+    let Ok(mut env) = vm.attach_current_thread_permanently() else { return 0 };
+    let r = env.with_local_frame(16, |env| -> jni::errors::Result<i64> {
+        let act = unsafe { JObject::from_raw(activity as jni::sys::jobject) };
+        let res = env.call_method(&act, "getResources", "()Landroid/content/res/Resources;", &[])?.l()?;
+        let config = env.call_method(&res, "getConfiguration", "()Landroid/content/res/Configuration;", &[])?.l()?;
+        let scale = env.get_field(&config, "fontScale", "F")?.f()?;
+        let cr = env.call_method(&act, "getContentResolver", "()Landroid/content/ContentResolver;", &[])?.l()?;
+        let key = env.new_string("animator_duration_scale")?;
+        let anim = env.call_static_method("android/provider/Settings$Global", "getFloat",
+            "(Landroid/content/ContentResolver;Ljava/lang/String;F)F",
+            &[JValue::Object(&cr), JValue::Object(&key), JValue::Float(1.0)])?.f()?;
+        let sdk = env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")?.i()?;
+        let mut contrast = 0.0;
+        if sdk >= 34 {
+            let name = env.new_string("uimode")?;
+            let ui = env.call_method(&act, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", &[JValue::Object(&name)])?.l()?;
+            if !ui.is_null() {
+                contrast = env.call_method(&ui, "getContrast", "()F", &[])?.f()?;
+            }
+        }
+        Ok((anim == 0.0) as i64 | ((contrast > 0.0) as i64) << 1 | (((scale * 100.0).round() as i64) << 8))
+    });
+    r.unwrap_or_else(|_| { let _ = env.exception_clear(); 0 })
+}
+
+/// iOS: the user's display preferences as event 11's `b` — 1 Reduce Motion,
+/// 2 Increase Contrast, + 256 × the Dynamic Type text size in % (Large = 100).
+#[cfg(target_os = "ios")]
+pub fn ios_prefs() -> i64 {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+    extern "C" {
+        fn UIAccessibilityIsReduceMotionEnabled() -> bool;
+        fn UIAccessibilityDarkerSystemColorsEnabled() -> bool;
+    }
+    // UIKit's body text size for each category ("UICTContentSizeCategoryXL"
+    // and so on) against Large's 17 pt.
+    const SIZES: [(&str, i64); 12] = [
+        ("XS", 82), ("S", 88), ("M", 94), ("L", 100), ("XL", 112), ("XXL", 124), ("XXXL", 135),
+        ("AccessibilityM", 165), ("AccessibilityL", 194), ("AccessibilityXL", 235),
+        ("AccessibilityXXL", 276), ("AccessibilityXXXL", 312),
+    ];
+    let pct = unsafe {
+        let app: *mut AnyObject = msg_send![class!(UIApplication), sharedApplication];
+        let c: *mut AnyObject = msg_send![app, preferredContentSizeCategory];
+        let p: *const std::ffi::c_char = if c.is_null() { std::ptr::null() } else { msg_send![c, UTF8String] };
+        if p.is_null() { None } else { Some(std::ffi::CStr::from_ptr(p).to_string_lossy().into_owned()) }
+    }
+    .and_then(|c| SIZES.iter().find(|(n, _)| c.strip_prefix("UICTContentSizeCategory") == Some(*n)).map(|(_, v)| *v))
+    .unwrap_or(100);
+    let (motion, contrast) = unsafe { (UIAccessibilityIsReduceMotionEnabled(), UIAccessibilityDarkerSystemColorsEnabled()) };
+    motion as i64 | (contrast as i64) << 1 | pct << 8
+}

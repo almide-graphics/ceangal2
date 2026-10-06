@@ -4,6 +4,13 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- OS の表示設定に対応 (ADR 0021): 文字サイズ (iOS Dynamic Type /
+  Android fontScale / ブラウザの既定フォントサイズ、0.8–2.0 倍)、視差効果を
+  減らす (慣性スクロール停止)、コントラスト強調 (`w.system()` が文字と枠線を
+  強める)。`ceangal.font_scale()` / `reduce_motion()` / `high_contrast()`、
+  テスト言語に `prefer 150 reduce-motion more-contrast` を追加。gallery の
+  prefs.test (web / native) で 150% の表示を確認。Android / iOS の読み取りは
+  型チェックのみ (実機設定の切り替えは CI 未対応)。
 - 長いリストの仮想化 `w.virtual_list` を追加 (ADR 0020)。1 万行のうち
   表示中の行だけを作る (Chrome でホイール 100 行スクロールして 15 行)。
 - 入力補完付きコンボボックス `w.autocomplete` を追加 (ADR 0013 追記)。
@@ -448,8 +455,8 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Goal item 2: controls / accessibility (touch tooltips by long press; Dynamic Type /
-   fontScale, reduced motion, high contrast; E2E for the new roles).
+0. Goal item 2: controls / accessibility (touch tooltips by long press; E2E for the
+   new roles on VoiceOver / TalkBack). Done: display preferences (ADR 0021).
    (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
    ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.

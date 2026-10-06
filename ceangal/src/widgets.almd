@@ -54,9 +54,24 @@ pub fn light() -> Theme = {
   danger: snaidhm.hex(0xDC2626), radius: 8.0, font_size: 15.0, editor: ed.light_theme(),
 }
 
+// `h`, a height made for one line of `th`'s text, grown by as much as that
+// line grows with the system's font scale (unchanged at 1.0).
+fn fit(th: Theme, h: Float) -> Float =
+  h + float.max(0.0, float.ceil(th.font_size * ui.font_scale() * 1.55) - float.ceil(th.font_size * 1.55))
+
 // dark() or light(), as the system's appearance is now (it can change while
-// the app runs; build the theme in view() so it follows).
-pub fn system() -> Theme = if ui.is_dark() then dark() else light()
+// the app runs; build the theme in view() so it follows), with more contrast
+// when the system asks for it.
+pub fn system() -> Theme = {
+  let th = if ui.is_dark() then dark() else light()
+  if ui.high_contrast() then more_contrast(th, ui.is_dark()) else th
+}
+
+// `th` with full-strength text, secondary text close to it and borders that
+// stand out (the system's increase-contrast setting).
+pub fn more_contrast(th: Theme, dark: Bool) -> Theme =
+  if dark then { ...th, text: snaidhm.hex(0xFFFFFF), dim: snaidhm.hex(0xC8CCD8), border: snaidhm.hex(0x9AA0B8) }
+  else { ...th, text: snaidhm.hex(0x000000), dim: snaidhm.hex(0x374151), border: snaidhm.hex(0x4B5563) }
 
 fn clear() -> snaidhm.Color = snaidhm.rgba(0.0, 0.0, 0.0, 0.0)
 
@@ -268,10 +283,10 @@ let TRIGGER_H = 40.0
 fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
   // above the control when the list would run past the window's bottom
   let r = ui.rect_of(key)
-  let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
+  let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
   let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
   let list_v = popup_list(th, key, name, items, chosen, list_role, item_role, on_pick)
-  let placed = if up then v.bottom(list_v, TRIGGER_H + POPUP_GAP) else v.top(list_v, TRIGGER_H + POPUP_GAP)
+  let placed = if up then v.bottom(list_v, fit(th, TRIGGER_H) + POPUP_GAP) else v.top(list_v, fit(th, TRIGGER_H) + POPUP_GAP)
   placed |> v.left(0.0) |> v.w_pct(100.0)
 }
 
@@ -315,7 +330,7 @@ fn trigger_face(th: Theme, key: String, text: String) -> v.View =
   v.row([
     v.text(text) |> v.font(th.font_size) |> v.color(th.text) |> v.grow(1.0) |> v.a11y_hidden(),
     v.text("▼") |> v.font(9.0) |> v.color(th.dim) |> v.a11y_hidden(),
-  ]) |> v.gap(10.0) |> v.align(v.Middle) |> v.px(14.0) |> v.h(TRIGGER_H) |> v.rounded(th.radius)
+  ]) |> v.gap(10.0) |> v.align(v.Middle) |> v.px(14.0) |> v.h(fit(th, TRIGGER_H)) |> v.rounded(th.radius)
     |> v.bg(live(th, th.surface, key)) |> ring(th, key, th.border) |> v.focusable(key)
 
 // One choice out of a list, shown as the current one; the list opens under
@@ -389,7 +404,7 @@ pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], v
     let (px, py) = ui.popup_point()
     // inside the window: a menu near the right or bottom edge opens leftward / upward
     let wide = 180.0
-    let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
+    let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
     let x = if px + wide > ui.viewport_width() then float.max(0.0, px - wide) else px
     let y = if py + tall > ui.viewport_height() then float.max(0.0, py - tall) else py
     let menu = popup_list(th, mkey, key, list.map(items, (it) => it.0), -1, 24, 25, run)
@@ -471,7 +486,7 @@ pub fn progress(th: Theme, label: String, fraction: Float) -> v.View = {
 // (The editor paints its whole rect, so the border is on a box around it.)
 pub fn text_field(th: Theme, key: String, label: String, get: () -> ed.Editor, set: (ed.Editor) -> Unit) -> v.View =
   v.box(ed.field(key, get, set, { ...th.editor, bg: th.surface }) |> v.grow(1.0) |> v.label(label))
-    |> v.h(42.0) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
+    |> v.h(fit(th, 42.0)) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
     |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
 
 // The text an autocomplete's list was closed at with Escape (it stays
@@ -513,6 +528,7 @@ fn suggestions(q: String, options: List[String]) -> List[String] = {
 
 // Reached only from the pick closure below (almide/almide#3296).
 let keep_set_cursor = ed.set_cursor
+let keep_open_popup_at = ui.open_popup_at
 let keep_set_text = ed.set_text
 
 // A text field that suggests `options` as you type: a combo box whose list
@@ -549,7 +565,7 @@ pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor,
       }
       true
     } else typed(phase, code, mods) }
-  let box = v.box(keyed) |> v.h(42.0) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
+  let box = v.box(keyed) |> v.h(fit(th, 42.0)) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
     |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
   if show then v.box(box) |> v.with_child(popup(th, key, label, found, -1, 22, 23, pick)) else box
 }
@@ -564,11 +580,13 @@ pub fn card(th: Theme, children: List[v.View]) -> v.View =
 // A thin line between rows.
 pub fn divider(th: Theme) -> v.View = v.empty() |> v.h(1.0) |> v.bg(th.border) |> v.a11y_hidden()
 
-// A list of `count` rows, each `row_h` px tall, that scrolls (as
+// A list of `count` rows, each `row_h` px tall (more when the system's
+// font scale makes a line taller), that scrolls (as
 // `v.scroll_y` under `key`) and builds only the rows on screen, plus a few
 // around them: `row(i)` for each. Spacers above and below keep the scroll
 // height of the whole list. Give it a height (`v.h`, or grow in a column).
-pub fn virtual_list(th: Theme, key: String, count: Int, row_h: Float, row: (Int) -> v.View) -> v.View = {
+pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int) -> v.View) -> v.View = {
+  let row_h = fit(th, row_h0)
   let off = ui.scroll_offset(key)
   let seen = ui.rect_of(key).h
   let height = if seen > 0.0 then seen else 800.0

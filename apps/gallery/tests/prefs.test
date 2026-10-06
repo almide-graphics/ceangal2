@@ -1,0 +1,12 @@
+# The system's display preferences: text size, less motion, more contrast.
+# Text views, fields and list rows grow with the text (the screenshot shows it).
+tap "Lists"
+see "Text size 100%"
+prefer 150 reduce-motion more-contrast
+see "Text size 150% · less motion · more contrast"
+see "Inbox"
+wait 500
+shot "prefs-large.png"
+prefer 100
+see "Text size 100%"
+not "less motion"

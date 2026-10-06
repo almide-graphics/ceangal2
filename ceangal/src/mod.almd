@@ -321,6 +321,28 @@ pub fn viewport_height() -> Float = float.max(1.0, height - safe_t - safe_b)
 // The system's dark appearance (it changes while the app runs: a new frame
 // follows).
 pub fn is_dark() -> Bool = dark_mode
+
+var prefer_less_motion = false
+var prefer_contrast = false
+var text_scale = 1.0
+
+// The system's text size as a factor of the normal one (Dynamic Type,
+// Android's font scale, the browser's font size; 0.8–2.0). Text views and
+// editors are drawn that much larger.
+pub fn font_scale() -> Float = text_scale
+// The system asks for less motion: scrolling stops when the finger lifts,
+// and apps should skip animations.
+pub fn reduce_motion() -> Bool = prefer_less_motion
+// The system asks for more contrast: the standard themes strengthen borders
+// and secondary text.
+pub fn high_contrast() -> Bool = prefer_contrast
+
+// `view` with every text's size × the font scale.
+fn scale_text(view: v.View, k: Float) -> v.View = {
+  var kids: List[v.View] = []
+  for c in view.children { list.push(kids, scale_text(c, k)) }
+  { ...view, children: kids, style: { ...view.style, font_size: view.style.font_size * k } }
+}
 // Physical pixels per logical px.
 pub fn pixel_scale() -> Float = scale
 // A monotonic clock in ms.
@@ -359,6 +381,11 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
   else if kind == 11 then {
     dark_mode = a == 1
+    // b: 1 reduce motion, 2 high contrast, + 256 × the text scale in %
+    prefer_less_motion = int.band(b, 1) != 0
+    prefer_contrast = int.band(b, 2) != 0
+    let pct = b / 256
+    text_scale = if pct > 0 then float.max(0.8, float.min(2.0, int.to_float(pct) / 100.0)) else 1.0
     safe_t = float.max(0.0, x)
     safe_r = float.max(0.0, y)
     safe_b = float.max(0.0, z)
@@ -502,7 +529,8 @@ fn frame(t: Float) -> Int = {
 
 fn render() -> Unit = {
   if toast_text != "" and frame_time >= toast_until then toast_text = "" else ()
-  let page = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
+  let page0 = current.view() |> v.w(viewport_width()) |> v.h(viewport_height())
+  let page = if text_scale != 1.0 then scale_text(page0, text_scale) else page0
   let inner = if toast_text != "" then v.with_child(page, toast_view()) else page
   let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
   let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
@@ -772,6 +800,7 @@ fn scroll_by(j: Int, dy: Float) -> Unit = {
 
 // Momentum after a flick; true while any scroll view is still moving.
 fn advance_flings(t: Float) -> Bool = {
+  if prefer_less_motion then { for j in 0..<list.len(scroll_vel) { scroll_vel[j] = 0.0 } } else ()
   let dt = float.min(64.0, float.max(0.0, t - scroll_t))
   scroll_t = t
   var moving = false

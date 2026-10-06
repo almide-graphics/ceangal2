@@ -348,6 +348,22 @@ fn test_key(spec: &str) -> Option<(i64, f64)> {
     Some((code, mods))
 }
 
+/// A `prefer` step's words as event 11's `b`.
+fn test_prefs(words: &str) -> Result<i64, String> {
+    let mut b = 0;
+    for w in words.split_whitespace() {
+        match w {
+            "reduce-motion" => b |= 1,
+            "more-contrast" => b |= 2,
+            _ => match w.trim_end_matches('%').parse::<i64>() {
+                Ok(pct) => b |= pct << 8,
+                Err(_) => return Err(w.to_string()),
+            },
+        }
+    }
+    Ok(b)
+}
+
 fn test_tree() -> Vec<crate::a11y::Node> { crate::a11y::TREE.with(|t| t.borrow().committed.clone()) }
 
 fn test_texts() -> Vec<String> {
@@ -416,7 +432,12 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                 true
             }
             "shot" => { settle(ctx, t); snapshot(ctx, &dir.join(&arg).to_string_lossy()); true }
-            _ => { fail(format!("unknown step {cmd:?} (tap, context, type, key, see, not, wait, shot)")); false }
+            // the system's display preferences: a text size in %, reduce-motion, more-contrast
+            "prefer" => match test_prefs(rest) {
+                Ok(b) => { call(ctx, EV_APPEARANCE, 0, b, 0.0, 0.0, 0.0, 0.0); true }
+                Err(w) => { fail(format!("unknown preference {w:?} (a text size in %, reduce-motion, more-contrast)")); false }
+            },
+            _ => { fail(format!("unknown step {cmd:?} (tap, context, type, key, see, not, wait, shot, prefer)")); false }
         };
         if !ok {
             settle(ctx, t);
@@ -583,7 +604,7 @@ impl Windowed {
         call(&self.ctx, kind, a, b, x, y, z, w)
     }
 
-    /// Event 11: theme and safe-area insets, when either changed (or `force`).
+    /// Event 11: theme, display preferences and safe-area insets, when either changed (or `force`).
     fn send_appearance(&mut self, force: bool) {
         let Some(w) = self.window.clone() else { return };
         let insets = safe_insets(&w, self.scale);
@@ -599,7 +620,7 @@ impl Windowed {
         if insets != self.insets || force {
             self.insets = insets;
             let (t, r, b, l) = insets;
-            self.call(EV_APPEARANCE, self.dark as i64, 0, t, r, b, l);
+            self.call(EV_APPEARANCE, self.dark as i64, platform_prefs(), t, r, b, l);
         }
     }
 
@@ -996,4 +1017,21 @@ fn run_windowed() {
         ime_on: false,
     };
     event_loop.run_app(&mut app).expect("event loop");
+}
+
+/// The user's display preferences for event 11's `b` (see
+/// ceangal_platform's android_prefs / ios_prefs); `CEANGAL_PREFS` overrides
+/// them, which `ceangal test` uses.
+fn platform_prefs() -> i64 {
+    if let Some(v) = std::env::var("CEANGAL_PREFS").ok().and_then(|v| v.parse().ok()) {
+        return v;
+    }
+    #[cfg(target_os = "android")]
+    if let Some(a) = android_app() {
+        return ceangal_platform::android_prefs(a.vm_as_ptr(), a.activity_as_ptr());
+    }
+    #[cfg(target_os = "ios")]
+    return ceangal_platform::ios_prefs();
+    #[allow(unreachable_code)]
+    0
 }

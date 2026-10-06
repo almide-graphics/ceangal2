@@ -466,19 +466,22 @@ pub fn redo(e: Editor) -> Editor = {
 
 // ── Metrics (logical px) ──
 
-fn line_h(e: Editor) -> Float = float.ceil(e.font_size * 1.55)
+// The text size, × the system's font scale.
+fn fsize(e: Editor) -> Float = e.font_size * ui.font_scale()
+
+fn line_h(e: Editor) -> Float = float.ceil(fsize(e) * 1.55)
 
 fn gutter_w(e: Editor) -> Float =
   if e.single_line or not e.gutter then 0.0
   else {
     let digits = string.len(int.to_string(list.len(e.lines)))
-    float.ceil(int.to_float(int.max(2, digits)) * tx.width("0", e.font_size, true, false)) + GUTTER_PAD * 2.0
+    float.ceil(int.to_float(int.max(2, digits)) * tx.width("0", fsize(e), true, false)) + GUTTER_PAD * 2.0
   }
 
 fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
 
 // A line (or a row of it) laid out, logical px; `dir` its paragraph's direction.
-fn geo_of(e: Editor, cps: List[Int], dir: Int) -> tx.LineGeo = tx.line_geo(shown(e, cps), e.font_size, not e.single_line, false, dir)
+fn geo_of(e: Editor, cps: List[Int], dir: Int) -> tx.LineGeo = tx.line_geo(shown(e, cps), fsize(e), not e.single_line, false, dir)
 
 // How far a line laid out as `g` is drawn to the right in `avail` px: with
 // `align_end`, a right-to-left line ends at the right edge (unless it is wider).
@@ -578,8 +581,12 @@ fn line_breaks(e: Editor, l: Int) -> List[Int] =
   if not wrapping(e) then [0]
   else breaks_of(col_xs(e, e.lines[l]), e.lines[l], wrap_avail(e))
 
+// What text measures depend on besides the text: the fonts loaded and the
+// system's font scale.
+fn layout_stamp() -> Int = tx.font_generation() * 1000 + float.to_int(ui.font_scale() * 100.0)
+
 fn rows_fresh(e: Editor) -> Bool =
-  e.rows_ver == e.version and e.rows_w == wrap_avail(e) and e.rows_fonts == tx.font_generation()
+  e.rows_ver == e.version and e.rows_w == wrap_avail(e) and e.rows_fonts == layout_stamp()
     and list.len(e.rows) == list.len(e.lines) + 1
 
 // Refresh the wrap cache if the text or the width changed.
@@ -592,7 +599,7 @@ pub fn with_rows(e: Editor) -> Editor =
       acc = acc + list.len(line_breaks(e, l))
       list.push(rows, acc)
     }
-    { ...e, rows: rows, rows_ver: e.version, rows_w: wrap_avail(e), rows_fonts: tx.font_generation() }
+    { ...e, rows: rows, rows_ver: e.version, rows_w: wrap_avail(e), rows_fonts: layout_stamp() }
   }
 
 fn row_start(e: Editor, l: Int) -> Int =
@@ -785,6 +792,7 @@ fn touch(e: Editor, p: v.Pointer, now: Float) -> Editor = {
 // Advance the momentum of a flick; true while it is still moving.
 fn fling(e: Editor, now: Float) -> (Editor, Bool) =
   if e.fling_v == 0.0 then (e, false)
+  else if ui.reduce_motion() then ({ ...e, fling_v: 0.0 }, false)
   else {
     let dt = float.min(64.0, float.max(0.0, now - e.fling_t))
     let sy = clamp_scroll(e, e.scroll_y + e.fling_v * dt)
@@ -856,7 +864,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   let px = pad_x(e)
   let py = pad_y(e)
   let mono = not e.single_line
-  let size = e.font_size * k
+  let size = fsize(e) * k
   snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, th.bg)
   // visible rows, and the lines they belong to
   let first_row = int.max(0, float.to_int(float.floor((e.scroll_y - py) / lh)))
@@ -880,7 +888,7 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
     tx.draw_style(e.placeholder, (x + px) * k, y * k, (w - px * 2.0) * k, h * k, size, false, false, th.placeholder)
   else ()
   var st = if e.syntax then state_at(e, first) else syn.initial()
-  let baseline_off = (lh - tx.line_height(e.font_size, mono)) * 0.5 + tx.ascent(e.font_size, mono)
+  let baseline_off = (lh - tx.line_height(fsize(e), mono)) * 0.5 + tx.ascent(fsize(e), mono)
   snaidhm.push_clip((x + gw) * k, y * k, (w - gw) * k, h * k)
   for l in first...last {
     var cps = shown(e, e.lines[l])
@@ -1028,6 +1036,7 @@ fn preedit_cols(e: Editor) -> Int = {
 // reachability roots: otherwise the wasm leg can drop them from its function
 // table when `view` is called from a named fn of the app (almide/almide#3296).
 let keep_paint = paint
+let keep_geo_spans = tx.geo_spans
 let keep_fling = fling
 let keep_with_rows = with_rows
 let keep_rows_fresh = rows_fresh

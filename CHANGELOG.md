@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Display preferences**: text views, fields and editors follow the
+  system's text size (Dynamic Type, Android's font scale, the browser's font
+  size); `ceangal.font_scale()`, `reduce_motion()` (momentum stops),
+  `high_contrast()` (`w.system()` strengthens text and borders); `ceangal
+  test` gets a `prefer` step. (ADR 0021)
 - **Virtual lists**: `w.virtual_list(th, key, count, row_h, row)` builds
   only the rows on screen; `ceangal.scroll_offset(key)`. (ADR 0020)
 - **Autocomplete**: `w.autocomplete(th, key, label, get, set, options)`, a

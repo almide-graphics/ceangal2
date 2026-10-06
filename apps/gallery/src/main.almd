@@ -127,6 +127,9 @@ fn languages(th: w.Theme) -> v.View =
     // paragraphs wrap to the card's width
     w.body(th, "Body text wraps onto as many lines as the width needs, breaking after spaces and hyphens, never inside a word that fits."),
     w.body(th, "日本語の段落は空白がなくても文字の間で折り返され、句読点は行頭に来ません。"),
+    // the system's display preferences, as the runtime sees them
+    w.caption(th, "Text size " + int.to_string(float.to_int(float.round(ceangal.font_scale() * 100.0))) + "%"
+      + (if ceangal.reduce_motion() then " · less motion" else "") + (if ceangal.high_contrast() then " · more contrast" else "")),
   ])
 
 fn list_card(th: w.Theme) -> v.View =

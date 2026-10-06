@@ -33,6 +33,7 @@ ceangal test tests/tasks.test
 | `not "text"` | no view's label or value contains it |
 | `wait 500` | let 500 ms pass |
 | `shot "name.png"` | a screenshot |
+| `prefer 150 reduce-motion more-contrast` | the system's display preferences from here on: a text size in %, less motion, more contrast (`prefer 100` resets them) |
 
 Lines starting with `#` are comments. A failing step stops the file and
 prints the line, what was expected, and every label on screen:

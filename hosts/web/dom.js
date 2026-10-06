@@ -77,6 +77,13 @@ export class DomUi {
     const mq = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
     this.on(mq, "change", resized);
     const dark = matchMedia("(prefers-color-scheme: dark)");
+    const calm = matchMedia("(prefers-reduced-motion: reduce)");
+    const contrast = matchMedia("(prefers-contrast: more)");
+    // The user's text size: the root font size against the default 16 px.
+    const prefs = () => {
+      const scale = Math.round((parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16 * 100);
+      return (calm.matches ? 1 : 0) | (contrast.matches ? 2 : 0) | (scale << 8);
+    };
     // Safe-area insets (notch, home indicator) come from CSS env(): a probe
     // element padded by them reports the current values.
     const probe = document.createElement("div");
@@ -86,11 +93,13 @@ export class DomUi {
     const appearance = () => {
       const cs = getComputedStyle(probe);
       const px = (v) => parseFloat(v) || 0;
-      t.dispatch(EV.APPEARANCE, dark.matches ? 1 : 0, 0, px(cs.paddingTop), px(cs.paddingRight), px(cs.paddingBottom), px(cs.paddingLeft));
+      t.dispatch(EV.APPEARANCE, dark.matches ? 1 : 0, prefs(), px(cs.paddingTop), px(cs.paddingRight), px(cs.paddingBottom), px(cs.paddingLeft));
       t.schedule();
     };
     this.on(window, "resize", appearance);
     this.on(dark, "change", appearance);
+    this.on(calm, "change", appearance);
+    this.on(contrast, "change", appearance);
     appearance();
     this.on(document, "visibilitychange", () => { t.dispatch(EV.LIFECYCLE, document.hidden ? 0 : 1); t.schedule(); });
     this.on(window, "focus", () => { t.dispatch(EV.FOCUS, 1); t.schedule(); });

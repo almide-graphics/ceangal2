@@ -69,7 +69,7 @@ events, calling `ceangal_event`.
 | 8 | focus | 0 lost / 1 gained | – | – | – | – | – | 0 |
 | 9 | lifecycle | 0 paused / 1 resumed / 2 low memory / 3 will terminate | – | – | – | – | – | 0 |
 | 10 | async result | request id (§4.6, §4.7) | status | – | – | – | – | 0 |
-| 11 | appearance | 0 light / 1 dark | – | safe top | safe right | safe bottom | safe left | 0 |
+| 11 | appearance | 0 light / 1 dark | preferences: 1 reduce motion, 2 more contrast, + 256 × text scale in % (0: 100) | safe top | safe right | safe bottom | safe left | 0 |
 | 12 | a11y action | node id | action (§4.4) | – | – | – | – | 1 = handled |
 
 Text-bearing events (7, 10, and file results) carry their payload in the

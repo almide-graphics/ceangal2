@@ -70,7 +70,17 @@ pub fn system() -> Theme
 ```
 
 dark() or light(), as the system's appearance is now (it can change while
-the app runs; build the theme in view() so it follows).
+the app runs; build the theme in view() so it follows), with more contrast
+when the system asks for it.
+
+### `more_contrast`
+
+```almide
+pub fn more_contrast(th: Theme, dark: Bool) -> Theme
+```
+
+`th` with full-strength text, secondary text close to it and borders that
+stand out (the system's increase-contrast setting).
 
 ### `mix`
 
@@ -321,10 +331,11 @@ A thin line between rows.
 ### `virtual_list`
 
 ```almide
-pub fn virtual_list(th: Theme, key: String, count: Int, row_h: Float, row: (Int) -> v.View) -> v.View
+pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int) -> v.View) -> v.View
 ```
 
-A list of `count` rows, each `row_h` px tall, that scrolls (as
+A list of `count` rows, each `row_h` px tall (more when the system's
+font scale makes a line taller), that scrolls (as
 `v.scroll_y` under `key`) and builds only the rows on screen, plus a few
 around them: `row(i)` for each. Spacers above and below keep the scroll
 height of the whole list. Give it a height (`v.h`, or grow in a column).
