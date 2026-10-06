@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Alerts**: `w.alert(th, text)`, an error or warning banner that screen
+  readers announce at once. (ADR 0018)
 - **Bidi**: brackets, currency signs and number separators are placed
   correctly in right-to-left text, as Unicode's rules W2–W6 and N0
   describe. Extended Arabic-Indic digits count as numbers. (ADR 0016)

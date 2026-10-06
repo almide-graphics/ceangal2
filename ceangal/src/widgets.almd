@@ -117,6 +117,13 @@ pub fn tooltip(th: Theme, text: String, control0: v.View) -> v.View = {
   }
 }
 
+// An error or warning in a banner: screen readers announce it as soon as it
+// appears or changes (role 27, an assertive live region).
+pub fn alert(th: Theme, text: String) -> v.View =
+  v.row([v.text(text) |> v.font(th.font_size) |> v.color(th.text) |> v.wrapped() |> v.a11y_hidden()])
+    |> v.pad(10.0, 12.0, 10.0, 12.0) |> v.bg(mix(th.surface, th.danger, 0.15)) |> v.border(1.0, th.danger)
+    |> v.rounded(th.radius) |> v.role(27) |> v.label(text)
+
 // A section's heading.
 pub fn heading(th: Theme, s: String) -> v.View = v.text(s) |> v.font(18.0) |> v.bold() |> v.color(th.text) |> v.role(10)
 // Ordinary text at the theme's size.

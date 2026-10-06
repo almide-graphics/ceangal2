@@ -63,6 +63,16 @@ Controls also had no tooltips.
   `announce.test` checks the tooltip, that the control is not pressed, and
   that the tooltip goes, on the web and natively.
 - `w.alert` is not added yet: role 27 is in place for an error banner.
+  **Update (2026-10-06):** `w.alert(th, text)` is a banner with role 27,
+  so screen readers announce it at once. The web host's assertive live
+  region carries its text.
+  - The gallery shows one when the Name field has a digit.
+  - `announce.test` (web and native) checks that it comes and goes.
+  - `tests/e2e/gallery.mjs` checks the alert role and the assertive
+    region.
+
+  Only apps that use it pay for it. The gallery shows every control, so
+  its budget rises from 188 to 189 KB; it measures 187.9 KB.
 - The runtime grows by about 1.5 KB of optimized wasm (the toast, hover
   timing and the roles), in every app. Each budget rises by 4 KB, which
   also covers the next control:

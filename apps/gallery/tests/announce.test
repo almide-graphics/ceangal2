@@ -18,3 +18,9 @@ see "Asks before deleting everything"
 not "Delete everything?"
 wait 2000
 not "Asks before deleting everything"
+# an alert banner appears for a mistake and goes when it is fixed
+tap "Name"
+type "R2"
+see "A name has no digits"
+key Backspace
+not "A name has no digits"

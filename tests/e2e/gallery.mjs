@@ -34,7 +34,7 @@ async function click(label, dx = 0) {
   await mouse("mouseReleased", n.x + dx, n.y);
 }
 async function key(code, keyName) {
-  for (const type of ["rawKeyDown", "keyUp"]) await page.send("Input.dispatchKeyEvent", { type, key: keyName, code, windowsVirtualKeyCode: { Enter: 13, Tab: 9, Space: 32, ArrowRight: 39, ArrowLeft: 37, ArrowDown: 40, Escape: 27 }[code] });
+  for (const type of ["rawKeyDown", "keyUp"]) await page.send("Input.dispatchKeyEvent", { type, key: keyName, code, windowsVirtualKeyCode: { Enter: 13, Tab: 9, Space: 32, ArrowRight: 39, ArrowLeft: 37, ArrowDown: 40, Escape: 27, Backspace: 8 }[code] });
 }
 async function expectStatus(want, what) {
   await waitFor(async () => (await status()) === want, `${what}: status "${want}" (is "${await status()}")`);
@@ -95,6 +95,15 @@ try {
   await page.send("Input.insertText", { text: "Ada" });
   await waitFor(async () => (await nodes()).some((n) => n.label === "Hello, Ada"), "typed text in the app");
   console.log("ok   a text field takes typed text");
+
+  // an alert banner (a digit in the name) is an alert, read out at once
+  // through the page's assertive live region
+  await page.send("Input.insertText", { text: "7" });
+  await expectNode("A name has no digits", (n) => n.role === "alert", "an alert banner is an alert");
+  await waitFor(() => ev(`document.querySelector("[data-ceangal-live=assertive]")?.textContent === "A name has no digits"`), "the alert in the assertive live region");
+  await key("Backspace", "Backspace");
+  await waitFor(async () => !(await find("A name has no digits")), "the alert goes when the mistake is fixed");
+  console.log("ok   an alert is announced (assertive live region) and goes when fixed");
 
   // a toast is a status, read out through the page's polite live region;
   // a tooltip shows with keyboard focus, as a tooltip

@@ -28,6 +28,9 @@ Read at the start of every session; update at the end.
 
 ### 作業ログ (最新が上)
 
+- `w.alert` (エラー・警告バナー、ロール 27 で即時読み上げ) を追加。gallery の
+  Name に数字を入れると表示。announce.test (web / native) と Chrome E2E
+  (assertive live region) で確認。gallery 予算 188→189 KB (ADR 0018 追記)。
 - 双方向テキストの残りの規則を実装 (W2–W6、N0 括弧の対、AL/ES/ET/CS の
   クラス、ADR 0016 追記)。ヘブライ語・アラビア語中の「(…)」「$5」「1.5」が
   正しく並ぶ。python-bidi オラクルを括弧・通貨・区切りを含む 3000 行に

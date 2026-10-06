@@ -112,6 +112,15 @@ has focused it, or a finger holds it (a long press, which doesn't press
 the control). Screen readers get the text as a tooltip (role 28) while
 it shows.
 
+### `alert`
+
+```almide
+pub fn alert(th: Theme, text: String) -> v.View
+```
+
+An error or warning in a banner: screen readers announce it as soon as it
+appears or changes (role 27, an assertive live region).
+
 ### `heading`
 
 ```almide

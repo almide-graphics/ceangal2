@@ -61,6 +61,12 @@ fn page(th: w.Theme) -> v.View =
     if tab == 0 then controls(th) else lists(th),
   ]) |> v.gap(16.0) |> v.max_w(560.0) |> v.grow(1.0) |> v.shrink(1.0)
 
+fn has_digit(s: String) -> Bool = {
+  var found = false
+  for c in string.chars(s) { if c >= "0" and c <= "9" then found = true else () }
+  found
+}
+
 fn controls(th: w.Theme) -> v.View =
   v.col([
     w.card(th, [
@@ -89,6 +95,8 @@ fn controls(th: w.Theme) -> v.View =
       w.slider(th, "Volume", volume, 0.0, 100.0, 5.0, (x) => set_volume(x)),
       w.progress(th, "Upload", volume / 100.0),
       w.text_field(th, "name", "Name", () => name, (e) => set_name(e)),
+      // a problem with what was typed, announced at once
+      if has_digit(ed.to_string(name)) then w.alert(th, "A name has no digits") else v.empty(),
       w.body(th, "Hello, " + (if ed.to_string(name) == "" then "stranger" else ed.to_string(name))),
       // right-to-left text starts at the right edge
       w.text_field(th, "note", "Note", () => note, (e) => set_note(e)),
