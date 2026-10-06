@@ -5,9 +5,10 @@ Read at the start of every session; update at the end.
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
 ### 最初に読む: 優先順ごとの現状 (2026-10-06 時点)
-0. **Android CI**: キーボード高をホストが直接報告する修正で一度緑
-   (run 37403088995) になったが再発。診断ログで真因 (CI エミュレータの
-   ハードウェアキーボード) を特定し E2E 側で対処。詳細は作業ログ。
+0. **Android CI: 緑** (run 37414807301 で全ジョブ成功。キーバー、ピッカー、
+   TalkBack の gallery E2E を含む)。真因は 2 つ: アプリがキーボードを inset
+   の差分で推測していたこと (ホストが高さを直接報告するよう修正)、CI
+   エミュレータのハードウェアキーボード (E2E で show_ime_with_hard_keyboard)。
 1. **テキスト**: 済 (bidi UAX #9、UAX #14、Arabic / Indic の HarfBuzz 一致、
    RTL・emoji、折り返し)。
 2. **コントロール・アクセシビリティ**: tooltip (タッチは長押し)、toast と
