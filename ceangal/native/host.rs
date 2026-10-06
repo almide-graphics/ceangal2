@@ -639,6 +639,10 @@ impl Windowed {
             force || changed
         };
         if insets != self.insets || force {
+            #[cfg(target_os = "android")]
+            if insets != self.insets && crate::sys::test_flag("A11Y") {
+                crate::sys::log_line(&format!("insets {:?} ime_on {}", insets, self.ime_on));
+            }
             self.insets = insets;
             let (t, r, b, l, kb) = insets;
             // a: dark, + 2 × the keyboard's height
@@ -686,6 +690,8 @@ impl Windowed {
             window.set_ime_allowed(req.active);
             self.kb_poll_until = crate::sys::now_ms() + 1000.0;
             self.ime_on = req.active;
+            #[cfg(target_os = "android")]
+            if crate::sys::test_flag("A11Y") { crate::sys::log_line(&format!("ime request active {}", req.active)); }
             if req.active {
                 let (x, y, w, h) = req.rect;
                 window.set_ime_cursor_area(

@@ -286,7 +286,9 @@ for (const app of apps) {
           // what the system did with the app's request, for the log
           const ime = adb("shell", "dumpsys", "input_method").split("\n").filter((l) => /mInputShown|mCurMethodId|mShowRequested/.test(l)).map((l) => l.trim()).join(" ");
           const tracker = adb("logcat", "-d", "-s", "ImeTracker:I", "InputMethodManagerService:*").split("\n").slice(-8).join("\n       ");
-          console.log(`     (no keyboard yet: ${ime})\n       ${tracker}`);
+          // and what the app saw: its insets and keyboard requests
+          const app = adb("logcat", "-d", "-s", "ceangal:I").split("\n").filter((l) => /insets|ime request/.test(l)).slice(-8).join("\n       ");
+          console.log(`     (no keyboard yet: ${ime})\n       ${tracker}\n       app:\n       ${app}`);
           if (attempt >= 2) throw e;
           console.log("     (tapping the editor again)");
         }
