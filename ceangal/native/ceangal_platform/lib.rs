@@ -607,3 +607,59 @@ pub fn ios_prefs() -> i64 {
     let (motion, contrast) = unsafe { (UIAccessibilityIsReduceMotionEnabled(), UIAccessibilityDarkerSystemColorsEnabled()) };
     motion as i64 | (contrast as i64) << 1 | pct << 8
 }
+
+/// Desktop: the user's display preferences as event 11's `b` — 1 reduce
+/// motion, 2 more contrast, + 256 × the text scale in % (0: 100).
+/// macOS: Reduce Motion and Increase Contrast (it has no text size of its
+/// own). Windows: Settings › Accessibility › Text size, animation effects
+/// off, a contrast theme. Linux (GNOME settings): text-scaling-factor,
+/// enable-animations off, the high-contrast setting.
+#[cfg(target_os = "macos")]
+pub fn desktop_prefs() -> i64 {
+    use objc2::runtime::{AnyObject, Bool};
+    use objc2::{class, msg_send};
+    unsafe {
+        let ws: *mut AnyObject = msg_send![class!(NSWorkspace), sharedWorkspace];
+        if ws.is_null() { return 0 }
+        let motion: Bool = msg_send![ws, accessibilityDisplayShouldReduceMotion];
+        let contrast: Bool = msg_send![ws, accessibilityDisplayShouldIncreaseContrast];
+        motion.as_bool() as i64 | (contrast.as_bool() as i64) << 1
+    }
+}
+
+#[cfg(windows)]
+pub fn desktop_prefs() -> i64 {
+    use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+    use windows_sys::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST};
+    let wide = |s: &str| s.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
+    let mut scale: u32 = 100;
+    let mut size = 4u32;
+    let (key, name) = (wide("Software\\Microsoft\\Accessibility"), wide("TextScaleFactor"));
+    let ok = unsafe {
+        RegGetValueW(HKEY_CURRENT_USER, key.as_ptr(), name.as_ptr(), RRF_RT_REG_DWORD, std::ptr::null_mut(),
+            (&mut scale as *mut u32).cast(), &mut size)
+    };
+    if ok != 0 { scale = 100 }
+    let mut anim: i32 = 1;
+    unsafe { SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, (&mut anim as *mut i32).cast(), 0) };
+    let mut hc: HIGHCONTRASTW = unsafe { std::mem::zeroed() };
+    hc.cbSize = std::mem::size_of::<HIGHCONTRASTW>() as u32;
+    let got = unsafe { SystemParametersInfoW(SPI_GETHIGHCONTRAST, hc.cbSize, (&mut hc as *mut HIGHCONTRASTW).cast(), 0) };
+    let contrast = got != 0 && hc.dwFlags & HCF_HIGHCONTRASTON != 0;
+    (anim == 0) as i64 | (contrast as i64) << 1 | (scale as i64) << 8
+}
+
+#[cfg(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "android"))))]
+pub fn desktop_prefs() -> i64 {
+    let get = |schema: &str, key: &str| -> Option<String> {
+        let out = std::process::Command::new("gsettings").args(["get", schema, key]).output().ok()?;
+        if !out.status.success() { return None }
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    };
+    let scale = get("org.gnome.desktop.interface", "text-scaling-factor")
+        .and_then(|s| s.parse::<f64>().ok()).map(|f| (f * 100.0).round() as i64).unwrap_or(100);
+    let motion = get("org.gnome.desktop.interface", "enable-animations").as_deref() == Some("false");
+    let contrast = get("org.gnome.desktop.a11y.interface", "high-contrast").as_deref() == Some("true");
+    motion as i64 | (contrast as i64) << 1 | scale << 8
+}

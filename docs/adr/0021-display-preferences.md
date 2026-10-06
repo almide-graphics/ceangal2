@@ -16,7 +16,13 @@ sizes and colors in its code, so none of these settings had any effect.
     (animations off), and `UiModeManager.getContrast() > 0` on API 34+.
   - iOS: the preferred content size category, mapped to UIKit's body
     sizes (Large = 100 %), Reduce Motion and Increase Contrast.
-  - desktop: none, so 1.0 and off.
+  - desktop (update, 2026-10-06), read at most every 2 s:
+    - macOS: Reduce Motion and Increase Contrast. macOS has no text size
+      setting.
+    - Windows: the Accessibility text size (`TextScaleFactor`), animation
+      effects off, and a contrast theme.
+    - Linux: GNOME's `text-scaling-factor`, `enable-animations` and
+      `high-contrast`, through `gsettings`.
 - **`ceangal.font_scale()`** is clamped to 0.8–2.0. Above 2.0 most
   layouts made for phones stop working; iOS's largest accessibility sizes
   still get twice the size.

@@ -4,6 +4,10 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- 表示設定をデスクトップでも読み取り (macOS: 視差効果を減らす / コントラスト
+  を上げる、Windows: テキストサイズ・アニメーション・ハイコントラスト、
+  Linux: GNOME の gsettings)。macOS と Android はローカルでビルド確認、
+  Windows / Linux は CI で確認。
 - 仮想リストのキーボード操作 (上下・Home/End・PageUp/Down で 1 万行全体を
   移動、`ceangal.scroll_to` 追加、ADR 0020 追記)。テスト中に Web ホストの
   バグを発見・修正: クリック対象でない所を押すとフォーカスが key sink から

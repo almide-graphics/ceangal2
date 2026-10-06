@@ -27,3 +27,10 @@ accesskit_android = { version = "0.9", features = ["embedded-dex"] }
 objc2 = "0.6"
 block2 = "0.6"
 security-framework = "3"
+
+# the system's display preferences (ceangal_platform::desktop_prefs)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Registry", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility"] }

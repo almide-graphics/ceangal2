@@ -1042,8 +1042,8 @@ fn run_windowed() {
 }
 
 /// The user's display preferences for event 11's `b` (see
-/// ceangal_platform's android_prefs / ios_prefs); `CEANGAL_PREFS` overrides
-/// them, which `ceangal test` uses.
+/// ceangal_platform's android_prefs / ios_prefs / desktop_prefs);
+/// `CEANGAL_PREFS` overrides them.
 fn platform_prefs() -> i64 {
     if let Some(v) = std::env::var("CEANGAL_PREFS").ok().and_then(|v| v.parse().ok()) {
         return v;
@@ -1052,8 +1052,23 @@ fn platform_prefs() -> i64 {
     if let Some(a) = android_app() {
         return ceangal_platform::android_prefs(a.vm_as_ptr(), a.activity_as_ptr());
     }
+    #[cfg(target_os = "android")]
+    return 0;
     #[cfg(target_os = "ios")]
     return ceangal_platform::ios_prefs();
-    #[allow(unreachable_code)]
-    0
+    // desktop: read at most every 2 s (Linux asks gsettings)
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        use std::sync::Mutex;
+        static CACHE: Mutex<Option<(std::time::Instant, i64)>> = Mutex::new(None);
+        let mut c = CACHE.lock().unwrap();
+        match *c {
+            Some((at, v)) if at.elapsed() < std::time::Duration::from_secs(2) => v,
+            _ => {
+                let v = ceangal_platform::desktop_prefs();
+                *c = Some((std::time::Instant::now(), v));
+                v
+            }
+        }
+    }
 }
