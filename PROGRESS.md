@@ -4,6 +4,8 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- 長いリストの仮想化 `w.virtual_list` を追加 (ADR 0020)。1 万行のうち
+  表示中の行だけを作る (Chrome でホイール 100 行スクロールして 15 行)。
 - 入力補完付きコンボボックス `w.autocomplete` を追加 (ADR 0013 追記)。
   gallery の City 欄、autocomplete.test (web / native) と Chrome E2E で確認。
 - コンテキストメニュー (`w.context_menu`、右クリック / 長押し 0.5 秒) を
@@ -383,6 +385,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
   oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
   `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
   edge; isolate typed in apps/gallery/tests/rtl.test.
+- Virtual lists (ADR 0020): `w.virtual_list` (fixed row height, spacers,
+  4 rows of overscan), `ceangal.scroll_offset`; gallery 10,000 rows,
+  longlist.test, Chrome wheel E2E.
 - Autocomplete (ADR 0013 update): `w.autocomplete`, suggestions by
   substring (prefix first), keys, Escape until the text changes; combo
   box / list box / option roles; gallery City + test + Chrome E2E.
@@ -443,7 +448,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Goal item 2: controls / accessibility (touch tooltips by long press, list virtualization; Dynamic Type /
+0. Goal item 2: controls / accessibility (touch tooltips by long press; Dynamic Type /
    fontScale, reduced motion, high contrast; E2E for the new roles).
    (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back

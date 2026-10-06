@@ -143,6 +143,14 @@ try {
   await expectNode("Empty", (n) => n.role === "menuitem", "a long press opens a context menu (menu items)");
   await expectStatus("inbox", "the long press's release does not tap the row");
   await click("Empty"); await expectStatus("emptied", "a context menu entry runs its action");
+  // a virtual list: scrolled 100 rows down, those rows are there, and only
+  // a screenful of rows is ever built
+  const long = await waitFor(() => find("10000 items"), "the long list");
+  await page.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: long.x, y: long.y, deltaX: 0, deltaY: 3600 });
+  await waitFor(async () => (await nodes()).some((n) => n.label === "Row 101"), "row 101 after scrolling");
+  const built = (await nodes()).filter((n) => /^Row \d+$/.test(n.label)).length;
+  if (built > 20) throw new Error(`${built} rows built`);
+  console.log(`ok   a virtual list scrolls and builds ${built} of 10000 rows`);
   if (await ev(`getComputedStyle(document.getElementById("crashed")).display !== "none"`)) throw new Error("the app crashed");
   ok = true;
 } catch (e) {

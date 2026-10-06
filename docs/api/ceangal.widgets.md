@@ -281,6 +281,14 @@ A one-line text field: `get` / `set` hold its ed.Editor (make one with
 ed.text_field(text, placeholder)). `label` is what a screen reader says.
 (The editor paints its whole rect, so the border is on a box around it.)
 
+### `keep_set_cursor`
+
+```almide
+let keep_set_cursor
+```
+
+Reached only from the pick closure below (almide/almide#3296).
+
 ### `autocomplete`
 
 ```almide
@@ -309,6 +317,17 @@ pub fn divider(th: Theme) -> v.View
 ```
 
 A thin line between rows.
+
+### `virtual_list`
+
+```almide
+pub fn virtual_list(th: Theme, key: String, count: Int, row_h: Float, row: (Int) -> v.View) -> v.View
+```
+
+A list of `count` rows, each `row_h` px tall, that scrolls (as
+`v.scroll_y` under `key`) and builds only the rows on screen, plus a few
+around them: `row(i)` for each. Spacers above and below keep the scroll
+height of the whole list. Give it a height (`v.h`, or grow in a column).
 
 ### `list_item`
 

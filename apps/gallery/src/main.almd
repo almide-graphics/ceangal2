@@ -99,7 +99,16 @@ fn controls(th: w.Theme) -> v.View =
   ]) |> v.gap(16.0)
 
 fn lists(th: w.Theme) -> v.View =
-  v.col([languages(th), list_card(th)]) |> v.gap(16.0)
+  v.col([languages(th), list_card(th), long_list(th)]) |> v.gap(16.0)
+
+// Ten thousand rows, of which only those on screen are built.
+fn long_list(th: w.Theme) -> v.View =
+  w.card(th, [
+    w.heading(th, "Long list"),
+    w.virtual_list(th, "long", 10000, 36.0, (i) =>
+      v.row([v.text("Row " + int.to_string(i + 1)) |> v.font(th.font_size) |> v.color(th.text)])
+        |> v.align(v.Middle) |> v.px(12.0) |> v.role(7)) |> v.h(240.0) |> v.bg(th.bg) |> v.rounded(th.radius),
+  ])
 
 // Scripts beyond Latin: each line's own font, joined and ordered as it reads.
 fn languages(th: w.Theme) -> v.View =

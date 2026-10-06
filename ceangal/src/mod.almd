@@ -703,6 +703,14 @@ fn subtree_len(view: v.View) -> Int = {
 
 var scroll_end_keys: List[String] = []
 
+// How far the `scroll_y` view with `key` is scrolled (logical px; 0 for a
+// view not seen yet).
+pub fn scroll_offset(key: String) -> Float = {
+  var off = 0.0
+  for i in 0..<list.len(scroll_keys) { if scroll_keys[i] == key then off = scroll_offs[i] else () }
+  off
+}
+
 // Scroll the `scroll_y` view with `key` to its end on the next layout (a log
 // or a conversation following what was just added).
 pub fn scroll_to_end(key: String) -> Unit = {

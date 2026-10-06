@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Virtual lists**: `w.virtual_list(th, key, count, row_h, row)` builds
+  only the rows on screen; `ceangal.scroll_offset(key)`. (ADR 0020)
 - **Autocomplete**: `w.autocomplete(th, key, label, get, set, options)`, a
   combo box whose list follows the text. (ADR 0013)
 - **Context menus**: `w.context_menu(th, key, items, view)` opens on a

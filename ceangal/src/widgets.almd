@@ -564,6 +564,22 @@ pub fn card(th: Theme, children: List[v.View]) -> v.View =
 // A thin line between rows.
 pub fn divider(th: Theme) -> v.View = v.empty() |> v.h(1.0) |> v.bg(th.border) |> v.a11y_hidden()
 
+// A list of `count` rows, each `row_h` px tall, that scrolls (as
+// `v.scroll_y` under `key`) and builds only the rows on screen, plus a few
+// around them: `row(i)` for each. Spacers above and below keep the scroll
+// height of the whole list. Give it a height (`v.h`, or grow in a column).
+pub fn virtual_list(th: Theme, key: String, count: Int, row_h: Float, row: (Int) -> v.View) -> v.View = {
+  let off = ui.scroll_offset(key)
+  let seen = ui.rect_of(key).h
+  let height = if seen > 0.0 then seen else 800.0
+  let first = int.max(0, float.to_int(float.floor(off / row_h)) - 4)
+  let last = int.min(count, float.to_int(float.ceil((off + height) / row_h)) + 4)
+  var rows: List[v.View] = [v.empty() |> v.h(int.to_float(first) * row_h) |> v.a11y_hidden()]
+  for i in first..<int.max(first, last) { list.push(rows, row(i) |> v.h(row_h)) }
+  list.push(rows, v.empty() |> v.h(int.to_float(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
+  v.col(rows) |> v.scroll_y(key) |> v.role(6) |> v.label(int.to_string(count) + " items")
+}
+
 // A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
 pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> v.View = {
   let key = "item:" + title

@@ -1,0 +1,8 @@
+# A virtual list: ten thousand rows, only those on screen are built (and
+# read by a screen reader); the list says how many there are.
+tap "Lists"
+see "10000 items"
+see "Row 1"
+see "Row 6"
+not "Row 100"
+not "Row 10000"

@@ -380,6 +380,15 @@ Put `s` on the system clipboard.
 
 ## Scroll views
 
+### `scroll_offset`
+
+```almide
+pub fn scroll_offset(key: String) -> Float
+```
+
+How far the `scroll_y` view with `key` is scrolled (logical px; 0 for a
+view not seen yet).
+
 ### `scroll_to_end`
 
 ```almide
