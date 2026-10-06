@@ -74,9 +74,9 @@ var safe_t = 0.0
 var safe_r = 0.0
 var safe_b = 0.0
 var safe_l = 0.0
-// The bottom inset without the on-screen keyboard (it adds its height to
-// safe_b while it is up): last seen while no text input was active.
-var base_b = 0.0
+// The on-screen keyboard's height, which the host reports (event 11's a / 2;
+// safe_b includes it while it is up).
+var kb_height = 0.0
 var dark_mode = false
 var dirty = true
 var started = false
@@ -291,7 +291,7 @@ fn cycle_focus(back: Bool) -> Unit = {
 // The on-screen keyboard is up (phones and tablets, a text input focused by
 // a tap, and the keyboard not put away with Back / the dismiss key): apps
 // can show a key bar above it.
-pub fn soft_keyboard() -> Bool = ime_active and touch_platform() and safe_b > base_b + 40.0
+pub fn soft_keyboard() -> Bool = ime_active and touch_platform() and kb_height > 40.0
 
 fn touch_platform() -> Bool = {
   if platform_id == 0 then platform_id = sys.platform() else ()
@@ -380,7 +380,8 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     0
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
   else if kind == 11 then {
-    dark_mode = a == 1
+    dark_mode = int.band(a, 1) == 1
+    kb_height = int.to_float(a / 2)
     // b: 1 reduce motion, 2 high contrast, + 256 × the text scale in %
     prefer_less_motion = int.band(b, 1) != 0
     prefer_contrast = int.band(b, 2) != 0
@@ -390,7 +391,6 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     safe_r = float.max(0.0, y)
     safe_b = float.max(0.0, z)
     safe_l = float.max(0.0, w)
-    if not ime_active then base_b = safe_b else ()
     invalidate()
     0
   }

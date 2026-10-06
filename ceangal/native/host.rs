@@ -478,7 +478,7 @@ struct Windowed {
     /// Touch pointer ids: slot i holds the finger of pointer id i + 1.
     touches: Vec<Option<u64>>,
     dark: bool,
-    insets: (f64, f64, f64, f64),
+    insets: (f64, f64, f64, f64, f64),
     /// Mobile: re-read the insets often until then (ms), while the keyboard
     /// animates, and now and then while it may be up (Android's Back and
     /// iOS's dismiss key close it without telling the app).
@@ -493,8 +493,9 @@ fn surface_size(w: &Window) -> winit::dpi::PhysicalSize<u32> {
 }
 
 /// Safe-area insets in logical px (top, right, bottom, left): the parts of
-/// the surface under the notch, system bars or home indicator.
-fn safe_insets(w: &Window, scale: f64) -> (f64, f64, f64, f64) {
+/// the surface under the notch, system bars, home indicator or keyboard; and
+/// the on-screen keyboard's height (0 when it is hidden).
+fn safe_insets(w: &Window, scale: f64) -> (f64, f64, f64, f64, f64) {
     let full = surface_size(w);
     let (fw, fh) = (full.width as f64, full.height as f64);
     #[cfg(target_os = "ios")]
@@ -505,21 +506,23 @@ fn safe_insets(w: &Window, scale: f64) -> (f64, f64, f64, f64) {
         ((i.x - o.x) as f64, (i.y - o.y) as f64, s.width as f64, s.height as f64)
     };
     #[cfg(target_os = "android")]
-    let (x, y, iw, ih) = match android_app().and_then(|a| ceangal_platform::android_insets(a.vm_as_ptr(), a.activity_as_ptr())) {
-        Some([l, t, r, b]) => (l as f64, t as f64, fw - (l + r) as f64, fh - (t + b) as f64),
-        None => (0.0, 0.0, fw, fh),
+    let (x, y, iw, ih, kb) = match android_app().and_then(|a| ceangal_platform::android_insets(a.vm_as_ptr(), a.activity_as_ptr())) {
+        Some([l, t, r, b, k]) => (l as f64, t as f64, fw - (l + r) as f64, fh - (t + b) as f64, k as f64 / scale),
+        None => (0.0, 0.0, fw, fh, 0.0),
     };
+    #[cfg(target_os = "ios")]
+    let kb = ceangal_platform::ios_keyboard_height();
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    let (x, y, iw, ih) = (0.0, 0.0, fw, fh);
+    let (x, y, iw, ih, kb) = (0.0, 0.0, fw, fh, 0.0);
     if iw <= 0.0 || ih <= 0.0 {
-        return (0.0, 0.0, 0.0, 0.0);
+        return (0.0, 0.0, 0.0, 0.0, kb);
     }
     let c = |v: f64| (v / scale).max(0.0);
     let bottom = c(fh - y - ih);
     // iOS: the on-screen keyboard (points = logical px) covers the bottom
     #[cfg(target_os = "ios")]
-    let bottom = bottom.max(ceangal_platform::ios_keyboard_height());
-    (c(y), c(fw - x - iw), bottom, c(x))
+    let bottom = bottom.max(kb);
+    (c(y), c(fw - x - iw), bottom, c(x), kb)
 }
 
 fn mods_bits(m: ModifiersState) -> i64 {
@@ -619,8 +622,9 @@ impl Windowed {
         };
         if insets != self.insets || force {
             self.insets = insets;
-            let (t, r, b, l) = insets;
-            self.call(EV_APPEARANCE, self.dark as i64, platform_prefs(), t, r, b, l);
+            let (t, r, b, l, kb) = insets;
+            // a: dark, + 2 × the keyboard's height
+            self.call(EV_APPEARANCE, self.dark as i64 | (kb.round() as i64) << 1, platform_prefs(), t, r, b, l);
         }
     }
 
@@ -1012,7 +1016,7 @@ fn run_windowed() {
         clipboard: ceangal_platform::Clipboard::new(),
         touches: Vec::new(),
         dark: false,
-        insets: (0.0, 0.0, 0.0, 0.0),
+        insets: (0.0, 0.0, 0.0, 0.0, 0.0),
         kb_poll_until: 0.0,
         ime_on: false,
     };

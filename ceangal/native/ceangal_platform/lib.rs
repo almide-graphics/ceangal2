@@ -420,14 +420,15 @@ pub fn save_dialog(name: &str, downloads: &std::path::Path) -> Option<PathBuf> {
 pub fn open_dialog() -> Option<PathBuf> { imp::open_dialog() }
 
 /// Android: the window's insets in physical px (left, top, right, bottom) —
-/// system bars, display cutout and the soft keyboard. Apps targeting API 35+
-/// are always edge to edge, so the content rect alone does not show them.
+/// system bars, display cutout and the soft keyboard — and how far the
+/// keyboard reaches above the system bars. Apps targeting API 35+ are always
+/// edge to edge, so the content rect alone does not show them.
 #[cfg(target_os = "android")]
-pub fn android_insets(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void) -> Option<[i32; 4]> {
+pub fn android_insets(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void) -> Option<[i32; 5]> {
     use jni::objects::{JObject, JValue};
     let vm = unsafe { jni::JavaVM::from_raw(vm.cast()) }.ok()?;
     let mut env = vm.attach_current_thread_permanently().ok()?;
-    let r = env.with_local_frame(16, |env| -> jni::errors::Result<Option<[i32; 4]>> {
+    let r = env.with_local_frame(16, |env| -> jni::errors::Result<Option<[i32; 5]>> {
         let act = unsafe { JObject::from_raw(activity as jni::sys::jobject) };
         let window = env.call_method(&act, "getWindow", "()Landroid/view/Window;", &[])?.l()?;
         let decor = env.call_method(&window, "getDecorView", "()Landroid/view/View;", &[])?.l()?;
@@ -435,15 +436,24 @@ pub fn android_insets(vm: *mut std::ffi::c_void, activity: *mut std::ffi::c_void
         if wi.is_null() {
             return Ok(None);
         }
-        let mut mask = 0;
-        for name in ["systemBars", "displayCutout", "ime"] {
-            mask |= env.call_static_method("android/view/WindowInsets$Type", name, "()I", &[])?.i()?;
+        let mut types = [0; 3];
+        for (i, name) in ["systemBars", "displayCutout", "ime"].iter().enumerate() {
+            types[i] = env.call_static_method("android/view/WindowInsets$Type", name, "()I", &[])?.i()?;
         }
-        let ins = env.call_method(&wi, "getInsets", "(I)Landroid/graphics/Insets;", &[JValue::Int(mask)])?.l()?;
-        let mut out = [0; 4];
-        for (i, f) in ["left", "top", "right", "bottom"].iter().enumerate() {
-            out[i] = env.get_field(&ins, f, "I")?.i()?;
-        }
+        let mut bottom_of = |env: &mut jni::JNIEnv, mask: i32, out: Option<&mut [i32; 5]>| -> jni::errors::Result<i32> {
+            let ins = env.call_method(&wi, "getInsets", "(I)Landroid/graphics/Insets;", &[JValue::Int(mask)])?.l()?;
+            if let Some(out) = out {
+                for (i, f) in ["left", "top", "right", "bottom"].iter().enumerate() {
+                    out[i] = env.get_field(&ins, f, "I")?.i()?;
+                }
+            }
+            env.get_field(&ins, "bottom", "I")?.i()
+        };
+        let mut out = [0; 5];
+        bottom_of(env, types[0] | types[1] | types[2], Some(&mut out))?;
+        let bars = bottom_of(env, types[0], None)?;
+        let ime = bottom_of(env, types[2], None)?;
+        out[4] = (ime - bars).max(0);
         Ok(Some(out))
     });
     match r {
