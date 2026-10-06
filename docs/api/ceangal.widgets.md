@@ -281,6 +281,17 @@ A one-line text field: `get` / `set` hold its ed.Editor (make one with
 ed.text_field(text, placeholder)). `label` is what a screen reader says.
 (The editor paints its whole rect, so the border is on a box around it.)
 
+### `autocomplete`
+
+```almide
+pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor, set: (ed.Editor) -> Unit, options: List[String]) -> v.View
+```
+
+A text field that suggests `options` as you type: a combo box whose list
+box shows the options containing the text. Down / Up move through them,
+Enter or a click puts one in the field, Escape closes the list until the
+text changes.
+
 ## Containers
 
 ### `card`

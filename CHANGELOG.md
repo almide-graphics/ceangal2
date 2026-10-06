@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Autocomplete**: `w.autocomplete(th, key, label, get, set, options)`, a
+  combo box whose list follows the text. (ADR 0013)
 - **Context menus**: `w.context_menu(th, key, items, view)` opens on a
   right-click or a long press; `v.on_context` for your own; `ceangal
   test` gets a `context "Label"` step. (ADR 0019)

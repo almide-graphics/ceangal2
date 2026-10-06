@@ -49,3 +49,28 @@ entry the keyboard is on.
 - `apps/gallery/tests/popups.test` opens, picks by pointer and keys,
   closes with Escape and with a press outside, on the web and the native
   build.
+
+## Update (2026-10-06): autocomplete
+`w.autocomplete(th, key, label, get, set, options)` is a text field with a
+popup list box:
+- **Suggestions:** the options that contain the text, ignoring case.
+  Those that start with it come first, eight at most.
+- **When it opens:** while the field has focus and there is a suggestion
+  that isn't exactly the text. The view opens and closes the runtime's one
+  popup as that changes.
+- **Keys:** Down / Up move the highlight, and Enter puts the highlighted
+  option in the field, with the caret after it. Escape closes the list
+  until the text changes. The field's other keys go to the editor
+  unchanged.
+- **Accessibility:** the field is a combo box (role 21) with its expanded
+  state; the list is a list box of options (roles 22 / 23), as for
+  `w.dropdown`.
+
+`apps/gallery/tests/autocomplete.test` (web and native) and the Chrome
+E2E check it.
+
+Matching lowers A–Z by hand. `string.to_lower` brings Almide's Unicode
+case tables, and cost the gallery 26 KB of optimized wasm. The widget
+itself is about 2.8 KB, paid only by apps that use it. The gallery shows
+every control, so its budget rises from 180 to 186 KB (measured 182.4).
+The todo and hello budgets, which measure the framework's base, stay.

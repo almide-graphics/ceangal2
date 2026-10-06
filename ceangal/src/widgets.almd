@@ -474,6 +474,86 @@ pub fn text_field(th: Theme, key: String, label: String, get: () -> ed.Editor, s
     |> v.h(42.0) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
     |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
 
+// The text an autocomplete's list was closed at with Escape (it stays
+// closed until the text changes): by key.
+var dismissed: List[(String, String)] = []
+
+fn dismissed_at(key: String) -> String = {
+  var t = "\u{0}"
+  for d in dismissed { if d.0 == key then t = d.1 else () }
+  t
+}
+
+// `s` with A–Z lowered (the rest as it is): Unicode's case tables would add
+// tens of KB of wasm for little use in a suggestion list.
+fn lower(s: String) -> String = {
+  let b = bytes.from_string(s)
+  var out: List[Int] = []
+  for i in 0..<bytes.len(b) {
+    let c = bytes.read_u8(b, i)
+    list.push(out, if c >= 65 and c <= 90 then c + 32 else c)
+  }
+  string.from_bytes(out)
+}
+
+// The options that contain `q` (ignoring the case of A–Z), those that
+// start with it first; eight at most.
+fn suggestions(q: String, options: List[String]) -> List[String] = {
+  let lq = lower(q)
+  var first: List[String] = []
+  var rest: List[String] = []
+  for o in options {
+    let lo = lower(o)
+    if string.starts_with(lo, lq) then list.push(first, o)
+    else if string.contains(lo, lq) then list.push(rest, o)
+    else ()
+  }
+  list.take(first + rest, 8)
+}
+
+// Reached only from the pick closure below (almide/almide#3296).
+let keep_set_cursor = ed.set_cursor
+let keep_set_text = ed.set_text
+
+// A text field that suggests `options` as you type: a combo box whose list
+// box shows the options containing the text. Down / Up move through them,
+// Enter or a click puts one in the field, Escape closes the list until the
+// text changes.
+pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor, set: (ed.Editor) -> Unit, options: List[String]) -> v.View = {
+  let q = ed.to_string(get())
+  let found = suggestions(q, options)
+  let exact = list.len(found) == 1 and found[0] == q
+  let show = ui.is_focused(key) and q != "" and list.len(found) > 0 and not exact and dismissed_at(key) != q
+  // the list follows the text (the runtime keeps one popup at a time)
+  if show and not ui.popup_open(key) then ui.open_popup(key, -1)
+  else if not show and ui.popup_open(key) then ui.close_popup()
+  else ()
+  let pick = (i: Int) => {
+    // the option in the field, the caret after it
+    if i >= 0 and i < list.len(found) then set(ed.set_cursor(ed.set_text(get(), found[i]), 0, list.len(string.chars(found[i])))) else ()
+    ui.close_popup()
+  }
+  let field = ed.field(key, get, set, { ...th.editor, bg: th.surface }) |> v.grow(1.0) |> v.label(label)
+    |> v.role(21) |> v.expanded(show)
+  let typed = field.on_key
+  let keyed = { ...field, on_key: (phase, code, mods) =>
+    if phase != 1 and ui.popup_open(key) and (code == 13 or code == 12 or (code == 1 and ui.popup_highlight() >= 0) or code == 5) then {
+      let hi = ui.popup_highlight()
+      let n = list.len(found)
+      if code == 13 then ui.set_popup_highlight(if hi < 0 then 0 else int.min(n - 1, hi + 1))
+      else if code == 12 then ui.set_popup_highlight(int.max(0, hi - 1))
+      else if code == 1 then pick(hi)
+      else {
+        dismissed = list.filter(dismissed, (d) => d.0 != key) + [(key, q)]
+        ui.close_popup()
+      }
+      true
+    } else typed(phase, code, mods) }
+  let box = v.box(keyed) |> v.h(42.0) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
+    |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
+  if show then v.box(box) |> v.with_child(popup(th, key, label, found, -1, 22, 23, pick)) else box
+}
+
 // ── Containers ──
 
 // A group of related content on a raised surface.

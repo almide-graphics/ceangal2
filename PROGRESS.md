@@ -4,6 +4,8 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- 入力補完付きコンボボックス `w.autocomplete` を追加 (ADR 0013 追記)。
+  gallery の City 欄、autocomplete.test (web / native) と Chrome E2E で確認。
 - コンテキストメニュー (`w.context_menu`、右クリック / 長押し 0.5 秒) を
   追加 (ADR 0019)。`v.on_context`、`ceangal.open_popup_at`、テスト言語に
   `context "Label"` を追加。gallery の popups.test (web / native) と
@@ -381,6 +383,9 @@ item, the first green CI run on main that deploys Pages, waits for a push
   oracle from unicode-bidi (`tools/gen_bidi_cases.py`,
   `tests/bidi/cases.txt`); caret drawn left of an RTL character's left
   edge; isolate typed in apps/gallery/tests/rtl.test.
+- Autocomplete (ADR 0013 update): `w.autocomplete`, suggestions by
+  substring (prefix first), keys, Escape until the text changes; combo
+  box / list box / option roles; gallery City + test + Chrome E2E.
 - Context menus (ADR 0019): `v.on_context` (right button bit 2, or a
   touch held 0.5 s within 10 px; the gesture's release does nothing
   else), `open_popup_at` / `popup_point`, `w.context_menu` (focus taken
@@ -438,7 +443,7 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Goal item 2: controls / accessibility (touch tooltips by long press, autocomplete combobox, list virtualization; Dynamic Type /
+0. Goal item 2: controls / accessibility (touch tooltips by long press, list virtualization; Dynamic Type /
    fontScale, reduced motion, high contrast; E2E for the new roles).
    (Bidi W4–W6 / N0 if needed.)
    (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
@@ -458,6 +463,10 @@ item, the first green CI run on main that deploys Pages, waits for a push
    AccessKit checked with screen readers (Human TODO).
 
 ## Known issues / workarounds
+- Size: `string.to_lower` (Almide stdlib) brings Unicode case tables, about
+  26 KB of optimized wasm. ceangal lowers A–Z by hand where it needs to
+  (`widgets.lower`). Check the budget before using case mapping in the
+  framework.
 - CI / local Android: Gboard took adb's injected taps for a stylus and
   opened handwriting (the "Try out your stylus" sheet, or a floating
   toolbar) instead of the keyboard, so the playground's key bar never

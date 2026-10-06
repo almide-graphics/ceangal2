@@ -111,6 +111,15 @@ try {
   await expectNode("Asks before deleting everything", (n) => n.role === "tooltip", "a tooltip shows when the pointer rests on its control");
   await mouse("mouseMoved", 6, 6);
 
+  // an autocomplete field is a combo box; its suggestions are options
+  await click("City");
+  await page.send("Input.insertText", { text: "To" });
+  await expectNode("Tokyo", (n) => n.role === "option", "autocomplete suggestions are options");
+  await expectNode("City", (n) => n.role === "combobox", "an autocomplete field is a combo box");
+  await click("Toronto");
+  await waitFor(async () => (await find("City"))?.value === "Toronto", "a clicked suggestion fills the field");
+  console.log("ok   a clicked suggestion fills the field");
+
   // a dialog: opens over the page, its buttons work, the backdrop dismisses
   await click("Delete"); await expectStatus("asking", "a button opens the dialog");
   await expectNode("Delete everything?", (n) => n.role === "dialog", "the dialog is announced as a dialog");

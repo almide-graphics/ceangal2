@@ -1,0 +1,27 @@
+# An autocomplete field: typing shows the matching options (those that
+# start with the text first); Down / Enter pick one; Escape closes the list
+# until the text changes; a click picks too.
+tap "City"
+type "o"
+see "Tokyo"
+see "Toronto"
+see "Kyoto"
+type "s"
+see "Osaka"
+see "Oslo"
+not "Tokyo"
+key Down
+key Enter
+see "City = Osaka"
+not "Oslo"
+key Backspace
+key Backspace
+key Backspace
+see "Oslo"
+key Escape
+not "Oslo"
+type "l"
+see "Oslo"
+tap "Oslo"
+see "City = Oslo"
+shot "autocomplete.png"
