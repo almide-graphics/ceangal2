@@ -195,6 +195,20 @@ pub fn open_popup(key: String, index: Int) -> Unit = {
   invalidate()
 }
 
+// Open the popup of `key` at the point (x, y) in window logical px (a
+// context menu), with entry `index` highlighted.
+pub fn open_popup_at(key: String, index: Int, x: Float, y: Float) -> Unit = {
+  popup_x = x
+  popup_y = y
+  open_popup(key, index)
+}
+
+var popup_x = 0.0
+var popup_y = 0.0
+
+// Where open_popup_at opened the popup (window logical px).
+pub fn popup_point() -> (Float, Float) = (popup_x, popup_y)
+
 // Close the open popup.
 pub fn close_popup() -> Unit = {
   if popup_key != "" then { popup_key = ""; popup_hi = -1; invalidate() } else ()
@@ -478,6 +492,7 @@ fn frame(t: Float) -> Int = {
   let now = frame_time
   if toast_text != "" and now >= toast_until then dirty = true else ()
   if hover_pending and now - hover_since >= TOOLTIP_DELAY_MS then { hover_pending = false; dirty = true } else ()
+  fire_long_press()
   if dirty or animating then {
     dirty = false
     render()
@@ -1003,7 +1018,75 @@ fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> 
   if id >= 1 and touch_scroll(phase, x, y) then true
   else pointer_target(phase, id, x, y, buttons, mods)
 
-fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
+// ── Context gestures ──
+
+let LONG_PRESS_MS = 500.0
+var right_swallow = false     // the right button's release after a context click
+var lp_id = -1                // the touch that may become a long press
+var lp_x = 0.0
+var lp_y = 0.0
+var lp_t = 0.0
+var lp_fired = false
+
+// The topmost view with a context handler at (x, y) (overlays first).
+fn context_at(x: Float, y: Float) -> Int = {
+  var found = -1
+  var over = -1
+  let n = int.min(list.len(frame_views), list.len(frame_rects))
+  for i in 0..<n {
+    if frame_views[i].context and inside(frame_rects[i], x, y) then {
+      if in_overlay(i) then over = i else found = i
+    } else ()
+  }
+  if over >= 0 then over else found
+}
+
+// A touch that stays put for LONG_PRESS_MS on a view with a context
+// handler becomes a long press (checked by frame()).
+fn track_long_press(phase: Int, id: Int, x: Float, y: Float) -> Unit =
+  if phase == 0 then {
+    if context_at(x, y) >= 0 then {
+      lp_id = id
+      lp_x = x
+      lp_y = y
+      lp_t = sys.now_ms()
+      lp_fired = false
+      sys.request_frame_after(LONG_PRESS_MS + 10.0)
+    } else lp_id = -1
+  } else if id == lp_id and phase == 1 and (float.abs(x - lp_x) > 10.0 or float.abs(y - lp_y) > 10.0) then lp_id = -1
+  else if id == lp_id and (phase == 2 or phase == 3) then lp_id = -1
+  else ()
+
+fn fire_long_press() -> Unit =
+  if lp_id >= 0 and not lp_fired and sys.now_ms() - lp_t >= LONG_PRESS_MS then {
+    let c = context_at(lp_x, lp_y)
+    if c >= 0 then {
+      lp_fired = true
+      pressed = -1
+      pressed_key = ""
+      frame_views[c].on_context(lp_x, lp_y)
+      dirty = true
+    } else lp_id = -1
+  } else ()
+
+fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
+  // a right-click: the context handler under the pointer, and nothing else
+  if id == 0 and phase == 0 and int.band(buttons, 2) != 0 and context_at(x, y) >= 0 then {
+    right_swallow = true
+    frame_views[context_at(x, y)].on_context(x, y)
+    invalidate()
+    true
+  } else if right_swallow and id == 0 and phase == 2 then { right_swallow = false; true }
+  // a touch that became a long press: the rest of it does nothing
+  else if lp_fired and id == lp_id then {
+    if phase == 2 or phase == 3 then { lp_fired = false; lp_id = -1 } else ()
+    true
+  } else {
+    if id >= 1 then track_long_press(phase, id, x, y) else ()
+    pointer_inner(phase, id, x, y, buttons, mods)
+  }
+
+fn pointer_inner(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
   if phase == 1 then {
     let c = cursor_at(x, y)
     if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()

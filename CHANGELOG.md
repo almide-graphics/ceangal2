@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Context menus**: `w.context_menu(th, key, items, view)` opens on a
+  right-click or a long press; `v.on_context` for your own; `ceangal
+  test` gets a `context "Label"` step. (ADR 0019)
 - **Toasts and tooltips**: `ceangal.toast(text)` (announced by screen
   readers through a live region) and `w.tooltip(th, text, control)` (after
   the pointer rests, or on keyboard focus). New accessibility roles:

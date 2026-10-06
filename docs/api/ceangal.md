@@ -151,6 +151,23 @@ Open the popup of the control with `key` (one at a time), with entry
 `index` highlighted (-1 = none). A press outside the popup and its
 control closes it.
 
+### `open_popup_at`
+
+```almide
+pub fn open_popup_at(key: String, index: Int, x: Float, y: Float) -> Unit
+```
+
+Open the popup of `key` at the point (x, y) in window logical px (a
+context menu), with entry `index` highlighted.
+
+### `popup_point`
+
+```almide
+pub fn popup_point() -> (Float, Float)
+```
+
+Where open_popup_at opened the popup (window logical px).
+
 ### `close_popup`
 
 ```almide
@@ -416,3 +433,5 @@ pub fn is_pressed(key: String) -> Bool
 ```
 
 The view with `key` is being pressed (mouse button or finger down on it).
+
+## Context gestures

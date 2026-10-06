@@ -118,7 +118,9 @@ fn list_card(th: w.Theme) -> v.View =
   w.card(th, [
     w.list_item(th, "Inbox", "3 new", () => say("inbox")),
     w.divider(th),
-    w.list_item(th, "Archive", "", () => say("archive")),
+    // a right-click (a long press on a phone) opens its context menu
+    w.context_menu(th, "archive", [("Open", () => say("open archive")), ("Empty", () => say("emptied"))],
+      w.list_item(th, "Archive", "", () => say("archive"))),
   ])
 
 fn view() -> v.View = {

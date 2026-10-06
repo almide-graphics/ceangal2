@@ -381,6 +381,17 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                 }
                 None => { fail(format!("no view labelled {arg:?}")); false }
             },
+            // a right-click (a context menu)
+            "context" => match test_tree().into_iter().find(|n| n.label == arg) {
+                Some(n) => {
+                    let (x, y) = (n.rect.0 + n.rect.2 / 2.0, n.rect.1 + n.rect.3 / 2.0);
+                    call(ctx, EV_POINTER, 1, 0, x, y, 0.0, 0.0);
+                    call(ctx, EV_POINTER, 0, 0, x, y, 2.0, 0.0);
+                    call(ctx, EV_POINTER, 2, 0, x, y, 0.0, 0.0);
+                    true
+                }
+                None => { fail(format!("no view labelled {arg:?}")); false }
+            },
             "type" => { text_event(ctx, 0, &arg, 0); true }
             "key" => match test_key(&arg) {
                 Some((code, mods)) => {
@@ -405,7 +416,7 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                 true
             }
             "shot" => { settle(ctx, t); snapshot(ctx, &dir.join(&arg).to_string_lossy()); true }
-            _ => { fail(format!("unknown step {cmd:?} (tap, type, key, see, not, wait, shot)")); false }
+            _ => { fail(format!("unknown step {cmd:?} (tap, context, type, key, see, not, wait, shot)")); false }
         };
         if !ok {
             settle(ctx, t);

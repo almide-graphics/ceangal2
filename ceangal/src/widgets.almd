@@ -266,6 +266,17 @@ let TRIGGER_H = 40.0
 // window, over) its control: the highlighted one (keyboard) or the one under
 // the pointer filled, the chosen one ticked.
 fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
+  // above the control when the list would run past the window's bottom
+  let r = ui.rect_of(key)
+  let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
+  let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
+  let list_v = popup_list(th, key, name, items, chosen, list_role, item_role, on_pick)
+  let placed = if up then v.bottom(list_v, TRIGGER_H + POPUP_GAP) else v.top(list_v, TRIGGER_H + POPUP_GAP)
+  placed |> v.left(0.0) |> v.w_pct(100.0)
+}
+
+// A popup's entries in their floating card (placed by the caller).
+fn popup_list(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
   var rows: List[v.View] = []
   for i in 0..<list.len(items) {
     let ik = key + ":" + int.to_string(i)
@@ -280,14 +291,9 @@ fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int,
       |> v.key(ik) |> v.on_click(pick) |> v.keeps_focus()
       |> v.role(item_role) |> v.label(items[i]) |> v.selected(i == chosen))
   }
-  // above the control when the list would run past the window's bottom
-  let r = ui.rect_of(key)
-  let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
-  let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
-  let placed = if up then v.bottom(v.col(rows), TRIGGER_H + POPUP_GAP) else v.top(v.col(rows), TRIGGER_H + POPUP_GAP)
-  placed |> v.gap(2.0) |> v.padding(4.0) |> v.rounded(th.radius) |> v.bg(th.surface)
+  v.col(rows) |> v.gap(2.0) |> v.padding(4.0) |> v.rounded(th.radius) |> v.bg(th.surface)
     |> v.border(1.0, th.border) |> v.shadow(18.0, 6.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.3))
-    |> v.overlay() |> v.left(0.0) |> v.w_pct(100.0) |> v.min_w(160.0)
+    |> v.overlay() |> v.min_w(160.0)
     |> v.role(list_role) |> v.label(name)
 }
 
@@ -359,6 +365,38 @@ pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) 
       else false)
     |> v.role(3) |> v.label(title) |> v.expanded(open)
   if open then v.box(face) |> v.with_child(popup(th, key, title, list.map(items, (it) => it.0), -1, 24, 25, run)) else v.box(face)
+}
+
+// `view` with a context menu: a right-click on it (a long press on a touch
+// screen) opens `items` at the pointer, each a title and what it does. An
+// entry is picked by a click or with the keys of a menu; a press outside
+// or Escape closes it. `key` names the menu (unique on the page).
+pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], view: v.View) -> v.View = {
+  let mkey = "context:" + key
+  let area = v.box(view) |> v.key(mkey + ":area") |> v.on_context((x, y) => {
+    // the menu takes the keyboard while it is open
+    ui.open_popup_at(mkey, 0, x, y)
+    ui.focus(mkey)
+  })
+  if not ui.popup_open(mkey) then area
+  else {
+    let run = (i: Int) => {
+      ui.close_popup()
+      let f = items[i].1
+      f()
+    }
+    let r = ui.rect_of(mkey + ":area")
+    let (px, py) = ui.popup_point()
+    // inside the window: a menu near the right or bottom edge opens leftward / upward
+    let wide = 180.0
+    let tall = int.to_float(list.len(items)) * (th.font_size * 1.3 + 16.0) + 10.0
+    let x = if px + wide > ui.viewport_width() then float.max(0.0, px - wide) else px
+    let y = if py + tall > ui.viewport_height() then float.max(0.0, py - tall) else py
+    let menu = popup_list(th, mkey, key, list.map(items, (it) => it.0), -1, 24, 25, run)
+      |> v.left(x - r.x) |> v.top(y - r.y) |> v.focusable(mkey) |> v.on_key((phase, code, mods) =>
+        if phase == 1 then false else popup_keys(mkey, list.len(items), code, run))
+    v.with_child(area, menu)
+  }
 }
 
 // ── Values ──

@@ -8,9 +8,9 @@ The guides are in [../guide](../guide/README.md).
 
 | module | | entries |
 |---|---|---|
-| [`ceangal`](ceangal.md) | the app: run, focus, keyboard, viewport, clipboard | 44 |
-| [`ceangal.view`](ceangal.view.md) | views and modifiers: text, col, row, styles, events, accessibility | 77 |
-| [`ceangal.widgets`](ceangal.widgets.md) | standard controls: buttons, checkboxes, switches, sliders, dialogs… | 30 |
+| [`ceangal`](ceangal.md) | the app: run, focus, keyboard, viewport, clipboard | 46 |
+| [`ceangal.view`](ceangal.view.md) | views and modifiers: text, col, row, styles, events, accessibility | 78 |
+| [`ceangal.widgets`](ceangal.widgets.md) | standard controls: buttons, checkboxes, switches, sliders, dialogs… | 31 |
 | [`ceangal.editor`](ceangal.editor.md) | a multi-line text editor view | 41 |
 | [`ceangal.storage`](ceangal.storage.md) | saved values and secrets | 6 |
 | [`ceangal.http`](ceangal.http.md) | HTTP requests | 6 |

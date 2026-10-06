@@ -78,6 +78,9 @@ type View = {
   pointer: Bool,
   on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
   wheel: Bool,
+  // A right-click or a long press: (x, y) in window px.
+  on_context: (Float, Float) -> Unit,
+  context: Bool,
   // A vertical scroll view (see scroll_y): children move up by the offset
   // ceangal keeps for `key`; wheel and touch drag scroll it.
   scroller: Bool,
@@ -565,6 +568,16 @@ pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View
 ```
 
 Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
+
+### `on_context`
+
+```almide
+pub fn on_context(v: View, f: (Float, Float) -> Unit) -> View
+```
+
+A right-click on the view, or a long press on a touch screen (0.5 s
+without moving): f(x, y), the point in window logical px. Its release
+does nothing else.
 
 ### `scroll_y`
 

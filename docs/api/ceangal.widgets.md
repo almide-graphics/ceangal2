@@ -238,6 +238,17 @@ pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) 
 A button that opens a menu of actions under it: each entry a title and
 what it does. Keyboard as for a dropdown.
 
+### `context_menu`
+
+```almide
+pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], view: v.View) -> v.View
+```
+
+`view` with a context menu: a right-click on it (a long press on a touch
+screen) opens `items` at the pointer, each a title and what it does. An
+entry is picked by a click or with the keys of a menu; a press outside
+or Escape closes it. `key` names the menu (unique on the page).
+
 ## Values
 
 ### `slider`

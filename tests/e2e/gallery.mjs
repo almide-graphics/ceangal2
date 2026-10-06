@@ -125,6 +125,15 @@ try {
   await shot("gallery-light");
   await click("Lists"); await expectStatus("tab 1", "a segment switches the section");
   await click("Inbox, 3 new"); await expectStatus("inbox", "a list row runs its action");
+  // a long press (a finger held still) opens the row's context menu, and
+  // its release does not run the row's action
+  const arch = await waitFor(() => find("Archive"), "the Archive row");
+  await page.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: arch.x, y: arch.y }] });
+  await sleep(800);
+  await page.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expectNode("Empty", (n) => n.role === "menuitem", "a long press opens a context menu (menu items)");
+  await expectStatus("inbox", "the long press's release does not tap the row");
+  await click("Empty"); await expectStatus("emptied", "a context menu entry runs its action");
   if (await ev(`getComputedStyle(document.getElementById("crashed")).display !== "none"`)) throw new Error("the app crashed");
   ok = true;
 } catch (e) {

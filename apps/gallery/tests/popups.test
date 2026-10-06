@@ -24,3 +24,16 @@ tap "Actions"
 tap "Wi-Fi"
 not "Duplicate"
 see "status: archived"
+# A context menu: a right-click opens it at the pointer (a long press on a
+# touch screen); a click picks an entry, Escape closes it.
+tap "Lists"
+context "Archive"
+see "Empty"
+tap "Empty"
+see "status: emptied"
+not "Open"
+context "Archive"
+see "Open"
+key Escape
+not "Open"
+see "status: emptied"
