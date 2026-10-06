@@ -550,23 +550,21 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - (none) Pages is enabled with the Actions source (2026-10-05, via the API).
 
 ## Next
-0. Goal item 2: controls / accessibility (E2E for the new roles on VoiceOver /
-   TalkBack). Done: display preferences (ADR 0021), touch tooltips (ADR 0018).
-   (Bidi W4–W6 / N0 if needed.)
-   (Budgets now measure the wasm-opt build, ADR 0015: ~7 KB headroom.) Then controls / accessibility, size (win back
-   ADR 0014's budget increase), M6, almide issues, docs and v0.3.0 notes.
-   Framework: the quality list is done (see Done). Done: dropdown / menu, Android file picker, Indic shaping (ADR 0010), colour emoji (ADR 0011), RTL editing (ADR 0012), iOS VoiceOver / Android TalkBack trees,
-   mobile clipboard / share / picker, text beyond Latin, release checksums
-   + CHANGELOG, budgets, dev on Linux / Windows, v0.1.0, v0.2.0,
-   ceangal-hello, `ceangal dev`, binary releases, doctor, services API,
-   guide + API reference, manifest checks, standard controls, `ceangal
-   test`, checked doc examples (ADR 0007, 0008).
-1. First Pages deploy + `pages-e2e` against the live site (Pages enabled
-   2026-10-05).
-2. M6: done for iPhone 6.9" (simulator shots) and data-safety check; an
-   iPad 13" set can be made with IOS_SIM="iPad Pro 13-inch (M5)".
-3. M4 rest: a native AI test against a mock server on Windows / Linux;
-   AccessKit checked with screen readers (Human TODO).
+The goal's priority list (0–6) is done; what remains is human work (store
+accounts, submission, the v0.3.0 tag; see Human TODO). Weak spots found
+and worth doing next:
+1. Thai, Lao, Khmer and Myanmar word breaking (UAX #14 LB1 needs a
+   dictionary): today these break only at spaces (ADR 0017).
+2. Layout: `build_lines` still copies child nodes (Almide value lists).
+   A layout that works on indices would take the gallery's frame from 3.1 ms
+   further down (ADR 0022).
+3. iOS VoiceOver: text fields have no text-field trait in accesskit_ios.
+   Consider a custom trait or an upstream report (Known issues).
+4. Remove the almide workarounds once a release after v0.66.0 ships the
+   fixes. The list is in Known issues.
+5. CI flakiness to watch: the iOS simulator sometimes times out bringing
+   the Todo app back to the foreground (once on 2026-10-06; it passed on
+   rerun and locally).
 
 ## Known issues / workarounds
 - Size: `string.to_lower` (Almide stdlib) brings Unicode case tables, about
