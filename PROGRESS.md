@@ -6,9 +6,8 @@ Read at the start of every session; update at the end.
 
 ### 最初に読む: 優先順ごとの現状 (2026-10-06 時点)
 0. **Android CI**: キーボード高をホストが直接報告する修正で一度緑
-   (run 37403088995) になったが、その後の run でキーバーの step が再発
-   (タイミング依存)。アプリ側の inset / IME 要求を CI ログに出す診断を追加して
-   調査中。詳細は下の最新項目。
+   (run 37403088995) になったが再発。診断ログで真因 (CI エミュレータの
+   ハードウェアキーボード) を特定し E2E 側で対処。詳細は作業ログ。
 1. **テキスト**: 済 (bidi UAX #9、UAX #14、Arabic / Indic の HarfBuzz 一致、
    RTL・emoji、折り返し)。
 2. **コントロール・アクセシビリティ**: tooltip (タッチは長押し)、toast と
@@ -27,6 +26,13 @@ Read at the start of every session; update at the end.
 
 ### 作業ログ (最新が上)
 
+- Android CI のキーバー失敗の真因: 追加した診断ログで、アプリは IME を要求し
+  システムも mInputShown=true だが、inset にキーボード分が一度も現れない
+  ことが判明。CI のエミュレータはハードウェアキーボード付きで、Gboard が
+  ソフトキーボードを出さず候補バーだけ表示していた (ローカル AVD は
+  hw.keyboard=no のため再現せず)。Android E2E 3 本で
+  `show_ime_with_hard_keyboard=1` を設定。アプリの挙動 (物理キーボード時は
+  キーバーを出さない) は正しい。
 - 表示設定をデスクトップでも読み取り (macOS: 視差効果を減らす / コントラスト
   を上げる、Windows: テキストサイズ・アニメーション・ハイコントラスト、
   Linux: GNOME の gsettings)。macOS と Android はローカルでビルド確認、

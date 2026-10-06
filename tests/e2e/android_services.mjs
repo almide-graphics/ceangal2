@@ -74,6 +74,9 @@ try {
   adb("install", "-r", apk);
   // injected taps as a finger, not a stylus (Gboard's handwriting)
   adb("shell", "settings", "put", "secure", "stylus_handwriting_enabled", "0");
+  // the on-screen keyboard even with a hardware one attached (CI's emulator has
+  // one: Gboard then shows only a strip, and the app sees no keyboard)
+  adb("shell", "settings", "put", "secure", "show_ime_with_hard_keyboard", "1");
   adb("shell", "setprop", "debug.ceangal.a11y", "1");
   adb("shell", "rm", "-f", "/sdcard/Download/services.txt");
   adb("shell", "am", "force-stop", pkg);

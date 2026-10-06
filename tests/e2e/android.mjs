@@ -176,6 +176,9 @@ async function launch(pkg, { clear = true, data = null } = {}) {
 // "try out your stylus" sheet) instead of the keyboard: turn that off, and
 // send taps as touchscreen events.
 adb("shell", "settings", "put", "secure", "stylus_handwriting_enabled", "0");
+// the on-screen keyboard even with a hardware one attached (CI's emulator has
+// one: Gboard then shows only a strip, and the app sees no keyboard)
+adb("shell", "settings", "put", "secure", "show_ime_with_hard_keyboard", "1");
 adb("shell", "setprop", "debug.ceangal.a11y", "1");
 adb("shell", "setprop", "debug.ceangal.gui_a11y", "1");
 adb("shell", "setprop", "debug.ceangal.run_log", "1");
