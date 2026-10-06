@@ -116,6 +116,22 @@ Safari have, and Firefox has on Windows. Browsers without it see a
 message instead. The page has a web app manifest with the app's icons and
 theme colour.
 
+## Screenshots
+
+`tools/package_ios.sh <app> shots` runs the app in the iOS simulator and
+saves store screenshots to `store/<app>/screenshots/ios-sim/<device>/`.
+Each scene is a launch URL; see `StoreShots` in `tests/e2e/ios/E2E.swift`.
+The simulator runs in English, and the status bar is fixed at 9:41 with
+full signal and battery. Pick the device with `IOS_SIM`:
+
+```
+IOS_SIM="iPhone 17 Pro Max" tools/package_ios.sh playground shots     # 6.9", 1320×2868
+IOS_SIM="iPad Pro 13-inch (M5)" tools/package_ios.sh playground shots # 13", 2064×2752
+```
+
+`node tools/store_screenshots.mjs` draws the same scenes with the desktop
+build, at each store's sizes: Android, Mac, Windows and Linux.
+
 ## What only you can do
 
 The builds and checks are automated. Opening accounts, paying fees,
