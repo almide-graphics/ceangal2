@@ -37,3 +37,19 @@ see "Open"
 key Escape
 not "Open"
 see "status: emptied"
+# From the keyboard: Shift+F10 or the menu key opens the focused row's
+# context menu; the arrows and Enter pick an entry.
+tap "Inbox, 3 new"
+key Tab
+key Shift+F10
+see "Open"
+key Escape
+not "Open"
+tap "Inbox, 3 new"
+key Tab
+key Menu
+see "Empty"
+key Down
+key Up
+key Enter
+see "status: open archive"

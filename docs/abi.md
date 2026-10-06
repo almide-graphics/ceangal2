@@ -92,7 +92,7 @@ characters arrive as text events, not keys:
 1 Enter  2 Tab  3 Backspace  4 Delete  5 Escape
 10 Left  11 Right  12 Up  13 Down  14 Home  15 End  16 PageUp  17 PageDown
 20 A (with shortcut: select all)  21 C  22 V  23 X  24 Z  25 Y  26 S  27 F  28 O  29 N  30 W
-40..51 F1..F12   60 Space
+40..51 F1..F12   60 Space   61 Menu (the context-menu key)
 ```
 Letters are reported as keys only together with ctrl/meta, so shortcuts work
 on every layout.

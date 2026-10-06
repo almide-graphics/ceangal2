@@ -410,6 +410,20 @@ fn key(phase: Int, code: Int, mods: Int) -> Bool = {
     cycle_focus(has_shift(mods))
     handled = true
   } else ()
+  // the menu key or Shift+F10: the context menu of the focused view (or of
+  // the nearest view around it that has one), opened at its lower left
+  if not handled and phase == 0 and fi >= 0 and (code == 61 or (code == 49 and has_shift(mods))) then {
+    var c = -1
+    for j in 0..<int.min(fi + 1, list.len(frame_views)) {
+      if frame_views[j].context and j + frame_sizes[j] > fi then c = j else ()
+    }
+    if c >= 0 and fi < list.len(frame_rects) then {
+      let r = frame_rects[fi]
+      context_touch = false
+      frame_views[c].on_context(r.x + 8.0, r.y + r.h)
+      handled = true
+    } else ()
+  } else ()
   if not handled and phase != 1 and code == 5 and focus_key != "" then {
     focus("")
     handled = true

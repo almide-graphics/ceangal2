@@ -38,4 +38,14 @@ menu was suppressed. Touch had no notion of holding.
 - The keyboard's context-menu key and Shift+F10 don't open it yet. A
   focused control could offer the same menu; that comes with the
   keyboard map's next extension.
+  **Update (2026-10-06):** done.
+  - Key code 61 is the menu key (`ContextMenu` on the web, winit's
+    `NamedKey::ContextMenu` natively).
+  - That key, or Shift+F10, runs the context handler of the focused view,
+    or else of the nearest view around it that has one. The menu opens at
+    the focused view's lower left.
+  - The web host also blocks the browser's own menu on its key sink.
+  - `ceangal test` knows `key Menu` and `key Shift+F10`. `popups.test`
+    opens the Archive row's menu both ways and picks an entry with the
+    arrows and Enter, on the web and natively.
 - Long press is now available for touch tooltips (ADR 0018) as well.

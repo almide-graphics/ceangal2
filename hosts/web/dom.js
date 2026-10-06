@@ -12,7 +12,7 @@ export const EV = { INIT: 1, RESIZE: 2, FRAME: 3, POINTER: 4, WHEEL: 5, KEY: 6, 
 export const KEYS = {
   Enter: 1, Tab: 2, Backspace: 3, Delete: 4, Escape: 5,
   ArrowLeft: 10, ArrowRight: 11, ArrowUp: 12, ArrowDown: 13, Home: 14, End: 15, PageUp: 16, PageDown: 17,
-  F1: 40, F2: 41, F3: 42, F4: 43, F5: 44, F6: 45, F7: 46, F8: 47, F9: 48, F10: 49, F11: 50, F12: 51,
+  F1: 40, F2: 41, F3: 42, F4: 43, F5: 44, F6: 45, F7: 46, F8: 47, F9: 48, F10: 49, F11: 50, F12: 51, ContextMenu: 61,
 };
 export const LETTER_KEYS = { a: 20, c: 21, v: 22, x: 23, z: 24, y: 25, s: 26, f: 27, o: 28, n: 29, w: 30 };
 export const CURSORS = ["default", "text", "pointer", "grab", "ew-resize", "ns-resize"];
@@ -150,6 +150,8 @@ export class DomUi {
         t.schedule();
       }
     });
+    // the menu key and Shift+F10 open the app's context menu, not the browser's
+    s.addEventListener("contextmenu", (e) => e.preventDefault());
     s.addEventListener("keyup", (e) => {
       const code = KEYS[e.key];
       if (code != null) { t.dispatch(EV.KEY, 1, code, modsOf(e)); t.schedule(); }

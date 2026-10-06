@@ -29,7 +29,7 @@ ceangal test tests/tasks.test
 | `context "Label"` | a right-click on it (what opens a context menu; a long press on touch screens) |
 | `hold "Label"` | a finger held on it for 0.6 s, then lifted (a long press: a tooltip, or a context menu) |
 | `type "text"` | type into the focused view (a text field gets focus when tapped) |
-| `key Enter` | a key: `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, arrows (`Left`, `Right`, `Up`, `Down`), `Home`, `End`, `PageUp`, `PageDown`, `Space`; with modifiers as `Shift+Tab`, `Ctrl+A`, `Cmd+Z` |
+| `key Enter` | a key: `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, arrows (`Left`, `Right`, `Up`, `Down`), `Home`, `End`, `PageUp`, `PageDown`, `Space`, `F10`, `Menu`; with modifiers as `Shift+Tab`, `Ctrl+A`, `Cmd+Z` |
 | `see "text"` | some view's label or value contains the text (the web runner waits up to 5 s for it) |
 | `not "text"` | no view's label or value contains it |
 | `wait 500` | let 500 ms pass |

@@ -4,6 +4,9 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- キーボードからのコンテキストメニュー: メニューキー / Shift+F10 で
+  フォーカス中の要素 (またはそれを含む要素) のメニューを開く (キーコード 61
+  追加、ADR 0019 追記)。popups.test (web / native) で確認。
 - v0.3.0 のリリースノートを CHANGELOG.md の Unreleased に揃え、
   guide (ui.md のロール一覧 21–28、トースト / ツールチップ、表示設定の節) を
   更新。リリース手順 (タグ付けは人間) を Human TODO に記載。

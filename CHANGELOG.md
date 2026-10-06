@@ -6,6 +6,8 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Context menus from the keyboard**: the menu key or Shift+F10 opens the
+  focused control's context menu (key code 61). (ADR 0019)
 - **Faster layout**: each node is measured once per layout, and the
   runtime's flattened view list no longer copies subtrees. The gallery's
   frame went from 10.0 ms to 3.1 ms. (ADR 0022)

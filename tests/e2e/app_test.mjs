@@ -19,7 +19,8 @@ mkdirSync(shots, { recursive: true });
 
 const KEYS = { Enter: [13, "Enter"], Tab: [9, "Tab"], Backspace: [8, "Backspace"], Delete: [46, "Delete"], Escape: [27, "Escape"],
   Left: [37, "ArrowLeft"], Right: [39, "ArrowRight"], Up: [38, "ArrowUp"], Down: [40, "ArrowDown"], Home: [36, "Home"], End: [35, "End"],
-  PageUp: [33, "PageUp"], PageDown: [34, "PageDown"], Space: [32, " "] };
+  PageUp: [33, "PageUp"], PageDown: [34, "PageDown"], Space: [32, " "],
+  F10: [121, "F10"], Menu: [93, "ContextMenu"] };
 const MODS = { Shift: 8, Ctrl: 2, Alt: 1, Cmd: 4, Meta: 4 }; // CDP's modifier bits
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

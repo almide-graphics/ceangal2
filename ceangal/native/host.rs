@@ -341,7 +341,7 @@ fn test_key(spec: &str) -> Option<(i64, f64)> {
     let code = match name {
         "Enter" => 1, "Tab" => 2, "Backspace" => 3, "Delete" => 4, "Escape" => 5,
         "Left" => 10, "Right" => 11, "Up" => 12, "Down" => 13, "Home" => 14, "End" => 15,
-        "PageUp" => 16, "PageDown" => 17, "Space" => 60,
+        "PageUp" => 16, "PageDown" => 17, "Space" => 60, "F10" => 49, "Menu" => 61,
         "A" => 20, "C" => 21, "V" => 22, "X" => 23, "Z" => 24, "Y" => 25, "S" => 26,
         _ => return None,
     };
@@ -575,6 +575,7 @@ fn key_code(key: &Key) -> Option<i64> {
         Key::Named(NamedKey::F10) => 49,
         Key::Named(NamedKey::F11) => 50,
         Key::Named(NamedKey::F12) => 51,
+        Key::Named(NamedKey::ContextMenu) => 61,
         Key::Character(c) => match c.to_ascii_lowercase().as_str() {
             "a" => 20, "c" => 21, "v" => 22, "x" => 23, "z" => 24, "y" => 25,
             "s" => 26, "f" => 27, "o" => 28, "n" => 29, "w" => 30,
