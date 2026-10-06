@@ -228,9 +228,6 @@ pub fn left(v: View, l: Float) -> View = { ...v, style: { ...v.style, pos_left: 
 pub fn right(v: View, r: Float) -> View = { ...v, style: { ...v.style, pos_right: r } }
 // Children do not draw outside this view's rect.
 pub fn clip(v: View) -> View = { ...v, style: { ...v.style, clip: true } }
-// Text that wraps onto as many lines as its width needs (breaking where
-// Unicode's line breaking rules allow; a "\n" starts a new line).
-pub fn wrapped(v: View) -> View = { ...v, style: { ...v.style, wrap: true } }
 
 // ── Paint ──
 

@@ -24,7 +24,6 @@ import self.host.sys as sys
 import self.bidi
 import self.indic
 import self.arabic
-import self.linebreak as lb
 import self.emoji_data as emoji
 
 // Sizes are layout.Size: a second record type with the same fields makes the
@@ -84,7 +83,7 @@ fn script_font(cp: Int) -> Int =
 // outside an emoji (inside one, the colour font draws them), the byte-order
 // mark.
 fn invisible(cp: Int) -> Bool =
-  (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2069) or cp == 0x061C
+  (cp >= 0x200B and cp <= 0x200F) or (cp >= 0x202A and cp <= 0x202E) or (cp >= 0x2060 and cp <= 0x2064)
     or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
     or (cp >= 0xE0100 and cp <= 0xE01EF)
 
@@ -99,12 +98,6 @@ fn load_asset(name: String) -> Bytes = {
   }
 }
 
-var generation = 0
-
-// How many fonts have loaded: text measured before a fallback font arrived
-// (the web fetches them on first use) is stale when this changes.
-pub fn font_generation() -> Int = generation
-
 fn font_at(slot: Int) -> font.Font = {
   if list.len(fonts) == 0 then fonts = list.repeat(font.empty_font(), list.len(FONT_FILES)) else ()
   if not font_tried[slot] then {
@@ -112,7 +105,7 @@ fn font_at(slot: Int) -> font.Font = {
     fonts[slot] = f
     // A missing asset may still be loading (the web fetches fallback fonts
     // the first time they are needed): draw again on the next frame.
-    if f.ok then { font_tried[slot] = true; generation = generation + 1 } else { waiting = true; sys.request_frame() }
+    if f.ok then font_tried[slot] = true else { waiting = true; sys.request_frame() }
     f
   } else fonts[slot]
 }
@@ -681,83 +674,6 @@ pub fn measure(s: String, size: Float, mono: Bool) -> Extent =
 // measure, with the bold font when `bold`.
 pub fn measure_style(s: String, size: Float, mono: Bool, bold: Bool) -> Extent =
   { w: float.ceil(width(s, size, mono, bold)), h: line_height(size, mono) }
-
-// ── Wrapping ──
-
-// Where a line of characters `cps` wraps at `avail` px, given `xs` (x after
-// each character laid end to end, length n + 1): the first character of
-// each row, 0 first. A row ends at the last line break opportunity that
-// fits (self.linebreak, UAX #14), or at the last caret stop that fits when
-// there is none; a hard line break (LF, U+2028…) always ends one.
-pub fn wrap_breaks(xs: List[Float], cps: List[Int], avail: Float) -> List[Int] = {
-  var bs = [0]
-  let ops = lb.opportunities(cps)
-  var hard = false
-  for o in ops { if o == lb.MANDATORY then hard = true else () }
-  if list.len(xs) > 1 and (hard or xs[list.len(xs) - 1] > avail) then {
-    var stops: List[Bool] = []
-    var start = 0
-    var row_x = 0.0
-    var cand = -1
-    for i in 1..<list.len(xs) {
-      if i < list.len(ops) and ops[i] == lb.MANDATORY then {
-        list.push(bs, i)
-        start = i
-        row_x = xs[i]
-        cand = -1
-      } else {
-        if xs[i] - row_x > avail and i - 1 > start then {
-          var at = cand
-          if at < start + 1 then {
-            if list.len(stops) == 0 then stops = stops(cps) else ()
-            at = i - 1
-            while at > start + 1 and not stops[at] { at = at - 1 }
-          } else ()
-          list.push(bs, at)
-          start = at
-          row_x = xs[at]
-          cand = -1
-        } else ()
-        if i < list.len(ops) and ops[i] != lb.NO then cand = i else ()
-      }
-    }
-  } else ()
-  bs
-}
-
-// Rows already worked out: by text, size, style and width.
-var rows_cache: Map[String, List[Int]] = map.new()
-
-// The first character of each row `s` wraps into at `max_w` px.
-pub fn wrap_rows(s: String, max_w: Float, size: Float, mono: Bool, bold: Bool) -> List[Int] = {
-  let key = s + "|" + float.to_string(max_w) + "|" + float.to_string(size) + (if mono then "m" else "") + (if bold then "b" else "")
-  match map.get(rows_cache, key) {
-    some(bs) => bs,
-    none => {
-      let cps = codepoints(s)
-      let bs = wrap_breaks(widths_of(line_geo(cps, size, mono, bold, -1)), cps, max_w)
-      if map.len(rows_cache) > 500 then rows_cache = map.new() else ()
-      map.insert(rows_cache, key, bs)
-      bs
-    },
-  }
-}
-
-// `s` drawn in the rows starting at `bs` (wrap_rows), `lh` px apart, in a
-// box `w` px wide at (x, y); rows of a right-to-left paragraph end at the
-// right edge.
-pub fn draw_rows(s: String, bs: List[Int], x: Float, y: Float, w: Float, lh: Float, size: Float, mono: Bool, bold: Bool, c: snaidhm.Color) -> Unit = {
-  let cps = codepoints(s)
-  let base = bidi.direction(cps)
-  for j in 0..<list.len(bs) {
-    let r1 = if j + 1 < list.len(bs) then bs[j + 1] else list.len(cps)
-    let gs = shape_line(list.slice(cps, bs[j], r1), size, mono, bold, base)
-    var rw = 0.0
-    for g in gs { rw = float.max(rw, g.x + g.advance) }
-    let rx = if base == 1 then x + float.max(0.0, w - rw) else x
-    draw_run(gs, rx, float.round(y + int.to_float(j) * lh + ascent(size, mono)), size, c)
-  }
-}
 
 // ── Glyph atlas cache ──
 

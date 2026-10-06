@@ -282,7 +282,14 @@ for (const app of apps) {
       for (let attempt = 0; ; attempt++) {
         adb("shell", "input", "touchscreen", "tap", String(Math.round((ed.x + 4) * t0.scale)), String(Math.round((ed.y + 16) * t0.scale)));
         try { await until(has("Key bar"), "the key bar over the keyboard", 10000); break; }
-        catch (e) { if (attempt >= 2) throw e; console.log("     (no keyboard yet: tapping the editor again)"); }
+        catch (e) {
+          // what the system did with the app's request, for the log
+          const ime = adb("shell", "dumpsys", "input_method").split("\n").filter((l) => /mInputShown|mCurMethodId|mShowRequested/.test(l)).map((l) => l.trim()).join(" ");
+          const tracker = adb("logcat", "-d", "-s", "ImeTracker:I", "InputMethodManagerService:*").split("\n").slice(-8).join("\n       ");
+          console.log(`     (no keyboard yet: ${ime})\n       ${tracker}`);
+          if (attempt >= 2) throw e;
+          console.log("     (tapping the editor again)");
+        }
       }
       shot("playground-keybar");
       for (let i = 0; i < 6; i++) await tap(tree(), "Down arrow");

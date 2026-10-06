@@ -11,15 +11,10 @@ fn transparent(cp: Int) -> Bool =
 
 // ── Direction ──
 
-// Classes: 0 L, 1 R (and AL), 2 EN, 3 neutral (ON, WS), 4 LRE, 5 RLE,
-// 6 LRO, 7 RLO, 8 PDF, 9 LRI, 10 RLI, 11 FSI, 12 PDI, 13 AN, 14 NSM
+// 0 left-to-right, 1 right-to-left, 2 number, 3 neutral
 fn class_of(cp: Int) -> Int =
-  if cp >= 0x202A and cp <= 0x202E then [4, 5, 8, 6, 7][cp - 0x202A]
-  else if cp >= 0x2066 and cp <= 0x2069 then cp - 0x2066 + 9
-  else if cp == 0x200E then 0
-  else if cp == 0x200F or cp == 0x061C then 1
-  else if (cp >= 0x0590 and cp <= 0x08FF) or (cp >= 0xFB1D and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then
-    (if (cp >= 0x0660 and cp <= 0x0669) or (cp >= 0x06F0 and cp <= 0x06F9) then 13 else if transparent(cp) then 14 else 1)
+  if (cp >= 0x0590 and cp <= 0x08FF) or (cp >= 0xFB1D and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then
+    (if cp >= 0x0660 and cp <= 0x0669 then 2 else if cp >= 0x06F0 and cp <= 0x06F9 then 2 else if transparent(cp) then 3 else 1)
   else if cp >= 0x30 and cp <= 0x39 then 2
   else if cp < 0x30 or (cp >= 0x3A and cp <= 0x40) or (cp >= 0x5B and cp <= 0x60) or (cp >= 0x7B and cp <= 0xBF) or (cp >= 0x2000 and cp <= 0x206F) then 3
   else 0
@@ -31,15 +26,23 @@ pub fn mirror(cp: Int) -> Int =
   else if cp == 0x7B then 0x7D else if cp == 0x7D then 0x7B else if cp == 0x3C then 0x3E else if cp == 0x3E then 0x3C
   else if cp == 0xAB then 0xBB else if cp == 0xBB then 0xAB else cp
 
-// Whether `cps` has a right-to-left letter (or a right-to-left control).
+// Whether `cps` has a right-to-left letter.
 pub fn has_rtl(cps: List[Int]) -> Bool = {
   var r = false
-  for c in cps {
-    let k = class_of(c)
-    if k == 1 or k == 5 or k == 7 or k == 10 or k == 13 then r = true else ()
-  }
+  for c in cps { if class_of(c) == 1 then r = true else () }
   r
 }
+
+// The paragraph's direction from its classes: its first strong character's
+// (0 left to right, 1 right to left).
+fn base_of(classes: List[Int]) -> Int = {
+  var b = -1
+  for k in classes { if b < 0 and (k == 0 or k == 1) then b = k else () }
+  int.max(b, 0)
+}
+
+// The direction of the paragraph `cps` (0 left to right, 1 right to left).
+pub fn direction(cps: List[Int]) -> Int = base_of(classes_of(cps))
 
 fn classes_of(cps: List[Int]) -> List[Int] = {
   var out: List[Int] = []
@@ -47,189 +50,47 @@ fn classes_of(cps: List[Int]) -> List[Int] = {
   out
 }
 
-fn initiator(k: Int) -> Bool = k >= 9 and k <= 11
-
-// The direction of the first strong character from `i` (0 left to right,
-// 1 right to left, -1 none), skipping isolates; when `in_isolate`, stops
-// at the PDI that closes the isolate `i` is in.
-fn first_strong(classes: List[Int], i: Int, in_isolate: Bool) -> Int = {
-  var d = -1
-  var depth = 0
-  var j = i
-  while j < list.len(classes) and d < 0 {
-    let k = classes[j]
-    if initiator(k) then depth = depth + 1
-    else if k == 12 then { if depth == 0 and in_isolate then j = list.len(classes) else depth = int.max(0, depth - 1) }
-    else if depth == 0 and (k == 0 or k == 1) then d = k
-    else ()
-    j = j + 1
-  }
-  d
-}
-
-// The direction of the paragraph `cps` (0 left to right, 1 right to left):
-// its first strong character's, outside isolates.
-pub fn direction(cps: List[Int]) -> Int = int.max(0, first_strong(classes_of(cps), 0, false))
-
-// The embedding level of each character of the line `cps` (odd: right to
-// left) in a paragraph of direction `base` (0 left to right, 1 right to
-// left, -1 from its first strong character): the Unicode Bidirectional
-// Algorithm's explicit embeddings, overrides and isolates (X1–X10), weak
-// types W1 and W7, neutrals N1–N2, implicit levels I1–I2 and trailing
-// whitespace (L1). Not done: bracket pairs (N0), number separators and
-// terminators (W4–W6), AL-specific number rules (W2).
+// The embedding level of each character of `cps` (odd: right to left) in a
+// paragraph of direction `base` (0 left to right, 1 right to left, -1 from
+// its first strong character).
 pub fn levels(cps: List[Int], base: Int) -> List[Int] = {
   let classes = classes_of(cps)
-  let par = if base >= 0 then base else int.max(0, first_strong(classes, 0, false))
-  let n = list.len(cps)
-  // X1–X8: each character's embedding level and its type after overrides;
-  // the embedding controls are removed (X9); each isolate initiator's PDI
-  var emb: List[Int] = []
-  var t: List[Int] = []
-  var removed: List[Bool] = []
-  var partner = list.repeat(-1, n)
-  var st_lv = [par]
-  var st_ov = [-1]
-  var st_iso = [-1]    // the isolate initiator's index, -1 for an embedding
-  for i in 0..<n {
-    let k = classes[i]
-    let top = list.len(st_lv) - 1
-    let lv = st_lv[top]
-    let ov = st_ov[top]
-    if (k >= 4 and k <= 7) or initiator(k) then {
-      let rtl = if k == 11 then first_strong(classes, i + 1, true) == 1 else (k == 5 or k == 7 or k == 10)
-      let next = if rtl then (if lv % 2 == 0 then lv + 1 else lv + 2) else (if lv % 2 == 0 then lv + 2 else lv + 1)
-      list.push(emb, lv)
-      list.push(t, if initiator(k) and ov >= 0 then ov else k)
-      list.push(removed, not initiator(k))
-      if next <= 125 then {
-        list.push(st_lv, next)
-        list.push(st_ov, if k == 6 then 0 else if k == 7 then 1 else -1)
-        list.push(st_iso, if initiator(k) then i else -1)
-      } else ()
-    } else if k == 12 then {
-      // close everything up to the innermost isolate, if one is open
-      var d = top
-      while d > 0 and st_iso[d] < 0 { d = d - 1 }
-      if d > 0 then {
-        partner[st_iso[d]] = i
-        partner[i] = st_iso[d]
-        st_lv = list.take(st_lv, d)
-        st_ov = list.take(st_ov, d)
-        st_iso = list.take(st_iso, d)
-      } else ()
-      let o = st_ov[list.len(st_ov) - 1]
-      list.push(emb, st_lv[list.len(st_lv) - 1])
-      list.push(t, if o >= 0 then o else 12)
-      list.push(removed, false)
-    } else if k == 8 then {
-      list.push(emb, lv)
-      list.push(t, k)
-      list.push(removed, true)
-      if top > 0 and st_iso[top] < 0 then {
-        st_lv = list.take(st_lv, top)
-        st_ov = list.take(st_ov, top)
-        st_iso = list.take(st_iso, top)
-      } else ()
-    } else {
-      list.push(emb, lv)
-      list.push(t, if ov >= 0 then ov else k)
-      list.push(removed, false)
-    }
-  }
-  // X10: level runs of the characters that stay, joined across isolates
-  // into isolating run sequences
-  var run_of = list.repeat(-1, n)
-  var runs: List[List[Int]] = []
-  var prev = -1
-  for i in 0..<n {
-    if not removed[i] then {
-      if prev >= 0 and emb[prev] == emb[i] then {
-        let r = list.len(runs) - 1
-        runs[r] = runs[r] + [i]
-      } else list.push(runs, [i])
-      run_of[i] = list.len(runs) - 1
-      prev = i
-    } else ()
-  }
-  var out = list.repeat(par, n)
-  for r in runs {
-    let first = r[0]
-    if not (classes[first] == 12 and partner[first] >= 0) then {
-      var seq = r
-      var last = r[list.len(r) - 1]
-      while initiator(classes[last]) and partner[last] >= 0 {
-        let more = runs[run_of[partner[last]]]
-        seq = seq + more
-        last = more[list.len(more) - 1]
-      }
-      out = resolve(seq, t, emb, removed, par, classes, out)
-    } else ()
-  }
-  // removed controls take the level before them; L1: tabs, and whitespace
-  // and isolate controls before a tab or at the end of the line, take the
-  // paragraph's
-  for i in 0..<n { if removed[i] then out[i] = if i > 0 then out[i - 1] else par else () }
-  for i in 0..<(n + 1) {
-    if i == n or cps[i] == 0x09 then {
-      if i < n then out[i] = par else ()
-      var e = i - 1
-      while e >= 0 and (cps[e] == 0x20 or cps[e] == 0x09 or initiator(classes[e]) or classes[e] == 12 or removed[e]) {
-        out[e] = par
-        e = e - 1
-      }
-    } else ()
-  }
-  out
+  levels_of(classes, if base >= 0 then base else base_of(classes))
 }
 
-// `levels` with those of one isolating run sequence `seq` (indices) set.
-fn resolve(seq: List[Int], t0: List[Int], emb: List[Int], removed: List[Bool], par: Int, classes: List[Int], levels: List[Int]) -> List[Int] = {
-  var out = levels
-  let m = list.len(seq)
-  let e = emb[seq[0]]
-  // sos / eos: the higher of this level and the one next to the sequence
-  var j = seq[0] - 1
-  while j >= 0 and removed[j] { j = j - 1 }
-  let sos = int.max(e, if j >= 0 then emb[j] else par) % 2
-  let last = seq[m - 1]
-  var k = last + 1
-  while k < list.len(emb) and removed[k] { k = k + 1 }
-  let eos = int.max(e, if initiator(classes[last]) or k >= list.len(emb) then par else emb[k]) % 2
-  var t: List[Int] = []
-  for i in seq { list.push(t, t0[i]) }
-  // W1: a mark takes the type before it (a neutral after an isolate control)
-  for p in 0..<m {
-    if t[p] == 14 then t[p] = if p == 0 then sos else if initiator(t[p - 1]) or t[p - 1] == 12 then 3 else t[p - 1] else ()
+// Embedding levels for the characters' classes in a paragraph of direction `base`.
+fn levels_of(classes: List[Int], base: Int) -> List[Int] = {
+  let n = list.len(classes)
+  // strong directions with numbers resolved: a number after right-to-left
+  // text belongs to it (as far as neutrals go)
+  var strong: List[Int] = []
+  var last = base
+  for k in classes {
+    if k == 0 or k == 1 then { last = k; list.push(strong, k) }
+    else if k == 2 then list.push(strong, if last == 1 then 1 else 0)
+    else list.push(strong, -1)
   }
-  // W7: a European number after left-to-right text (or sos) is L
-  var strong = sos
-  for p in 0..<m {
-    if t[p] == 0 or t[p] == 1 then strong = t[p]
-    else if t[p] == 2 and strong == 0 then t[p] = 0
-    else ()
+  var levels: List[Int] = []
+  for i in 0..<n {
+    let k = classes[i]
+    let lv = if k == 1 then 1
+      else if k == 0 then (if base == 1 then 2 else 0)
+      else if k == 2 then (if strong[i] == 1 or base == 1 then 2 else 0)
+      else {
+        // a neutral: the direction on both sides when they agree, else the paragraph's
+        var before = base
+        var j = i - 1
+        while j >= 0 and strong[j] < 0 { j = j - 1 }
+        if j >= 0 then before = strong[j] else ()
+        var after = base
+        var m = i + 1
+        while m < n and strong[m] < 0 { m = m + 1 }
+        if m < n then after = strong[m] else ()
+        if before == after then (if before == 1 then 1 else (if base == 1 then 2 else 0)) else base
+      }
+    list.push(levels, lv)
   }
-  // N1, N2: neutrals (and isolate controls) between two of the same
-  // direction take it (numbers count as right to left), else e's
-  var p = 0
-  while p < m {
-    if t[p] == 3 or t[p] >= 9 and t[p] <= 12 then {
-      var q = p
-      while q < m and (t[q] == 3 or t[q] >= 9 and t[q] <= 12) { q = q + 1 }
-      let before = if p == 0 then sos else (if t[p - 1] == 0 then 0 else 1)
-      let after = if q == m then eos else (if t[q] == 0 then 0 else 1)
-      let d = if before == after then before else e % 2
-      for r in p..<q { t[r] = d }
-      p = q
-    } else p = p + 1
-  }
-  // I1, I2
-  for p2 in 0..<m {
-    let ty = t[p2]
-    out[seq[p2]] = if e % 2 == 0 then (if ty == 1 then e + 1 else if ty == 2 or ty == 13 then e + 2 else e)
-      else (if ty == 1 then e else e + 1)
-  }
-  out
+  levels
 }
 
 // The display order of characters with these levels (the character shown

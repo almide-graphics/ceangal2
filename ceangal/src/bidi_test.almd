@@ -1,6 +1,5 @@
 // ceangal.bidi: levels and display order for one line.
 
-import fs
 import self.bidi
 
 fn shown(cps: List[Int]) -> List[Int] = list.map(bidi.order_of(bidi.levels(cps, -1)), (k) => cps[k])
@@ -52,97 +51,4 @@ test "brackets mirror" {
   assert(bidi.mirror(0x28) == 0x29)
   assert(bidi.mirror(0x5D) == 0x5B)
   assert(bidi.mirror(0x61) == 0x61)
-}
-
-// Explicit embeddings, overrides and isolates: the display order (controls
-// dropped) matches the Unicode Bidirectional Algorithm's (python-bidi,
-// which wraps the unicode-bidi crate).
-fn control(c: Int) -> Bool = (c >= 0x202A and c <= 0x202E) or (c >= 0x2066 and c <= 0x2069) or c == 0x200E or c == 0x200F or c == 0x061C
-
-fn shown_visible(cps: List[Int]) -> List[Int] = {
-  var out: List[Int] = []
-  for k in bidi.order_of(bidi.levels(cps, -1)) { if control(cps[k]) then () else list.push(out, cps[k]) }
-  out
-}
-
-test "RLI in LTR" {
-  assert(shown_visible([97, 98, 32, 8295, 1488, 1489, 32, 49, 50, 8297, 32, 99, 100]) == [97, 98, 32, 49, 50, 32, 1489, 1488, 32, 99, 100])
-}
-
-test "LRI in RTL" {
-  assert(shown_visible([1488, 1489, 32, 8294, 97, 98, 32, 99, 100, 8297, 32, 1490]) == [1490, 32, 97, 98, 32, 99, 100, 32, 1489, 1488])
-}
-
-test "FSI takes RTL" {
-  assert(shown_visible([97, 98, 32, 8296, 1488, 1489, 8297, 32, 99, 100]) == [97, 98, 32, 1489, 1488, 32, 99, 100])
-}
-
-test "FSI takes LTR" {
-  assert(shown_visible([1488, 32, 8296, 97, 98, 32, 1489, 8297, 32, 1490]) == [1490, 32, 97, 98, 32, 1489, 32, 1488])
-}
-
-test "RLO overrides" {
-  assert(shown_visible([97, 98, 32, 8238, 99, 100, 101, 8236, 32, 102, 103]) == [97, 98, 32, 101, 100, 99, 32, 102, 103])
-}
-
-test "LRO in RTL" {
-  assert(shown_visible([1488, 32, 8237, 1489, 1490, 8236, 32, 1491]) == [1491, 32, 1489, 1490, 32, 1488])
-}
-
-test "RLE embeds" {
-  assert(shown_visible([97, 98, 32, 8235, 99, 100, 32, 1488, 8236, 32, 101, 102]) == [97, 98, 32, 1488, 32, 99, 100, 32, 101, 102])
-}
-
-test "isolate is neutral" {
-  assert(shown_visible([1488, 32, 8294, 120, 8297, 32, 1489]) == [1489, 32, 120, 32, 1488])
-}
-
-test "RLM" {
-  assert(shown_visible([97, 98, 8207, 33]) == [97, 98, 33])
-}
-
-test "nested isolates" {
-  assert(shown_visible([97, 32, 8295, 1488, 32, 8294, 98, 32, 99, 8297, 32, 1489, 8297, 32, 100]) == [97, 32, 1489, 32, 98, 32, 99, 32, 1488, 32, 100])
-}
-
-test "unclosed RLI" {
-  assert(shown_visible([97, 98, 32, 8295, 1488, 1489, 32, 99, 100]) == [97, 98, 32, 99, 100, 32, 1489, 1488])
-}
-
-test "PDI without isolate" {
-  assert(shown_visible([97, 98, 8297, 32, 1488, 1489]) == [97, 98, 32, 1489, 1488])
-}
-
-fn hex_list(s: String) -> List[Int] = {
-  var out: List[Int] = []
-  for w in string.split(s, " ") {
-    if w != "" then {
-      var v = 0
-      for c in string.chars(w) {
-        let d = match string.codepoint(c) { some(x) => x, none => 48 }
-        v = v * 16 + (if d >= 65 then d - 55 else d - 48)
-      }
-      list.push(out, v)
-    } else ()
-  }
-  out
-}
-
-effect fn oracle_failures() -> Int = {
-  var failed = 0
-  for line in string.split(fs.read_text("../tests/bidi/cases.txt")!, "\n") {
-    let cols = string.split(line, "\t")
-    if list.len(cols) == 2 then {
-      let got = shown_visible(hex_list(cols[0]))
-      if got != hex_list(cols[1]) then {
-        failed = failed + 1
-        println("FAIL ${cols[0]}\n  want ${cols[1]}")
-      } else ()
-    } else ()
-  }
-  failed
-}
-
-test "1000 random lines are ordered as the Unicode Bidirectional Algorithm orders them" {
-  assert_eq(oracle_failures()!, 0)
 }
