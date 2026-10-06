@@ -83,6 +83,7 @@ var started = false
 
 // The last laid-out frame, in paint order, for hit testing.
 var frame_views: List[v.View] = []
+var frame_sizes: List[Int] = []
 // The height a wrapping text needs at the width it got: by text and style
 // (a second layout pass uses it).
 var wrap_heights: Map[String, Float] = map.new()
@@ -535,7 +536,7 @@ fn render() -> Unit = {
   let inner = if toast_text != "" then v.with_child(page, toast_view()) else page
   let inset = safe_t > 0.0 or safe_r > 0.0 or safe_b > 0.0 or safe_l > 0.0
   let root = if inset then v.col([inner]) |> v.pad(safe_t, safe_r, safe_b, safe_l) |> v.w(width) |> v.h(height) else inner
-  frame_views = flatten(root)
+  flatten(root)
   let laid = layout_with_wraps(root, frame_views)
   frame_over = overlay_marks(frame_views)
   let rects = free_overlays(frame_views, frame_over, apply_scrolls(frame_views, laid))
@@ -630,6 +631,7 @@ fn wraps(vw: v.View) -> Bool = vw.kind == v.TEXT and vw.style.wrap and vw.style.
 // Lay out `root`; then each wrapping text gets the height of its rows at
 // the width it was given, and if one changed the tree is laid out again.
 fn layout_with_wraps(root: v.View, views: List[v.View]) -> List[lay.LayoutRect] = {
+  node_seq = 0
   let laid = lay.layout(to_node(root), width, height)
   var changed = false
   for i in 0..<int.min(list.len(views), list.len(laid)) {
@@ -646,12 +648,16 @@ fn layout_with_wraps(root: v.View, views: List[v.View]) -> List[lay.LayoutRect] 
       } else ()
     } else ()
   }
-  if changed then lay.layout(to_node(root), width, height) else laid
+  if changed then { node_seq = 0; lay.layout(to_node(root), width, height) } else laid
 }
 
 fn edges(t: Float, r: Float, b: Float, l: Float) -> lay.Edges = { top: t, right: r, bottom: b, left: l }
 
+var node_seq = 0  // the next layout node's id (to_node numbers them)
+
 fn to_node(view: v.View) -> lay.Node = {
+  let id = node_seq
+  node_seq = node_seq + 1
   let s = view.style
   let base = lay.node_defaults()
   // Text measures its content box; padding adds to it.
@@ -667,6 +673,7 @@ fn to_node(view: v.View) -> lay.Node = {
     else if is_text then intrinsic.h + s.pt + s.pb else unset
   {
     ...base,
+    id: id,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
     wrap: if s.wrap then lay.WRAP_WRAP else lay.WRAP_NONE,
     gap_cross: if s.wrap then s.gap else 0.0,
@@ -757,7 +764,7 @@ fn apply_scrolls(views: List[v.View], laid: List[lay.LayoutRect]) -> List[lay.La
     if views[i].scroller then {
       let j = scroll_index(views[i].key)
       let r = rs[i]
-      let end = int.min(n, i + subtree_len(views[i]))
+      let end = int.min(n, i + frame_sizes[i])
       // how far the content reaches (not the view's own box: a view whose
       // content fits must not scroll by its bottom padding)
       var bottom = r.y
@@ -886,7 +893,7 @@ fn overlay_marks(views: List[v.View]) -> List[Bool] = {
   var i = 0
   while i < list.len(views) {
     if views[i].style.overlay then {
-      let n = subtree_len(views[i])
+      let n = frame_sizes[i]
       for k in i..<int.min(i + n, list.len(views)) { out[k] = true }
     } else ()
     i = i + 1
@@ -904,7 +911,7 @@ fn free_overlays(views: List[v.View], over: List[Bool], rects: List[lay.LayoutRe
     while i < list.len(views) and i < list.len(out) {
       if views[i].style.overlay then {
         let r = out[i]
-        let n = subtree_len(views[i])
+        let n = frame_sizes[i]
         for k in i..<int.min(i + n, list.len(out)) {
           let c = out[k]
           if c.clip_x == r.clip_x and c.clip_y == r.clip_y and c.clip_w == r.clip_w and c.clip_h == r.clip_h then
@@ -917,15 +924,28 @@ fn free_overlays(views: List[v.View], over: List[Bool], rects: List[lay.LayoutRe
     out
   }
 
-fn flatten(view: v.View) -> List[v.View] = {
-  var out: List[v.View] = [view]
+// The tree in flatten order (a view, then its in-flow children's subtrees,
+// then its absolute ones'), into frame_views — each view without its
+// children, which follow it — and frame_sizes, each view's subtree length.
+// Keeping the children made every frame_views[i] a copy of its subtree.
+fn flatten(view: v.View) -> Unit = {
+  frame_views = []
+  frame_sizes = []
+  flatten_into(view)
+}
+
+fn flatten_into(view: v.View) -> Unit = {
+  let at = list.len(frame_views)
+  let no_kids: List[v.View] = []
+  list.push(frame_views, { ...view, children: no_kids })
+  list.push(frame_sizes, 1)
   for c in view.children {
-    if not c.style.absolute then out = out + flatten(c) else ()
+    if not c.style.absolute then flatten_into(c) else ()
   }
   for c in view.children {
-    if c.style.absolute then out = out + flatten(c) else ()
+    if c.style.absolute then flatten_into(c) else ()
   }
-  out
+  frame_sizes[at] = list.len(frame_views) - at
 }
 
 

@@ -4,6 +4,14 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- レイアウトの性能改善 (ADR 0022): gallery の 1 フレームが 10.0 ms →
+  3.1 ms (Mac, headless)。flex の採寸が木の深さに対して指数的だったのを
+  レイアウト内メモ化で解消し、フラット化したビュー一覧が部分木ごと
+  コピーされていたのを子なしで保持するよう変更。画素はバイト単位で同一、
+  全テスト通過。wasm は予算内だが余裕はほぼ無し。
+- almide issue の状況確認: #3296/#3417/#3419/#3420/#3424/#3433 は almide の
+  main では修正済みだが、最新リリースは v0.66.0 (修正前) のまま。回避策は
+  次のリリースまで維持 (Known issues に記載)。
 - TalkBack から見た gallery の E2E (tests/e2e/android_gallery.mjs、CI の
   android ジョブに追加): ボタン・チェックボックス・スイッチ・ラジオ・
   ドロップダウン (Spinner)・スライダー・プログレス・テキスト欄のクラス、

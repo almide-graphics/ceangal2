@@ -112,6 +112,7 @@ type Node = {
   width_pct: Float,      // UNDEFINED = not set, 100.0 = 100%
   height_pct: Float,
 
+  id: Int,               // the node's number in this layout (-1 before it)
   children: List[Node],
 }
 
@@ -135,6 +136,7 @@ fn node_defaults() -> Node = {
   display: DISPLAY_FLEX, overflow: OVERFLOW_VISIBLE, position: POSITION_RELATIVE,
   pos_top: UNDEFINED, pos_right: UNDEFINED, pos_bottom: UNDEFINED, pos_left: UNDEFINED,
   width_pct: UNDEFINED, height_pct: UNDEFINED,
+  id: -1,
   children: [],
 }
 
@@ -148,7 +150,7 @@ fn copy_node(n: Node) -> Node = {
   width: n.width, height: n.height, aspect_ratio: n.aspect_ratio,
   min_width: n.min_width, min_height: n.min_height,
   max_width: n.max_width, max_height: n.max_height,
-  display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, children: n.children,
+  display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, id: n.id, children: n.children,
 }
 
 fn row(children: List[Node]) -> Node = {
@@ -158,7 +160,7 @@ fn row(children: List[Node]) -> Node = {
     grow: n.grow, shrink: n.shrink, basis: n.basis, align_self: n.align_self,
     padding: n.padding, margin: n.margin, border: n.border, width: n.width, height: n.height, aspect_ratio: n.aspect_ratio,
     min_width: n.min_width, min_height: n.min_height, max_width: n.max_width, max_height: n.max_height,
-    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, children: children }
+    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, id: n.id, children: children }
 }
 
 fn col(children: List[Node]) -> Node = {
@@ -168,7 +170,7 @@ fn col(children: List[Node]) -> Node = {
     grow: n.grow, shrink: n.shrink, basis: n.basis, align_self: n.align_self,
     padding: n.padding, margin: n.margin, border: n.border, width: n.width, height: n.height, aspect_ratio: n.aspect_ratio,
     min_width: n.min_width, min_height: n.min_height, max_width: n.max_width, max_height: n.max_height,
-    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, children: children }
+    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, id: n.id, children: children }
 }
 
 fn leaf(w: Float, h: Float) -> Node = {
@@ -178,7 +180,7 @@ fn leaf(w: Float, h: Float) -> Node = {
     grow: n.grow, shrink: n.shrink, basis: n.basis, align_self: n.align_self,
     padding: n.padding, margin: n.margin, border: n.border, width: w, height: h, aspect_ratio: n.aspect_ratio,
     min_width: n.min_width, min_height: n.min_height, max_width: n.max_width, max_height: n.max_height,
-    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, children: [] }
+    display: n.display, overflow: n.overflow, position: n.position, pos_top: n.pos_top, pos_right: n.pos_right, pos_bottom: n.pos_bottom, pos_left: n.pos_left, width_pct: n.width_pct, height_pct: n.height_pct, id: n.id, children: [] }
 }
 
 // ── Builders ──
@@ -195,7 +197,7 @@ fn rebuild(n: Node, dir: Int, wrap: Int, just: Int, ai: Int, ac: Int,
     padding: pad, margin: mar, border: bor, width: w, height: h, aspect_ratio: ar,
     min_width: mnw, min_height: mnh, max_width: mxw, max_height: mxh,
     display: disp, overflow: n.overflow, position: pos, pos_top: pt, pos_right: pr, pos_bottom: pb, pos_left: pl,
-    width_pct: wpct, height_pct: hpct, children: ch }
+    width_pct: wpct, height_pct: hpct, id: n.id, children: ch }
 
 // Shorthand: copy all new fields from n
 fn sf(n: Node, dir: Int, wrap: Int, just: Int, ai: Int, ac: Int,
@@ -343,7 +345,7 @@ fn with_overflow(n: Node, v: Int) -> Node = {
     gap_main: r.gap_main, gap_cross: r.gap_cross, grow: r.grow, shrink: r.shrink, basis: r.basis, align_self: r.align_self,
     padding: r.padding, margin: r.margin, border: r.border, width: r.width, height: r.height, aspect_ratio: r.aspect_ratio,
     min_width: r.min_width, min_height: r.min_height, max_width: r.max_width, max_height: r.max_height,
-    display: r.display, overflow: v, position: r.position, pos_top: r.pos_top, pos_right: r.pos_right, pos_bottom: r.pos_bottom, pos_left: r.pos_left, width_pct: r.width_pct, height_pct: r.height_pct, children: r.children }
+    display: r.display, overflow: v, position: r.position, pos_top: r.pos_top, pos_right: r.pos_right, pos_bottom: r.pos_bottom, pos_left: r.pos_left, width_pct: r.width_pct, height_pct: r.height_pct, id: r.id, children: r.children }
 }
 
 fn with_display(n: Node, v: Int) -> Node =
@@ -429,7 +431,30 @@ type FlexLine = {
 
 // ── Compute intrinsic size of a node ──
 
-fn compute_size(node: Node, avail_w: Float, avail_h: Float) -> Size = {
+// compute_size's answers in this layout, by node id: runs of avail_w,
+// avail_h, width, height and the size's w and h. A node is measured many times — by its parent's
+// flex lines, then again for each level above — so without this the work
+// doubled with every level of the tree.
+var size_memo: Map[Int, List[Float]] = map.new()
+
+fn compute_size(node: Node, avail_w: Float, avail_h: Float) -> Size =
+  if node.id < 0 then measure_node(node, avail_w, avail_h)
+  else {
+    let seen = match map.get(size_memo, node.id) { some(l) => l, none => [] }
+    var k = 0
+    var found = -1
+    while found < 0 and k + 5 < list.len(seen) {
+      if seen[k] == avail_w and seen[k + 1] == avail_h and seen[k + 2] == node.width and seen[k + 3] == node.height then found = k else k = k + 6
+    }
+    if found >= 0 then { w: seen[found + 4], h: seen[found + 5] }
+    else {
+      let s = measure_node(node, avail_w, avail_h)
+      map.insert(size_memo, node.id, seen + [avail_w, avail_h, node.width, node.height, s.w, s.h])
+      s
+    }
+  }
+
+fn measure_node(node: Node, avail_w: Float, avail_h: Float) -> Size = {
   if node.display == DISPLAY_NONE then { w: 0.0, h: 0.0 }
   else {
     let dir = node.direction
@@ -917,7 +942,12 @@ fn do_layout(node: Node, x: Float, y: Float, w: Float, h: Float,
 
 // ── Public API ──
 
+// Nodes with ids (distinct, from 0) have their sizes remembered for the
+// layout (the runtime numbers them; nodes built by hand have -1).
 fn layout(root: Node, viewport_w: Float, viewport_h: Float) -> List[LayoutRect] = {
+  size_memo = map.new()
   let size = compute_size(root, viewport_w, viewport_h)
-  do_layout(root, 0.0, 0.0, size.w, size.h, UNDEFINED, UNDEFINED, UNDEFINED, UNDEFINED)
+  let rects = do_layout(root, 0.0, 0.0, size.w, size.h, UNDEFINED, UNDEFINED, UNDEFINED, UNDEFINED)
+  size_memo = map.new()
+  rects
 }
