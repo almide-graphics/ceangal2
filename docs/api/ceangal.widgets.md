@@ -340,6 +340,9 @@ font scale makes a line taller), that scrolls (as
 `v.scroll_y` under `key`) and builds only the rows on screen, plus a few
 around them: `row(i)` for each. Spacers above and below keep the scroll
 height of the whole list. Give it a height (`v.h`, or grow in a column).
+Each row takes keyboard focus (as `key#i`, unless the row is focusable
+itself); the arrows, Home / End and Page Up / Down move it through the
+whole list, scrolling as they go, and Enter or Space clicks the row.
 
 ### `list_item`
 

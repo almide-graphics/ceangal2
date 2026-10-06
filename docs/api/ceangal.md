@@ -417,6 +417,15 @@ pub fn scroll_offset(key: String) -> Float
 How far the `scroll_y` view with `key` is scrolled (logical px; 0 for a
 view not seen yet).
 
+### `scroll_to`
+
+```almide
+pub fn scroll_to(key: String, off: Float) -> Unit
+```
+
+Scroll the `scroll_y` view with `key` to `off` px from its top (kept within
+its content at the next layout).
+
 ### `scroll_to_end`
 
 ```almide

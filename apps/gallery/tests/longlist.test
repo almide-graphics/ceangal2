@@ -6,3 +6,16 @@ see "Row 1"
 see "Row 6"
 not "Row 100"
 not "Row 10000"
+# the keyboard moves through all of it: rows are built as focus reaches them
+tap "Row 2"
+key Down
+key End
+see "Row 10000"
+not "Row 2"
+key Up
+see "Row 9999"
+key Home
+see "Row 1"
+not "Row 10000"
+key PageDown
+see "Row 7"

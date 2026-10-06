@@ -589,6 +589,9 @@ pub fn divider(th: Theme) -> v.View = v.empty() |> v.h(1.0) |> v.bg(th.border) |
 // `v.scroll_y` under `key`) and builds only the rows on screen, plus a few
 // around them: `row(i)` for each. Spacers above and below keep the scroll
 // height of the whole list. Give it a height (`v.h`, or grow in a column).
+// Each row takes keyboard focus (as `key#i`, unless the row is focusable
+// itself); the arrows, Home / End and Page Up / Down move it through the
+// whole list, scrolling as they go, and Enter or Space clicks the row.
 pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int) -> v.View) -> v.View = {
   let row_h = fit(th, row_h0)
   let off = ui.scroll_offset(key)
@@ -597,10 +600,49 @@ pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int
   let first = int.max(0, float.to_int(float.floor(off / row_h)) - 4)
   let last = int.min(count, float.to_int(float.ceil((off + height) / row_h)) + 4)
   var rows: List[v.View] = [v.empty() |> v.h(int.to_float(first) * row_h) |> v.a11y_hidden()]
-  for i in first..<int.max(first, last) { list.push(rows, row(i) |> v.h(row_h)) }
+  let page = int.max(1, float.to_int(height / row_h) - 1)
+  for i in first..<int.max(first, last) { list.push(rows, vrow(th, key, i, count, row_h, page, row(i) |> v.h(row_h))) }
   list.push(rows, v.empty() |> v.h(int.to_float(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
   v.col(rows) |> v.scroll_y(key) |> v.role(6) |> v.label(int.to_string(count) + " items")
 }
+
+// A virtual_list row that takes focus and moves it with the keys.
+fn vrow(th: Theme, key: String, i: Int, count: Int, row_h: Float, page: Int, view: v.View) -> v.View =
+  if view.focusable then view
+  else {
+    let k = key + "#" + int.to_string(i)
+    let click = view.on_click
+    let clickable = view.clickable
+    view |> v.focusable(k) |> ring(th, k, clear())
+      |> v.on_key((phase, code, mods) =>
+        if phase != 1 and clickable and (code == 1 or code == 60) then { click(); true }
+        else vkey(key, i, count, row_h, page, phase, code))
+  }
+
+// An arrow, Home / End or Page key on row `i` of the virtual list `key`
+// (no function parameter: almide/almide#3297 on the native leg).
+fn vkey(key: String, i: Int, count: Int, row_h: Float, page: Int, phase: Int, code: Int) -> Bool =
+  if phase == 1 then false
+  else {
+    let to = if code == 12 then i - 1 else if code == 13 then i + 1 else if code == 14 then 0
+      else if code == 15 then count - 1 else if code == 16 then i - page else if code == 17 then i + page else -2
+    if to == -2 then false else { vgo(key, int.max(0, int.min(count - 1, to)), row_h); true }
+  }
+
+// Focus row `j` of the virtual list `key`, scrolled into view.
+fn vgo(key: String, j: Int, row_h: Float) -> Unit = {
+  let off = ui.scroll_offset(key)
+  let h = ui.rect_of(key).h
+  let top = int.to_float(j) * row_h
+  if top < off then ui.scroll_to(key, top)
+  else if top + row_h > off + h then ui.scroll_to(key, top + row_h - h)
+  else ()
+  ui.focus(key + "#" + int.to_string(j))
+}
+
+let keep_vgo = vgo
+let keep_vkey = vkey
+let keep_scroll_to = ui.scroll_to
 
 // A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
 pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> v.View = {

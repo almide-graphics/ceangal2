@@ -761,6 +761,15 @@ pub fn scroll_offset(key: String) -> Float = {
   off
 }
 
+// Scroll the `scroll_y` view with `key` to `off` px from its top (kept within
+// its content at the next layout).
+pub fn scroll_to(key: String, off: Float) -> Unit = {
+  let j = scroll_index(key)
+  scroll_offs[j] = float.max(0.0, off)
+  scroll_vel[j] = 0.0
+  invalidate()
+}
+
 // Scroll the `scroll_y` view with `key` to its end on the next layout (a log
 // or a conversation following what was just added).
 pub fn scroll_to_end(key: String) -> Unit = {

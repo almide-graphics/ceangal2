@@ -6,6 +6,11 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Virtual lists from the keyboard**: rows take focus, and the arrows,
+  Home / End and Page Up / Down move through every row, scrolling as
+  needed. New `ceangal.scroll_to(key, off)`. (ADR 0020)
+- **Web host**: after a press on something not clickable, keys reach the
+  app again. The browser used to move focus away from the key sink.
 - **Context menus from the keyboard**: the menu key or Shift+F10 opens the
   focused control's context menu (key code 61). (ADR 0019)
 - **Faster layout**: each node is measured once per layout, and the

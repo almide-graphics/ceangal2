@@ -4,6 +4,11 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- 仮想リストのキーボード操作 (上下・Home/End・PageUp/Down で 1 万行全体を
+  移動、`ceangal.scroll_to` 追加、ADR 0020 追記)。テスト中に Web ホストの
+  バグを発見・修正: クリック対象でない所を押すとフォーカスが key sink から
+  外れ、以降キーが届かなかった。ネイティブで almide/almide#3297 (修正済み・
+  未リリース) に再遭遇し回避。gallery の予算を 184→185 KB (ADR に理由)。
 - キーボードからのコンテキストメニュー: メニューキー / Shift+F10 で
   フォーカス中の要素 (またはそれを含む要素) のメニューを開く (キーコード 61
   追加、ADR 0019 追記)。popups.test (web / native) で確認。

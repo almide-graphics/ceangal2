@@ -26,3 +26,22 @@ thousands of rows did all three for every row, on screen or not.
   down by wheel and finds row 101, with 15 rows built.
 - Keyboard focus can't move to a row that isn't built. Lists whose rows
   take focus need to scroll the next row into view themselves.
+  **Update (2026-10-06):** the list does this itself.
+  - Each row that isn't focusable on its own takes focus as `key#i`, with a
+    focus ring.
+  - Up / Down, Home / End and Page Up / Down move the focus through all
+    `count` rows. `ceangal.scroll_to(key, off)` brings the target row into
+    view, and it is built and focused on the next frame.
+  - Enter or Space clicks the row.
+
+  `longlist.test` checks End (row 10,000), Up, Home and Page Down, on the
+  web and natively.
+
+  The test found a web host bug. A press that the app didn't handle let the
+  browser move focus from the key sink to the page, so keys stopped
+  reaching the app until the next handled press. The host now always
+  prevents the browser's default for a press.
+
+  The keys cost about 1 KB of wasm, paid only by apps that use
+  `w.virtual_list`. The gallery's budget rises from 184 to 185 KB; it
+  measures 184.6 KB.

@@ -54,7 +54,10 @@ export class DomUi {
     this.on(c, "pointerdown", (e) => {
       c.setPointerCapture(e.pointerId);
       const [x, y] = pos(e);
-      if (t.dispatch(EV.POINTER, 0, pid(e), x, y, e.buttons, modsOf(e))) e.preventDefault();
+      t.dispatch(EV.POINTER, 0, pid(e), x, y, e.buttons, modsOf(e));
+      // always: the browser's own handling of a press would move focus to the
+      // page, away from the key sink, and keys would stop reaching the app
+      e.preventDefault();
       if (!this.imeActive) this.keySink().focus({ preventScroll: true });
       t.schedule();
     });
