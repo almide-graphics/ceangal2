@@ -297,7 +297,9 @@ Tests use the same tree: CI clicks labels in the web build
 (`tests/e2e/smoke_web.mjs --click LABEL`).
 
 `ceangal.toast(text)` shows a short message and has screen readers
-announce it. `w.tooltip(th, text, control)` explains a control. The
+announce it. `w.alert(th, text)` is a banner for an error or a warning,
+and readers announce it at once. `w.tooltip(th, text, control)` explains a
+control. The
 tooltip shows when the pointer rests on the control, when the keyboard
 focuses it, or after a long press on a touch screen.
 
