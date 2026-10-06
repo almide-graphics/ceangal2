@@ -9,6 +9,9 @@ Read at the start of every session; update at the end.
   ドロップダウン (Spinner)・スライダー・プログレス・テキスト欄のクラス、
   トーストの文言、長押しツールチップ、仮想リスト (ListView, 10000 items) を
   uiautomator で確認。ローカル arm64 エミュレータで通過。
+- iOS でも同様の VoiceOver 視点の E2E (E2E.swift の GalleryE2E、CI の ios
+  ジョブに追加): ボタン・スイッチ・リンク・値付き要素、トースト、長押し
+  ツールチップ。シミュレータで通過。
 - タッチ端末のツールチップ: 長押しで表示 (指を離して 1.5 秒後に消える、
   コントロールは押されない)。テスト言語に `hold "Label"` を追加し、
   announce.test (web / native) で確認 (ADR 0018 追記)。
@@ -506,6 +509,17 @@ item, the first green CI run on main that deploys Pages, waits for a push
   arm64 emulator once past the key bar (program up in 1.6 s).
   `tests/e2e/android.mjs` now waits for the device and retries the adb
   command (twice at most).
+- iOS VoiceOver (AccessKit's UIKit adapter, accesskit_ios 0.2): checkboxes
+  and radio buttons are switches (UIKit has no checkbox); a text field has
+  no text-field trait (UIKit has none public), so VoiceOver reads its label
+  and value only; a slider has the adjustable trait but XCUITest lists it
+  as an element with a value. GalleryE2E checks what is there.
+- **almide issue status (checked 2026-10-06):** #3296, #3417, #3419,
+  #3420, #3424 and #3433 are closed on almide's main, but the latest release
+  is still v0.66.0 (2026-10-03), which predates the fixes. The workarounds
+  below stay until a release with them; then bump `.almide-version` and
+  remove them. #3296 still bites on 0.66.0: `keep_open_popup_at`
+  (widgets) and `keep_geo_spans` (editor) were added today. #3438 is open.
 - almide/almide#3438 — bidi control characters in a string literal break
   native builds (rustc `text_direction_codepoint_in_literal`): build them
   with `string.from_codepoint`; tests use code point lists.

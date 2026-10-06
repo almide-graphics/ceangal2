@@ -333,3 +333,44 @@ final class ServicesE2E: E2E {
         until("the cancelled open", has("file 499 "))
     }
 }
+
+/// apps/gallery: what VoiceOver sees of the standard controls (AccessKit's
+/// UIKit adapter) — each role as its element type, a toast's text, and a
+/// long press that shows a tooltip without pressing the control.
+final class GalleryE2E: E2E {
+    func test1_rolesToastTooltip() {
+        guard appName == "gallery" else { return }
+        launch()
+        until("the gallery", has("Save"))
+        let seen = { (q: XCUIElementQuery, name: String) -> Bool in q[name].waitForExistence(timeout: 10) }
+        XCTAssertTrue(seen(app.buttons, "Save"), "Save is not a button: \(app.debugDescription)")
+        XCTAssertTrue(seen(app.switches, "Wi-Fi"), "Wi-Fi is not a switch: \(app.debugDescription)")
+        XCTAssertTrue(seen(app.switches, "Subscribe to updates"), "the checkbox is not a switch: \(app.debugDescription)")
+        XCTAssertTrue(seen(app.links, "Almide"), "Almide is not a link: \(app.debugDescription)")
+        // AccessKit gives a slider the adjustable trait, which XCUITest lists
+        // as an element with a value; UIKit has no trait for text fields
+        let volume = app.descendants(matching: .any)["Volume"]
+        XCTAssertTrue(volume.waitForExistence(timeout: 10), "VoiceOver does not see Volume: \(app.debugDescription)")
+        XCTAssertEqual(volume.value as? String, "40", "Volume's value")
+        XCTAssertTrue(app.descendants(matching: .any)["Name"].exists, "VoiceOver does not see the Name field: \(app.debugDescription)")
+        shot("controls")
+
+        // a toast (a polite live region) is in the tree while it shows
+        tap("Notify")
+        XCTAssertTrue(app.descendants(matching: .any)["Saved to drafts"].waitForExistence(timeout: 10),
+                      "VoiceOver does not see the toast: \(app.debugDescription)")
+        until("the toast to go", timeout: 10) { !self.has("Saved to drafts")($0) }
+
+        // a long press shows the tooltip and doesn't press Delete
+        let del = settled("\"Delete\"") { () -> [Double]? in
+            guard let n = node(tree(), "Delete") else { return nil }
+            return [n.x + n.w / 2, n.y + n.h / 2]
+        }
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: del[0], dy: del[1])).press(forDuration: 0.9)
+        until("the tooltip", has("Asks before deleting everything"))
+        XCTAssertTrue(app.descendants(matching: .any)["Asks before deleting everything"].waitForExistence(timeout: 10),
+                      "VoiceOver does not see the tooltip: \(app.debugDescription)")
+        XCTAssertFalse(has("Delete everything?")(tree()!), "the long press pressed Delete")
+        shot("tooltip")
+    }
+}

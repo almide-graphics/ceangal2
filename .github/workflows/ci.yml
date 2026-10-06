@@ -266,6 +266,8 @@ jobs:
         run: tools/package_ios.sh todo e2e
       - name: E2E (playground)
         run: tools/package_ios.sh playground e2e
+      - name: E2E (gallery) — what VoiceOver sees, toast, long-press tooltip
+        run: tools/package_ios.sh gallery e2e
       - name: E2E (services) — system clipboard, share sheet, document picker
         run: |
           tools/package_ios.sh tests/apps/services e2e
