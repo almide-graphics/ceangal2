@@ -281,7 +281,10 @@ v.text("×") |> v.on_click(() => remove(id)) |> v.role(3) |> v.label("Remove " +
 
 `role(r)`: 3 button, 4 text, 5 text field, 6 list, 7 list item, 8 tab,
 9 tab list, 10 heading, 11 link, 12 checkbox, 13 image, 15 switch,
-16 slider, 17 dialog, 18 radio button, 19 radio group, 20 progress bar.
+16 slider, 17 dialog, 18 radio button, 19 radio group, 20 progress bar,
+21 combo box, 22 list box, 23 option, 24 menu, 25 menu item, 26 status
+(announced politely when its text changes), 27 alert (announced at once),
+28 tooltip.
 `checked(on)`, `selected(on)`, `disabled(on)` add the state. The
 standard controls set all of this themselves. `label(s)` is
 what is read. `value(f)` gives a changing value (a field's text).
@@ -292,6 +295,29 @@ that shows only an icon needs a label.
 
 Tests use the same tree: CI clicks labels in the web build
 (`tests/e2e/smoke_web.mjs --click LABEL`).
+
+`ceangal.toast(text)` shows a short message and has screen readers
+announce it. `w.tooltip(th, text, control)` explains a control. The
+tooltip shows when the pointer rests on the control, when the keyboard
+focuses it, or after a long press on a touch screen.
+
+### The system's display settings
+
+The runtime follows three of the user's settings. On iOS they are Dynamic
+Type, Reduce Motion and Increase Contrast. Android and the browser have
+their own equivalents.
+
+- **Text size**: text views, fields and editors are drawn
+  `ceangal.font_scale()` times larger (0.8–2.0). The standard controls
+  grow to fit. Fixed sizes in your own code stay as they are; multiply by
+  `font_scale()` where text has to fit.
+- **Less motion**: when `ceangal.reduce_motion()` is set, scrolling stops
+  when the finger lifts. Skip your own animations when it is set.
+- **More contrast**: when `ceangal.high_contrast()` is set, `w.system()`
+  makes text and borders stronger. Your own colours can check it too.
+
+A test can set them with `prefer 150 reduce-motion more-contrast` (see
+[Testing](testing.md)).
 
 ## Animation
 

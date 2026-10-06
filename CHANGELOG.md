@@ -6,6 +6,19 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Faster layout**: each node is measured once per layout, and the
+  runtime's flattened view list no longer copies subtrees. The gallery's
+  frame went from 10.0 ms to 3.1 ms. (ADR 0022)
+- **Smaller wasm**: the emoji, Arabic and Indic tables use the compact
+  encoding of the line-break table, saving 2.6 KB per app. Size budgets
+  are 2 KB lower. (ADR 0022)
+- **Screen reader E2E**: CI checks the gallery as TalkBack
+  (`tests/e2e/android_gallery.mjs`) and VoiceOver (`GalleryE2E`) see it.
+  This covers roles, a toast and a long-press tooltip.
+- **Store screenshots from the iOS simulator**: `tools/package_ios.sh <app>
+  shots` (iPhone 6.9", iPad 13").
+- **Playground**: rendered HTML no longer puts a gap between pieces that
+  have no space between them, such as `</strong>.`.
 - **Touch tooltips**: a long press on a control shows its `w.tooltip`
   without pressing it; `ceangal test` gets a `hold "Label"` step. (ADR 0018)
 - **Keyboard detection**: hosts report the on-screen keyboard's height

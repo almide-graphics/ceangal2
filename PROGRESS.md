@@ -4,6 +4,9 @@ Read at the start of every session; update at the end.
 
 ## 留守中の作業まとめ (2026-10-06 から, 最新が上)
 
+- v0.3.0 のリリースノートを CHANGELOG.md の Unreleased に揃え、
+  guide (ui.md のロール一覧 21–28、トースト / ツールチップ、表示設定の節) を
+  更新。リリース手順 (タグ付けは人間) を Human TODO に記載。
 - M6: iOS シミュレータでのストア用スクショ (`tools/package_ios.sh playground
   shots`、E2E.swift の StoreShots)。iPhone 17 Pro Max (6.9", 1320×2868、
   ステータスバー 9:41 固定) で 5 シーンを store/playground/screenshots/
@@ -621,6 +624,17 @@ item, the first green CI run on main that deploys Pages, waits for a push
 - `clip()` is rectangular; no kerning; a11y tree is flat (parent 0).
 
 ## Human TODO
+- [ ] **v0.3.0 release** (the notes are ready under "Unreleased" in
+      CHANGELOG.md; tagging is yours). Steps:
+      1. Rename the heading to `## 0.3.0 — <date>`.
+      2. Change `0.2.0` to `0.3.0` in `cli/src/main.almd` (`VERSION`),
+         README.md, install.sh/.ps1 comments, docs/guide (getting-started,
+         cli, ceangal-toml) and tests/cli/manifest_check.sh.
+      3. Push and wait for CI to go green.
+      4. `git tag v0.3.0 && git push origin v0.3.0`. release.yml takes the
+         notes from CHANGELOG.md.
+
+      Claude can do steps 1–3 on request.
 - [ ] Apple Developer Program membership (iOS + macOS App Store) as the
       organization AID-ON, K.K. (D-U-N-S 964469847). Enrollment submitted
       2026-10-05, enrollment ID 5N37NU7TFW: waiting for Apple to verify the
