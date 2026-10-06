@@ -29,7 +29,9 @@ Read at the start of every session; update at the end.
   キーボード表示中に上書きされると検出できなくなっていた。ホストが
   キーボードの高さを直接 (イベント 11 の a) 報告するよう変更
   (Android は WindowInsets.ime()、iOS は既存の通知)。ローカル arm64
-  エミュレータで Android E2E 10 項目通過、CI 確認中。診断 PR #1/#2 は close。
+  エミュレータで Android E2E 10 項目通過。**CI の android ジョブも緑**
+  (run 37403088995: キーバー、android_services のピッカー step を含め全通過)。
+  診断 PR #1/#2 は close。
 - OS の表示設定に対応 (ADR 0021): 文字サイズ (iOS Dynamic Type /
   Android fontScale / ブラウザの既定フォントサイズ、0.8–2.0 倍)、視差効果を
   減らす (慣性スクロール停止)、コントラスト強調 (`w.system()` が文字と枠線を
