@@ -6,6 +6,9 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Bidi**: brackets, currency signs and number separators are placed
+  correctly in right-to-left text, as Unicode's rules W2–W6 and N0
+  describe. Extended Arabic-Indic digits count as numbers. (ADR 0016)
 - **Virtual lists from the keyboard**: rows take focus, and the arrows,
   Home / End and Page Up / Down move through every row, scrolling as
   needed. New `ceangal.scroll_to(key, off)`. (ADR 0020)

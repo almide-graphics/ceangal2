@@ -56,6 +56,27 @@ controls was laid out as if they weren't there.
   field.
 - With separators, "1.5" or "١٫٥" inside right-to-left text can still be
   split around the separator. W4–W6 are the next step if that shows up.
+  **Update (2026-10-06):** the rest of the weak rules and bracket pairs
+  are done:
+  - classes AL, ES, ET and CS;
+  - W2: a number after Arabic letters is an Arabic number;
+  - W3: AL becomes R;
+  - W4: one separator between two numbers joins them;
+  - W5: terminators such as "$" and "%" go with their number;
+  - W6: the remaining separators are neutral;
+  - N0: the common brackets (ASCII, full-width, CJK angle and corner
+    brackets) take the direction of the text inside them, else of their
+    context. A mark after a bracket follows it.
+
+  U+06F0–06F9 (Extended Arabic-Indic digits) are now European numbers, as
+  in Unicode. The oracle's alphabet adds separators, terminators, brackets
+  and those digits, and it has 3000 lines. All of them match; the old code
+  failed them.
+
+  This costs about 2.7 KB of optimized wasm in every app, since every app
+  lays out text. The budgets rise 3 KB: gallery 185→188, todo 160→163 and
+  hello 158→161. Without it, "(text)" in Hebrew or Arabic shows with its
+  brackets in the wrong place, and "$5" or "1.5" in such text splits.
 - almide/almide#3438: a string literal containing these controls doesn't
   compile natively (rustc's `text_direction_codepoint_in_literal`). Build
   such strings with `string.from_codepoint` instead. The tests use code

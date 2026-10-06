@@ -5,10 +5,10 @@ short lines, as the expected results of ceangal/src/bidi_test.almd
 
 Usage (needs python-bidi):  python3 tools/gen_bidi_cases.py
 
-The alphabet stays within what ceangal.bidi implements: letters of both
-directions, European and Arabic-Indic digits, a mark, spaces, a tab, a
-neutral, the marks LRM / RLM and every embedding, override and isolate
-control. Number separators (W4–W6) and bracket pairs (N0) are left out.
+The alphabet: letters of both directions (Hebrew R, Arabic AL), European,
+Arabic-Indic and Extended Arabic-Indic digits, number separators and
+terminators (W4–W6), brackets (N0), a mark, spaces, a tab, a neutral, the
+marks LRM / RLM and every embedding, override and isolate control.
 
 Each line: the code points (hex, space-separated)<TAB>the display order
 without the invisible controls.
@@ -20,8 +20,9 @@ from bidi import get_display
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONTROLS = set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A)) | {0x200E, 0x200F, 0x061C}
-ALPHABET = ["a", "b", "א", "ב", "ب", "ل", "1", "2", "١", "٢", "َ", " ", " ", "!",
-            "\t", "‎", "‏", "‪", "‫", "‬", "‭", "‮", "⁦", "⁧", "⁨", "⁩"]
+ALPHABET = ["a", "b", "א", "ב", "ب", "ل", "1", "2", "١", "٢", "۱", "َ", " ", " ", "!",
+            "\t", "‎", "‏", "‪", "‫", "‬", "‭", "‮", "⁦", "⁧", "⁨", "⁩",
+            "+", "-", "$", "%", ".", ",", ":", "(", ")", "[", "]", "(", ")"]
 # where python-bidi takes the paragraph direction from the first strong
 # character after an override's text (P2 counts letters inside overrides)
 DISPUTED = {"1‭١ב ‫"}
@@ -30,7 +31,7 @@ DISPUTED = {"1‭١ב ‫"}
 def main():
     rng = random.Random(13)
     lines = []
-    while len(lines) < 1000:
+    while len(lines) < 3000:
         s = "".join(rng.choice(ALPHABET) for _ in range(rng.randint(1, 12)))
         if s in DISPUTED:
             continue

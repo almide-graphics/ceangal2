@@ -11,18 +11,37 @@ fn transparent(cp: Int) -> Bool =
 
 // ── Direction ──
 
-// Classes: 0 L, 1 R (and AL), 2 EN, 3 neutral (ON, WS), 4 LRE, 5 RLE,
-// 6 LRO, 7 RLO, 8 PDF, 9 LRI, 10 RLI, 11 FSI, 12 PDI, 13 AN, 14 NSM
+// Classes: 0 L, 1 R, 2 EN, 3 neutral (ON, WS), 4 LRE, 5 RLE, 6 LRO,
+// 7 RLO, 8 PDF, 9 LRI, 10 RLI, 11 FSI, 12 PDI, 13 AN, 14 NSM, 15 AL,
+// 16 ES, 17 ET, 18 CS
 fn class_of(cp: Int) -> Int =
   if cp >= 0x202A and cp <= 0x202E then [4, 5, 8, 6, 7][cp - 0x202A]
   else if cp >= 0x2066 and cp <= 0x2069 then cp - 0x2066 + 9
   else if cp == 0x200E then 0
-  else if cp == 0x200F or cp == 0x061C then 1
-  else if (cp >= 0x0590 and cp <= 0x08FF) or (cp >= 0xFB1D and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then
-    (if (cp >= 0x0660 and cp <= 0x0669) or (cp >= 0x06F0 and cp <= 0x06F9) then 13 else if transparent(cp) then 14 else 1)
-  else if cp >= 0x30 and cp <= 0x39 then 2
+  else if cp == 0x200F then 1
+  else if cp == 0x061C then 15
+  else if (cp >= 0x30 and cp <= 0x39) or (cp >= 0x06F0 and cp <= 0x06F9) or cp == 0xB2 or cp == 0xB3 or cp == 0xB9
+    or (cp >= 0xFF10 and cp <= 0xFF19) then 2
+  else if (cp >= 0x0660 and cp <= 0x0669) or cp == 0x066B or cp == 0x066C or (cp >= 0x0600 and cp <= 0x0605) then 13
+  else if cp == 0x2B or cp == 0x2D or cp == 0x2212 or cp == 0xFF0B or cp == 0xFF0D then 16
+  else if (cp >= 0x23 and cp <= 0x25) or (cp >= 0xA2 and cp <= 0xA5) or cp == 0xB0 or cp == 0xB1 or cp == 0x066A
+    or cp == 0x0609 or cp == 0x060A or (cp >= 0x2030 and cp <= 0x2034) or (cp >= 0x20A0 and cp <= 0x20CF) or cp == 0x058F then 17
+  else if cp == 0x2C or cp == 0x2E or cp == 0x2F or cp == 0x3A or cp == 0xA0 or cp == 0x060C or cp == 0x202F or cp == 0x2044
+    or cp == 0xFF0C or cp == 0xFF0E or cp == 0xFF0F or cp == 0xFF1A then 18
+  else if (cp >= 0x0590 and cp <= 0x05FF) or (cp >= 0x07C0 and cp <= 0x085F) or (cp >= 0xFB1D and cp <= 0xFB4F) then
+    (if (cp >= 0x0591 and cp <= 0x05BD) or cp == 0x05BF or cp == 0x05C1 or cp == 0x05C2 or cp == 0x05C4 or cp == 0x05C5 or cp == 0x05C7 then 14 else 1)
+  else if (cp >= 0x0600 and cp <= 0x07BF) or (cp >= 0x0860 and cp <= 0x08FF) or (cp >= 0xFB50 and cp <= 0xFDFF) or (cp >= 0xFE70 and cp <= 0xFEFF) then
+    (if transparent(cp) or (cp >= 0x0610 and cp <= 0x061A) then 14 else 15)
   else if cp < 0x30 or (cp >= 0x3A and cp <= 0x40) or (cp >= 0x5B and cp <= 0x60) or (cp >= 0x7B and cp <= 0xBF) or (cp >= 0x2000 and cp <= 0x206F) then 3
   else 0
+
+// The closing bracket for an opening one, -1 if `cp` opens no pair
+// (Bidi_Paired_Bracket, the common ones).
+fn closer(cp: Int) -> Int =
+  if cp == 0x28 then 0x29 else if cp == 0x5B then 0x5D else if cp == 0x7B then 0x7D
+  else if cp == 0xFF08 then 0xFF09 else if cp == 0xFF3B then 0xFF3D else if cp == 0xFF5B then 0xFF5D
+  else if cp >= 0x3008 and cp <= 0x3011 and cp % 2 == 0 then cp + 1
+  else if cp == 0x2329 then 0x232A else -1
 
 // The mirror image of a bracket or other paired character (itself if none):
 // how it is shown in right-to-left text.
@@ -36,7 +55,7 @@ pub fn has_rtl(cps: List[Int]) -> Bool = {
   var r = false
   for c in cps {
     let k = class_of(c)
-    if k == 1 or k == 5 or k == 7 or k == 10 or k == 13 then r = true else ()
+    if k == 1 or k == 15 or k == 5 or k == 7 or k == 10 or k == 13 then r = true else ()
   }
   r
 }
@@ -60,7 +79,7 @@ fn first_strong(classes: List[Int], i: Int, in_isolate: Bool) -> Int = {
     let k = classes[j]
     if initiator(k) then depth = depth + 1
     else if k == 12 then { if depth == 0 and in_isolate then j = list.len(classes) else depth = int.max(0, depth - 1) }
-    else if depth == 0 and (k == 0 or k == 1) then d = k
+    else if depth == 0 and (k == 0 or k == 1 or k == 15) then d = int.min(k, 1)
     else ()
     j = j + 1
   }
@@ -75,9 +94,8 @@ pub fn direction(cps: List[Int]) -> Int = int.max(0, first_strong(classes_of(cps
 // left) in a paragraph of direction `base` (0 left to right, 1 right to
 // left, -1 from its first strong character): the Unicode Bidirectional
 // Algorithm's explicit embeddings, overrides and isolates (X1–X10), weak
-// types W1 and W7, neutrals N1–N2, implicit levels I1–I2 and trailing
-// whitespace (L1). Not done: bracket pairs (N0), number separators and
-// terminators (W4–W6), AL-specific number rules (W2).
+// types (W1–W7), bracket pairs (N0, the common brackets), neutrals (N1–N2),
+// implicit levels (I1–I2) and trailing whitespace (L1).
 pub fn levels(cps: List[Int], base: Int) -> List[Int] = {
   let classes = classes_of(cps)
   let par = if base >= 0 then base else int.max(0, first_strong(classes, 0, false))
@@ -163,7 +181,7 @@ pub fn levels(cps: List[Int], base: Int) -> List[Int] = {
         seq = seq + more
         last = more[list.len(more) - 1]
       }
-      out = resolve(seq, t, emb, removed, par, classes, out)
+      out = resolve(seq, t, emb, removed, par, classes, cps, out)
     } else ()
   }
   // removed controls take the level before them; L1: tabs, and whitespace
@@ -183,8 +201,12 @@ pub fn levels(cps: List[Int], base: Int) -> List[Int] = {
   out
 }
 
+// A resolved type as a strong direction for N0 (numbers count as right to
+// left), -1 for a neutral.
+fn strong_of(ty: Int) -> Int = if ty == 0 then 0 else if ty == 1 or ty == 2 or ty == 13 then 1 else -1
+
 // `levels` with those of one isolating run sequence `seq` (indices) set.
-fn resolve(seq: List[Int], t0: List[Int], emb: List[Int], removed: List[Bool], par: Int, classes: List[Int], levels: List[Int]) -> List[Int] = {
+fn resolve(seq: List[Int], t0: List[Int], emb: List[Int], removed: List[Bool], par: Int, classes: List[Int], cps: List[Int], levels: List[Int]) -> List[Int] = {
   var out = levels
   let m = list.len(seq)
   let e = emb[seq[0]]
@@ -202,12 +224,85 @@ fn resolve(seq: List[Int], t0: List[Int], emb: List[Int], removed: List[Bool], p
   for p in 0..<m {
     if t[p] == 14 then t[p] = if p == 0 then sos else if initiator(t[p - 1]) or t[p - 1] == 12 then 3 else t[p - 1] else ()
   }
-  // W7: a European number after left-to-right text (or sos) is L
+  // W2: a European number after Arabic letters is an Arabic number; W3: AL is R
+  var last_strong = sos
+  for p in 0..<m {
+    let ty = t[p]
+    if ty == 15 then { last_strong = 15; t[p] = 1 }
+    else if ty == 0 or ty == 1 then last_strong = ty
+    else if ty == 2 and last_strong == 15 then t[p] = 13
+    else ()
+  }
+  // W4: one separator between two numbers of a kind joins them
+  for p in 1..<int.max(1, m - 1) {
+    if t[p] == 16 and t[p - 1] == 2 and t[p + 1] == 2 then t[p] = 2
+    else if t[p] == 18 and (t[p - 1] == 2 or t[p - 1] == 13) and t[p + 1] == t[p - 1] then t[p] = t[p - 1]
+    else ()
+  }
+  // W5: terminators next to a European number are part of it
+  var p5 = 0
+  while p5 < m {
+    if t[p5] == 17 then {
+      var q = p5
+      while q < m and t[q] == 17 { q = q + 1 }
+      if (p5 > 0 and t[p5 - 1] == 2) or (q < m and t[q] == 2) then { for r in p5..<q { t[r] = 2 } } else ()
+      p5 = q
+    } else p5 = p5 + 1
+  }
+  // W6: other separators and terminators are neutral; W7: a European
+  // number after left-to-right text (or sos) is L
   var strong = sos
   for p in 0..<m {
-    if t[p] == 0 or t[p] == 1 then strong = t[p]
-    else if t[p] == 2 and strong == 0 then t[p] = 0
+    let ty = t[p]
+    if ty >= 16 then t[p] = 3
+    else if ty == 0 or ty == 1 then strong = ty
+    else if ty == 2 and strong == 0 then t[p] = 0
     else ()
+  }
+  // N0: a pair of brackets takes the direction inside it (the embedding's,
+  // or failing that one context agrees with); a mark after one goes with it
+  let dir = e % 2
+  // the closing bracket of the pair each opening one starts (-1: none)
+  var close_at = list.repeat(-1, m)
+  var open_cp: List[Int] = []
+  var open_at: List[Int] = []
+  var p0 = 0
+  while p0 < m {
+    let c = cps[seq[p0]]
+    if t[p0] == 3 and closer(c) >= 0 then {
+      if list.len(open_at) >= 63 then p0 = m else { list.push(open_cp, closer(c)); list.push(open_at, p0) }
+    } else if t[p0] == 3 then {
+      var s = list.len(open_at) - 1
+      while s >= 0 and open_cp[s] != c { s = s - 1 }
+      if s >= 0 then {
+        close_at[open_at[s]] = p0
+        open_cp = list.take(open_cp, s)
+        open_at = list.take(open_at, s)
+      } else ()
+    } else ()
+    p0 = p0 + 1
+  }
+  for o in 0..<m {
+    let c = close_at[o]
+    if c >= 0 then {
+      var inside = -1
+      for q in (o + 1)..<c {
+        let d = strong_of(t[q])
+        if d == dir then inside = dir else if d >= 0 and inside < 0 then inside = d else ()
+      }
+      var b = o - 1
+      while b >= 0 and strong_of(t[b]) < 0 { b = b - 1 }
+      let before = if b >= 0 then strong_of(t[b]) else sos
+      let set = if inside == dir then dir else if inside >= 0 then (if before != dir then 1 - dir else dir) else -1
+      if set >= 0 then {
+        t[o] = set
+        t[c] = set
+        var k2 = o + 1
+        while k2 < m and t0[seq[k2]] == 14 { t[k2] = set; k2 = k2 + 1 }
+        k2 = c + 1
+        while k2 < m and t0[seq[k2]] == 14 { t[k2] = set; k2 = k2 + 1 }
+      } else ()
+    } else ()
   }
   // N1, N2: neutrals (and isolate controls) between two of the same
   // direction take it (numbers count as right to left), else e's

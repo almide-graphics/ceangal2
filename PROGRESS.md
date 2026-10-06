@@ -9,15 +9,16 @@ Read at the start of every session; update at the end.
    TalkBack の gallery E2E を含む)。真因は 2 つ: アプリがキーボードを inset
    の差分で推測していたこと (ホストが高さを直接報告するよう修正)、CI
    エミュレータのハードウェアキーボード (E2E で show_ime_with_hard_keyboard)。
-1. **テキスト**: 済 (bidi UAX #9、UAX #14、Arabic / Indic の HarfBuzz 一致、
-   RTL・emoji、折り返し)。
+1. **テキスト**: 済 (bidi UAX #9 は W1–W7・N0 括弧まで、UAX #14、
+   Arabic / Indic の HarfBuzz 一致、RTL・emoji、折り返し)。
 2. **コントロール・アクセシビリティ**: tooltip (タッチは長押し)、toast と
    live region、コンテキストメニュー (右クリック・長押し・メニューキー /
    Shift+F10)、autocomplete、仮想リスト (キーボード対応)、表示設定 (文字サイズ・
    視差効果・コントラスト、全プラットフォーム)。TalkBack / VoiceOver の
    E2E を CI に追加。
 3. **性能・サイズ**: wasm-opt、レイアウト 10.0→3.1 ms、Unicode 表の圧縮で
-   各 app 2.6 KB 減。予算は gallery 185 / todo 160 / hello 158 KB。
+   各 app 2.6 KB 減。その後 bidi 完全化で +2.7 KB、予算は gallery 188 /
+   todo 163 / hello 161 KB。
 4. **M6**: iOS シミュレータのストア用スクショ (iPhone 6.9"、iPad 13")、
    データセーフティ回答案の確認済み。提出は人間の作業。
 5. **almide issue**: 主要なものは almide の main で修正済みだが未リリース
@@ -27,6 +28,11 @@ Read at the start of every session; update at the end.
 
 ### 作業ログ (最新が上)
 
+- 双方向テキストの残りの規則を実装 (W2–W6、N0 括弧の対、AL/ES/ET/CS の
+  クラス、ADR 0016 追記)。ヘブライ語・アラビア語中の「(…)」「$5」「1.5」が
+  正しく並ぶ。python-bidi オラクルを括弧・通貨・区切りを含む 3000 行に
+  拡張し全一致 (旧実装は失敗)。wasm が各 app +2.7 KB のため予算を
+  +3 KB (gallery 188 / todo 163 / hello 161)。
 - Android CI のキーバー失敗の真因: 追加した診断ログで、アプリは IME を要求し
   システムも mInputShown=true だが、inset にキーボード分が一度も現れない
   ことが判明。CI のエミュレータはハードウェアキーボード付きで、Gboard が

@@ -1,8 +1,8 @@
 {
   "startup_ms": 1500,
   "apps": {
-    "gallery": { "wasm_kb": 185 },
-    "todo": { "wasm_kb": 160 },
-    "hello": { "wasm_kb": 158 }
+    "gallery": { "wasm_kb": 188 },
+    "todo": { "wasm_kb": 163 },
+    "hello": { "wasm_kb": 161 }
   }
 }
