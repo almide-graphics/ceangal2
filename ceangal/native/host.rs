@@ -420,6 +420,10 @@ fn run_test(ctx: &Rc<RefCell<GpuContext>>, t: &mut f64, file: &str, out: &str) -
                         *t += 16.0;
                         std::thread::sleep(std::time::Duration::from_millis(16));
                     }
+                    // a frame that starts after the 0.6 s, which a slow machine
+                    // (CI) might not otherwise get before the finger lifts
+                    call(ctx, EV_FRAME, 0, 0, *t, 0.0, 0.0, 0.0);
+                    *t += 16.0;
                     call(ctx, EV_POINTER, 2, 1, x, y, 0.0, 0.0);
                     true
                 }
