@@ -66,8 +66,14 @@ Not taken from tinycolor2 yet:
   for drawing.
 - The first run matched all 4808 cases. A deliberately corrupted case makes
   the test fail, so the check is real.
-- Writing the module ran into almide/almide#3472, filed for this: snaidhm's
-  `type Rgba` alias resolved to a same-named type in ceangal. The type is
-  `Swatch`, not `Rgba`.
+- Writing the module ran into two Almide bugs, both filed for this:
+  - almide/almide#3472: snaidhm's `type Rgba` alias resolved to a same-named
+    type in ceangal. The type is called `Swatch`, not `Rgba`.
+  - almide/almide#3473: natively, a record literal was emitted as another
+    package's struct with the same fields (`snaidhm.Color`). That broke
+    every native build on CI (run 37602916836). Its fields are `red`,
+    `green`, `blue` and `alpha`, not `r`, `g`, `b`, `a`.
+- Lesson: an absorbed module is checked with a native *app* build too,
+  not only its own tests, because the second bug showed up only there.
 - The next candidates: dates and times (formatting, relative time), and
   Markdown to views.

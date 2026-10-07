@@ -18,12 +18,14 @@ import ceangal.color
 ### `Swatch`
 
 ```almide
-type Swatch = { r: Float, g: Float, b: Float, a: Float }
+type Swatch = { red: Float, green: Float, blue: Float, alpha: Float }
 ```
 
 Red, green and blue from 0 to 255 (not rounded), alpha from 0 to 1. (Not
 named Rgba: snaidhm.vector has an Rgba, and a type takes over another
-package's type of the same name, almide/almide#3472.)
+package's type of the same name, almide/almide#3472. Not r, g, b, a: the
+native build emits a literal as another package's struct with the same
+fields, almide/almide#3473.)
 
 ```almide
 type Hsla = { h: Float, s: Float, l: Float, a: Float }

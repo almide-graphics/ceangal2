@@ -28,6 +28,11 @@ Read at the start of every session; update at the end.
 
 ### 作業ログ (最新が上)
 
+- `ceangal.color` 追加後に CI のネイティブ系が全滅 (run 37602916836)。
+  原因は Almide のネイティブコード生成のバグで、別パッケージの同じ
+  フィールド構成の構造体名でレコードを出力していた。almide/almide#3473 を
+  起票 (#3472 も起票)。Swatch のフィールド名を変えて回避し、ネイティブの
+  app ビルド・テスト・E2E をローカルで確認。
 - 他エコシステムのライブラリを取り込む仕組みを ADR 0023 に設計 (元の
   ライブラリはオラクルとしてのみ使う clean-room 方式、ライセンスの扱い、
   SDK は取り込まず呼び出す)。第 1 号として tinycolor2 (MIT) 相当の
@@ -616,6 +621,10 @@ and worth doing next:
 - almide/almide#3472 (filed 2026-10-07) — a type alias in a dependency
   package resolves to a same-named type of the depending package (snaidhm's
   `Rgba` vs a new ceangal `Rgba`): `ceangal.color`'s type is `Swatch`.
+- almide/almide#3473 (filed 2026-10-07) — natively, a record literal is
+  emitted as another package's struct with the same fields (E0308).
+  `ceangal.color.Swatch` uses `red` / `green` / `blue` / `alpha` so it
+  doesn't share `snaidhm.Color`'s fields.
 - almide/almide#3438 — bidi control characters in a string literal break
   native builds (rustc `text_direction_codepoint_in_literal`): build them
   with `string.from_codepoint`; tests use code point lists.

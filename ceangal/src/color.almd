@@ -10,8 +10,10 @@ import snaidhm
 
 // Red, green and blue from 0 to 255 (not rounded), alpha from 0 to 1. (Not
 // named Rgba: snaidhm.vector has an Rgba, and a type takes over another
-// package's type of the same name, almide/almide#3472.)
-type Swatch = { r: Float, g: Float, b: Float, a: Float }
+// package's type of the same name, almide/almide#3472. Not r, g, b, a: the
+// native build emits a literal as another package's struct with the same
+// fields, almide/almide#3473.)
+type Swatch = { red: Float, green: Float, blue: Float, alpha: Float }
 
 type Hsla = { h: Float, s: Float, l: Float, a: Float }
 
@@ -95,10 +97,10 @@ fn fraction(x: Num) -> Float =
 
 // Channels below 1 are rounded, as tinycolor2 does.
 fn made(r: Float, g: Float, b: Float, a: Float) -> Swatch = {
-  r: if r < 1.0 then float.round(r) else r,
-  g: if g < 1.0 then float.round(g) else g,
-  b: if b < 1.0 then float.round(b) else b,
-  a: a,
+  red: if r < 1.0 then float.round(r) else r,
+  green: if g < 1.0 then float.round(g) else g,
+  blue: if b < 1.0 then float.round(b) else b,
+  alpha: a,
 }
 
 fn hue2rgb(p: Float, q: Float, t0: Float) -> Float = {
@@ -172,10 +174,10 @@ fn hex2(n: Int) -> String = {
 }
 
 // "#rrggbb".
-pub fn to_hex(c: Swatch) -> String = "#" + hex2(round_i(c.r)) + hex2(round_i(c.g)) + hex2(round_i(c.b))
+pub fn to_hex(c: Swatch) -> String = "#" + hex2(round_i(c.red)) + hex2(round_i(c.green)) + hex2(round_i(c.blue))
 
 // "#rrggbbaa".
-pub fn to_hex8(c: Swatch) -> String = to_hex(c) + hex2(round_i(c.a * 255.0))
+pub fn to_hex8(c: Swatch) -> String = to_hex(c) + hex2(round_i(c.alpha * 255.0))
 
 // Alpha to two decimals, written as briefly as possible ("0.5", "1").
 fn alpha_text(a: Float) -> String = {
@@ -186,39 +188,39 @@ fn alpha_text(a: Float) -> String = {
   else "0." + int.to_string(k)
 }
 
-fn opaque(c: Swatch) -> Bool = round_i(c.a * 100.0) == 100
+fn opaque(c: Swatch) -> Bool = round_i(c.alpha * 100.0) == 100
 
 // "rgb(r, g, b)", or "rgba(r, g, b, a)" when not opaque.
 pub fn to_rgb_string(c: Swatch) -> String = {
-  let body = int.to_string(round_i(c.r)) + ", " + int.to_string(round_i(c.g)) + ", " + int.to_string(round_i(c.b))
-  if opaque(c) then "rgb(" + body + ")" else "rgba(" + body + ", " + alpha_text(c.a) + ")"
+  let body = int.to_string(round_i(c.red)) + ", " + int.to_string(round_i(c.green)) + ", " + int.to_string(round_i(c.blue))
+  if opaque(c) then "rgb(" + body + ")" else "rgba(" + body + ", " + alpha_text(c.alpha) + ")"
 }
 
 // "hsl(h, s%, l%)", or "hsla(h, s%, l%, a)" when not opaque.
 pub fn to_hsl_string(c: Swatch) -> String = {
   let x = to_hsl(c)
   let body = int.to_string(round_i(x.h)) + ", " + int.to_string(round_i(x.s * 100.0)) + "%, " + int.to_string(round_i(x.l * 100.0)) + "%"
-  if opaque(c) then "hsl(" + body + ")" else "hsla(" + body + ", " + alpha_text(c.a) + ")"
+  if opaque(c) then "hsl(" + body + ")" else "hsla(" + body + ", " + alpha_text(c.alpha) + ")"
 }
 
 // ── Changing ──
 
 // Hue in degrees (0–360), saturation and lightness as fractions.
 pub fn to_hsl(c: Swatch) -> Hsla = {
-  let r = bound01(c.r, 255.0, false)
-  let g = bound01(c.g, 255.0, false)
-  let b = bound01(c.b, 255.0, false)
+  let r = bound01(c.red, 255.0, false)
+  let g = bound01(c.green, 255.0, false)
+  let b = bound01(c.blue, 255.0, false)
   let mx = float.max(r, float.max(g, b))
   let mn = float.min(r, float.min(g, b))
   let l = (mx + mn) / 2.0
-  if mx == mn then { h: 0.0, s: 0.0, l: l, a: c.a }
+  if mx == mn then { h: 0.0, s: 0.0, l: l, a: c.alpha }
   else {
     let d = mx - mn
     let s = if l > 0.5 then d / (2.0 - mx - mn) else d / (mx + mn)
     let h = if mx == r then (g - b) / d + (if g < b then 6.0 else 0.0)
       else if mx == g then (b - r) / d + 2.0
       else (r - g) / d + 4.0
-    { h: h / 6.0 * 360.0, s: s, l: l, a: c.a }
+    { h: h / 6.0 * 360.0, s: s, l: l, a: c.alpha }
   }
 }
 
@@ -247,7 +249,7 @@ pub fn spin(c: Swatch, degrees: Float) -> Swatch = {
   from_hsl({ ...x, h: hue })
 }
 
-fn rounded(c: Swatch) -> Swatch = { r: float.round(c.r), g: float.round(c.g), b: float.round(c.b), a: c.a }
+fn rounded(c: Swatch) -> Swatch = { red: float.round(c.red), green: float.round(c.green), blue: float.round(c.blue), alpha: c.alpha }
 
 // `a` mixed with `b`: `amount` percent of the way from a to b.
 pub fn mix(a: Swatch, b: Swatch, amount: Float) -> Swatch = {
@@ -255,7 +257,7 @@ pub fn mix(a: Swatch, b: Swatch, amount: Float) -> Swatch = {
   let x = rounded(a)
   let y = rounded(b)
   let ch = (u: Float, w: Float) => bound01((w - u) * p + u, 255.0, false) * 255.0
-  made(ch(x.r, y.r), ch(x.g, y.g), ch(x.b, y.b), alpha((y.a - x.a) * p + x.a))
+  made(ch(x.red, y.red), ch(x.green, y.green), ch(x.blue, y.blue), alpha((y.alpha - x.alpha) * p + x.alpha))
 }
 
 // ── Luminance and contrast (WCAG 2) ──
@@ -265,7 +267,7 @@ fn linear(v: Float) -> Float = if v <= 0.03928 then v / 12.92 else math.fpow((v 
 // Relative luminance, from 0 (black) to 1 (white).
 pub fn luminance(c: Swatch) -> Float = {
   let x = rounded(c)
-  0.2126 * linear(x.r / 255.0) + 0.7152 * linear(x.g / 255.0) + 0.0722 * linear(x.b / 255.0)
+  0.2126 * linear(x.red / 255.0) + 0.7152 * linear(x.green / 255.0) + 0.0722 * linear(x.blue / 255.0)
 }
 
 // The contrast ratio of two colors, from 1 to 21.
@@ -282,7 +284,7 @@ pub fn readable(a: Swatch, b: Swatch) -> Bool = contrast(a, b) >= 4.5
 // ── Drawing ──
 
 // For drawing (snaidhm's channels are fractions).
-pub fn to_color(c: Swatch) -> snaidhm.Color = snaidhm.rgba(c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a)
+pub fn to_color(c: Swatch) -> snaidhm.Color = snaidhm.rgba(c.red / 255.0, c.green / 255.0, c.blue / 255.0, c.alpha)
 
 // A drawing color as a swatch.
-pub fn from_color(c: snaidhm.Color) -> Swatch = { r: c.r * 255.0, g: c.g * 255.0, b: c.b * 255.0, a: c.a }
+pub fn from_color(c: snaidhm.Color) -> Swatch = { red: c.r * 255.0, green: c.g * 255.0, blue: c.b * 255.0, alpha: c.a }

@@ -5,7 +5,7 @@ import self.color as color
 
 fn hex8_of(s: String) -> String = match color.parse(s) { some(c) => color.to_hex8(c), none => "invalid" }
 
-fn col(s: String) -> color.Swatch = match color.parse(s) { some(c) => c, none => { r: 0.0, g: 0.0, b: 0.0, a: 1.0 } }
+fn col(s: String) -> color.Swatch = match color.parse(s) { some(c) => c, none => { red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0 } }
 
 fn near(x: Float, want: String) -> Bool = match float.parse(want) {
   ok(w) => float.abs(x - w) < 0.0000001,
