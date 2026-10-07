@@ -23,7 +23,7 @@ type Swatch = { r: Float, g: Float, b: Float, a: Float }
 
 Red, green and blue from 0 to 255 (not rounded), alpha from 0 to 1. (Not
 named Rgba: snaidhm.vector has an Rgba, and a type takes over another
-module's type of the same name, almide/almide#3439.)
+package's type of the same name, almide/almide#3472.)
 
 ```almide
 type Hsla = { h: Float, s: Float, l: Float, a: Float }

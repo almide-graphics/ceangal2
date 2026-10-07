@@ -66,7 +66,8 @@ Not taken from tinycolor2 yet:
   for drawing.
 - The first run matched all 4808 cases. A deliberately corrupted case makes
   the test fail, so the check is real.
-- Writing the module ran into almide/almide#3439 (a type takes over a
-  same-named type in another module): the type is `Swatch`, not `Rgba`.
+- Writing the module ran into almide/almide#3472, filed for this: snaidhm's
+  `type Rgba` alias resolved to a same-named type in ceangal. The type is
+  `Swatch`, not `Rgba`.
 - The next candidates: dates and times (formatting, relative time), and
   Markdown to views.

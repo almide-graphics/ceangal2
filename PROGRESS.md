@@ -613,6 +613,9 @@ and worth doing next:
   below stay until a release with them; then bump `.almide-version` and
   remove them. #3296 still bites on 0.66.0: `keep_open_popup_at`
   (widgets) and `keep_geo_spans` (editor) were added today. #3438 is open.
+- almide/almide#3472 (filed 2026-10-07) — a type alias in a dependency
+  package resolves to a same-named type of the depending package (snaidhm's
+  `Rgba` vs a new ceangal `Rgba`): `ceangal.color`'s type is `Swatch`.
 - almide/almide#3438 — bidi control characters in a string literal break
   native builds (rustc `text_direction_codepoint_in_literal`): build them
   with `string.from_codepoint`; tests use code point lists.
