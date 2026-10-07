@@ -130,14 +130,17 @@ class E2E: XCTestCase {
             if !kb.exists { shot("fail-keyboard-gone"); XCTFail("the keyboard went away after \(i) keys; labels: \(labels(tree()))") }
             let s = String(ch)
             if s == " " { kb.keys["space"].tap(); continue }
-            var key = kb.keys[s]
+            let key = kb.keys[s]
+            // the other case showing: Shift switches the letters (named
+            // "shift" or "Shift" depending on the iOS version). Tap it only
+            // while the other case is what shows, and give the keys time to
+            // change, so a slow redraw doesn't get Shift tapped back.
+            let other = s == s.lowercased() ? s.uppercased() : s.lowercased()
             var tries = 0
             while !key.waitForExistence(timeout: 1) && tries < 3 {
-                // the other case: Shift switches the letters
-                // (named "shift" or "Shift" depending on the iOS version)
                 let shift = [kb.buttons["shift"], kb.keys["shift"], kb.buttons["Shift"], kb.keys["Shift"]].first { $0.exists }
-                if let shift { shift.tap() } else { Thread.sleep(forTimeInterval: 0.5) }
-                key = kb.keys[s]
+                if let shift, kb.keys[other].exists { shift.tap() }
+                _ = key.waitForExistence(timeout: 3)
                 tries += 1
             }
             if !key.exists {
