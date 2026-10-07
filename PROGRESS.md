@@ -28,6 +28,12 @@ Read at the start of every session; update at the end.
 
 ### 作業ログ (最新が上)
 
+- 他エコシステムのライブラリを取り込む仕組みを ADR 0023 に設計 (元の
+  ライブラリはオラクルとしてのみ使う clean-room 方式、ライセンスの扱い、
+  SDK は取り込まず呼び出す)。第 1 号として tinycolor2 (MIT) 相当の
+  `ceangal.color` を実装: 色文字列の解析・書き出し、明暗・彩度・色相・混色、
+  WCAG コントラスト。記録した 4808 件が wasm / ネイティブとも全一致
+  (壊した期待値で失敗することも確認)。CI に追加。
 - `w.alert` (エラー・警告バナー、ロール 27 で即時読み上げ) を追加。gallery の
   Name に数字を入れると表示。announce.test (web / native) と Chrome E2E
   (assertive live region) で確認。gallery 予算 188→189 KB (ADR 0018 追記)。

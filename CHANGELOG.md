@@ -6,6 +6,10 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Colours**: `ceangal.color` parses CSS-style colour strings and
+  lightens, darkens, saturates, turns the hue, mixes, and measures WCAG
+  contrast. It behaves as tinycolor2 does, checked on 4808 recorded cases.
+  It is the first library absorbed by the method of ADR 0023.
 - **Alerts**: `w.alert(th, text)`, an error or warning banner that screen
   readers announce at once. (ADR 0018)
 - **Bidi**: brackets, currency signs and number separators are placed

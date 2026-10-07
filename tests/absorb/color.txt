@@ -1,0 +1,4808 @@
+valid		false
+valid	#12	false
+valid	#12345	false
+valid	rgb(1, 2)	false
+valid	hsl(10, 20%)	false
+valid	#ggg	false
+valid	nonsense	false
+valid	rgb(a, b, c)	false
+hex8	#11a14e	#11a14eff
+rgb	#11a14e	rgb(17, 161, 78)
+hsl	#11a14e	hsl(145, 81%, 35%)
+lighten	#11a14e	32	#66efa0ff
+darken	#11a14e	32	#010d06ff
+saturate	#11a14e	32	#00b24bff
+desaturate	#11a14e	32	#2d8552ff
+spin	#11a14e	-206	#a011a1ff
+mix	#11a14e	rgb(244, 211, 2)	32	#5ab136ff
+luminance	#11a14e	0.261589674
+contrast	#11a14e	rgb(244, 211, 2)	2.273053847
+readable	#11a14e	rgb(244, 211, 2)	false
+hex8	hsl(75, 8%, 99%)	#fdfdfcff
+rgb	hsl(75, 8%, 99%)	rgb(253, 253, 252)
+hsl	hsl(75, 8%, 99%)	hsl(75, 8%, 99%)
+lighten	hsl(75, 8%, 99%)	84	#ffffffff
+darken	hsl(75, 8%, 99%)	84	#282923ff
+saturate	hsl(75, 8%, 99%)	84	#fefffaff
+desaturate	hsl(75, 8%, 99%)	84	#fcfcfcff
+spin	hsl(75, 8%, 99%)	-20	#fdfdfcff
+mix	hsl(75, 8%, 99%)	hsl(19, 45%, 66%)	84	#d6aa95ff
+luminance	hsl(75, 8%, 99%)	0.981614811
+contrast	hsl(75, 8%, 99%)	hsl(19, 45%, 66%)	2.401249733
+readable	hsl(75, 8%, 99%)	hsl(19, 45%, 66%)	false
+hex8	rgb(21%, 85%, 23%)	#36d93bff
+rgb	rgb(21%, 85%, 23%)	rgb(54, 217, 59)
+hsl	rgb(21%, 85%, 23%)	hsl(122, 68%, 53%)
+lighten	rgb(21%, 85%, 23%)	19	#87e88aff
+darken	rgb(21%, 85%, 23%)	19	#1c921fff
+saturate	rgb(21%, 85%, 23%)	19	#1ff025ff
+desaturate	rgb(21%, 85%, 23%)	19	#4cc250ff
+spin	rgb(21%, 85%, 23%)	204	#d93692ff
+mix	rgb(21%, 85%, 23%)	#b58	19	#4fc04aff
+luminance	rgb(21%, 85%, 23%)	0.507257450
+contrast	rgb(21%, 85%, 23%)	#b58	2.337551249
+readable	rgb(21%, 85%, 23%)	#b58	false
+hex8	rgb(77%, 90%, 92%)	#c4e6ebff
+rgb	rgb(77%, 90%, 92%)	rgb(196, 230, 235)
+hsl	rgb(77%, 90%, 92%)	hsl(188, 48%, 85%)
+lighten	rgb(77%, 90%, 92%)	65	#ffffffff
+darken	rgb(77%, 90%, 92%)	65	#1a434aff
+saturate	rgb(77%, 90%, 92%)	65	#b0f4ffff
+desaturate	rgb(77%, 90%, 92%)	65	#d7d7d7ff
+spin	rgb(77%, 90%, 92%)	225	#ebe6c4ff
+mix	rgb(77%, 90%, 92%)	hsl(78, 31%, 52%)	65	#a5c090ff
+luminance	rgb(77%, 90%, 92%)	0.743275496
+contrast	rgb(77%, 90%, 92%)	hsl(78, 31%, 52%)	1.923188015
+readable	rgb(77%, 90%, 92%)	hsl(78, 31%, 52%)	false
+hex8	rgb(96%, 81%, 65%)	#f5cfa6ff
+rgb	rgb(96%, 81%, 65%)	rgb(245, 207, 166)
+hsl	rgb(96%, 81%, 65%)	hsl(31, 79%, 81%)
+lighten	rgb(96%, 81%, 65%)	32	#ffffffff
+darken	rgb(96%, 81%, 65%)	32	#de7f19ff
+saturate	rgb(96%, 81%, 65%)	32	#ffcf9cff
+desaturate	rgb(96%, 81%, 65%)	32	#e5ceb6ff
+spin	rgb(96%, 81%, 65%)	294	#f5a6d4ff
+mix	rgb(96%, 81%, 65%)	#6c2	32	#c7ce7cff
+luminance	rgb(96%, 81%, 65%)	0.667912984
+contrast	rgb(96%, 81%, 65%)	#6c2	1.404203170
+readable	rgb(96%, 81%, 65%)	#6c2	false
+hex8	hsl(322, 78%, 0%)	#000000ff
+rgb	hsl(322, 78%, 0%)	rgb(0, 0, 0)
+hsl	hsl(322, 78%, 0%)	hsl(0, 0%, 0%)
+lighten	hsl(322, 78%, 0%)	58	#949494ff
+darken	hsl(322, 78%, 0%)	58	#000000ff
+saturate	hsl(322, 78%, 0%)	58	#000000ff
+desaturate	hsl(322, 78%, 0%)	58	#000000ff
+spin	hsl(322, 78%, 0%)	22	#000000ff
+mix	hsl(322, 78%, 0%)	hsl(130, 29%, 5%)	58	#050906ff
+luminance	hsl(322, 78%, 0%)	0.000000000
+contrast	hsl(322, 78%, 0%)	hsl(130, 29%, 5%)	1.090114715
+readable	hsl(322, 78%, 0%)	hsl(130, 29%, 5%)	false
+hex8	#33a515	#33a515ff
+rgb	#33a515	rgb(51, 165, 21)
+hsl	#33a515	hsl(108, 77%, 36%)
+lighten	#33a515	58	#ebfce6ff
+darken	#33a515	58	#000000ff
+saturate	#33a515	58	#27ba00ff
+desaturate	#33a515	58	#526f4bff
+spin	#33a515	315	#9fa515ff
+mix	#33a515	hsl(65, 17%, 73%)	58	#87b86eff
+luminance	#33a515	0.276682174
+contrast	#33a515	hsl(65, 17%, 73%)	1.842155057
+readable	#33a515	hsl(65, 17%, 73%)	false
+hex8	rgb(78, 17, 212)	#4e11d4ff
+rgb	rgb(78, 17, 212)	rgb(78, 17, 212)
+hsl	rgb(78, 17, 212)	hsl(259, 85%, 45%)
+lighten	rgb(78, 17, 212)	73	#ffffffff
+darken	rgb(78, 17, 212)	73	#000000ff
+saturate	rgb(78, 17, 212)	73	#4800e5ff
+desaturate	rgb(78, 17, 212)	73	#6d6580ff
+spin	rgb(78, 17, 212)	245	#11d45eff
+mix	rgb(78, 17, 212)	hsl(8, 16%, 66%)	73	#9a78aaff
+luminance	rgb(78, 17, 212)	0.067740650
+contrast	rgb(78, 17, 212)	hsl(8, 16%, 66%)	3.544391605
+readable	rgb(78, 17, 212)	hsl(8, 16%, 66%)	false
+hex8	rgba(55, 106, 61, 1)	#376a3dff
+rgb	rgba(55, 106, 61, 1)	rgb(55, 106, 61)
+hsl	rgba(55, 106, 61, 1)	hsl(127, 32%, 32%)
+lighten	rgba(55, 106, 61, 1)	100	#ffffffff
+darken	rgba(55, 106, 61, 1)	100	#000000ff
+saturate	rgba(55, 106, 61, 1)	100	#00a113ff
+desaturate	rgba(55, 106, 61, 1)	100	#505050ff
+spin	rgba(55, 106, 61, 1)	-344	#376a4bff
+mix	rgba(55, 106, 61, 1)	hsl(176, 11%, 97%)	100	#f7f8f8ff
+luminance	rgba(55, 106, 61, 1)	0.114572151
+contrast	rgba(55, 106, 61, 1)	hsl(176, 11%, 97%)	5.996535289
+readable	rgba(55, 106, 61, 1)	hsl(176, 11%, 97%)	true
+hex8	rgba(174, 250, 203, 0)	#aefacb00
+rgb	rgba(174, 250, 203, 0)	rgba(174, 250, 203, 0)
+hsl	rgba(174, 250, 203, 0)	hsla(143, 88%, 83%, 0)
+lighten	rgba(174, 250, 203, 0)	6	#cbfcdd00
+darken	rgba(174, 250, 203, 0)	6	#91f8b800
+saturate	rgba(174, 250, 203, 0)	6	#abfdca00
+desaturate	rgba(174, 250, 203, 0)	6	#b1f7cc00
+spin	rgba(174, 250, 203, 0)	205	#faaebd00
+mix	rgba(174, 250, 203, 0)	rgba(150, 179, 180, 1)	6	#adf6ca0f
+luminance	rgba(174, 250, 203, 0)	0.816816818
+contrast	rgba(174, 250, 203, 0)	rgba(150, 179, 180, 1)	1.843525565
+readable	rgba(174, 250, 203, 0)	rgba(150, 179, 180, 1)	false
+hex8	#bd34f8b7	#bd34f8b7
+rgb	#bd34f8b7	rgba(189, 52, 248, 0.72)
+hsl	#bd34f8b7	hsla(282, 93%, 59%, 0.72)
+lighten	#bd34f8b7	8	#ca5bf9b7
+darken	#bd34f8b7	8	#b00df7b7
+saturate	#bd34f8b7	8	#c02dffb7
+desaturate	#bd34f8b7	8	#ba3cf0b7
+spin	#bd34f8b7	-256	#f88934b7
+mix	#bd34f8b7	rgb(15%, 44%, 6%)	8	#b139e5bd
+luminance	#bd34f8b7	0.200521108
+contrast	#bd34f8b7	rgb(15%, 44%, 6%)	1.470634491
+readable	#bd34f8b7	rgb(15%, 44%, 6%)	false
+hex8	#02d48d41	#02d48d41
+rgb	#02d48d41	rgba(2, 212, 141, 0.25)
+hsl	#02d48d41	hsla(160, 98%, 42%, 0.25)
+lighten	#02d48d41	59	#ffffff41
+darken	#02d48d41	59	#00000041
+saturate	#02d48d41	59	#00d68e41
+desaturate	#02d48d41	59	#41957941
+spin	#02d48d41	297	#53d40241
+mix	#02d48d41	#381	59	#1fa744b1
+luminance	#02d48d41	0.490229604
+contrast	#02d48d41	#381	2.313359838
+readable	#02d48d41	#381	false
+hex8	rgb(126, 154, 115)	#7e9a73ff
+rgb	rgb(126, 154, 115)	rgb(126, 154, 115)
+hsl	rgb(126, 154, 115)	hsl(103, 16%, 53%)
+lighten	rgb(126, 154, 115)	1	#819c76ff
+darken	rgb(126, 154, 115)	1	#7b9870ff
+saturate	rgb(126, 154, 115)	1	#7d9b72ff
+desaturate	rgb(126, 154, 115)	1	#7f9974ff
+spin	rgb(126, 154, 115)	-279	#73979aff
+mix	rgb(126, 154, 115)	rgba(105, 127, 124, 0.11)	1	#7e9a73fd
+luminance	rgb(126, 154, 115)	0.287846269
+contrast	rgb(126, 154, 115)	rgba(105, 127, 124, 0.11)	1.371283080
+readable	rgb(126, 154, 115)	rgba(105, 127, 124, 0.11)	false
+hex8	rgb(24%, 79%, 54%)	#3dc98aff
+rgb	rgb(24%, 79%, 54%)	rgb(61, 201, 138)
+hsl	rgb(24%, 79%, 54%)	hsl(153, 57%, 52%)
+lighten	rgb(24%, 79%, 54%)	36	#cdf1e1ff
+darken	rgb(24%, 79%, 54%)	36	#113e2aff
+saturate	rgb(24%, 79%, 54%)	36	#11f68eff
+desaturate	rgb(24%, 79%, 54%)	36	#6a9d86ff
+spin	rgb(24%, 79%, 54%)	-178	#c93d78ff
+mix	rgb(24%, 79%, 54%)	rgb(118, 137, 47)	36	#52b269ff
+luminance	rgb(24%, 79%, 54%)	0.446003663
+contrast	rgb(24%, 79%, 54%)	rgb(118, 137, 47)	1.840588053
+readable	rgb(24%, 79%, 54%)	rgb(118, 137, 47)	false
+hex8	#2d4	#22dd44ff
+rgb	#2d4	rgb(34, 221, 68)
+hsl	#2d4	hsl(131, 73%, 50%)
+lighten	#2d4	72	#ffffffff
+darken	#2d4	72	#000000ff
+saturate	#2d4	72	#00ff2eff
+desaturate	#2d4	72	#7e817eff
+spin	#2d4	203	#dd2273ff
+mix	#2d4	hsl(45, 63%, 84%)	72	#b6e19aff
+luminance	#2d4	0.524703392
+contrast	#2d4	hsl(45, 63%, 84%)	1.428463384
+readable	#2d4	hsl(45, 63%, 84%)	false
+hex8	rgba(252, 29, 184, 0.16)	#fc1db829
+rgb	rgba(252, 29, 184, 0.16)	rgba(252, 29, 184, 0.16)
+hsl	rgba(252, 29, 184, 0.16)	hsla(318, 97%, 55%, 0.16)
+lighten	rgba(252, 29, 184, 0.16)	81	#ffffff29
+darken	rgba(252, 29, 184, 0.16)	81	#00000029
+saturate	rgba(252, 29, 184, 0.16)	81	#ff1ab929
+desaturate	rgba(252, 29, 184, 0.16)	81	#9f7a9429
+spin	rgba(252, 29, 184, 0.16)	-137	#1df7fc29
+mix	rgba(252, 29, 184, 0.16)	rgb(157, 170, 228)	81	#af8fdcd6
+luminance	rgba(252, 29, 184, 0.16)	0.250348682
+contrast	rgba(252, 29, 184, 0.16)	rgb(157, 170, 228)	1.548832687
+readable	rgba(252, 29, 184, 0.16)	rgb(157, 170, 228)	false
+hex8	#0219d8b0	#0219d8b0
+rgb	#0219d8b0	rgba(2, 25, 216, 0.69)
+hsl	#0219d8b0	hsla(234, 98%, 43%, 0.69)
+lighten	#0219d8b0	96	#ffffffb0
+darken	#0219d8b0	96	#000000b0
+saturate	#0219d8b0	96	#0017dab0
+desaturate	#0219d8b0	96	#6b6b6fb0
+spin	#0219d8b0	-224	#d82402b0
+mix	#0219d8b0	#d42	96	#d44229fc
+luminance	#0219d8b0	0.056660354
+contrast	#0219d8b0	#d42	2.308438774
+readable	#0219d8b0	#d42	false
+hex8	#90e	#9900eeff
+rgb	#90e	rgb(153, 0, 238)
+hsl	#90e	hsl(279, 100%, 47%)
+lighten	#90e	28	#d17effff
+darken	#90e	28	#3d005fff
+saturate	#90e	28	#9900eeff
+desaturate	#90e	28	#8f21cdff
+spin	#90e	315	#0019eeff
+mix	#90e	123bDF	28	#7311eaff
+luminance	#90e	0.129453511
+contrast	#90e	123bDF	1.321041906
+readable	#90e	123bDF	false
+hex8	rgba(37, 112, 114, 0.5)	#25707280
+rgb	rgba(37, 112, 114, 0.5)	rgba(37, 112, 114, 0.5)
+hsl	rgba(37, 112, 114, 0.5)	hsla(182, 51%, 30%, 0.5)
+lighten	rgba(37, 112, 114, 0.5)	82	#ffffff80
+darken	rgba(37, 112, 114, 0.5)	82	#00000080
+saturate	rgba(37, 112, 114, 0.5)	82	#00939780
+desaturate	rgba(37, 112, 114, 0.5)	82	#4b4b4b80
+spin	rgba(37, 112, 114, 0.5)	-113	#67722580
+mix	rgba(37, 112, 114, 0.5)	rgb(98, 211, 117)	82	#57c174e8
+luminance	rgba(37, 112, 114, 0.5)	0.131965607
+contrast	rgba(37, 112, 114, 0.5)	rgb(98, 211, 117)	3.048353850
+readable	rgba(37, 112, 114, 0.5)	rgb(98, 211, 117)	false
+hex8	#db3a9320	#db3a9320
+rgb	#db3a9320	rgba(219, 58, 147, 0.13)
+hsl	#db3a9320	hsla(327, 69%, 54%, 0.13)
+lighten	#db3a9320	83	#ffffff20
+darken	#db3a9320	83	#00000020
+saturate	#db3a9320	83	#ff169720
+desaturate	#db3a9320	83	#8a8a8a20
+spin	#db3a9320	-145	#3ad6db20
+mix	#db3a9320	rgb(18%, 37%, 0%)	83	#4b5819d9
+luminance	#db3a9320	0.201927653
+contrast	#db3a9320	rgb(18%, 37%, 0%)	1.854284028
+readable	#db3a9320	rgb(18%, 37%, 0%)	false
+hex8	rgb(37%, 65%, 62%)	#5ea69eff
+rgb	rgb(37%, 65%, 62%)	rgb(94, 166, 158)
+hsl	rgb(37%, 65%, 62%)	hsl(174, 29%, 51%)
+lighten	rgb(37%, 65%, 62%)	95	#ffffffff
+darken	rgb(37%, 65%, 62%)	95	#000000ff
+saturate	rgb(37%, 65%, 62%)	95	#05ffe4ff
+desaturate	rgb(37%, 65%, 62%)	95	#828282ff
+spin	rgb(37%, 65%, 62%)	-210	#a65e8aff
+mix	rgb(37%, 65%, 62%)	hsla(146, 5%, 39%, 0.31)	95	#5e6b6658
+luminance	rgb(37%, 65%, 62%)	0.321207419
+contrast	rgb(37%, 65%, 62%)	hsla(146, 5%, 39%, 0.31)	2.041714148
+readable	rgb(37%, 65%, 62%)	hsla(146, 5%, 39%, 0.31)	false
+hex8	#042f86	#042f86ff
+rgb	#042f86	rgb(4, 47, 134)
+hsl	#042f86	hsl(220, 94%, 27%)
+lighten	#042f86	78	#ffffffff
+darken	#042f86	78	#000000ff
+saturate	#042f86	78	#002e8aff
+desaturate	#042f86	78	#3a4150ff
+spin	#042f86	318	#048682ff
+mix	#042f86	#cf6	78	#a0d16dff
+luminance	#042f86	0.037800728
+contrast	#042f86	#cf6	10.286552395
+readable	#042f86	#cf6	true
+hex8	rgb(224, 201, 186)	#e0c9baff
+rgb	rgb(224, 201, 186)	rgb(224, 201, 186)
+hsl	rgb(224, 201, 186)	hsl(24, 38%, 80%)
+lighten	rgb(224, 201, 186)	23	#ffffffff
+darken	rgb(224, 201, 186)	23	#bc8a69ff
+saturate	rgb(224, 201, 186)	23	#ebc7aeff
+desaturate	rgb(224, 201, 186)	23	#d4cbc5ff
+spin	rgb(224, 201, 186)	-233	#bae0cdff
+mix	rgb(224, 201, 186)	hsla(219, 57%, 10%, 0.49)	23	#afa098e1
+luminance	rgb(224, 201, 186)	0.611657525
+contrast	rgb(224, 201, 186)	hsla(219, 57%, 10%, 0.49)	11.485755090
+readable	rgb(224, 201, 186)	hsla(219, 57%, 10%, 0.49)	true
+hex8	rgb(138, 62, 87)	#8a3e57ff
+rgb	rgb(138, 62, 87)	rgb(138, 62, 87)
+hsl	rgb(138, 62, 87)	hsl(340, 38%, 39%)
+lighten	rgb(138, 62, 87)	52	#f1e0e6ff
+darken	rgb(138, 62, 87)	52	#000000ff
+saturate	rgb(138, 62, 87)	52	#be0a45ff
+desaturate	rgb(138, 62, 87)	52	#646464ff
+spin	rgb(138, 62, 87)	59	#8a703eff
+mix	rgb(138, 62, 87)	rgb(227, 196, 228)	52	#b884a0ff
+luminance	rgb(138, 62, 87)	0.095366423
+contrast	rgb(138, 62, 87)	rgb(227, 196, 228)	4.568605587
+readable	rgb(138, 62, 87)	rgb(227, 196, 228)	true
+hex8	#ab494f	#ab494fff
+rgb	#ab494f	rgb(171, 73, 79)
+hsl	#ab494f	hsl(356, 40%, 48%)
+lighten	#ab494f	51	#fdfbfbff
+darken	#ab494f	51	#000000ff
+saturate	#ab494f	51	#e90b18ff
+desaturate	#ab494f	51	#7a7a7aff
+spin	#ab494f	-349	#ab5549ff
+mix	#ab494f	rgb(205, 127, 54)	51	#bc6542ff
+luminance	#ab494f	0.139875272
+contrast	#ab494f	rgb(205, 127, 54)	1.760325136
+readable	#ab494f	rgb(205, 127, 54)	false
+hex8	rgba(105, 1, 78, 0)	#69014e00
+rgb	rgba(105, 1, 78, 0)	rgba(105, 1, 78, 0)
+hsl	rgba(105, 1, 78, 0)	hsla(316, 98%, 21%, 0)
+lighten	rgba(105, 1, 78, 0)	48	#fd61d500
+darken	rgba(105, 1, 78, 0)	48	#00000000
+saturate	rgba(105, 1, 78, 0)	48	#6a004e00
+desaturate	rgba(105, 1, 78, 0)	48	#501a4200
+spin	rgba(105, 1, 78, 0)	-183	#01691700
+mix	rgba(105, 1, 78, 0)	#fc2	48	#b162397a
+luminance	rgba(105, 1, 78, 0)	0.035750243
+contrast	rgba(105, 1, 78, 0)	#fc2	8.112073190
+readable	rgba(105, 1, 78, 0)	#fc2	true
+hex8	rgb(206, 34, 136)	#ce2288ff
+rgb	rgb(206, 34, 136)	rgb(206, 34, 136)
+hsl	rgb(206, 34, 136)	hsl(324, 72%, 47%)
+lighten	rgb(206, 34, 136)	57	#ffffffff
+darken	rgb(206, 34, 136)	57	#000000ff
+saturate	rgb(206, 34, 136)	57	#f0008eff
+desaturate	rgb(206, 34, 136)	57	#8a667bff
+spin	rgb(206, 34, 136)	-165	#22ce93ff
+mix	rgb(206, 34, 136)	hsla(115, 28%, 6%, 0.23)	57	#5f1a418f
+luminance	rgb(206, 34, 136)	0.160434400
+contrast	rgb(206, 34, 136)	hsla(115, 28%, 6%, 0.23)	3.755988963
+readable	rgb(206, 34, 136)	hsla(115, 28%, 6%, 0.23)	false
+hex8	hsla(203, 53%, 33%, 0.9)	#285f81e6
+rgb	hsla(203, 53%, 33%, 0.9)	rgba(40, 95, 129, 0.9)
+hsl	hsla(203, 53%, 33%, 0.9)	hsla(203, 53%, 33%, 0.9)
+lighten	hsla(203, 53%, 33%, 0.9)	66	#fbfdfee6
+darken	hsla(203, 53%, 33%, 0.9)	66	#000000e6
+saturate	hsla(203, 53%, 33%, 0.9)	66	#0068a8e6
+desaturate	hsla(203, 53%, 33%, 0.9)	66	#545454e6
+spin	hsla(203, 53%, 33%, 0.9)	160	#812c28e6
+mix	hsla(203, 53%, 33%, 0.9)	rgb(80, 9, 130)	66	#422682f6
+luminance	hsla(203, 53%, 33%, 0.9)	0.102205133
+contrast	hsla(203, 53%, 33%, 0.9)	rgb(80, 9, 130)	1.788007945
+readable	hsla(203, 53%, 33%, 0.9)	rgb(80, 9, 130)	false
+hex8	#6dbf22	#6dbf22ff
+rgb	#6dbf22	rgb(109, 191, 34)
+hsl	#6dbf22	hsl(91, 70%, 44%)
+lighten	#6dbf22	20	#a1e364ff
+darken	#6dbf22	20	#3c6813ff
+saturate	#6dbf22	20	#6cd50cff
+desaturate	#6dbf22	20	#6ea838ff
+spin	#6dbf22	86	#22bfb8ff
+mix	#6dbf22	#bb47b2	20	#7da73fff
+luminance	#6dbf22	0.406283066
+contrast	#6dbf22	#bb47b2	1.959505381
+readable	#6dbf22	#bb47b2	false
+hex8	#2eac534c	#2eac534c
+rgb	#2eac534c	rgba(46, 172, 83, 0.3)
+hsl	#2eac534c	hsla(138, 58%, 43%, 0.3)
+lighten	#2eac534c	92	#ffffff4c
+darken	#2eac534c	92	#0000004c
+saturate	#2eac534c	92	#00da404c
+desaturate	#2eac534c	92	#6d6d6d4c
+spin	#2eac534c	-292	#2e76ac4c
+mix	#2eac534c	#a6fe9712	92	#9cf79217
+luminance	#2eac534c	0.307104232
+contrast	#2eac534c	#a6fe9712	2.414560536
+readable	#2eac534c	#a6fe9712	false
+hex8	rgb(10%, 50%, 42%)	#1a806bff
+rgb	rgb(10%, 50%, 42%)	rgb(26, 128, 107)
+hsl	rgb(10%, 50%, 42%)	hsl(168, 67%, 30%)
+lighten	rgb(10%, 50%, 42%)	38	#77e4ceff
+darken	rgb(10%, 50%, 42%)	38	#000000ff
+saturate	rgb(10%, 50%, 42%)	38	#00997aff
+desaturate	rgb(10%, 50%, 42%)	38	#37625aff
+spin	rgb(10%, 50%, 42%)	-229	#7e1a7fff
+mix	rgb(10%, 50%, 42%)	#fe91b2fa	38	#718686fd
+luminance	rgb(10%, 50%, 42%)	0.167194919
+contrast	rgb(10%, 50%, 42%)	#fe91b2fa	2.280715471
+readable	rgb(10%, 50%, 42%)	#fe91b2fa	false
+hex8	rgb(11%, 34%, 70%)	#1c57b3ff
+rgb	rgb(11%, 34%, 70%)	rgb(28, 87, 179)
+hsl	rgb(11%, 34%, 70%)	hsl(217, 73%, 41%)
+lighten	rgb(11%, 34%, 70%)	80	#ffffffff
+darken	rgb(11%, 34%, 70%)	80	#000000ff
+saturate	rgb(11%, 34%, 70%)	80	#0051cfff
+desaturate	rgb(11%, 34%, 70%)	80	#676767ff
+spin	rgb(11%, 34%, 70%)	-129	#6db21cff
+mix	rgb(11%, 34%, 70%)	c25b39	80	#a15a51ff
+luminance	rgb(11%, 34%, 70%)	0.103179397
+contrast	rgb(11%, 34%, 70%)	c25b39	1.582909522
+readable	rgb(11%, 34%, 70%)	c25b39	false
+hex8	#b5a2da7b	#b5a2da7b
+rgb	#b5a2da7b	rgba(181, 162, 218, 0.48)
+hsl	#b5a2da7b	hsla(260, 43%, 75%, 0.48)
+lighten	#b5a2da7b	18	#e9e4f47b
+darken	#b5a2da7b	18	#8160c07b
+saturate	#b5a2da7b	18	#b196e67b
+desaturate	#b5a2da7b	18	#b9aece7b
+spin	#b5a2da7b	-49	#a2bdda7b
+mix	#b5a2da7b	#997f8bc6	18	#b09ccc89
+luminance	#b5a2da7b	0.407263736
+contrast	#b5a2da7b	#997f8bc6	1.586887721
+readable	#b5a2da7b	#997f8bc6	false
+hex8	hsl(67, 71%, 37%)	#92a11bff
+rgb	hsl(67, 71%, 37%)	rgb(146, 161, 27)
+hsl	hsl(67, 71%, 37%)	hsl(67, 71%, 37%)
+lighten	hsl(67, 71%, 37%)	87	#ffffffff
+darken	hsl(67, 71%, 37%)	87	#000000ff
+saturate	hsl(67, 71%, 37%)	87	#a7bd00ff
+desaturate	hsl(67, 71%, 37%)	87	#5e5e5eff
+spin	hsl(67, 71%, 37%)	77	#1ba151ff
+mix	hsl(67, 71%, 37%)	rgba(70, 157, 78, 0.6)	87	#509e47a6
+luminance	hsl(67, 71%, 37%)	0.316798624
+contrast	hsl(67, 71%, 37%)	rgba(70, 157, 78, 0.6)	1.184517026
+readable	hsl(67, 71%, 37%)	rgba(70, 157, 78, 0.6)	false
+hex8	rgba(230, 118, 10, 0)	#e6760a00
+rgb	rgba(230, 118, 10, 0)	rgba(230, 118, 10, 0)
+hsl	rgba(230, 118, 10, 0)	hsla(29, 92%, 47%, 0)
+lighten	rgba(230, 118, 10, 0)	18	#f8a45400
+darken	rgba(230, 118, 10, 0)	18	#8e490600
+saturate	rgba(230, 118, 10, 0)	18	#f0760000
+desaturate	rgba(230, 118, 10, 0)	18	#d0762000
+spin	rgba(230, 118, 10, 0)	-84	#e60ad200
+mix	rgba(230, 118, 10, 0)	rgb(36, 238, 206)	18	#c38c2d2e
+luminance	rgba(230, 118, 10, 0)	0.298017756
+contrast	rgba(230, 118, 10, 0)	rgb(36, 238, 206)	2.039561759
+readable	rgba(230, 118, 10, 0)	rgb(36, 238, 206)	false
+hex8	rgb(71, 100, 211)	#4764d3ff
+rgb	rgb(71, 100, 211)	rgb(71, 100, 211)
+hsl	rgb(71, 100, 211)	hsl(228, 61%, 55%)
+lighten	rgb(71, 100, 211)	41	#f0f2fbff
+darken	rgb(71, 100, 211)	41	#0e173bff
+saturate	rgb(71, 100, 211)	41	#1b4affff
+desaturate	rgb(71, 100, 211)	41	#767fa4ff
+spin	rgb(71, 100, 211)	297	#47d3afff
+mix	rgb(71, 100, 211)	#c6313f	41	#7b4f96ff
+luminance	rgb(71, 100, 211)	0.151570846
+contrast	rgb(71, 100, 211)	#c6313f	1.030458705
+readable	rgb(71, 100, 211)	#c6313f	false
+hex8	#6080f980	#6080f980
+rgb	#6080f980	rgba(96, 128, 249, 0.5)
+hsl	#6080f980	hsla(227, 93%, 68%, 0.5)
+lighten	#6080f980	99	#ffffff80
+darken	#6080f980	99	#00000080
+saturate	#6080f980	99	#5a7cff80
+desaturate	#6080f980	99	#acacac80
+spin	#6080f980	-61	#60f9d680
+mix	#6080f980	#b1f087	99	#b0ef88fe
+luminance	#6080f980	0.247646926
+contrast	#6080f980	#b1f087	2.634549557
+readable	#6080f980	#b1f087	false
+hex8	rgb(63%, 94%, 96%)	#a1f0f5ff
+rgb	rgb(63%, 94%, 96%)	rgb(161, 240, 245)
+hsl	rgb(63%, 94%, 96%)	hsl(184, 80%, 80%)
+lighten	rgb(63%, 94%, 96%)	54	#ffffffff
+darken	rgb(63%, 94%, 96%)	54	#0d6f75ff
+saturate	rgb(63%, 94%, 96%)	54	#96f9ffff
+desaturate	rgb(63%, 94%, 96%)	54	#bdd7d9ff
+spin	rgb(63%, 94%, 96%)	321	#a1f5c3ff
+mix	rgb(63%, 94%, 96%)	#28a	54	#5cb8cdff
+luminance	rgb(63%, 94%, 96%)	0.764898157
+contrast	rgb(63%, 94%, 96%)	#28a	3.152327784
+readable	rgb(63%, 94%, 96%)	#28a	false
+hex8	#6fa9e1f7	#6fa9e1f7
+rgb	#6fa9e1f7	rgba(111, 169, 225, 0.97)
+hsl	#6fa9e1f7	hsla(209, 66%, 66%, 0.97)
+lighten	#6fa9e1f7	25	#d9e8f7f7
+darken	#6fa9e1f7	25	#2469adf7
+saturate	#6fa9e1f7	25	#59a9f7f7
+desaturate	#6fa9e1f7	25	#85a9cbf7
+spin	#6fa9e1f7	242	#a5e16ff7
+mix	#6fa9e1f7	rgb(143, 33, 232)	25	#7787e3f9
+luminance	#6fa9e1f7	0.371916843
+contrast	#6fa9e1f7	rgb(143, 33, 232)	2.376521272
+readable	#6fa9e1f7	rgb(143, 33, 232)	false
+hex8	#bea	#bbeeaaff
+rgb	#bea	rgb(187, 238, 170)
+hsl	#bea	hsl(105, 67%, 80%)
+lighten	#bea	41	#ffffffff
+darken	#bea	41	#42a621ff
+saturate	#bea	41	#b3ff99ff
+desaturate	#bea	41	#c5d9bfff
+spin	#bea	339	#d3eeaaff
+mix	#bea	hsl(90, 85%, 1%)	41	#708e64ff
+luminance	#bea	0.746161464
+contrast	#bea	hsl(90, 85%, 1%)	15.526071739
+readable	#bea	hsl(90, 85%, 1%)	true
+hex8	#7711e135	#7711e135
+rgb	#7711e135	rgba(119, 17, 225, 0.21)
+hsl	#7711e135	hsla(269, 86%, 47%, 0.21)
+lighten	#7711e135	26	#ba81f535
+darken	#7711e135	26	#36086635
+saturate	#7711e135	26	#7700f235
+desaturate	#7711e135	26	#7830c235
+spin	#7711e135	340	#3211e135
+mix	#7711e135	68890D	26	#7330aa6a
+luminance	#7711e135	0.097590788
+contrast	#7711e135	68890D	1.752374621
+readable	#7711e135	68890D	false
+hex8	rgb(25%, 2%, 95%)	#4005f2ff
+rgb	rgb(25%, 2%, 95%)	rgb(64, 5, 242)
+hsl	rgb(25%, 2%, 95%)	hsl(255, 96%, 49%)
+lighten	rgb(25%, 2%, 95%)	11	#6635fbff
+darken	rgb(25%, 2%, 95%)	11	#3104bbff
+saturate	rgb(25%, 2%, 95%)	11	#3d00f7ff
+desaturate	rgb(25%, 2%, 95%)	11	#4713e5ff
+spin	rgb(25%, 2%, 95%)	357	#3405f2ff
+mix	rgb(25%, 2%, 95%)	#a72	11	#4c12dbff
+luminance	rgb(25%, 2%, 95%)	0.076093348
+contrast	rgb(25%, 2%, 95%)	#a72	2.129786604
+readable	rgb(25%, 2%, 95%)	#a72	false
+hex8	#f31	#ff3311ff
+rgb	#f31	rgb(255, 51, 17)
+hsl	#f31	hsl(9, 100%, 53%)
+lighten	#f31	0	#ff3311ff
+darken	#f31	0	#ff3311ff
+saturate	#f31	0	#ff3311ff
+desaturate	#f31	0	#ff3311ff
+spin	#f31	-313	#ffed11ff
+mix	#f31	rgba(190, 245, 20, 1)	0	#ff3311ff
+luminance	#f31	0.236681238
+contrast	#f31	rgba(190, 245, 20, 1)	2.835988587
+readable	#f31	rgba(190, 245, 20, 1)	false
+hex8	rgb(44, 254, 88)	#2cfe58ff
+rgb	rgb(44, 254, 88)	rgb(44, 254, 88)
+hsl	rgb(44, 254, 88)	hsl(133, 99%, 58%)
+lighten	rgb(44, 254, 88)	88	#ffffffff
+darken	rgb(44, 254, 88)	88	#000000ff
+saturate	rgb(44, 254, 88)	88	#2bff57ff
+desaturate	rgb(44, 254, 88)	88	#89a18eff
+spin	rgb(44, 254, 88)	212	#fe2c62ff
+mix	rgb(44, 254, 88)	hsl(339, 76%, 0%)	88	#051e0bff
+luminance	rgb(44, 254, 88)	0.721236753
+contrast	rgb(44, 254, 88)	hsl(339, 76%, 0%)	15.424735054
+readable	rgb(44, 254, 88)	hsl(339, 76%, 0%)	true
+hex8	rgb(170, 110, 177)	#aa6eb1ff
+rgb	rgb(170, 110, 177)	rgb(170, 110, 177)
+hsl	rgb(170, 110, 177)	hsl(294, 30%, 56%)
+lighten	rgb(170, 110, 177)	25	#dbc1deff
+darken	rgb(170, 110, 177)	25	#633868ff
+saturate	rgb(170, 110, 177)	25	#c052cdff
+desaturate	rgb(170, 110, 177)	25	#948a95ff
+spin	rgb(170, 110, 177)	-83	#6e8fb1ff
+mix	rgb(170, 110, 177)	rgb(108, 225, 25)	25	#9b8b8bff
+luminance	rgb(170, 110, 177)	0.228722331
+contrast	rgb(170, 110, 177)	rgb(108, 225, 25)	2.228338127
+readable	rgb(170, 110, 177)	rgb(108, 225, 25)	false
+hex8	#fa7	#ffaa77ff
+rgb	#fa7	rgb(255, 170, 119)
+hsl	#fa7	hsl(22, 100%, 73%)
+lighten	#fa7	83	#ffffffff
+darken	#fa7	83	#000000ff
+saturate	#fa7	83	#ffaa77ff
+desaturate	#fa7	83	#c7b8afff
+spin	#fa7	-104	#ce77ffff
+mix	#fa7	rgba(3, 2, 103, 0)	83	#2e1f6a2b
+luminance	#fa7	0.513413603
+contrast	#fa7	rgba(3, 2, 103, 0)	9.324877827
+readable	#fa7	rgba(3, 2, 103, 0)	true
+hex8	rgba(132, 94, 138, 0)	#845e8a00
+rgb	rgba(132, 94, 138, 0)	rgba(132, 94, 138, 0)
+hsl	rgba(132, 94, 138, 0)	hsla(292, 19%, 45%, 0)
+lighten	rgba(132, 94, 138, 0)	70	#ffffff00
+darken	rgba(132, 94, 138, 0)	70	#00000000
+saturate	rgba(132, 94, 138, 0)	70	#bf0ddb00
+desaturate	rgba(132, 94, 138, 0)	70	#74747400
+spin	rgba(132, 94, 138, 0)	74	#8a625e00
+mix	rgba(132, 94, 138, 0)	rgba(93, 22, 175, 0)	70	#692ca400
+luminance	rgba(132, 94, 138, 0)	0.147459188
+contrast	rgba(132, 94, 138, 0)	rgba(93, 22, 175, 0)	1.795716905
+readable	rgba(132, 94, 138, 0)	rgba(93, 22, 175, 0)	false
+hex8	hsla(7, 34%, 48%, 0.03)	#a45a5108
+rgb	hsla(7, 34%, 48%, 0.03)	rgba(164, 90, 81, 0.03)
+hsl	hsla(7, 34%, 48%, 0.03)	hsla(7, 34%, 48%, 0.03)
+lighten	hsla(7, 34%, 48%, 0.03)	40	#ebd8d608
+darken	hsla(7, 34%, 48%, 0.03)	40	#1b0f0d08
+saturate	hsla(7, 34%, 48%, 0.03)	40	#d5352008
+desaturate	hsla(7, 34%, 48%, 0.03)	40	#7a7a7a08
+spin	hsla(7, 34%, 48%, 0.03)	52	#a4a35108
+mix	hsla(7, 34%, 48%, 0.03)	rgb(9%, 16%, 82%)	40	#6c46846b
+luminance	hsla(7, 34%, 48%, 0.03)	0.157989230
+contrast	hsla(7, 34%, 48%, 0.03)	rgb(9%, 16%, 82%)	1.829042097
+readable	hsla(7, 34%, 48%, 0.03)	rgb(9%, 16%, 82%)	false
+hex8	rgb(6%, 4%, 59%)	#0f0a96ff
+rgb	rgb(6%, 4%, 59%)	rgb(15, 10, 150)
+hsl	rgb(6%, 4%, 59%)	hsl(242, 87%, 32%)
+lighten	rgb(6%, 4%, 59%)	96	#ffffffff
+darken	rgb(6%, 4%, 59%)	96	#000000ff
+saturate	rgb(6%, 4%, 59%)	96	#0600a1ff
+desaturate	rgb(6%, 4%, 59%)	96	#505050ff
+spin	rgb(6%, 4%, 59%)	360	#0f0a96ff
+mix	rgb(6%, 4%, 59%)	rgb(56, 173, 44)	96	#36a630ff
+luminance	rgb(6%, 4%, 59%)	0.025206489
+contrast	rgb(6%, 4%, 59%)	rgb(56, 173, 44)	4.774819654
+readable	rgb(6%, 4%, 59%)	rgb(56, 173, 44)	true
+hex8	rgb(96%, 63%, 0%)	#f5a100ff
+rgb	rgb(96%, 63%, 0%)	rgb(245, 161, 0)
+hsl	rgb(96%, 63%, 0%)	hsl(39, 100%, 48%)
+lighten	rgb(96%, 63%, 0%)	87	#ffffffff
+darken	rgb(96%, 63%, 0%)	87	#000000ff
+saturate	rgb(96%, 63%, 0%)	87	#f5a100ff
+desaturate	rgb(96%, 63%, 0%)	87	#8a7f6aff
+spin	rgb(96%, 63%, 0%)	76	#13f500ff
+mix	rgb(96%, 63%, 0%)	hsla(2, 30%, 60%, 0.4)	87	#c0816a7a
+luminance	rgb(96%, 63%, 0%)	0.449022156
+contrast	rgb(96%, 63%, 0%)	hsla(2, 30%, 60%, 0.4)	1.609188733
+readable	rgb(96%, 63%, 0%)	hsla(2, 30%, 60%, 0.4)	false
+hex8	hsl(229, 41%, 14%)	#151a32ff
+rgb	hsl(229, 41%, 14%)	rgb(21, 26, 50)
+hsl	hsl(229, 41%, 14%)	hsl(229, 41%, 14%)
+lighten	hsl(229, 41%, 14%)	94	#ffffffff
+darken	hsl(229, 41%, 14%)	94	#000000ff
+saturate	hsl(229, 41%, 14%)	94	#000d47ff
+desaturate	hsl(229, 41%, 14%)	94	#242424ff
+spin	hsl(229, 41%, 14%)	-203	#322215ff
+mix	hsl(229, 41%, 14%)	#2a1e0b	94	#291e0dff
+luminance	hsl(229, 41%, 14%)	0.011285077
+contrast	hsl(229, 41%, 14%)	#2a1e0b	1.051634316
+readable	hsl(229, 41%, 14%)	#2a1e0b	false
+hex8	hsla(99, 32%, 96%, 0.29)	#f4f8f24a
+rgb	hsla(99, 32%, 96%, 0.29)	rgba(244, 248, 242, 0.29)
+hsl	hsla(99, 32%, 96%, 0.29)	hsla(99, 32%, 96%, 0.29)
+lighten	hsla(99, 32%, 96%, 0.29)	92	#ffffff4a
+darken	hsla(99, 32%, 96%, 0.29)	92	#090d074a
+saturate	hsla(99, 32%, 96%, 0.29)	92	#f2ffeb4a
+desaturate	hsla(99, 32%, 96%, 0.29)	92	#f5f5f54a
+spin	hsla(99, 32%, 96%, 0.29)	180	#f6f2f84a
+mix	hsla(99, 32%, 96%, 0.29)	rgba(56, 64, 107, 0.5)	92	#474f767b
+luminance	hsla(99, 32%, 96%, 0.29)	0.927787048
+contrast	hsla(99, 32%, 96%, 0.29)	rgba(56, 64, 107, 0.5)	9.251390944
+readable	hsla(99, 32%, 96%, 0.29)	rgba(56, 64, 107, 0.5)	true
+hex8	hsla(194, 16%, 51%, 0.02)	#6e8d9605
+rgb	hsla(194, 16%, 51%, 0.02)	rgba(110, 141, 150, 0.02)
+hsl	hsla(194, 16%, 51%, 0.02)	hsla(194, 16%, 51%, 0.02)
+lighten	hsla(194, 16%, 51%, 0.02)	24	#b5c5c905
+darken	hsla(194, 16%, 51%, 0.02)	24	#3a4b5005
+saturate	hsla(194, 16%, 51%, 0.02)	24	#509db405
+desaturate	hsla(194, 16%, 51%, 0.02)	24	#82828205
+spin	hsla(194, 16%, 51%, 0.02)	-171	#967d6e05
+mix	hsla(194, 16%, 51%, 0.02)	hsl(50, 86%, 42%)	24	#83947641
+luminance	hsla(194, 16%, 51%, 0.02)	0.245667579
+contrast	hsla(194, 16%, 51%, 0.02)	hsl(50, 86%, 42%)	1.540667318
+readable	hsla(194, 16%, 51%, 0.02)	hsl(50, 86%, 42%)	false
+hex8	rgb(56%, 17%, 94%)	#8f2bf0ff
+rgb	rgb(56%, 17%, 94%)	rgb(143, 43, 240)
+hsl	rgb(56%, 17%, 94%)	hsl(270, 87%, 55%)
+lighten	rgb(56%, 17%, 94%)	87	#ffffffff
+darken	rgb(56%, 17%, 94%)	87	#000000ff
+saturate	rgb(56%, 17%, 94%)	87	#8f1cffff
+desaturate	rgb(56%, 17%, 94%)	87	#8d8d8dff
+spin	rgb(56%, 17%, 94%)	-359	#922bf0ff
+mix	rgb(56%, 17%, 94%)	65394F	87	#6a3764ff
+luminance	rgb(56%, 17%, 94%)	0.138586641
+contrast	rgb(56%, 17%, 94%)	65394F	1.675213424
+readable	rgb(56%, 17%, 94%)	65394F	false
+hex8	hsl(131, 3%, 47%)	#747b76ff
+rgb	hsl(131, 3%, 47%)	rgb(116, 123, 118)
+hsl	hsl(131, 3%, 47%)	hsl(131, 3%, 47%)
+lighten	hsl(131, 3%, 47%)	65	#ffffffff
+darken	hsl(131, 3%, 47%)	65	#000000ff
+saturate	hsl(131, 3%, 47%)	65	#26c944ff
+desaturate	hsl(131, 3%, 47%)	65	#787878ff
+spin	hsl(131, 3%, 47%)	-43	#787b74ff
+mix	hsl(131, 3%, 47%)	rgb(33, 74, 143)	65	#3e5b86ff
+luminance	hsl(131, 3%, 47%)	0.191869274
+contrast	hsl(131, 3%, 47%)	rgb(33, 74, 143)	1.981875178
+readable	hsl(131, 3%, 47%)	rgb(33, 74, 143)	false
+hex8	rgba(254, 14, 140, 1)	#fe0e8cff
+rgb	rgba(254, 14, 140, 1)	rgb(254, 14, 140)
+hsl	rgba(254, 14, 140, 1)	hsl(329, 99%, 53%)
+lighten	rgba(254, 14, 140, 1)	9	#fe3ca2ff
+darken	rgba(254, 14, 140, 1)	9	#dd0175ff
+saturate	rgba(254, 14, 140, 1)	9	#ff0d8cff
+desaturate	rgba(254, 14, 140, 1)	9	#f3198bff
+spin	rgba(254, 14, 140, 1)	184	#0efe90ff
+mix	rgba(254, 14, 140, 1)	rgb(240, 221, 129)	9	#fd218bff
+luminance	rgba(254, 14, 140, 1)	0.232783563
+contrast	rgba(254, 14, 140, 1)	rgb(240, 221, 129)	2.716676536
+readable	rgba(254, 14, 140, 1)	rgb(240, 221, 129)	false
+hex8	rgb(109, 61, 196)	#6d3dc4ff
+rgb	rgb(109, 61, 196)	rgb(109, 61, 196)
+hsl	rgb(109, 61, 196)	hsl(261, 53%, 50%)
+lighten	rgb(109, 61, 196)	90	#ffffffff
+darken	rgb(109, 61, 196)	90	#000000ff
+saturate	rgb(109, 61, 196)	90	#5c02ffff
+desaturate	rgb(109, 61, 196)	90	#808080ff
+spin	rgb(109, 61, 196)	106	#c44e3dff
+mix	rgb(109, 61, 196)	#e73	90	#e17142ff
+luminance	rgb(109, 61, 196)	0.105742193
+contrast	rgb(109, 61, 196)	#e73	2.350667484
+readable	rgb(109, 61, 196)	#e73	false
+hex8	#4be	#44bbeeff
+rgb	#4be	rgb(68, 187, 238)
+hsl	#4be	hsl(198, 83%, 60%)
+lighten	#4be	73	#ffffffff
+darken	#4be	73	#000000ff
+saturate	#4be	73	#33c2ffff
+desaturate	#4be	73	#8e9da4ff
+spin	#4be	356	#44c6eeff
+mix	#4be	rgba(153, 151, 36, 0)	73	#82a15b45
+luminance	#4be	0.429426379
+contrast	#4be	rgba(153, 151, 36, 0)	1.408714580
+readable	#4be	rgba(153, 151, 36, 0)	false
+hex8	hsla(354, 5%, 25%, 0.18)	#433d3d2e
+rgb	hsla(354, 5%, 25%, 0.18)	rgba(67, 61, 61, 0.18)
+hsl	hsla(354, 5%, 25%, 0.18)	hsla(354, 5%, 25%, 0.18)
+lighten	hsla(354, 5%, 25%, 0.18)	44	#b4acad2e
+darken	hsla(354, 5%, 25%, 0.18)	44	#0000002e
+saturate	hsla(354, 5%, 25%, 0.18)	44	#5f21272e
+desaturate	hsla(354, 5%, 25%, 0.18)	44	#4040402e
+spin	hsla(354, 5%, 25%, 0.18)	8	#433d3d2e
+mix	hsla(354, 5%, 25%, 0.18)	#08c5468c	44	#29794157
+luminance	hsla(354, 5%, 25%, 0.18)	0.048677006
+contrast	hsla(354, 5%, 25%, 0.18)	#08c5468c	4.603537025
+readable	hsla(354, 5%, 25%, 0.18)	#08c5468c	true
+hex8	d9731A	#d9731aff
+rgb	d9731A	rgb(217, 115, 26)
+hsl	d9731A	hsl(28, 79%, 48%)
+lighten	d9731A	59	#ffffffff
+darken	d9731A	59	#000000ff
+saturate	d9731A	59	#f37100ff
+desaturate	d9731A	59	#917862ff
+spin	d9731A	297	#d91a8aff
+mix	d9731A	#bd1	59	#c7b215ff
+luminance	d9731A	0.270877625
+contrast	d9731A	#bd1	2.097939027
+readable	d9731A	#bd1	false
+hex8	#dd3bb9	#dd3bb9ff
+rgb	#dd3bb9	rgb(221, 59, 185)
+hsl	#dd3bb9	hsl(313, 70%, 55%)
+lighten	#dd3bb9	99	#ffffffff
+darken	#dd3bb9	99	#000000ff
+saturate	#dd3bb9	99	#ff19ccff
+desaturate	#dd3bb9	99	#8c8c8cff
+spin	#dd3bb9	-230	#9edd3bff
+mix	#dd3bb9	rgb(81%, 39%, 28%)	99	#cf6348ff
+luminance	#dd3bb9	0.220028639
+contrast	#dd3bb9	rgb(81%, 39%, 28%)	1.023743657
+readable	#dd3bb9	rgb(81%, 39%, 28%)	false
+hex8	#cd5ffd29	#cd5ffd29
+rgb	#cd5ffd29	rgba(205, 95, 253, 0.16)
+hsl	#cd5ffd29	hsla(282, 98%, 68%, 0.16)
+lighten	#cd5ffd29	2	#d069fd29
+darken	#cd5ffd29	2	#ca55fd29
+saturate	#cd5ffd29	2	#ce5dff29
+desaturate	#cd5ffd29	2	#cc61fb29
+spin	#cd5ffd29	1	#d05ffd29
+mix	#cd5ffd29	hsl(282, 66%, 89%)	2	#ce61fd2d
+luminance	#cd5ffd29	0.282554027
+contrast	#cd5ffd29	hsl(282, 66%, 89%)	2.231118605
+readable	#cd5ffd29	hsl(282, 66%, 89%)	false
+hex8	hsla(164, 94%, 56%, 0.93)	#25f8c0ed
+rgb	hsla(164, 94%, 56%, 0.93)	rgba(37, 248, 192, 0.93)
+hsl	hsla(164, 94%, 56%, 0.93)	hsla(164, 94%, 56%, 0.93)
+lighten	hsla(164, 94%, 56%, 0.93)	33	#c9fdefed
+darken	hsla(164, 94%, 56%, 0.93)	33	#047254ed
+saturate	hsla(164, 94%, 56%, 0.93)	33	#1fffc3ed
+desaturate	hsla(164, 94%, 56%, 0.93)	33	#4ad3afed
+spin	hsla(164, 94%, 56%, 0.93)	121	#c425f8ed
+mix	hsla(164, 94%, 56%, 0.93)	hsla(161, 44%, 4%, 0.03)	33	#1bab85a1
+luminance	hsla(164, 94%, 56%, 0.93)	0.713338892
+contrast	hsla(164, 94%, 56%, 0.93)	hsla(161, 44%, 4%, 0.03)	14.117839804
+readable	hsla(164, 94%, 56%, 0.93)	hsla(161, 44%, 4%, 0.03)	true
+hex8	#68de92b4	#68de92b4
+rgb	#68de92b4	rgba(104, 222, 146, 0.71)
+hsl	#68de92b4	hsla(141, 64%, 64%, 0.71)
+lighten	#68de92b4	4	#79e29eb4
+darken	#68de92b4	4	#57da86b4
+saturate	#68de92b4	4	#64e291b4
+desaturate	#68de92b4	4	#6cda93b4
+spin	#68de92b4	250	#dea668b4
+mix	#68de92b4	rgb(73%, 5%, 2%)	4	#6bd68cb7
+luminance	#68de92b4	0.572609311
+contrast	#68de92b4	rgb(73%, 5%, 2%)	3.956112192
+readable	#68de92b4	rgb(73%, 5%, 2%)	false
+hex8	rgb(85%, 86%, 69%)	#d9dbb0ff
+rgb	rgb(85%, 86%, 69%)	rgb(217, 219, 176)
+hsl	rgb(85%, 86%, 69%)	hsl(64, 38%, 78%)
+lighten	rgb(85%, 86%, 69%)	7	#e5e6c9ff
+darken	rgb(85%, 86%, 69%)	7	#cdd097ff
+saturate	rgb(85%, 86%, 69%)	7	#dcdfacff
+desaturate	rgb(85%, 86%, 69%)	7	#d5d7b4ff
+spin	rgb(85%, 86%, 69%)	191	#bab0dbff
+mix	rgb(85%, 86%, 69%)	hsla(3, 94%, 92%, 0.31)	7	#dcdbb3f3
+luminance	rgb(85%, 86%, 69%)	0.685493387
+contrast	rgb(85%, 86%, 69%)	hsla(3, 94%, 92%, 0.31)	1.095901568
+readable	rgb(85%, 86%, 69%)	hsla(3, 94%, 92%, 0.31)	false
+hex8	hsl(332, 86%, 98%)	#fef6faff
+rgb	hsl(332, 86%, 98%)	rgb(254, 246, 250)
+hsl	hsl(332, 86%, 98%)	hsl(332, 86%, 98%)
+lighten	hsl(332, 86%, 98%)	91	#ffffffff
+darken	hsl(332, 86%, 98%)	91	#210211ff
+saturate	hsl(332, 86%, 98%)	91	#fff5faff
+desaturate	hsl(332, 86%, 98%)	91	#fafafaff
+spin	hsl(332, 86%, 98%)	-45	#fcf6feff
+mix	hsl(332, 86%, 98%)	#e79df0	91	#e9a5f1ff
+luminance	hsl(332, 86%, 98%)	0.938844926
+contrast	hsl(332, 86%, 98%)	#e79df0	1.887319823
+readable	hsl(332, 86%, 98%)	#e79df0	false
+hex8	hsl(222, 26%, 18%)	#22293aff
+rgb	hsl(222, 26%, 18%)	rgb(34, 41, 58)
+hsl	hsl(222, 26%, 18%)	hsl(222, 26%, 18%)
+lighten	hsl(222, 26%, 18%)	9	#333e57ff
+darken	hsl(222, 26%, 18%)	9	#11151dff
+saturate	hsl(222, 26%, 18%)	9	#1e273eff
+desaturate	hsl(222, 26%, 18%)	9	#262b36ff
+spin	hsl(222, 26%, 18%)	-314	#2d223aff
+mix	hsl(222, 26%, 18%)	rgb(85%, 31%, 15%)	9	#322c38ff
+luminance	hsl(222, 26%, 18%)	0.022314458
+contrast	hsl(222, 26%, 18%)	rgb(85%, 31%, 15%)	3.524000501
+readable	hsl(222, 26%, 18%)	rgb(85%, 31%, 15%)	false
+hex8	hsl(41, 100%, 86%)	#ffe8b8ff
+rgb	hsl(41, 100%, 86%)	rgb(255, 232, 184)
+hsl	hsl(41, 100%, 86%)	hsl(41, 100%, 86%)
+lighten	hsl(41, 100%, 86%)	72	#ffffffff
+darken	hsl(41, 100%, 86%)	72	#473100ff
+saturate	hsl(41, 100%, 86%)	72	#ffe8b8ff
+desaturate	hsl(41, 100%, 86%)	72	#e5dfd1ff
+spin	hsl(41, 100%, 86%)	221	#d2b8ffff
+mix	hsl(41, 100%, 86%)	#283	72	#60a358ff
+luminance	hsl(41, 100%, 86%)	0.824339172
+contrast	hsl(41, 100%, 86%)	#283	3.770748552
+readable	hsl(41, 100%, 86%)	#283	false
+hex8	hsla(32, 15%, 37%, 0.05)	#6d5f500d
+rgb	hsla(32, 15%, 37%, 0.05)	rgba(109, 95, 80, 0.05)
+hsl	hsla(32, 15%, 37%, 0.05)	hsla(32, 15%, 37%, 0.05)
+lighten	hsla(32, 15%, 37%, 0.05)	59	#f6f5f30d
+darken	hsla(32, 15%, 37%, 0.05)	59	#0000000d
+saturate	hsla(32, 15%, 37%, 0.05)	59	#a463190d
+desaturate	hsla(32, 15%, 37%, 0.05)	59	#5e5e5e0d
+spin	hsla(32, 15%, 37%, 0.05)	101	#506d560d
+mix	hsla(32, 15%, 37%, 0.05)	#e6e	59	#b963ad9c
+luminance	hsla(32, 15%, 37%, 0.05)	0.120148150
+contrast	hsla(32, 15%, 37%, 0.05)	#e6e	2.283476592
+readable	hsla(32, 15%, 37%, 0.05)	#e6e	false
+hex8	a0d658	#a0d658ff
+rgb	a0d658	rgb(160, 214, 88)
+hsl	a0d658	hsl(86, 61%, 59%)
+lighten	a0d658	83	#ffffffff
+darken	a0d658	83	#000000ff
+saturate	a0d658	83	#a6ff2fff
+desaturate	a0d658	83	#979797ff
+spin	a0d658	-119	#d6589eff
+mix	a0d658	rgb(89, 15, 189)	83	#6531acff
+luminance	a0d658	0.562712983
+contrast	a0d658	rgb(89, 15, 189)	5.500305247
+readable	a0d658	rgb(89, 15, 189)	true
+hex8	rgb(11, 188, 83)	#0bbc53ff
+rgb	rgb(11, 188, 83)	rgb(11, 188, 83)
+hsl	rgb(11, 188, 83)	hsl(144, 89%, 39%)
+lighten	rgb(11, 188, 83)	48	#c0fbd8ff
+darken	rgb(11, 188, 83)	48	#000000ff
+saturate	rgb(11, 188, 83)	48	#00c751ff
+desaturate	rgb(11, 188, 83)	48	#3b8c5cff
+spin	rgb(11, 188, 83)	58	#0b7abcff
+mix	rgb(11, 188, 83)	rgb(63, 123, 53)	48	#249d45ff
+luminance	rgb(11, 188, 83)	0.366621202
+contrast	rgb(11, 188, 83)	rgb(63, 123, 53)	2.034310942
+readable	rgb(11, 188, 83)	rgb(63, 123, 53)	false
+hex8	#c87	#cc8877ff
+rgb	#c87	rgb(204, 136, 119)
+hsl	#c87	hsl(12, 45%, 63%)
+lighten	#c87	14	#dfb5abff
+darken	#c87	14	#b75b45ff
+saturate	#c87	14	#d9806aff
+desaturate	#c87	14	#bf9084ff
+spin	#c87	253	#9a77ccff
+mix	#c87	9513D4	14	#c47884ff
+luminance	#c87	0.317775976
+contrast	#c87	9513D4	2.214347792
+readable	#c87	9513D4	false
+hex8	rgba(100, 78, 195, 0.5)	#644ec380
+rgb	rgba(100, 78, 195, 0.5)	rgba(100, 78, 195, 0.5)
+hsl	rgba(100, 78, 195, 0.5)	hsla(251, 49%, 54%, 0.5)
+lighten	rgba(100, 78, 195, 0.5)	46	#fdfdfe80
+darken	rgba(100, 78, 195, 0.5)	46	#0d0a1d80
+saturate	rgba(100, 78, 195, 0.5)	46	#4217fa80
+desaturate	rgba(100, 78, 195, 0.5)	46	#86848c80
+spin	rgba(100, 78, 195, 0.5)	-281	#c34e8880
+mix	rgba(100, 78, 195, 0.5)	fe8a53	46	#ab6a8fba
+luminance	rgba(100, 78, 195, 0.5)	0.120982342
+contrast	rgba(100, 78, 195, 0.5)	fe8a53	2.624383386
+readable	rgba(100, 78, 195, 0.5)	fe8a53	false
+hex8	4be76E	#4be76eff
+rgb	4be76E	rgb(75, 231, 110)
+hsl	4be76E	hsl(133, 76%, 60%)
+lighten	4be76E	83	#ffffffff
+darken	4be76E	83	#000000ff
+saturate	4be76E	83	#33ff61ff
+desaturate	4be76E	83	#999999ff
+spin	4be76E	-311	#4be1e7ff
+mix	4be76E	hsla(95, 100%, 93%, 0.87)	83	#cffbc8e3
+luminance	4be76E	0.597734725
+contrast	4be76E	hsla(95, 100%, 93%, 0.87)	1.530362576
+readable	4be76E	hsla(95, 100%, 93%, 0.87)	false
+hex8	rgb(251, 241, 103)	#fbf167ff
+rgb	rgb(251, 241, 103)	rgb(251, 241, 103)
+hsl	rgb(251, 241, 103)	hsl(56, 95%, 69%)
+lighten	rgb(251, 241, 103)	48	#ffffffff
+darken	rgb(251, 241, 103)	48	#6a6303ff
+saturate	rgb(251, 241, 103)	48	#fff463ff
+desaturate	rgb(251, 241, 103)	48	#d6d18cff
+spin	rgb(251, 241, 103)	231	#db67fbff
+mix	rgb(251, 241, 103)	#b1ea72	48	#d7ee6cff
+luminance	rgb(251, 241, 103)	0.843990961
+contrast	rgb(251, 241, 103)	#b1ea72	1.201477155
+readable	rgb(251, 241, 103)	#b1ea72	false
+hex8	rgb(9%, 35%, 31%)	#17594fff
+rgb	rgb(9%, 35%, 31%)	rgb(23, 89, 79)
+hsl	rgb(9%, 35%, 31%)	hsl(171, 59%, 22%)
+lighten	rgb(9%, 35%, 31%)	28	#34cbb4ff
+darken	rgb(9%, 35%, 31%)	28	#000000ff
+saturate	rgb(9%, 35%, 31%)	28	#07695aff
+desaturate	rgb(9%, 35%, 31%)	28	#274a44ff
+spin	rgb(9%, 35%, 31%)	-160	#592317ff
+mix	rgb(9%, 35%, 31%)	rgb(40%, 81%, 79%)	28	#2d7a71ff
+luminance	rgb(9%, 35%, 31%)	0.078914286
+contrast	rgb(9%, 35%, 31%)	rgb(40%, 81%, 79%)	4.395748194
+readable	rgb(9%, 35%, 31%)	rgb(40%, 81%, 79%)	false
+hex8	rgba(115, 48, 125, 0.5)	#73307d80
+rgb	rgba(115, 48, 125, 0.5)	rgba(115, 48, 125, 0.5)
+hsl	rgba(115, 48, 125, 0.5)	hsla(292, 45%, 34%, 0.5)
+lighten	rgba(115, 48, 125, 0.5)	88	#ffffff80
+darken	rgba(115, 48, 125, 0.5)	88	#00000080
+saturate	rgba(115, 48, 125, 0.5)	88	#9700ad80
+desaturate	rgba(115, 48, 125, 0.5)	88	#56565680
+spin	rgba(115, 48, 125, 0.5)	285	#304d7d80
+mix	rgba(115, 48, 125, 0.5)	rgb(97%, 80%, 31%)	88	#e7b955f0
+luminance	rgba(115, 48, 125, 0.5)	0.072394111
+contrast	rgba(115, 48, 125, 0.5)	rgb(97%, 80%, 31%)	5.598668177
+readable	rgba(115, 48, 125, 0.5)	rgb(97%, 80%, 31%)	true
+hex8	d21dD0	#d21dd0ff
+rgb	d21dD0	rgb(210, 29, 208)
+hsl	d21dD0	hsl(301, 76%, 47%)
+lighten	d21dD0	3	#df1fddff
+darken	d21dD0	3	#c51bc3ff
+saturate	d21dD0	3	#d619d3ff
+desaturate	d21dD0	3	#ce21ccff
+spin	d21dD0	332	#801dd2ff
+mix	d21dD0	hsla(59, 24%, 47%, 0.65)	3	#d021ccfc
+luminance	d21dD0	0.191344342
+contrast	d21dD0	hsla(59, 24%, 47%, 0.65)	1.380794798
+readable	d21dD0	hsla(59, 24%, 47%, 0.65)	false
+hex8	c66d90	#c66d90ff
+rgb	c66d90	rgb(198, 109, 144)
+hsl	c66d90	hsl(336, 44%, 60%)
+lighten	c66d90	48	#ffffffff
+darken	c66d90	48	#2d111cff
+saturate	c66d90	48	#f73c86ff
+desaturate	c66d90	48	#999999ff
+spin	c66d90	-67	#996dc6ff
+mix	c66d90	#77d	48	#a072b5ff
+luminance	c66d90	0.249566616
+contrast	c66d90	#77d	1.095866585
+readable	c66d90	#77d	false
+hex8	rgb(69, 216, 66)	#45d842ff
+rgb	rgb(69, 216, 66)	rgb(69, 216, 66)
+hsl	rgb(69, 216, 66)	hsl(119, 66%, 55%)
+lighten	rgb(69, 216, 66)	30	#c2f2c1ff
+darken	rgb(69, 216, 66)	30	#186b16ff
+saturate	rgb(69, 216, 66)	30	#24fa20ff
+desaturate	rgb(69, 216, 66)	30	#66b664ff
+spin	rgb(69, 216, 66)	-140	#d84277ff
+mix	rgb(69, 216, 66)	#81641962	30	#57b536d0
+luminance	rgb(69, 216, 66)	0.507702901
+contrast	rgb(69, 216, 66)	#81641962	2.958376007
+readable	rgb(69, 216, 66)	#81641962	false
+hex8	hsl(109, 11%, 75%)	#bbc6b8ff
+rgb	hsl(109, 11%, 75%)	rgb(187, 198, 184)
+hsl	hsl(109, 11%, 75%)	hsl(109, 11%, 75%)
+lighten	hsl(109, 11%, 75%)	48	#ffffffff
+darken	hsl(109, 11%, 75%)	48	#404c3dff
+saturate	hsl(109, 11%, 75%)	48	#a7e59aff
+desaturate	hsl(109, 11%, 75%)	48	#bfbfbfff
+spin	hsl(109, 11%, 75%)	-218	#bbb8c6ff
+mix	hsl(109, 11%, 75%)	rgba(13, 135, 245, 0.5)	48	#67a8d5c2
+luminance	hsl(109, 11%, 75%)	0.544136541
+contrast	hsl(109, 11%, 75%)	rgba(13, 135, 245, 0.5)	2.048316996
+readable	hsl(109, 11%, 75%)	rgba(13, 135, 245, 0.5)	false
+hex8	#8951a9	#8951a9ff
+rgb	#8951a9	rgb(137, 81, 169)
+hsl	#8951a9	hsl(278, 35%, 49%)
+lighten	#8951a9	47	#f6f1f8ff
+darken	#8951a9	47	#060307ff
+saturate	#8951a9	47	#9916e4ff
+desaturate	#8951a9	47	#7d7d7dff
+spin	#8951a9	-39	#5152a9ff
+mix	#8951a9	07e38B	47	#4c969bff
+luminance	#8951a9	0.140677971
+contrast	#8951a9	07e38B	3.243553556
+readable	#8951a9	07e38B	false
+hex8	rgb(31, 250, 3)	#1ffa03ff
+rgb	rgb(31, 250, 3)	rgb(31, 250, 3)
+hsl	rgb(31, 250, 3)	hsl(113, 98%, 50%)
+lighten	rgb(31, 250, 3)	95	#ffffffff
+darken	rgb(31, 250, 3)	95	#000000ff
+saturate	rgb(31, 250, 3)	95	#1dfd00ff
+desaturate	rgb(31, 250, 3)	95	#7c827bff
+spin	rgb(31, 250, 3)	-175	#f303faff
+mix	rgb(31, 250, 3)	rgba(211, 204, 19, 0)	95	#cace120d
+luminance	rgb(31, 250, 3)	0.686690949
+contrast	rgb(31, 250, 3)	rgba(211, 204, 19, 0)	1.186648805
+readable	rgb(31, 250, 3)	rgba(211, 204, 19, 0)	false
+hex8	rgba(245, 151, 179, 0.33)	#f597b354
+rgb	rgba(245, 151, 179, 0.33)	rgba(245, 151, 179, 0.33)
+hsl	rgba(245, 151, 179, 0.33)	hsla(342, 82%, 78%, 0.33)
+lighten	rgba(245, 151, 179, 0.33)	91	#ffffff54
+darken	rgba(245, 151, 179, 0.33)	91	#00000054
+saturate	rgba(245, 151, 179, 0.33)	91	#ff8daf54
+desaturate	rgba(245, 151, 179, 0.33)	91	#c6c6c654
+spin	rgba(245, 151, 179, 0.33)	-176	#97f5df54
+mix	rgba(245, 151, 179, 0.33)	#d1a	91	#df1dabf0
+luminance	rgba(245, 151, 179, 0.33)	0.448003680
+contrast	rgba(245, 151, 179, 0.33)	#d1a	2.103470984
+readable	rgba(245, 151, 179, 0.33)	#d1a	false
+hex8	#2d9c0f	#2d9c0fff
+rgb	#2d9c0f	rgb(45, 156, 15)
+hsl	#2d9c0f	hsl(107, 82%, 34%)
+lighten	#2d9c0f	5	#34b311ff
+darken	#2d9c0f	5	#26850dff
+saturate	#2d9c0f	5	#2ba00bff
+desaturate	#2d9c0f	5	#2f9813ff
+spin	#2d9c0f	296	#9c750fff
+mix	#2d9c0f	rgb(0%, 6%, 13%)	5	#2b9510ff
+luminance	#2d9c0f	0.243693119
+contrast	#2d9c0f	rgb(0%, 6%, 13%)	5.387428059
+readable	#2d9c0f	rgb(0%, 6%, 13%)	true
+hex8	c8e68B	#c8e68bff
+rgb	c8e68B	rgb(200, 230, 139)
+hsl	c8e68B	hsl(80, 65%, 72%)
+lighten	c8e68B	68	#ffffffff
+darken	c8e68B	68	#0e1204ff
+saturate	c8e68B	68	#d1ff72ff
+desaturate	c8e68B	68	#b8b8b8ff
+spin	c8e68B	160	#8b8be6ff
+mix	c8e68B	rgb(103, 163, 134)	68	#86b888ff
+luminance	c8e68B	0.707370691
+contrast	c8e68B	rgb(103, 163, 134)	2.115609004
+readable	c8e68B	rgb(103, 163, 134)	false
+hex8	#880	#888800ff
+rgb	#880	rgb(136, 136, 0)
+hsl	#880	hsl(60, 100%, 27%)
+lighten	#880	84	#ffffffff
+darken	#880	84	#000000ff
+saturate	#880	84	#888800ff
+desaturate	#880	84	#4f4f39ff
+spin	#880	-312	#1b8800ff
+mix	#880	d92783	84	#cc376eff
+luminance	#880	0.228425591
+contrast	#880	d92783	1.218949097
+readable	#880	d92783	false
+hex8	rgb(67%, 51%, 65%)	#ab82a6ff
+rgb	rgb(67%, 51%, 65%)	rgb(171, 130, 166)
+hsl	rgb(67%, 51%, 65%)	hsl(307, 20%, 59%)
+lighten	rgb(67%, 51%, 65%)	48	#ffffffff
+darken	rgb(67%, 51%, 65%)	48	#211720ff
+saturate	rgb(67%, 51%, 65%)	48	#dd50cbff
+desaturate	rgb(67%, 51%, 65%)	48	#969696ff
+spin	rgb(67%, 51%, 65%)	-233	#a1ab82ff
+mix	rgb(67%, 51%, 65%)	#ec4	48	#cba677ff
+luminance	rgb(67%, 51%, 65%)	0.273763642
+contrast	rgb(67%, 51%, 65%)	#ec4	2.062622872
+readable	rgb(67%, 51%, 65%)	#ec4	false
+hex8	#587f3e	#587f3eff
+rgb	#587f3e	rgb(88, 127, 62)
+hsl	#587f3e	hsl(96, 34%, 37%)
+lighten	#587f3e	26	#9ac180ff
+darken	#587f3e	26	#1a2612ff
+saturate	#587f3e	26	#539825ff
+desaturate	#587f3e	26	#5d6657ff
+spin	#587f3e	-1	#597f3eff
+mix	#587f3e	#205a9466	26	#497554d7
+luminance	#587f3e	0.176012513
+contrast	#587f3e	#205a9466	1.531507087
+readable	#587f3e	#205a9466	false
+hex8	hsla(350, 84%, 35%, 0.49)	#a40e277d
+rgb	hsla(350, 84%, 35%, 0.49)	rgba(164, 14, 39, 0.49)
+hsl	hsla(350, 84%, 35%, 0.49)	hsla(350, 84%, 35%, 0.49)
+lighten	hsla(350, 84%, 35%, 0.49)	58	#fcdee37d
+darken	hsla(350, 84%, 35%, 0.49)	58	#0000007d
+saturate	hsla(350, 84%, 35%, 0.49)	58	#b3001e7d
+desaturate	hsla(350, 84%, 35%, 0.49)	58	#70424a7d
+spin	hsla(350, 84%, 35%, 0.49)	293	#7a0ea47d
+mix	hsla(350, 84%, 35%, 0.49)	#b9a	58	#b15f73c8
+luminance	hsla(350, 84%, 35%, 0.49)	0.083530724
+contrast	hsla(350, 84%, 35%, 0.49)	#b9a	3.089142277
+readable	hsla(350, 84%, 35%, 0.49)	#b9a	false
+hex8	rgb(13%, 2%, 8%)	#210514ff
+rgb	rgb(13%, 2%, 8%)	rgb(33, 5, 20)
+hsl	rgb(13%, 2%, 8%)	hsl(327, 73%, 8%)
+lighten	rgb(13%, 2%, 8%)	80	#f6c8e1ff
+darken	rgb(13%, 2%, 8%)	80	#000000ff
+saturate	rgb(13%, 2%, 8%)	80	#260015ff
+desaturate	rgb(13%, 2%, 8%)	80	#131313ff
+spin	rgb(13%, 2%, 8%)	-37	#1d0521ff
+mix	rgb(13%, 2%, 8%)	rgb(36%, 1%, 95%)	80	#5003c6ff
+luminance	rgb(13%, 2%, 8%)	0.004823811
+contrast	rgb(13%, 2%, 8%)	rgb(36%, 1%, 95%)	2.508260646
+readable	rgb(13%, 2%, 8%)	rgb(36%, 1%, 95%)	false
+hex8	hsla(293, 78%, 82%, 0.18)	#edadf52e
+rgb	hsla(293, 78%, 82%, 0.18)	rgba(237, 173, 245, 0.18)
+hsl	hsla(293, 78%, 82%, 0.18)	hsla(293, 78%, 82%, 0.18)
+lighten	hsla(293, 78%, 82%, 0.18)	70	#ffffff2e
+darken	hsla(293, 78%, 82%, 0.18)	70	#3107362e
+saturate	hsla(293, 78%, 82%, 0.18)	70	#f4a3ff2e
+desaturate	hsla(293, 78%, 82%, 0.18)	70	#d4cdd52e
+spin	hsla(293, 78%, 82%, 0.18)	-154	#adf5c42e
+mix	hsla(293, 78%, 82%, 0.18)	rgba(52, 229, 189, 0.5)	70	#6cd4ce67
+luminance	hsla(293, 78%, 82%, 0.18)	0.544842374
+contrast	hsla(293, 78%, 82%, 0.18)	rgba(52, 229, 189, 0.5)	1.100170618
+readable	hsla(293, 78%, 82%, 0.18)	rgba(52, 229, 189, 0.5)	false
+hex8	85a2D8	#85a2d8ff
+rgb	85a2D8	rgb(133, 162, 216)
+hsl	85a2D8	hsl(219, 52%, 68%)
+lighten	85a2D8	42	#ffffffff
+darken	85a2D8	42	#213966ff
+saturate	85a2D8	42	#6398faff
+desaturate	85a2D8	42	#a7acb6ff
+spin	85a2D8	229	#b1d885ff
+mix	85a2D8	rgb(248, 241, 183)	42	#b5c3caff
+luminance	85a2D8	0.357850742
+contrast	85a2D8	rgb(248, 241, 183)	2.238219534
+readable	85a2D8	rgb(248, 241, 183)	false
+hex8	rgb(16%, 6%, 100%)	#290fffff
+rgb	rgb(16%, 6%, 100%)	rgb(41, 15, 255)
+hsl	rgb(16%, 6%, 100%)	hsl(246, 100%, 53%)
+lighten	rgb(16%, 6%, 100%)	82	#ffffffff
+darken	rgb(16%, 6%, 100%)	82	#000000ff
+saturate	rgb(16%, 6%, 100%)	82	#290fffff
+desaturate	rgb(16%, 6%, 100%)	82	#76729dff
+spin	rgb(16%, 6%, 100%)	214	#5eff0fff
+mix	rgb(16%, 6%, 100%)	hsla(143, 20%, 17%, 0.8)	82	#242d50d5
+luminance	rgb(16%, 6%, 100%)	0.080330645
+contrast	rgb(16%, 6%, 100%)	hsla(143, 20%, 17%, 0.8)	1.634567337
+readable	rgb(16%, 6%, 100%)	hsla(143, 20%, 17%, 0.8)	false
+hex8	hsla(199, 69%, 61%, 0.58)	#57b5e094
+rgb	hsla(199, 69%, 61%, 0.58)	rgba(87, 181, 224, 0.58)
+hsl	hsla(199, 69%, 61%, 0.58)	hsla(199, 69%, 61%, 0.58)
+lighten	hsla(199, 69%, 61%, 0.58)	26	#c7e6f594
+darken	hsla(199, 69%, 61%, 0.58)	26	#1c709794
+saturate	hsla(199, 69%, 61%, 0.58)	26	#3dbefa94
+desaturate	hsla(199, 69%, 61%, 0.58)	26	#71abc694
+spin	hsla(199, 69%, 61%, 0.58)	190	#e0995794
+mix	hsla(199, 69%, 61%, 0.58)	rgb(69%, 29%, 7%)	26	#6e99aab0
+luminance	hsla(199, 69%, 61%, 0.58)	0.404558021
+contrast	hsla(199, 69%, 61%, 0.58)	rgb(69%, 29%, 7%)	2.371029248
+readable	hsla(199, 69%, 61%, 0.58)	rgb(69%, 29%, 7%)	false
+hex8	rgb(16%, 62%, 51%)	#299e82ff
+rgb	rgb(16%, 62%, 51%)	rgb(41, 158, 130)
+hsl	rgb(16%, 62%, 51%)	hsl(166, 59%, 39%)
+lighten	rgb(16%, 62%, 51%)	71	#ffffffff
+darken	rgb(16%, 62%, 51%)	71	#000000ff
+saturate	rgb(16%, 62%, 51%)	71	#00c797ff
+desaturate	rgb(16%, 62%, 51%)	71	#636363ff
+spin	rgb(16%, 62%, 51%)	138	#9e2997ff
+mix	rgb(16%, 62%, 51%)	f8abFB	71	#bca7d8ff
+luminance	rgb(16%, 62%, 51%)	0.265368423
+contrast	rgb(16%, 62%, 51%)	f8abFB	1.935745902
+readable	rgb(16%, 62%, 51%)	f8abFB	false
+hex8	rgb(89, 28, 67)	#591c43ff
+rgb	rgb(89, 28, 67)	rgb(89, 28, 67)
+hsl	rgb(89, 28, 67)	hsl(322, 52%, 23%)
+lighten	rgb(89, 28, 67)	24	#b63989ff
+darken	rgb(89, 28, 67)	24	#000000ff
+saturate	rgb(89, 28, 67)	24	#670e47ff
+desaturate	rgb(89, 28, 67)	24	#4b2a3fff
+spin	rgb(89, 28, 67)	-224	#33591cff
+mix	rgb(89, 28, 67)	rgb(46, 17, 223)	24	#4f1968ff
+luminance	rgb(89, 28, 67)	0.033596024
+contrast	rgb(89, 28, 67)	rgb(46, 17, 223)	1.352869709
+readable	rgb(89, 28, 67)	rgb(46, 17, 223)	false
+hex8	rgb(81%, 1%, 57%)	#cf0391ff
+rgb	rgb(81%, 1%, 57%)	rgb(207, 3, 145)
+hsl	rgb(81%, 1%, 57%)	hsl(318, 98%, 41%)
+lighten	rgb(81%, 1%, 57%)	13	#fc17b7ff
+darken	rgb(81%, 1%, 57%)	13	#8d0263ff
+saturate	rgb(81%, 1%, 57%)	13	#d10092ff
+desaturate	rgb(81%, 1%, 57%)	13	#c1108cff
+spin	rgb(81%, 1%, 57%)	-36	#9103cfff
+mix	rgb(81%, 1%, 57%)	hsla(62, 4%, 94%, 0.43)	13	#d3229dec
+luminance	rgb(81%, 1%, 57%)	0.153748566
+contrast	rgb(81%, 1%, 57%)	hsla(62, 4%, 94%, 0.43)	4.519169793
+readable	rgb(81%, 1%, 57%)	hsla(62, 4%, 94%, 0.43)	true
+hex8	rgb(67%, 55%, 55%)	#ab8c8cff
+rgb	rgb(67%, 55%, 55%)	rgb(171, 140, 140)
+hsl	rgb(67%, 55%, 55%)	hsl(0, 15%, 61%)
+lighten	rgb(67%, 55%, 55%)	2	#af9292ff
+darken	rgb(67%, 55%, 55%)	2	#a78686ff
+saturate	rgb(67%, 55%, 55%)	2	#ad8a8aff
+desaturate	rgb(67%, 55%, 55%)	2	#a98e8eff
+spin	rgb(67%, 55%, 55%)	200	#8ca1abff
+mix	rgb(67%, 55%, 55%)	hsla(166, 68%, 41%, 0.56)	2	#a88d8cfd
+luminance	rgb(67%, 55%, 55%)	0.293075437
+contrast	rgb(67%, 55%, 55%)	hsla(166, 68%, 41%, 0.56)	1.117159406
+readable	rgb(67%, 55%, 55%)	hsla(166, 68%, 41%, 0.56)	false
+hex8	#a831bd	#a831bdff
+rgb	#a831bd	rgb(168, 49, 189)
+hsl	#a831bd	hsl(291, 59%, 47%)
+lighten	#a831bd	63	#ffffffff
+darken	#a831bd	63	#000000ff
+saturate	#a831bd	63	#ca00eeff
+desaturate	#a831bd	63	#777777ff
+spin	#a831bd	-356	#b131bdff
+mix	#a831bd	713b55	63	#85377bff
+luminance	#a831bd	0.141955795
+contrast	#a831bd	713b55	1.561312223
+readable	#a831bd	713b55	false
+hex8	#1023e1ac	#1023e1ac
+rgb	#1023e1ac	rgba(16, 35, 225, 0.67)
+hsl	#1023e1ac	hsla(235, 87%, 47%, 0.67)
+lighten	#1023e1ac	100	#ffffffac
+darken	#1023e1ac	100	#000000ac
+saturate	#1023e1ac	100	#0016f1ac
+desaturate	#1023e1ac	100	#787878ac
+spin	#1023e1ac	335	#107ae1ac
+mix	#1023e1ac	3ff92E	100	#3ff92eff
+luminance	#1023e1ac	0.067484654
+contrast	#1023e1ac	3ff92E	6.299153093
+readable	#1023e1ac	3ff92E	true
+hex8	rgba(169, 171, 169, 1)	#a9aba9ff
+rgb	rgba(169, 171, 169, 1)	rgb(169, 171, 169)
+hsl	rgba(169, 171, 169, 1)	hsl(120, 1%, 67%)
+lighten	rgba(169, 171, 169, 1)	76	#ffffffff
+darken	rgba(169, 171, 169, 1)	76	#000000ff
+saturate	rgba(169, 171, 169, 1)	76	#68ec68ff
+desaturate	rgba(169, 171, 169, 1)	76	#aaaaaaff
+spin	rgba(169, 171, 169, 1)	85	#a9aaabff
+mix	rgba(169, 171, 169, 1)	#e10	76	#dd3629ff
+luminance	rgba(169, 171, 169, 1)	0.404254089
+contrast	rgba(169, 171, 169, 1)	#e10	1.926598142
+readable	rgba(169, 171, 169, 1)	#e10	false
+hex8	#185778da	#185778da
+rgb	#185778da	rgba(24, 87, 120, 0.85)
+hsl	#185778da	hsla(201, 67%, 28%, 0.85)
+lighten	#185778da	66	#e6f3fada
+darken	#185778da	66	#000000da
+saturate	#185778da	66	#005e90da
+desaturate	#185778da	66	#484848da
+spin	#185778da	-242	#78185ada
+mix	#185778da	hsl(209, 15%, 19%)	66	#233e4ef2
+luminance	#185778da	0.083666461
+contrast	#185778da	hsl(209, 15%, 19%)	1.680585275
+readable	#185778da	hsl(209, 15%, 19%)	false
+hex8	#8fa5e8	#8fa5e8ff
+rgb	#8fa5e8	rgb(143, 165, 232)
+hsl	#8fa5e8	hsl(225, 66%, 74%)
+lighten	#8fa5e8	1	#93a8e9ff
+darken	#8fa5e8	1	#8ba2e7ff
+saturate	#8fa5e8	1	#8ea5e9ff
+desaturate	#8fa5e8	1	#90a5e7ff
+spin	#8fa5e8	11	#8f95e8ff
+mix	#8fa5e8	rgba(83, 207, 196, 0)	1	#8ea5e8fc
+luminance	#8fa5e8	0.385761020
+contrast	#8fa5e8	rgba(83, 207, 196, 0)	1.272490352
+readable	#8fa5e8	rgba(83, 207, 196, 0)	false
+hex8	c1cb82	#c1cb82ff
+rgb	c1cb82	rgb(193, 203, 130)
+hsl	c1cb82	hsl(68, 41%, 65%)
+lighten	c1cb82	86	#ffffffff
+darken	c1cb82	86	#000000ff
+saturate	c1cb82	86	#e7ff4eff
+desaturate	c1cb82	86	#a6a6a6ff
+spin	c1cb82	19	#aacb82ff
+mix	c1cb82	5d2e8B	86	#6b448aff
+luminance	c1cb82	0.556610341
+contrast	c1cb82	5d2e8B	5.442781713
+readable	c1cb82	5d2e8B	true
+hex8	rgb(21%, 95%, 83%)	#36f2d4ff
+rgb	rgb(21%, 95%, 83%)	rgb(54, 242, 212)
+hsl	rgb(21%, 95%, 83%)	hsl(170, 88%, 58%)
+lighten	rgb(21%, 95%, 83%)	56	#ffffffff
+darken	rgb(21%, 95%, 83%)	56	#010a08ff
+saturate	rgb(21%, 95%, 83%)	56	#29ffdcff
+desaturate	rgb(21%, 95%, 83%)	56	#71b6abff
+spin	rgb(21%, 95%, 83%)	149	#f236b6ff
+mix	rgb(21%, 95%, 83%)	#a7d	56	#77add9ff
+luminance	rgb(21%, 95%, 83%)	0.690419973
+contrast	rgb(21%, 95%, 83%)	#a7d	2.316696903
+readable	rgb(21%, 95%, 83%)	#a7d	false
+hex8	rgb(6, 212, 223)	#06d4dfff
+rgb	rgb(6, 212, 223)	rgb(6, 212, 223)
+hsl	rgb(6, 212, 223)	hsl(183, 95%, 45%)
+lighten	rgb(6, 212, 223)	9	#1aeef9ff
+darken	rgb(6, 212, 223)	9	#05a9b2ff
+saturate	rgb(6, 212, 223)	9	#00d9e5ff
+desaturate	rgb(6, 212, 223)	9	#10cbd5ff
+spin	rgb(6, 212, 223)	228	#dfbf06ff
+mix	rgb(6, 212, 223)	#1b9ed1a4	9	#08cfdef7
+luminance	rgb(6, 212, 223)	0.524533980
+contrast	rgb(6, 212, 223)	#1b9ed1a4	1.675505839
+readable	rgb(6, 212, 223)	#1b9ed1a4	false
+hex8	#9ad	#99aaddff
+rgb	#9ad	rgb(153, 170, 221)
+hsl	#9ad	hsl(225, 50%, 73%)
+lighten	#9ad	90	#ffffffff
+darken	#9ad	90	#000000ff
+saturate	#9ad	90	#7799ffff
+desaturate	#9ad	90	#bbbbbbff
+spin	#9ad	198	#dadd99ff
+mix	#9ad	rgb(5%, 76%, 26%)	90	#1bc052ff
+luminance	#9ad	0.407422133
+contrast	#9ad	rgb(5%, 76%, 26%)	1.038121481
+readable	#9ad	rgb(5%, 76%, 26%)	false
+hex8	#c8ca6938	#c8ca6938
+rgb	#c8ca6938	rgba(200, 202, 105, 0.22)
+hsl	#c8ca6938	hsla(61, 48%, 60%, 0.22)
+lighten	#c8ca6938	19	#e2e3b138
+darken	#c8ca6938	19	#999b3738
+saturate	#c8ca6938	19	#dadd5638
+desaturate	#c8ca6938	19	#b5b77c38
+spin	#c8ca6938	287	#ca697c38
+mix	#c8ca6938	rgb(243, 201, 20)	19	#d0ca595e
+luminance	#c8ca6938	0.555403406
+contrast	#c8ca6938	rgb(243, 201, 20)	1.088174944
+readable	#c8ca6938	rgb(243, 201, 20)	false
+hex8	#f7fdf287	#f7fdf287
+rgb	#f7fdf287	rgba(247, 253, 242, 0.53)
+hsl	#f7fdf287	hsla(93, 73%, 97%, 0.53)
+lighten	#f7fdf287	90	#ffffff87
+darken	#f7fdf287	90	#111f0587
+saturate	#f7fdf287	90	#f7fff087
+desaturate	#f7fdf287	90	#f7f7f787
+spin	#f7fdf287	139	#f2f3fd87
+mix	#f7fdf287	rgb(182, 219, 115)	90	#bdde80f3
+luminance	#f7fdf287	0.964355211
+contrast	#f7fdf287	rgb(182, 219, 115)	1.517452599
+readable	#f7fdf287	rgb(182, 219, 115)	false
+hex8	#581	#558811ff
+rgb	#581	rgb(85, 136, 17)
+hsl	#581	hsl(86, 78%, 30%)
+lighten	#581	16	#82d11aff
+darken	#581	16	#283f08ff
+saturate	#581	16	#579405ff
+desaturate	#581	16	#537c1dff
+spin	#581	70	#118858ff
+mix	#581	#ad1	16	#639611ff
+luminance	#581	0.195800846
+contrast	#581	#ad1	2.656598723
+readable	#581	#ad1	false
+hex8	hsla(131, 71%, 57%, 0.04)	#43df600a
+rgb	hsla(131, 71%, 57%, 0.04)	rgba(67, 223, 96, 0.04)
+hsl	hsla(131, 71%, 57%, 0.04)	hsla(131, 71%, 57%, 0.04)
+lighten	hsla(131, 71%, 57%, 0.04)	24	#acf1b90a
+darken	hsla(131, 71%, 57%, 0.04)	24	#18902e0a
+saturate	hsla(131, 71%, 57%, 0.04)	24	#29fa4f0a
+desaturate	hsla(131, 71%, 57%, 0.04)	24	#5ec5710a
+spin	hsla(131, 71%, 57%, 0.04)	8	#43df750a
+mix	hsla(131, 71%, 57%, 0.04)	#8c8eff	24	#55cc8645
+luminance	hsla(131, 71%, 57%, 0.04)	0.548131724
+contrast	hsla(131, 71%, 57%, 0.04)	#8c8eff	1.610415607
+readable	hsla(131, 71%, 57%, 0.04)	#8c8eff	false
+hex8	#10b3d6	#10b3d6ff
+rgb	#10b3d6	rgb(16, 179, 214)
+hsl	#10b3d6	hsl(191, 86%, 45%)
+lighten	#10b3d6	37	#aaebf9ff
+darken	#10b3d6	37	#032026ff
+saturate	#10b3d6	37	#00bde6ff
+desaturate	#10b3d6	37	#3b97abff
+spin	#10b3d6	-111	#95d610ff
+mix	#10b3d6	rgba(58, 196, 10, 0)	37	#20b98ba1
+luminance	#10b3d6	0.372053978
+contrast	#10b3d6	rgba(58, 196, 10, 0)	1.075722846
+readable	#10b3d6	rgba(58, 196, 10, 0)	false
+hex8	hsla(10, 18%, 81%, 0.46)	#d7c9c675
+rgb	hsla(10, 18%, 81%, 0.46)	rgba(215, 201, 198, 0.46)
+hsl	hsla(10, 18%, 81%, 0.46)	hsla(10, 18%, 81%, 0.46)
+lighten	hsla(10, 18%, 81%, 0.46)	63	#ffffff75
+darken	hsla(10, 18%, 81%, 0.46)	63	#36282675
+saturate	hsla(10, 18%, 81%, 0.46)	63	#f6b4a775
+desaturate	hsla(10, 18%, 81%, 0.46)	63	#cfcfcf75
+spin	hsla(10, 18%, 81%, 0.46)	172	#c6d7d775
+mix	hsla(10, 18%, 81%, 0.46)	#914f7aa7	63	#ab7c9695
+luminance	hsla(10, 18%, 81%, 0.46)	0.602975784
+contrast	hsla(10, 18%, 81%, 0.46)	#914f7aa7	3.624251075
+readable	hsla(10, 18%, 81%, 0.46)	#914f7aa7	false
+hex8	#cb1215	#cb1215ff
+rgb	#cb1215	rgb(203, 18, 21)
+hsl	#cb1215	hsl(359, 84%, 43%)
+lighten	#cb1215	65	#ffffffff
+darken	#cb1215	65	#000000ff
+saturate	#cb1215	65	#dd0004ff
+desaturate	#cb1215	65	#835a5aff
+spin	#cb1215	158	#12cb84ff
+mix	#cb1215	hsla(175, 21%, 38%, 0.28)	65	#79525188
+luminance	#cb1215	0.131832656
+contrast	#cb1215	hsla(175, 21%, 38%, 0.28)	1.128249762
+readable	#cb1215	hsla(175, 21%, 38%, 0.28)	false
+hex8	#e0cd252b	#e0cd252b
+rgb	#e0cd252b	rgba(224, 205, 37, 0.17)
+hsl	#e0cd252b	hsla(54, 75%, 51%, 0.17)
+lighten	#e0cd252b	39	#f9f5d32b
+darken	#e0cd252b	39	#3632082b
+saturate	#e0cd252b	39	#ffe6062b
+desaturate	#e0cd252b	39	#afa6562b
+spin	#e0cd252b	-34	#e063252b
+mix	#e0cd252b	rgb(22, 57, 143)	39	#91934e7e
+luminance	#e0cd252b	0.596435083
+contrast	#e0cd252b	rgb(22, 57, 143)	6.413047631
+readable	#e0cd252b	rgb(22, 57, 143)	true
+hex8	#32298e10	#32298e10
+rgb	#32298e10	rgba(50, 41, 142, 0.06)
+hsl	#32298e10	hsla(245, 55%, 36%, 0.06)
+lighten	#32298e10	28	#7970d610
+darken	#32298e10	28	#0b091f10
+saturate	#32298e10	28	#1d0fa810
+desaturate	#32298e10	28	#47437410
+spin	#32298e10	196	#6a8e2910
+mix	#32298e10	#1b06f1f9	28	#2c1faa51
+luminance	#32298e10	0.042169800
+contrast	#32298e10	#1b06f1f9	1.270929834
+readable	#32298e10	#1b06f1f9	false
+hex8	hsl(234, 4%, 59%)	#92939bff
+rgb	hsl(234, 4%, 59%)	rgb(146, 147, 155)
+hsl	hsl(234, 4%, 59%)	hsl(234, 4%, 59%)
+lighten	hsl(234, 4%, 59%)	59	#ffffffff
+darken	hsl(234, 4%, 59%)	59	#000000ff
+saturate	hsl(234, 4%, 59%)	59	#5562d8ff
+desaturate	hsl(234, 4%, 59%)	59	#969696ff
+spin	hsl(234, 4%, 59%)	55	#99929bff
+mix	hsl(234, 4%, 59%)	#9e0fe1	59	#9945c4ff
+luminance	hsl(234, 4%, 59%)	0.293449870
+contrast	hsl(234, 4%, 59%)	#9e0fe1	1.903086591
+readable	hsl(234, 4%, 59%)	#9e0fe1	false
+hex8	9b8542	#9b8542ff
+rgb	9b8542	rgb(155, 133, 66)
+hsl	9b8542	hsl(45, 40%, 43%)
+lighten	9b8542	36	#e0d5b5ff
+darken	9b8542	36	#1a160bff
+saturate	9b8542	36	#c3991aff
+desaturate	9b8542	36	#73716aff
+spin	9b8542	21	#929b42ff
+mix	9b8542	rgb(232, 110, 249)	36	#b77d84ff
+luminance	9b8542	0.241369676
+contrast	9b8542	rgb(232, 110, 249)	1.377879106
+readable	9b8542	rgb(232, 110, 249)	false
+hex8	rgb(53%, 52%, 17%)	#87852bff
+rgb	rgb(53%, 52%, 17%)	rgb(135, 133, 43)
+hsl	rgb(53%, 52%, 17%)	hsl(58, 51%, 35%)
+lighten	rgb(53%, 52%, 17%)	83	#ffffffff
+darken	rgb(53%, 52%, 17%)	83	#000000ff
+saturate	rgb(53%, 52%, 17%)	83	#b3ae00ff
+desaturate	rgb(53%, 52%, 17%)	83	#595959ff
+spin	rgb(53%, 52%, 17%)	251	#872b79ff
+mix	rgb(53%, 52%, 17%)	#d61	83	#ce6b15ff
+luminance	rgb(53%, 52%, 17%)	0.221003724
+contrast	rgb(53%, 52%, 17%)	#d61	1.103872850
+readable	rgb(53%, 52%, 17%)	#d61	false
+hex8	#10c211	#10c211ff
+rgb	#10c211	rgb(16, 194, 17)
+hsl	#10c211	hsl(120, 85%, 41%)
+lighten	#10c211	82	#ffffffff
+darken	#10c211	82	#000000ff
+saturate	#10c211	82	#00d201ff
+desaturate	#10c211	82	#666c66ff
+spin	#10c211	316	#92c210ff
+mix	#10c211	#3ae	82	#2daec6ff
+luminance	#10c211	0.387342030
+contrast	#10c211	#3ae	1.076499654
+readable	#10c211	#3ae	false
+hex8	#f30de9	#f30de9ff
+rgb	#f30de9	rgb(243, 13, 233)
+hsl	#f30de9	hsl(303, 91%, 50%)
+lighten	#f30de9	37	#fcc1f9ff
+darken	#f30de9	37	#40033dff
+saturate	#f30de9	37	#ff01f4ff
+desaturate	#f30de9	37	#c43cbeff
+spin	#f30de9	135	#aff30dff
+mix	#f30de9	hsl(74, 64%, 2%)	37	#9c0b94ff
+luminance	#f30de9	0.252257265
+contrast	#f30de9	hsl(74, 64%, 2%)	5.786799626
+readable	#f30de9	hsl(74, 64%, 2%)	true
+hex8	hsla(173, 15%, 38%, 0.91)	#526f6ce8
+rgb	hsla(173, 15%, 38%, 0.91)	rgba(82, 111, 108, 0.91)
+hsl	hsla(173, 15%, 38%, 0.91)	hsla(173, 15%, 38%, 0.91)
+lighten	hsla(173, 15%, 38%, 0.91)	13	#6f9590e8
+darken	hsla(173, 15%, 38%, 0.91)	13	#364947e8
+saturate	hsla(173, 15%, 38%, 0.91)	13	#467c76e8
+desaturate	hsla(173, 15%, 38%, 0.91)	13	#5f6362e8
+spin	hsla(173, 15%, 38%, 0.91)	97	#61526fe8
+mix	hsla(173, 15%, 38%, 0.91)	hsl(167, 10%, 84%)	13	#637d7aeb
+luminance	hsla(173, 15%, 38%, 0.91)	0.142454269
+contrast	hsla(173, 15%, 38%, 0.91)	hsl(167, 10%, 84%)	3.837493447
+readable	hsla(173, 15%, 38%, 0.91)	hsl(167, 10%, 84%)	false
+hex8	rgb(224, 235, 5)	#e0eb05ff
+rgb	rgb(224, 235, 5)	rgb(224, 235, 5)
+hsl	rgb(224, 235, 5)	hsl(63, 96%, 47%)
+lighten	rgb(224, 235, 5)	81	#ffffffff
+darken	rgb(224, 235, 5)	81	#000000ff
+saturate	rgb(224, 235, 5)	81	#e4f000ff
+desaturate	rgb(224, 235, 5)	81	#888a66ff
+spin	rgb(224, 235, 5)	194	#4605ebff
+mix	rgb(224, 235, 5)	#14a913f8	81	#3bb610f9
+luminance	rgb(224, 235, 5)	0.752749124
+contrast	rgb(224, 235, 5)	#14a913f8	2.391150136
+readable	rgb(224, 235, 5)	#14a913f8	false
+hex8	hsl(32, 58%, 69%)	#deb382ff
+rgb	hsl(32, 58%, 69%)	rgb(222, 179, 130)
+hsl	hsl(32, 58%, 69%)	hsl(32, 58%, 69%)
+lighten	hsl(32, 58%, 69%)	69	#ffffffff
+darken	hsl(32, 58%, 69%)	69	#000000ff
+saturate	hsl(32, 58%, 69%)	69	#ffb561ff
+desaturate	hsl(32, 58%, 69%)	69	#b0b0b0ff
+spin	hsl(32, 58%, 69%)	-327	#d6de82ff
+mix	hsl(32, 58%, 69%)	#530ed00b	69	#7e41b857
+luminance	hsl(32, 58%, 69%)	0.493815004
+contrast	hsl(32, 58%, 69%)	#530ed00b	4.645155843
+readable	hsl(32, 58%, 69%)	#530ed00b	true
+hex8	#9eb	#99eebbff
+rgb	#9eb	rgb(153, 238, 187)
+hsl	#9eb	hsl(144, 71%, 77%)
+lighten	#9eb	86	#ffffffff
+darken	#9eb	86	#000000ff
+saturate	#9eb	86	#88ffb8ff
+desaturate	#9eb	86	#c3c3c3ff
+spin	#9eb	-166	#ee99b8ff
+mix	#9eb	hsla(306, 41%, 21%, 0.6)	86	#573d57a7
+luminance	#9eb	0.715092321
+contrast	#9eb	hsla(306, 41%, 21%, 0.6)	9.534507534
+readable	#9eb	hsla(306, 41%, 21%, 0.6)	true
+hex8	#37433b67	#37433b67
+rgb	#37433b67	rgba(55, 67, 59, 0.4)
+hsl	#37433b67	hsla(140, 10%, 24%, 0.4)
+lighten	#37433b67	32	#849a8b67
+darken	#37433b67	32	#00000067
+saturate	#37433b67	32	#23573467
+desaturate	#37433b67	32	#3d3d3d67
+spin	#37433b67	-307	#37404367
+mix	#37433b67	hsl(111, 75%, 66%)	32	#4d784998
+luminance	#37433b67	0.051423015
+contrast	#37433b67	hsl(111, 75%, 66%)	6.750741288
+readable	#37433b67	hsl(111, 75%, 66%)	true
+hex8	rgb(32, 144, 28)	#20901cff
+rgb	rgb(32, 144, 28)	rgb(32, 144, 28)
+hsl	rgb(32, 144, 28)	hsl(118, 67%, 34%)
+lighten	rgb(32, 144, 28)	74	#ffffffff
+darken	rgb(32, 144, 28)	74	#000000ff
+saturate	rgb(32, 144, 28)	74	#06ac00ff
+desaturate	rgb(32, 144, 28)	74	#565656ff
+spin	rgb(32, 144, 28)	109	#1c3590ff
+mix	rgb(32, 144, 28)	#850690	74	#6b2a72ff
+luminance	rgb(32, 144, 28)	0.203374342
+contrast	rgb(32, 144, 28)	#850690	2.088753076
+readable	rgb(32, 144, 28)	#850690	false
+hex8	#9f5c54	#9f5c54ff
+rgb	#9f5c54	rgb(159, 92, 84)
+hsl	#9f5c54	hsl(6, 31%, 48%)
+lighten	#9f5c54	65	#ffffffff
+darken	#9f5c54	65	#000000ff
+saturate	#9f5c54	65	#ee1e05ff
+desaturate	#9f5c54	65	#797979ff
+spin	#9f5c54	72	#889f54ff
+mix	#9f5c54	#081	65	#387928ff
+luminance	#9f5c54	0.156653139
+contrast	#9f5c54	#081	1.095980924
+readable	#9f5c54	#081	false
+hex8	09212A	#09212aff
+rgb	09212A	rgb(9, 33, 42)
+hsl	09212A	hsl(196, 65%, 10%)
+lighten	09212A	36	#2998c1ff
+darken	09212A	36	#000000ff
+saturate	09212A	36	#002533ff
+desaturate	09212A	36	#121d21ff
+spin	09212A	30	#09112aff
+mix	09212A	rgb(220, 27, 3)	36	#551f1cff
+luminance	09212A	0.013129571
+contrast	09212A	rgb(220, 27, 3)	3.327455545
+readable	09212A	rgb(220, 27, 3)	false
+hex8	#8c05db6a	#8c05db6a
+rgb	#8c05db6a	rgba(140, 5, 219, 0.42)
+hsl	#8c05db6a	hsla(278, 96%, 44%, 0.42)
+lighten	#8c05db6a	54	#fbf5ff6a
+darken	#8c05db6a	54	#0000006a
+saturate	#8c05db6a	54	#8d00e06a
+desaturate	#8c05db6a	54	#7c419f6a
+spin	#8c05db6a	-256	#db53056a
+mix	#8c05db6a	#ddf06b	54	#b8849fba
+luminance	#8c05db6a	0.107984634
+contrast	#8c05db6a	#ddf06b	5.301393140
+readable	#8c05db6a	#ddf06b	true
+hex8	rgba(96, 205, 1, 0.5)	#60cd0180
+rgb	rgba(96, 205, 1, 0.5)	rgba(96, 205, 1, 0.5)
+hsl	rgba(96, 205, 1, 0.5)	hsla(92, 99%, 40%, 0.5)
+lighten	rgba(96, 205, 1, 0.5)	46	#daffba80
+darken	rgba(96, 205, 1, 0.5)	46	#00000080
+saturate	rgba(96, 205, 1, 0.5)	46	#60ce0080
+desaturate	rgba(96, 205, 1, 0.5)	46	#639e3080
+spin	rgba(96, 205, 1, 0.5)	-339	#19cd0180
+mix	rgba(96, 205, 1, 0.5)	#de774db8	46	#9aa52499
+luminance	rgba(96, 205, 1, 0.5)	0.461516311
+contrast	rgba(96, 205, 1, 0.5)	#de774db8	1.493082933
+readable	rgba(96, 205, 1, 0.5)	#de774db8	false
+hex8	rgba(212, 136, 225, 1)	#d488e1ff
+rgb	rgba(212, 136, 225, 1)	rgb(212, 136, 225)
+hsl	rgba(212, 136, 225, 1)	hsl(291, 60%, 71%)
+lighten	rgba(212, 136, 225, 1)	53	#ffffffff
+darken	rgba(212, 136, 225, 1)	53	#411248ff
+saturate	rgba(212, 136, 225, 1)	53	#e96affff
+desaturate	rgba(212, 136, 225, 1)	53	#b8afbaff
+spin	rgba(212, 136, 225, 1)	-355	#db88e1ff
+mix	rgba(212, 136, 225, 1)	rgb(49%, 15%, 13%)	53	#a6547bff
+luminance	rgba(212, 136, 225, 1)	0.370416103
+contrast	rgba(212, 136, 225, 1)	rgb(49%, 15%, 13%)	3.872659137
+readable	rgba(212, 136, 225, 1)	rgb(49%, 15%, 13%)	false
+hex8	hsl(239, 66%, 70%)	#8082e5ff
+rgb	hsl(239, 66%, 70%)	rgb(128, 130, 229)
+hsl	hsl(239, 66%, 70%)	hsl(239, 66%, 70%)
+lighten	hsl(239, 66%, 70%)	20	#d5d5f6ff
+darken	hsl(239, 66%, 70%)	20	#2b2ed4ff
+saturate	hsl(239, 66%, 70%)	20	#7173f4ff
+desaturate	hsl(239, 66%, 70%)	20	#8f90d6ff
+spin	hsl(239, 66%, 70%)	203	#c0e580ff
+mix	hsl(239, 66%, 70%)	rgb(104, 2, 111)	20	#7b68cdff
+luminance	hsl(239, 66%, 70%)	0.262116006
+contrast	hsl(239, 66%, 70%)	rgb(104, 2, 111)	3.417015564
+readable	hsl(239, 66%, 70%)	rgb(104, 2, 111)	false
+hex8	#e0e33c	#e0e33cff
+rgb	#e0e33c	rgb(224, 227, 60)
+hsl	#e0e33c	hsl(61, 75%, 56%)
+lighten	#e0e33c	28	#f4f5b9ff
+darken	#e0e33c	28	#7c7e12ff
+saturate	#e0e33c	28	#fbff20ff
+desaturate	#e0e33c	28	#c2c45bff
+spin	#e0e33c	150	#3c8ce3ff
+mix	#e0e33c	#3ec	28	#b0e664ff
+luminance	#e0e33c	0.711117079
+contrast	#e0e33c	#3ec	1.068796841
+readable	#e0e33c	#3ec	false
+hex8	baf3A1	#baf3a1ff
+rgb	baf3A1	rgb(186, 243, 161)
+hsl	baf3A1	hsl(102, 77%, 79%)
+lighten	baf3A1	76	#ffffffff
+darken	baf3A1	76	#060f02ff
+saturate	baf3A1	76	#b5ff95ff
+desaturate	baf3A1	76	#cacbc9ff
+spin	baf3A1	182	#dda1f3ff
+mix	baf3A1	#fac83d51	76	#ebd2557b
+luminance	baf3A1	0.771134965
+contrast	baf3A1	#fac83d51	1.226133315
+readable	baf3A1	#fac83d51	false
+hex8	hsl(297, 14%, 15%)	#2b212cff
+rgb	hsl(297, 14%, 15%)	rgb(43, 33, 44)
+hsl	hsl(297, 14%, 15%)	hsl(297, 14%, 15%)
+lighten	hsl(297, 14%, 15%)	60	#c7b6c8ff
+darken	hsl(297, 14%, 15%)	60	#000000ff
+saturate	hsl(297, 14%, 15%)	60	#400a43ff
+desaturate	hsl(297, 14%, 15%)	60	#262626ff
+spin	hsl(297, 14%, 15%)	-349	#2c212aff
+mix	hsl(297, 14%, 15%)	hsla(286, 57%, 46%, 0.23)	60	#6d2b8089
+luminance	hsl(297, 14%, 15%)	0.017831533
+contrast	hsl(297, 14%, 15%)	hsla(286, 57%, 46%, 0.23)	2.582014533
+readable	hsl(297, 14%, 15%)	hsla(286, 57%, 46%, 0.23)	false
+hex8	#13201ac8	#13201ac8
+rgb	#13201ac8	rgba(19, 32, 26, 0.78)
+hsl	#13201ac8	hsla(152, 25%, 10%, 0.78)
+lighten	#13201ac8	39	#5d9d7fc8
+darken	#13201ac8	39	#000000c8
+saturate	#13201ac8	39	#092a1bc8
+desaturate	#13201ac8	39	#1a1a1ac8
+spin	#13201ac8	190	#201317c8
+mix	#13201ac8	hsla(17, 32%, 73%, 0.74)	39	#5d5950c4
+luminance	#13201ac8	0.012460521
+contrast	#13201ac8	hsla(17, 32%, 73%, 0.74)	8.410835082
+readable	#13201ac8	hsla(17, 32%, 73%, 0.74)	true
+hex8	#ca1aa0	#ca1aa0ff
+rgb	#ca1aa0	rgb(202, 26, 160)
+hsl	#ca1aa0	hsl(314, 77%, 45%)
+lighten	#ca1aa0	83	#ffffffff
+darken	#ca1aa0	83	#000000ff
+saturate	#ca1aa0	83	#e400aeff
+desaturate	#ca1aa0	83	#727272ff
+spin	#ca1aa0	115	#afca1aff
+mix	#ca1aa0	hsl(72, 24%, 98%)	83	#f3d5eaff
+luminance	#ca1aa0	0.158334109
+contrast	#ca1aa0	hsl(72, 24%, 98%)	4.864452773
+readable	#ca1aa0	hsl(72, 24%, 98%)	true
+hex8	rgba(245, 227, 81, 0.5)	#f5e35180
+rgb	rgba(245, 227, 81, 0.5)	rgba(245, 227, 81, 0.5)
+hsl	rgba(245, 227, 81, 0.5)	hsla(53, 89%, 64%, 0.5)
+lighten	rgba(245, 227, 81, 0.5)	38	#ffffff80
+darken	rgba(245, 227, 81, 0.5)	38	#7d700780
+saturate	rgba(245, 227, 81, 0.5)	38	#ffeb4780
+desaturate	rgba(245, 227, 81, 0.5)	38	#d2c87480
+spin	rgba(245, 227, 81, 0.5)	23	#c8f55180
+mix	rgba(245, 227, 81, 0.5)	hsl(305, 44%, 42%)	38	#d2a46ab0
+luminance	rgba(245, 227, 81, 0.5)	0.749447285
+contrast	rgba(245, 227, 81, 0.5)	hsl(305, 44%, 42%)	4.654155376
+readable	rgba(245, 227, 81, 0.5)	hsl(305, 44%, 42%)	true
+hex8	#5a81d0	#5a81d0ff
+rgb	#5a81d0	rgb(90, 129, 208)
+hsl	#5a81d0	hsl(220, 56%, 58%)
+lighten	#5a81d0	59	#ffffffff
+darken	#5a81d0	59	#000000ff
+saturate	#5a81d0	59	#2b71ffff
+desaturate	#5a81d0	59	#959595ff
+spin	#5a81d0	-347	#5a67d0ff
+mix	#5a81d0	rgb(9, 107, 181)	59	#2a74c0ff
+luminance	#5a81d0	0.224282396
+contrast	#5a81d0	rgb(9, 107, 181)	1.450488025
+readable	#5a81d0	rgb(9, 107, 181)	false
+hex8	hsl(171, 58%, 24%)	#1a6156ff
+rgb	hsl(171, 58%, 24%)	rgb(26, 97, 86)
+hsl	hsl(171, 58%, 24%)	hsl(171, 58%, 24%)
+lighten	hsl(171, 58%, 24%)	12	#279181ff
+darken	hsl(171, 58%, 24%)	12	#0d302bff
+saturate	hsl(171, 58%, 24%)	12	#12685bff
+desaturate	hsl(171, 58%, 24%)	12	#215951ff
+spin	hsl(171, 58%, 24%)	306	#1d611aff
+mix	hsl(171, 58%, 24%)	hsl(16, 57%, 4%)	12	#19564cff
+luminance	hsl(171, 58%, 24%)	0.094408861
+contrast	hsl(171, 58%, 24%)	hsl(16, 57%, 4%)	2.739747224
+readable	hsl(171, 58%, 24%)	hsl(16, 57%, 4%)	false
+hex8	#eb0	#eebb00ff
+rgb	#eb0	rgb(238, 187, 0)
+hsl	#eb0	hsl(47, 100%, 47%)
+lighten	#eb0	7	#ffcc13ff
+darken	#eb0	7	#ca9f00ff
+saturate	#eb0	7	#eebb00ff
+desaturate	#eb0	7	#e6b608ff
+spin	#eb0	250	#e300eeff
+mix	#eb0	rgb(148, 187, 240)	7	#e8bb11ff
+luminance	#eb0	0.537177907
+contrast	#eb0	rgb(148, 187, 240)	1.105217433
+readable	#eb0	rgb(148, 187, 240)	false
+hex8	hsl(80, 29%, 96%)	#f6f8f2ff
+rgb	hsl(80, 29%, 96%)	rgb(246, 248, 242)
+hsl	hsl(80, 29%, 96%)	hsl(80, 29%, 96%)
+lighten	hsl(80, 29%, 96%)	97	#ffffffff
+darken	hsl(80, 29%, 96%)	97	#000000ff
+saturate	hsl(80, 29%, 96%)	97	#f8ffebff
+desaturate	hsl(80, 29%, 96%)	97	#f5f5f5ff
+spin	hsl(80, 29%, 96%)	-233	#f2f5f8ff
+mix	hsl(80, 29%, 96%)	#441baf	97	#4922b1ff
+luminance	hsl(80, 29%, 96%)	0.931384385
+contrast	hsl(80, 29%, 96%)	#441baf	9.709030250
+readable	hsl(80, 29%, 96%)	#441baf	true
+hex8	#5348fe	#5348feff
+rgb	#5348fe	rgb(83, 72, 254)
+hsl	#5348fe	hsl(244, 99%, 64%)
+lighten	#5348fe	34	#f5f4ffff
+darken	#5348fe	34	#0a0198ff
+saturate	#5348fe	34	#5247ffff
+desaturate	#5348fe	34	#6e67dfff
+spin	#5348fe	5	#6248feff
+mix	#5348fe	rgb(12, 42, 205)	34	#3b3eedff
+luminance	#5348fe	0.136294866
+contrast	#5348fe	rgb(12, 42, 205)	1.672025229
+readable	#5348fe	rgb(12, 42, 205)	false
+hex8	#5b0ee3	#5b0ee3ff
+rgb	#5b0ee3	rgb(91, 14, 227)
+hsl	#5b0ee3	hsl(262, 88%, 47%)
+lighten	#5b0ee3	16	#8a4ef4ff
+darken	#5b0ee3	16	#3c0996ff
+saturate	#5b0ee3	16	#5700f1ff
+desaturate	#5b0ee3	16	#6021d0ff
+spin	#5b0ee3	-10	#370ee3ff
+mix	#5b0ee3	#c527f7bc	16	#6c12e6f4
+luminance	#5b0ee3	0.080842737
+contrast	#5b0ee3	#c527f7bc	1.913499805
+readable	#5b0ee3	#c527f7bc	false
+hex8	rgba(250, 8, 13, 0)	#fa080d00
+rgb	rgba(250, 8, 13, 0)	rgba(250, 8, 13, 0)
+hsl	rgba(250, 8, 13, 0)	hsla(359, 96%, 51%, 0)
+lighten	rgba(250, 8, 13, 0)	70	#ffffff00
+darken	rgba(250, 8, 13, 0)	70	#00000000
+saturate	rgba(250, 8, 13, 0)	70	#ff030800
+desaturate	rgba(250, 8, 13, 0)	70	#a2606200
+spin	rgba(250, 8, 13, 0)	-285	#c2fa0800
+mix	rgba(250, 8, 13, 0)	#4b71a435	70	#80527725
+luminance	rgba(250, 8, 13, 0)	0.205267179
+contrast	rgba(250, 8, 13, 0)	#4b71a435	1.216343046
+readable	rgba(250, 8, 13, 0)	#4b71a435	false
+hex8	248300	#248300ff
+rgb	248300	rgb(36, 131, 0)
+hsl	248300	hsl(104, 100%, 26%)
+lighten	248300	36	#71ff3cff
+darken	248300	36	#000000ff
+saturate	248300	36	#248300ff
+desaturate	248300	36	#2f6b18ff
+spin	248300	-254	#004383ff
+mix	248300	407a5C	36	#2e8021ff
+luminance	248300	0.166076672
+contrast	248300	407a5C	1.039741793
+readable	248300	407a5C	false
+hex8	#c73	#cc7733ff
+rgb	#c73	rgb(204, 119, 51)
+hsl	#c73	hsl(27, 60%, 50%)
+lighten	#c73	2	#ce7c3bff
+darken	#c73	2	#c47231ff
+saturate	#c73	2	#cf7730ff
+desaturate	#c73	2	#c97736ff
+spin	#c73	324	#cc334bff
+mix	#c73	hsla(235, 81%, 60%, 0.26)	2	#c97637fb
+luminance	#c73	0.262700372
+contrast	#c73	hsla(235, 81%, 60%, 0.26)	1.672295781
+readable	#c73	hsla(235, 81%, 60%, 0.26)	false
+hex8	rgb(204, 74, 4)	#cc4a04ff
+rgb	rgb(204, 74, 4)	rgb(204, 74, 4)
+hsl	rgb(204, 74, 4)	hsl(21, 96%, 41%)
+lighten	rgb(204, 74, 4)	28	#fc9863ff
+darken	rgb(204, 74, 4)	28	#401701ff
+saturate	rgb(204, 74, 4)	28	#d04900ff
+desaturate	rgb(204, 74, 4)	28	#af5321ff
+spin	rgb(204, 74, 4)	160	#04c9ccff
+mix	rgb(204, 74, 4)	#84b81107	28	#b86908ba
+luminance	rgb(204, 74, 4)	0.177436938
+contrast	rgb(204, 74, 4)	#84b81107	1.944582277
+readable	rgb(204, 74, 4)	#84b81107	false
+hex8	rgb(114, 74, 152)	#724a98ff
+rgb	rgb(114, 74, 152)	rgb(114, 74, 152)
+hsl	rgb(114, 74, 152)	hsl(271, 35%, 44%)
+lighten	rgb(114, 74, 152)	72	#ffffffff
+darken	rgb(114, 74, 152)	72	#000000ff
+saturate	rgb(114, 74, 152)	72	#7400e2ff
+desaturate	rgb(114, 74, 152)	72	#717171ff
+spin	rgb(114, 74, 152)	-244	#986d4aff
+mix	rgb(114, 74, 152)	#0c7	72	#20a880ff
+luminance	rgb(114, 74, 152)	0.107419647
+contrast	rgb(114, 74, 152)	#0c7	3.145582002
+readable	rgb(114, 74, 152)	#0c7	false
+hex8	rgb(0%, 0%, 59%)	#000096ff
+rgb	rgb(0%, 0%, 59%)	rgb(0, 0, 150)
+hsl	rgb(0%, 0%, 59%)	hsl(240, 100%, 30%)
+lighten	rgb(0%, 0%, 59%)	59	#c4c4ffff
+darken	rgb(0%, 0%, 59%)	59	#000000ff
+saturate	rgb(0%, 0%, 59%)	59	#000096ff
+desaturate	rgb(0%, 0%, 59%)	59	#2c2c6aff
+spin	rgb(0%, 0%, 59%)	-81	#009662ff
+mix	rgb(0%, 0%, 59%)	#430f5a	59	#280973ff
+luminance	rgb(0%, 0%, 59%)	0.022020084
+contrast	rgb(0%, 0%, 59%)	#430f5a	1.009874512
+readable	rgb(0%, 0%, 59%)	#430f5a	false
+hex8	hsla(174, 5%, 32%, 0.36)	#4e56555c
+rgb	hsla(174, 5%, 32%, 0.36)	rgba(78, 86, 85, 0.36)
+hsl	hsla(174, 5%, 32%, 0.36)	hsla(174, 5%, 32%, 0.36)
+lighten	hsla(174, 5%, 32%, 0.36)	57	#e2e4e45c
+darken	hsla(174, 5%, 32%, 0.36)	57	#0000005c
+saturate	hsla(174, 5%, 32%, 0.36)	57	#1f847a5c
+desaturate	hsla(174, 5%, 32%, 0.36)	57	#5252525c
+spin	hsla(174, 5%, 32%, 0.36)	-271	#514e565c
+mix	hsla(174, 5%, 32%, 0.36)	rgb(80, 231, 116)	57	#4fa967b9
+luminance	hsla(174, 5%, 32%, 0.36)	0.089311554
+contrast	hsla(174, 5%, 32%, 0.36)	rgb(80, 231, 116)	4.674289651
+readable	hsla(174, 5%, 32%, 0.36)	rgb(80, 231, 116)	true
+hex8	b255F2	#b255f2ff
+rgb	b255F2	rgb(178, 85, 242)
+hsl	b255F2	hsl(276, 86%, 64%)
+lighten	b255F2	90	#ffffffff
+darken	b255F2	90	#000000ff
+saturate	b255F2	90	#b448ffff
+desaturate	b255F2	90	#a3a3a3ff
+spin	b255F2	-307	#f255a7ff
+mix	b255F2	#2eaf3260	90	#3ba64570
+luminance	b255F2	0.223727815
+contrast	b255F2	#2eaf3260	1.332384721
+readable	b255F2	#2eaf3260	false
+hex8	hsl(295, 95%, 21%)	#600368ff
+rgb	hsl(295, 95%, 21%)	rgb(96, 3, 104)
+hsl	hsl(295, 95%, 21%)	hsl(295, 95%, 21%)
+lighten	hsl(295, 95%, 21%)	59	#f49cfcff
+darken	hsl(295, 95%, 21%)	59	#000000ff
+saturate	hsl(295, 95%, 21%)	59	#62006bff
+desaturate	hsl(295, 95%, 21%)	59	#462249ff
+spin	hsl(295, 95%, 21%)	-241	#685e03ff
+mix	hsl(295, 95%, 21%)	rgb(99, 62, 172)	59	#622690ff
+luminance	hsl(295, 95%, 21%)	0.035513974
+contrast	hsl(295, 95%, 21%)	rgb(99, 62, 172)	1.646100013
+readable	hsl(295, 95%, 21%)	rgb(99, 62, 172)	false
+hex8	hsla(163, 39%, 38%, 0.01)	#3b877103
+rgb	hsla(163, 39%, 38%, 0.01)	rgba(59, 135, 113, 0.01)
+hsl	hsla(163, 39%, 38%, 0.01)	hsla(163, 39%, 38%, 0.01)
+lighten	hsla(163, 39%, 38%, 0.01)	96	#ffffff03
+darken	hsla(163, 39%, 38%, 0.01)	96	#00000003
+saturate	hsla(163, 39%, 38%, 0.01)	96	#00c28b03
+desaturate	hsla(163, 39%, 38%, 0.01)	96	#61616103
+spin	hsla(163, 39%, 38%, 0.01)	-61	#52873b03
+mix	hsla(163, 39%, 38%, 0.01)	hsla(269, 75%, 21%, 0.26)	96	#34125f40
+luminance	hsla(163, 39%, 38%, 0.01)	0.194500070
+contrast	hsla(163, 39%, 38%, 0.01)	hsla(269, 75%, 21%, 0.26)	3.581860116
+readable	hsla(163, 39%, 38%, 0.01)	hsla(269, 75%, 21%, 0.26)	false
+hex8	rgb(180, 11, 7)	#b40b07ff
+rgb	rgb(180, 11, 7)	rgb(180, 11, 7)
+hsl	rgb(180, 11, 7)	hsl(1, 93%, 37%)
+lighten	rgb(180, 11, 7)	28	#f85552ff
+darken	rgb(180, 11, 7)	28	#2b0302ff
+saturate	rgb(180, 11, 7)	28	#bb0400ff
+desaturate	rgb(180, 11, 7)	28	#9a2421ff
+spin	rgb(180, 11, 7)	-41	#b40779ff
+mix	rgb(180, 11, 7)	rgba(5, 185, 205, 0.5)	28	#833c3edb
+luminance	rgb(180, 11, 7)	0.099579828
+contrast	rgb(180, 11, 7)	rgba(5, 185, 205, 0.5)	2.950796716
+readable	rgb(180, 11, 7)	rgba(5, 185, 205, 0.5)	false
+hex8	ead57B	#ead57bff
+rgb	ead57B	rgb(234, 213, 123)
+hsl	ead57B	hsl(49, 73%, 70%)
+lighten	ead57B	14	#f4e9b9ff
+darken	ead57B	14	#e0c13dff
+saturate	ead57B	14	#f5dc70ff
+desaturate	ead57B	14	#dfce86ff
+spin	ead57B	-351	#eae67bff
+mix	ead57B	rgba(148, 33, 132, 0)	14	#debc7cdb
+luminance	ead57B	0.665109852
+contrast	ead57B	rgba(148, 33, 132, 0)	5.089910779
+readable	ead57B	rgba(148, 33, 132, 0)	true
+hex8	rgb(163, 96, 29)	#a3601dff
+rgb	rgb(163, 96, 29)	rgb(163, 96, 29)
+hsl	rgb(163, 96, 29)	hsl(30, 70%, 38%)
+lighten	rgb(163, 96, 29)	47	#f3d8bcff
+darken	rgb(163, 96, 29)	47	#000000ff
+saturate	rgb(163, 96, 29)	47	#c06000ff
+desaturate	rgb(163, 96, 29)	47	#76604aff
+spin	rgb(163, 96, 29)	-239	#1da362ff
+mix	rgb(163, 96, 29)	rgb(5%, 77%, 36%)	47	#5d8f3bff
+luminance	rgb(163, 96, 29)	0.162409808
+contrast	rgb(163, 96, 29)	rgb(5%, 77%, 36%)	2.134464890
+readable	rgb(163, 96, 29)	rgb(5%, 77%, 36%)	false
+hex8	#a2d9f0	#a2d9f0ff
+rgb	#a2d9f0	rgb(162, 217, 240)
+hsl	#a2d9f0	hsl(198, 72%, 79%)
+lighten	#a2d9f0	37	#ffffffff
+darken	#a2d9f0	37	#1e8ab8ff
+saturate	#a2d9f0	37	#93dfffff
+desaturate	#a2d9f0	37	#b6d1dcff
+spin	#a2d9f0	128	#f0a2cfff
+mix	#a2d9f0	rgba(202, 168, 150, 0.56)	37	#b1c7cfd5
+luminance	#a2d9f0	0.635983611
+contrast	#a2d9f0	rgba(202, 168, 150, 0.56)	1.436198964
+readable	#a2d9f0	rgba(202, 168, 150, 0.56)	false
+hex8	hsl(70, 59%, 5%)	#121405ff
+rgb	hsl(70, 59%, 5%)	rgb(18, 20, 5)
+hsl	hsl(70, 59%, 5%)	hsl(70, 59%, 5%)
+lighten	hsl(70, 59%, 5%)	100	#ffffffff
+darken	hsl(70, 59%, 5%)	100	#000000ff
+saturate	hsl(70, 59%, 5%)	100	#151a00ff
+desaturate	hsl(70, 59%, 5%)	100	#0d0d0dff
+spin	hsl(70, 59%, 5%)	-355	#111405ff
+mix	hsl(70, 59%, 5%)	#d16	100	#dd1166ff
+luminance	hsl(70, 59%, 5%)	0.006398673
+contrast	hsl(70, 59%, 5%)	#d16	3.853345826
+readable	hsl(70, 59%, 5%)	#d16	false
+hex8	#4af	#44aaffff
+rgb	#4af	rgb(68, 170, 255)
+hsl	#4af	hsl(207, 100%, 63%)
+lighten	#4af	67	#ffffffff
+darken	#4af	67	#000000ff
+saturate	#4af	67	#44aaffff
+desaturate	#4af	67	#83a4c0ff
+spin	#4af	-255	#ff44d9ff
+mix	#4af	#04d65b	67	#19c791ff
+luminance	#4af	0.371983943
+contrast	#4af	#04d65b	1.276690227
+readable	#4af	#04d65b	false
+hex8	#8a863f	#8a863fff
+rgb	#8a863f	rgb(138, 134, 63)
+hsl	#8a863f	hsl(57, 37%, 39%)
+lighten	#8a863f	61	#ffffffff
+darken	#8a863f	61	#000000ff
+saturate	#8a863f	61	#c7bd02ff
+desaturate	#8a863f	61	#646464ff
+spin	#8a863f	123	#3f8a8aff
+mix	#8a863f	#e95d56d9	61	#c46d4de8
+luminance	#8a863f	0.228123494
+contrast	#8a863f	#e95d56d9	1.108292756
+readable	#8a863f	#e95d56d9	false
+hex8	rgb(253, 21, 130)	#fd1582ff
+rgb	rgb(253, 21, 130)	rgb(253, 21, 130)
+hsl	rgb(253, 21, 130)	hsl(332, 98%, 54%)
+lighten	rgb(253, 21, 130)	66	#ffffffff
+darken	rgb(253, 21, 130)	66	#000000ff
+saturate	rgb(253, 21, 130)	66	#ff1382ff
+desaturate	rgb(253, 21, 130)	66	#af6387ff
+spin	rgb(253, 21, 130)	-359	#fd157eff
+mix	rgb(253, 21, 130)	rgba(246, 227, 146, 0)	66	#f89d8d57
+luminance	rgb(253, 21, 130)	0.230306833
+contrast	rgb(253, 21, 130)	rgba(246, 227, 146, 0)	2.911321220
+readable	rgb(253, 21, 130)	rgba(246, 227, 146, 0)	false
+hex8	rgb(229, 97, 207)	#e561cfff
+rgb	rgb(229, 97, 207)	rgb(229, 97, 207)
+hsl	rgb(229, 97, 207)	hsl(310, 72%, 64%)
+lighten	rgb(229, 97, 207)	65	#ffffffff
+darken	rgb(229, 97, 207)	65	#000000ff
+saturate	rgb(229, 97, 207)	65	#ff47e0ff
+desaturate	rgb(229, 97, 207)	65	#a99da7ff
+spin	rgb(229, 97, 207)	-335	#e56198ff
+mix	rgb(229, 97, 207)	a1af0B	65	#b99450ff
+luminance	rgb(229, 97, 207)	0.297123958
+contrast	rgb(229, 97, 207)	a1af0B	1.246274488
+readable	rgb(229, 97, 207)	a1af0B	false
+hex8	#fc1799	#fc1799ff
+rgb	#fc1799	rgb(252, 23, 153)
+hsl	#fc1799	hsl(326, 97%, 54%)
+lighten	#fc1799	81	#ffffffff
+darken	#fc1799	81	#000000ff
+saturate	#fc1799	81	#ff1499ff
+desaturate	#fc1799	81	#9d768cff
+spin	#fc1799	-264	#f5fc17ff
+mix	#fc1799	rgb(92, 82, 97)	81	#7a476cff
+luminance	#fc1799	0.236081470
+contrast	#fc1799	rgb(92, 82, 97)	2.018501168
+readable	#fc1799	rgb(92, 82, 97)	false
+hex8	hsla(266, 98%, 69%, 0.62)	#a662fd9e
+rgb	hsla(266, 98%, 69%, 0.62)	rgba(166, 98, 253, 0.62)
+hsl	hsla(266, 98%, 69%, 0.62)	hsla(266, 98%, 69%, 0.62)
+lighten	hsla(266, 98%, 69%, 0.62)	94	#ffffff9e
+darken	hsla(266, 98%, 69%, 0.62)	94	#0000009e
+saturate	hsla(266, 98%, 69%, 0.62)	94	#a561ff9e
+desaturate	hsla(266, 98%, 69%, 0.62)	94	#b0adb39e
+spin	hsla(266, 98%, 69%, 0.62)	-339	#dc62fd9e
+mix	hsla(266, 98%, 69%, 0.62)	hsl(301, 96%, 2%)	94	#130619f9
+luminance	hsla(266, 98%, 69%, 0.62)	0.239342050
+contrast	hsla(266, 98%, 69%, 0.62)	hsl(301, 96%, 2%)	5.688493220
+readable	hsla(266, 98%, 69%, 0.62)	hsl(301, 96%, 2%)	true
+hex8	#902270aa	#902270aa
+rgb	#902270aa	rgba(144, 34, 112, 0.67)
+hsl	#902270aa	hsla(317, 62%, 35%, 0.67)
+lighten	#902270aa	58	#f8e2f2aa
+darken	#902270aa	58	#000000aa
+saturate	#902270aa	58	#b2007eaa
+desaturate	#902270aa	58	#5c565aaa
+spin	#902270aa	-356	#902269aa
+mix	#902270aa	598b53	58	#705f5fdb
+luminance	#902270aa	0.082431990
+contrast	#902270aa	598b53	1.979402248
+readable	#902270aa	598b53	false
+hex8	hsl(312, 82%, 2%)	#090108ff
+rgb	hsl(312, 82%, 2%)	rgb(9, 1, 8)
+hsl	hsl(312, 82%, 2%)	hsl(312, 81%, 2%)
+lighten	hsl(312, 82%, 2%)	6	#25041eff
+darken	hsl(312, 82%, 2%)	6	#000000ff
+saturate	hsl(312, 82%, 2%)	6	#0a0108ff
+desaturate	hsl(312, 82%, 2%)	6	#090107ff
+spin	hsl(312, 82%, 2%)	-100	#010509ff
+mix	hsl(312, 82%, 2%)	#edb	6	#170e13ff
+luminance	hsl(312, 82%, 2%)	0.000973168
+contrast	hsl(312, 82%, 2%)	#edb	15.395923903
+readable	hsl(312, 82%, 2%)	#edb	true
+hex8	hsl(230, 52%, 100%)	#ffffffff
+rgb	hsl(230, 52%, 100%)	rgb(255, 255, 255)
+hsl	hsl(230, 52%, 100%)	hsl(0, 0%, 100%)
+lighten	hsl(230, 52%, 100%)	62	#ffffffff
+darken	hsl(230, 52%, 100%)	62	#616161ff
+saturate	hsl(230, 52%, 100%)	62	#ffffffff
+desaturate	hsl(230, 52%, 100%)	62	#ffffffff
+spin	hsl(230, 52%, 100%)	-88	#ffffffff
+mix	hsl(230, 52%, 100%)	rgb(24%, 2%, 48%)	62	#8764adff
+luminance	hsl(230, 52%, 100%)	1.000000000
+contrast	hsl(230, 52%, 100%)	rgb(24%, 2%, 48%)	13.989215768
+readable	hsl(230, 52%, 100%)	rgb(24%, 2%, 48%)	true
+hex8	64cf97	#64cf97ff
+rgb	64cf97	rgb(100, 207, 151)
+hsl	64cf97	hsl(149, 53%, 60%)
+lighten	64cf97	48	#ffffffff
+darken	64cf97	48	#0f2f1eff
+saturate	64cf97	48	#34ff95ff
+desaturate	64cf97	48	#959e99ff
+spin	64cf97	-31	#68cf64ff
+mix	64cf97	rgb(59%, 15%, 32%)	48	#7c7e76ff
+luminance	64cf97	0.495693379
+contrast	64cf97	rgb(59%, 15%, 32%)	4.048334745
+readable	64cf97	rgb(59%, 15%, 32%)	false
+hex8	#9e4	#99ee44ff
+rgb	#9e4	rgb(153, 238, 68)
+hsl	#9e4	hsl(90, 83%, 60%)
+lighten	#9e4	2	#9eef4dff
+darken	#9e4	2	#94ed3bff
+saturate	#9e4	2	#99f042ff
+desaturate	#9e4	2	#99ec46ff
+spin	#9e4	329	#eeeb44ff
+mix	#9e4	rgba(153, 197, 139, 0.23)	2	#99ed45fb
+luminance	#9e4	0.683387310
+contrast	#9e4	rgba(153, 197, 139, 0.23)	1.369054537
+readable	#9e4	rgba(153, 197, 139, 0.23)	false
+hex8	#b11	#bb1111ff
+rgb	#b11	rgb(187, 17, 17)
+hsl	#b11	hsl(0, 83%, 40%)
+lighten	#b11	0	#bb1111ff
+darken	#b11	0	#bb1111ff
+saturate	#b11	0	#bb1111ff
+desaturate	#b11	0	#bb1111ff
+spin	#b11	200	#1182bbff
+mix	#b11	hsla(149, 25%, 90%, 0.98)	0	#bb1111ff
+luminance	#b11	0.110061640
+contrast	#b11	hsla(149, 25%, 90%, 0.98)	5.393923454
+readable	#b11	hsla(149, 25%, 90%, 0.98)	true
+hex8	rgba(12, 2, 104, 0.23)	#0c02683b
+rgb	rgba(12, 2, 104, 0.23)	rgba(12, 2, 104, 0.23)
+hsl	rgba(12, 2, 104, 0.23)	hsla(246, 96%, 21%, 0.23)
+lighten	rgba(12, 2, 104, 0.23)	4	#0e027c3b
+darken	rgba(12, 2, 104, 0.23)	4	#0a02543b
+saturate	rgba(12, 2, 104, 0.23)	4	#0a006a3b
+desaturate	rgba(12, 2, 104, 0.23)	4	#0e04663b
+spin	rgba(12, 2, 104, 0.23)	139	#682c023b
+mix	rgba(12, 2, 104, 0.23)	#7a9d44ab	4	#1008673f
+luminance	rgba(12, 2, 104, 0.23)	0.011210553
+contrast	rgba(12, 2, 104, 0.23)	#7a9d44ab	5.500501196
+readable	rgba(12, 2, 104, 0.23)	#7a9d44ab	true
+hex8	#051d67fb	#051d67fb
+rgb	#051d67fb	rgba(5, 29, 103, 0.98)
+hsl	#051d67fb	hsla(225, 91%, 21%, 0.98)
+lighten	#051d67fb	36	#2f5ff5fb
+darken	#051d67fb	36	#000000fb
+saturate	#051d67fb	36	#001a6cfb
+desaturate	#051d67fb	36	#182754fb
+spin	#051d67fb	282	#056732fb
+mix	#051d67fb	rgb(61, 221, 18)	36	#196248fc
+luminance	#051d67fb	0.018902672
+contrast	#051d67fb	rgb(61, 221, 18)	8.381195301
+readable	#051d67fb	rgb(61, 221, 18)	true
+hex8	rgb(185, 245, 188)	#b9f5bcff
+rgb	rgb(185, 245, 188)	rgb(185, 245, 188)
+hsl	rgb(185, 245, 188)	hsl(123, 75%, 84%)
+lighten	rgb(185, 245, 188)	36	#ffffffff
+darken	rgb(185, 245, 188)	36	#1fd828ff
+saturate	rgb(185, 245, 188)	36	#afffb3ff
+desaturate	rgb(185, 245, 188)	36	#c7e7c9ff
+spin	rgb(185, 245, 188)	233	#f5b9bdff
+mix	rgb(185, 245, 188)	hsla(17, 89%, 32%, 0.75)	36	#aeaf7ce8
+luminance	rgb(185, 245, 188)	0.792499435
+contrast	rgb(185, 245, 188)	hsla(17, 89%, 32%, 0.75)	5.945256393
+readable	rgb(185, 245, 188)	hsla(17, 89%, 32%, 0.75)	true
+hex8	hsl(311, 92%, 1%)	#050004ff
+rgb	hsl(311, 92%, 1%)	rgb(5, 0, 4)
+hsl	hsl(311, 92%, 1%)	hsl(311, 100%, 1%)
+lighten	hsl(311, 92%, 1%)	24	#7f0069ff
+darken	hsl(311, 92%, 1%)	24	#000000ff
+saturate	hsl(311, 92%, 1%)	24	#050004ff
+desaturate	hsl(311, 92%, 1%)	24	#040104ff
+spin	hsl(311, 92%, 1%)	-51	#020005ff
+mix	hsl(311, 92%, 1%)	#b83	24	#31210fff
+luminance	hsl(311, 92%, 1%)	0.000410308
+contrast	hsl(311, 92%, 1%)	#b83	6.628035465
+readable	hsl(311, 92%, 1%)	#b83	true
+hex8	#68851e	#68851eff
+rgb	#68851e	rgb(104, 133, 30)
+hsl	#68851e	hsl(77, 63%, 32%)
+lighten	#68851e	21	#a8d33bff
+darken	#68851e	21	#242e0aff
+saturate	#68851e	21	#6f960dff
+desaturate	#68851e	21	#61742fff
+spin	#68851e	308	#85491eff
+mix	#68851e	rgb(76%, 38%, 33%)	21	#7b7d29ff
+luminance	#68851e	0.198118513
+contrast	#68851e	rgb(76%, 38%, 33%)	1.034135477
+readable	#68851e	rgb(76%, 38%, 33%)	false
+hex8	rgb(238, 229, 244)	#eee5f4ff
+rgb	rgb(238, 229, 244)	rgb(238, 229, 244)
+hsl	rgb(238, 229, 244)	hsl(276, 41%, 93%)
+lighten	rgb(238, 229, 244)	23	#ffffffff
+darken	rgb(238, 229, 244)	23	#b893d1ff
+saturate	rgb(238, 229, 244)	23	#efe1f8ff
+desaturate	rgb(238, 229, 244)	23	#ede9f0ff
+spin	rgb(238, 229, 244)	161	#f0f4e5ff
+mix	rgb(238, 229, 244)	hsl(212, 7%, 84%)	23	#e8e2eeff
+luminance	rgb(238, 229, 244)	0.807474194
+contrast	rgb(238, 229, 244)	hsl(212, 7%, 84%)	1.191734635
+readable	rgb(238, 229, 244)	hsl(212, 7%, 84%)	false
+hex8	#000	#000000ff
+rgb	#000	rgb(0, 0, 0)
+hsl	#000	hsl(0, 0%, 0%)
+lighten	#000	76	#c2c2c2ff
+darken	#000	76	#000000ff
+saturate	#000	76	#000000ff
+desaturate	#000	76	#000000ff
+spin	#000	-189	#000000ff
+mix	#000	hsl(194, 50%, 90%)	76	#a5b3b8ff
+luminance	#000	0.000000000
+contrast	#000	hsl(194, 50%, 90%)	17.230684775
+readable	#000	hsl(194, 50%, 90%)	true
+hex8	#0dc	#00ddccff
+rgb	#0dc	rgb(0, 221, 204)
+hsl	#0dc	hsl(175, 100%, 43%)
+lighten	#0dc	21	#49fff1ff
+darken	#0dc	21	#007269ff
+saturate	#0dc	21	#00ddccff
+desaturate	#0dc	21	#17c6b8ff
+spin	#0dc	-325	#006dddff
+mix	#0dc	rgb(50%, 6%, 100%)	21	#1bb2d7ff
+luminance	#0dc	0.560725362
+contrast	#0dc	rgb(50%, 6%, 100%)	3.560906013
+readable	#0dc	rgb(50%, 6%, 100%)	false
+hex8	rgb(58%, 23%, 54%)	#943b8aff
+rgb	rgb(58%, 23%, 54%)	rgb(148, 59, 138)
+hsl	rgb(58%, 23%, 54%)	hsl(307, 43%, 41%)
+lighten	rgb(58%, 23%, 54%)	15	#bf5db3ff
+darken	rgb(58%, 23%, 54%)	15	#5d2557ff
+saturate	rgb(58%, 23%, 54%)	15	#a32b96ff
+desaturate	rgb(58%, 23%, 54%)	15	#844a7eff
+spin	rgb(58%, 23%, 54%)	-217	#67943bff
+mix	rgb(58%, 23%, 54%)	62392D	15	#8d3b7cff
+luminance	rgb(58%, 23%, 54%)	0.112588071
+contrast	rgb(58%, 23%, 54%)	62392D	1.517757653
+readable	rgb(58%, 23%, 54%)	62392D	false
+hex8	rgba(154, 254, 30, 0)	#9afe1e00
+rgb	rgba(154, 254, 30, 0)	rgba(154, 254, 30, 0)
+hsl	rgba(154, 254, 30, 0)	hsla(87, 99%, 56%, 0)
+lighten	rgba(154, 254, 30, 0)	36	#ecffd500
+darken	rgba(154, 254, 30, 0)	36	#38640000
+saturate	rgba(154, 254, 30, 0)	36	#9aff1d00
+desaturate	rgba(154, 254, 30, 0)	36	#96d54700
+spin	rgba(154, 254, 30, 0)	-4	#a9fe1e00
+mix	rgba(154, 254, 30, 0)	27e7F8	36	#71f66c5c
+luminance	rgba(154, 254, 30, 0)	0.778473841
+contrast	rgba(154, 254, 30, 0)	27e7F8	1.194446632
+readable	rgba(154, 254, 30, 0)	27e7F8	false
+hex8	hsla(63, 59%, 98%, 0.19)	#fdfdf730
+rgb	hsla(63, 59%, 98%, 0.19)	rgba(253, 253, 247, 0.19)
+hsl	hsla(63, 59%, 98%, 0.19)	hsla(63, 59%, 98%, 0.19)
+lighten	hsla(63, 59%, 98%, 0.19)	91	#ffffff30
+darken	hsla(63, 59%, 98%, 0.19)	91	#1b1c0730
+saturate	hsla(63, 59%, 98%, 0.19)	91	#fefff530
+desaturate	hsla(63, 59%, 98%, 0.19)	91	#fafafa30
+spin	hsla(63, 59%, 98%, 0.19)	-136	#fcf7fd30
+mix	hsla(63, 59%, 98%, 0.19)	hsla(239, 20%, 12%, 0.39)	91	#2d2e385f
+luminance	hsla(63, 59%, 98%, 0.19)	0.978486065
+contrast	hsla(63, 59%, 98%, 0.19)	hsla(239, 20%, 12%, 0.39)	17.075910895
+readable	hsla(63, 59%, 98%, 0.19)	hsla(239, 20%, 12%, 0.39)	true
+hex8	b1839A	#b1839aff
+rgb	b1839A	rgb(177, 131, 154)
+hsl	b1839A	hsl(330, 23%, 60%)
+lighten	b1839A	8	#c19caeff
+darken	b1839A	8	#a16a86ff
+saturate	b1839A	8	#b97b9aff
+desaturate	b1839A	8	#a98b9aff
+spin	b1839A	-159	#83b1aaff
+mix	b1839A	rgb(129, 145, 80)	8	#ad8494ff
+luminance	b1839A	0.279128048
+contrast	b1839A	rgb(129, 145, 80)	1.079210541
+readable	b1839A	rgb(129, 145, 80)	false
+hex8	#c22ae3	#c22ae3ff
+rgb	#c22ae3	rgb(194, 42, 227)
+hsl	#c22ae3	hsl(289, 77%, 53%)
+lighten	#c22ae3	0	#c22ae3ff
+darken	#c22ae3	0	#c22ae3ff
+saturate	#c22ae3	0	#c22ae3ff
+desaturate	#c22ae3	0	#c22ae3ff
+spin	#c22ae3	-177	#42e32aff
+mix	#c22ae3	rgb(39%, 49%, 41%)	0	#c22ae3ff
+luminance	#c22ae3	0.186713140
+contrast	#c22ae3	rgb(39%, 49%, 41%)	1.014203760
+readable	#c22ae3	rgb(39%, 49%, 41%)	false
+hex8	#425	#442255ff
+rgb	#425	rgb(68, 34, 85)
+hsl	#425	hsl(280, 43%, 23%)
+lighten	#425	6	#552b6bff
+darken	#425	6	#33193fff
+saturate	#425	6	#451e59ff
+desaturate	#425	6	#432651ff
+spin	#425	111	#553c22ff
+mix	#425	rgba(112, 237, 166, 0)	6	#472e5af0
+luminance	#425	0.030288755
+contrast	#425	rgba(112, 237, 166, 0)	8.938523437
+readable	#425	rgba(112, 237, 166, 0)	true
+hex8	rgb(28%, 55%, 96%)	#478cf5ff
+rgb	rgb(28%, 55%, 96%)	rgb(71, 140, 245)
+hsl	rgb(28%, 55%, 96%)	hsl(216, 89%, 62%)
+lighten	rgb(28%, 55%, 96%)	81	#ffffffff
+darken	rgb(28%, 55%, 96%)	81	#000000ff
+saturate	rgb(28%, 55%, 96%)	81	#3d8affff
+desaturate	rgb(28%, 55%, 96%)	81	#969ca6ff
+spin	rgb(28%, 55%, 96%)	305	#47f5beff
+mix	rgb(28%, 55%, 96%)	rgba(41, 230, 94, 0.5)	81	#2fd57b98
+luminance	rgb(28%, 55%, 96%)	0.266883323
+contrast	rgb(28%, 55%, 96%)	rgba(41, 230, 94, 0.5)	1.984111915
+readable	rgb(28%, 55%, 96%)	rgba(41, 230, 94, 0.5)	false
+hex8	hsl(49, 49%, 30%)	#726427ff
+rgb	hsl(49, 49%, 30%)	rgb(114, 100, 39)
+hsl	hsl(49, 49%, 30%)	hsl(49, 49%, 30%)
+lighten	hsl(49, 49%, 30%)	50	#e5dcb3ff
+darken	hsl(49, 49%, 30%)	50	#000000ff
+saturate	hsl(49, 49%, 30%)	50	#987c01ff
+desaturate	hsl(49, 49%, 30%)	50	#4d4d4dff
+spin	hsl(49, 49%, 30%)	147	#275e72ff
+mix	hsl(49, 49%, 30%)	rgba(35, 33, 18, 1)	50	#4b431dff
+luminance	hsl(49, 49%, 30%)	0.128382338
+contrast	hsl(49, 49%, 30%)	rgba(35, 33, 18, 1)	2.749118524
+readable	hsl(49, 49%, 30%)	rgba(35, 33, 18, 1)	false
+hex8	hsl(156, 20%, 55%)	#75a391ff
+rgb	hsl(156, 20%, 55%)	rgb(117, 163, 145)
+hsl	hsl(156, 20%, 55%)	hsl(156, 20%, 55%)
+lighten	hsl(156, 20%, 55%)	23	#bcd2c9ff
+darken	hsl(156, 20%, 55%)	23	#416255ff
+saturate	hsl(156, 20%, 55%)	23	#5bbe96ff
+desaturate	hsl(156, 20%, 55%)	23	#8c8c8cff
+spin	hsl(156, 20%, 55%)	228	#a38875ff
+mix	hsl(156, 20%, 55%)	hsl(85, 21%, 71%)	23	#84ab96ff
+luminance	hsl(156, 20%, 55%)	0.320206273
+contrast	hsl(156, 20%, 55%)	hsl(85, 21%, 71%)	1.563345352
+readable	hsl(156, 20%, 55%)	hsl(85, 21%, 71%)	false
+hex8	rgb(167, 190, 85)	#a7be55ff
+rgb	rgb(167, 190, 85)	rgb(167, 190, 85)
+hsl	rgb(167, 190, 85)	hsl(73, 45%, 54%)
+lighten	rgb(167, 190, 85)	65	#ffffffff
+darken	rgb(167, 190, 85)	65	#000000ff
+saturate	rgb(167, 190, 85)	65	#ccff14ff
+desaturate	rgb(167, 190, 85)	65	#898989ff
+spin	rgb(167, 190, 85)	152	#556fbeff
+mix	rgb(167, 190, 85)	#e8c964	65	#d1c55fff
+luminance	rgb(167, 190, 85)	0.456982783
+contrast	rgb(167, 190, 85)	#e8c964	1.279120231
+readable	rgb(167, 190, 85)	#e8c964	false
+hex8	rgba(187, 14, 145, 1)	#bb0e91ff
+rgb	rgba(187, 14, 145, 1)	rgb(187, 14, 145)
+hsl	rgba(187, 14, 145, 1)	hsl(315, 86%, 39%)
+lighten	rgba(187, 14, 145, 1)	99	#ffffffff
+darken	rgba(187, 14, 145, 1)	99	#000000ff
+saturate	rgba(187, 14, 145, 1)	99	#c90098ff
+desaturate	rgba(187, 14, 145, 1)	99	#646464ff
+spin	rgba(187, 14, 145, 1)	-157	#0ebb7aff
+mix	rgba(187, 14, 145, 1)	hsl(170, 52%, 3%)	99	#060c0bff
+luminance	rgba(187, 14, 145, 1)	0.129232053
+contrast	rgba(187, 14, 145, 1)	hsl(170, 52%, 3%)	3.374942147
+readable	rgba(187, 14, 145, 1)	hsl(170, 52%, 3%)	false
+hex8	#22fd48	#22fd48ff
+rgb	#22fd48	rgb(34, 253, 72)
+hsl	#22fd48	hsl(130, 98%, 56%)
+lighten	#22fd48	79	#ffffffff
+darken	#22fd48	79	#000000ff
+saturate	#22fd48	79	#20ff47ff
+desaturate	#22fd48	79	#7aa582ff
+spin	#22fd48	-296	#22c8fdff
+mix	#22fd48	#c84ee9d3	79	#a573c7dc
+luminance	#22fd48	0.710585201
+contrast	#22fd48	#c84ee9d3	2.658335623
+readable	#22fd48	#c84ee9d3	false
+hex8	rgb(137, 122, 71)	#897a47ff
+rgb	rgb(137, 122, 71)	rgb(137, 122, 71)
+hsl	rgb(137, 122, 71)	hsl(46, 32%, 41%)
+lighten	rgb(137, 122, 71)	45	#e6e1cfff
+darken	rgb(137, 122, 71)	45	#000000ff
+saturate	rgb(137, 122, 71)	45	#b89418ff
+desaturate	rgb(137, 122, 71)	45	#686868ff
+spin	rgb(137, 122, 71)	-291	#4c8947ff
+mix	rgb(137, 122, 71)	rgba(58, 191, 131, 0.5)	45	#659962c6
+luminance	rgb(137, 122, 71)	0.196923647
+contrast	rgb(137, 122, 71)	rgba(58, 191, 131, 0.5)	1.814319452
+readable	rgb(137, 122, 71)	rgba(58, 191, 131, 0.5)	false
+hex8	62c0E2	#62c0e2ff
+rgb	62c0E2	rgb(98, 192, 226)
+hsl	62c0E2	hsl(196, 69%, 64%)
+lighten	62c0E2	91	#ffffffff
+darken	62c0E2	91	#000000ff
+saturate	62c0E2	91	#45ceffff
+desaturate	62c0E2	91	#a2a2a2ff
+spin	62c0E2	178	#e28062ff
+mix	62c0E2	f7f455	91	#eaef62ff
+luminance	62c0E2	0.457869310
+contrast	62c0E2	f7f455	1.774696746
+readable	62c0E2	f7f455	false
+hex8	#50b2325d	#50b2325d
+rgb	#50b2325d	rgba(80, 178, 50, 0.36)
+hsl	#50b2325d	hsla(106, 56%, 45%, 0.36)
+lighten	#50b2325d	35	#bce8ae5d
+darken	#50b2325d	35	#11270b5d
+saturate	#50b2325d	35	#3bda0a5d
+desaturate	#50b2325d	35	#658a5a5d
+spin	#50b2325d	202	#b232a15d
+mix	#50b2325d	#328	35	#46805096
+luminance	#50b2325d	0.337765522
+contrast	#50b2325d	#328	4.495604975
+readable	#50b2325d	#328	false
+hex8	rgb(18%, 62%, 41%)	#2e9e69ff
+rgb	rgb(18%, 62%, 41%)	rgb(46, 158, 105)
+hsl	rgb(18%, 62%, 41%)	hsl(151, 55%, 40%)
+lighten	rgb(18%, 62%, 41%)	34	#98e1beff
+darken	rgb(18%, 62%, 41%)	34	#071810ff
+saturate	rgb(18%, 62%, 41%)	34	#0bc16aff
+desaturate	rgb(18%, 62%, 41%)	34	#517b67ff
+spin	rgb(18%, 62%, 41%)	137	#882e9eff
+mix	rgb(18%, 62%, 41%)	hsla(62, 4%, 2%, 0.41)	34	#206a47cc
+luminance	rgb(18%, 62%, 41%)	0.260544828
+contrast	rgb(18%, 62%, 41%)	hsla(62, 4%, 2%, 0.41)	6.027932539
+readable	rgb(18%, 62%, 41%)	hsla(62, 4%, 2%, 0.41)	true
+hex8	6709E3	#6709e3ff
+rgb	6709E3	rgb(103, 9, 227)
+hsl	6709E3	hsl(266, 92%, 46%)
+lighten	6709E3	1	#6909e8ff
+darken	6709E3	1	#6509deff
+saturate	6709E3	1	#6708e4ff
+desaturate	6709E3	1	#670ae2ff
+spin	6709E3	-16	#2d09e3ff
+mix	6709E3	rgb(108, 243, 160)	1	#670be2ff
+luminance	6709E3	0.086249901
+contrast	6709E3	rgb(108, 243, 160)	5.491922856
+readable	6709E3	rgb(108, 243, 160)	true
+hex8	#9a1	#99aa11ff
+rgb	#9a1	rgb(153, 170, 17)
+hsl	#9a1	hsl(67, 82%, 37%)
+lighten	#9a1	5	#aec113ff
+darken	#9a1	5	#84930fff
+saturate	#9a1	5	#9daf0cff
+desaturate	#9a1	5	#95a516ff
+spin	#9a1	-277	#11aa5dff
+mix	#9a1	rgba(230, 137, 80, 1)	5	#9da814ff
+luminance	#9a1	0.355622262
+contrast	#9a1	rgba(230, 137, 80, 1)	1.006669175
+readable	#9a1	rgba(230, 137, 80, 1)	false
+hex8	hsl(80, 93%, 90%)	#edfdceff
+rgb	hsl(80, 93%, 90%)	rgb(237, 253, 206)
+hsl	hsl(80, 93%, 90%)	hsl(80, 93%, 90%)
+lighten	hsl(80, 93%, 90%)	71	#ffffffff
+darken	hsl(80, 93%, 90%)	71	#3f5e03ff
+saturate	hsl(80, 93%, 90%)	71	#eeffccff
+desaturate	hsl(80, 93%, 90%)	71	#e7ebe0ff
+spin	hsl(80, 93%, 90%)	-350	#e6fdceff
+mix	hsl(80, 93%, 90%)	#099dd9	71	#4bb9d6ff
+luminance	hsl(80, 93%, 90%)	0.927113156
+contrast	hsl(80, 93%, 90%)	#099dd9	2.858579526
+readable	hsl(80, 93%, 90%)	#099dd9	false
+hex8	rgb(25, 79, 247)	#194ff7ff
+rgb	rgb(25, 79, 247)	rgb(25, 79, 247)
+hsl	rgb(25, 79, 247)	hsl(225, 93%, 53%)
+lighten	rgb(25, 79, 247)	100	#ffffffff
+darken	rgb(25, 79, 247)	100	#000000ff
+saturate	rgb(25, 79, 247)	100	#114bffff
+desaturate	rgb(25, 79, 247)	100	#888888ff
+spin	rgb(25, 79, 247)	-6	#1965f7ff
+mix	rgb(25, 79, 247)	hsl(322, 94%, 95%)	100	#fee6f5ff
+luminance	rgb(25, 79, 247)	0.125140379
+contrast	rgb(25, 79, 247)	hsl(322, 94%, 95%)	5.096313719
+readable	rgb(25, 79, 247)	hsl(322, 94%, 95%)	true
+hex8	rgba(38, 205, 228, 0.71)	#26cde4b5
+rgb	rgba(38, 205, 228, 0.71)	rgba(38, 205, 228, 0.71)
+hsl	rgba(38, 205, 228, 0.71)	hsla(187, 78%, 52%, 0.71)
+lighten	rgba(38, 205, 228, 0.71)	56	#ffffffb5
+darken	rgba(38, 205, 228, 0.71)	56	#000000b5
+saturate	rgba(38, 205, 228, 0.71)	56	#0be1ffb5
+desaturate	rgba(38, 205, 228, 0.71)	56	#6a99a0b5
+spin	rgba(38, 205, 228, 0.71)	299	#26e43ab5
+mix	rgba(38, 205, 228, 0.71)	#c43	56	#838081de
+luminance	rgba(38, 205, 228, 0.71)	0.496761486
+contrast	rgba(38, 205, 228, 0.71)	#c43	2.461710839
+readable	rgba(38, 205, 228, 0.71)	#c43	false
+hex8	hsl(20, 64%, 52%)	#d36a36ff
+rgb	hsl(20, 64%, 52%)	rgb(211, 106, 54)
+hsl	hsl(20, 64%, 52%)	hsl(20, 64%, 52%)
+lighten	hsl(20, 64%, 52%)	66	#ffffffff
+darken	hsl(20, 64%, 52%)	66	#000000ff
+saturate	hsl(20, 64%, 52%)	66	#ff5c0aff
+desaturate	hsl(20, 64%, 52%)	66	#858585ff
+spin	hsl(20, 64%, 52%)	-296	#94d336ff
+mix	hsl(20, 64%, 52%)	#c41f46	66	#c93941ff
+luminance	hsl(20, 64%, 52%)	0.244232939
+contrast	hsl(20, 64%, 52%)	#c41f46	1.620409973
+readable	hsl(20, 64%, 52%)	#c41f46	false
+hex8	rgb(1, 182, 188)	#01b6bcff
+rgb	rgb(1, 182, 188)	rgb(1, 182, 188)
+hsl	rgb(1, 182, 188)	hsl(182, 99%, 37%)
+lighten	rgb(1, 182, 188)	4	#01cad0ff
+darken	rgb(1, 182, 188)	4	#01a2a8ff
+saturate	rgb(1, 182, 188)	4	#00b7bdff
+desaturate	rgb(1, 182, 188)	4	#05b2b8ff
+spin	rgb(1, 182, 188)	255	#87bc01ff
+mix	rgb(1, 182, 188)	#feb2f8	4	#0bb6beff
+luminance	rgb(1, 182, 188)	0.370931903
+contrast	rgb(1, 182, 188)	#feb2f8	1.536802758
+readable	rgb(1, 182, 188)	#feb2f8	false
+hex8	24b4D9	#24b4d9ff
+rgb	24b4D9	rgb(36, 180, 217)
+hsl	24b4D9	hsl(192, 72%, 50%)
+lighten	24b4D9	64	#ffffffff
+darken	24b4D9	64	#000000ff
+saturate	24b4D9	64	#00c9fdff
+desaturate	24b4D9	64	#758488ff
+spin	24b4D9	-152	#d99d24ff
+mix	24b4D9	rgb(90%, 45%, 54%)	64	#a08aa6ff
+luminance	24b4D9	0.380273384
+contrast	24b4D9	rgb(90%, 45%, 54%)	1.197884450
+readable	24b4D9	rgb(90%, 45%, 54%)	false
+hex8	rgba(84, 132, 5, 0.88)	#548405e0
+rgb	rgba(84, 132, 5, 0.88)	rgba(84, 132, 5, 0.88)
+hsl	rgba(84, 132, 5, 0.88)	hsla(83, 93%, 27%, 0.88)
+lighten	rgba(84, 132, 5, 0.88)	44	#c6fa70e0
+darken	rgba(84, 132, 5, 0.88)	44	#000000e0
+saturate	rgba(84, 132, 5, 0.88)	44	#558900e0
+desaturate	rgba(84, 132, 5, 0.88)	44	#4d6623e0
+spin	rgba(84, 132, 5, 0.88)	68	#058446e0
+mix	rgba(84, 132, 5, 0.88)	#2120bd41	44	#3e58569a
+luminance	rgba(84, 132, 5, 0.88)	0.183983034
+contrast	rgba(84, 132, 5, 0.88)	#2120bd41	2.332720240
+readable	rgba(84, 132, 5, 0.88)	#2120bd41	false
+hex8	#ad5574	#ad5574ff
+rgb	#ad5574	rgb(173, 85, 116)
+hsl	#ad5574	hsl(339, 35%, 51%)
+lighten	#ad5574	69	#ffffffff
+darken	#ad5574	69	#000000ff
+saturate	#ad5574	69	#ff035cff
+desaturate	#ad5574	69	#818181ff
+spin	#ad5574	-347	#ad5561ff
+mix	#ad5574	#cd0ea2	69	#c32494ff
+luminance	#ad5574	0.166421900
+contrast	#ad5574	#cd0ea2	1.035419996
+readable	#ad5574	#cd0ea2	false
+hex8	rgb(201, 216, 23)	#c9d817ff
+rgb	rgb(201, 216, 23)	rgb(201, 216, 23)
+hsl	rgb(201, 216, 23)	hsl(65, 81%, 47%)
+lighten	rgb(201, 216, 23)	48	#fbfce7ff
+darken	rgb(201, 216, 23)	48	#000000ff
+saturate	rgb(201, 216, 23)	48	#dcef00ff
+desaturate	rgb(201, 216, 23)	48	#999f50ff
+spin	rgb(201, 216, 23)	333	#d89017ff
+mix	rgb(201, 216, 23)	hsla(227, 81%, 90%, 0.3)	48	#cdd984a9
+luminance	rgb(201, 216, 23)	0.615911026
+contrast	rgb(201, 216, 23)	hsla(227, 81%, 90%, 0.3)	1.135290475
+readable	rgb(201, 216, 23)	hsla(227, 81%, 90%, 0.3)	false
+hex8	#f1e2cb5e	#f1e2cb5e
+rgb	#f1e2cb5e	rgba(241, 226, 203, 0.37)
+hsl	#f1e2cb5e	hsla(36, 58%, 87%, 0.37)
+lighten	#f1e2cb5e	76	#ffffff5e
+darken	#f1e2cb5e	76	#2c200c5e
+saturate	#f1e2cb5e	76	#ffe5bd5e
+desaturate	#f1e2cb5e	76	#dedede5e
+spin	#f1e2cb5e	184	#cbd7f15e
+mix	#f1e2cb5e	hsla(109, 12%, 76%, 0.65)	76	#c9cfbe95
+luminance	#f1e2cb5e	0.774052816
+contrast	#f1e2cb5e	hsla(109, 12%, 76%, 0.65)	1.347872971
+readable	#f1e2cb5e	hsla(109, 12%, 76%, 0.65)	false
+hex8	8f6b36	#8f6b36ff
+rgb	8f6b36	rgb(143, 107, 54)
+hsl	8f6b36	hsl(36, 45%, 39%)
+lighten	8f6b36	77	#ffffffff
+darken	8f6b36	77	#000000ff
+saturate	8f6b36	77	#c57500ff
+desaturate	8f6b36	77	#626262ff
+spin	8f6b36	-146	#44368fff
+mix	8f6b36	#88eb78	77	#8ace69ff
+luminance	8f6b36	0.166213716
+contrast	8f6b36	#88eb78	3.284110237
+readable	8f6b36	#88eb78	false
+hex8	hsla(2, 6%, 66%, 0.09)	#aea3a317
+rgb	hsla(2, 6%, 66%, 0.09)	rgba(174, 163, 163, 0.09)
+hsl	hsla(2, 6%, 66%, 0.09)	hsla(2, 6%, 66%, 0.09)
+lighten	hsla(2, 6%, 66%, 0.09)	43	#ffffff17
+darken	hsla(2, 6%, 66%, 0.09)	43	#3e373717
+saturate	hsla(2, 6%, 66%, 0.09)	43	#d3817e17
+desaturate	hsla(2, 6%, 66%, 0.09)	43	#a8a8a817
+spin	hsla(2, 6%, 66%, 0.09)	139	#a3ada717
+mix	hsla(2, 6%, 66%, 0.09)	a25d1D	43	#a985697b
+luminance	hsla(2, 6%, 66%, 0.09)	0.378374000
+contrast	hsla(2, 6%, 66%, 0.09)	a25d1D	2.079607375
+readable	hsla(2, 6%, 66%, 0.09)	a25d1D	false
+hex8	#695	#669955ff
+rgb	#695	rgb(102, 153, 85)
+hsl	#695	hsl(105, 29%, 47%)
+lighten	#695	3	#6da35aff
+darken	#695	3	#5f8f50ff
+saturate	#695	3	#649d51ff
+desaturate	#695	3	#689559ff
+spin	#695	-93	#996355ff
+mix	#695	#4f8	3	#659c57ff
+luminance	#695	0.262631232
+contrast	#695	#4f8	2.543780300
+readable	#695	#4f8	false
+hex8	#7e5	#77ee55ff
+rgb	#7e5	rgb(119, 238, 85)
+hsl	#7e5	hsl(107, 82%, 63%)
+lighten	#7e5	8	#95f27aff
+darken	#7e5	8	#59ea30ff
+saturate	#7e5	8	#73f54eff
+desaturate	#7e5	8	#7be75cff
+spin	#7e5	-288	#55eeebff
+mix	#7e5	rgb(33%, 59%, 3%)	8	#74e74fff
+luminance	#7e5	0.657268869
+contrast	#7e5	rgb(33%, 59%, 3%)	2.463060525
+readable	#7e5	rgb(33%, 59%, 3%)	false
+hex8	#93388b55	#93388b55
+rgb	#93388b55	rgba(147, 56, 139, 0.33)
+hsl	#93388b55	hsla(305, 45%, 40%, 0.33)
+lighten	#93388b55	25	#cd7dc655
+darken	#93388b55	25	#37153455
+saturate	#93388b55	25	#ac1fa055
+desaturate	#93388b55	25	#7a517655
+spin	#93388b55	335	#75389355
+mix	#93388b55	#78b445	25	#8c577a80
+luminance	#93388b55	0.108954710
+contrast	#93388b55	#78b445	2.646367462
+readable	#93388b55	#78b445	false
+hex8	rgba(76, 75, 58, 1)	#4c4b3aff
+rgb	rgba(76, 75, 58, 1)	rgb(76, 75, 58)
+hsl	rgba(76, 75, 58, 1)	hsl(57, 13%, 26%)
+lighten	rgba(76, 75, 58, 1)	83	#ffffffff
+darken	rgba(76, 75, 58, 1)	83	#000000ff
+saturate	rgba(76, 75, 58, 1)	83	#847c02ff
+desaturate	rgba(76, 75, 58, 1)	83	#434343ff
+spin	rgba(76, 75, 58, 1)	-233	#3a4b4cff
+mix	rgba(76, 75, 58, 1)	rgb(88, 145, 191)	83	#5685a8ff
+luminance	rgba(76, 75, 58, 1)	0.068741420
+contrast	rgba(76, 75, 58, 1)	rgb(88, 145, 191)	2.618049626
+readable	rgba(76, 75, 58, 1)	rgb(88, 145, 191)	false
+hex8	rgb(181, 56, 15)	#b5380fff
+rgb	rgb(181, 56, 15)	rgb(181, 56, 15)
+hsl	rgb(181, 56, 15)	hsl(15, 85%, 38%)
+lighten	rgb(181, 56, 15)	5	#cd3f11ff
+darken	rgb(181, 56, 15)	5	#9d310dff
+saturate	rgb(181, 56, 15)	5	#ba360aff
+desaturate	rgb(181, 56, 15)	5	#b03a14ff
+spin	rgb(181, 56, 15)	-274	#44b50fff
+mix	rgb(181, 56, 15)	rgb(73, 171, 42)	5	#b03e10ff
+luminance	rgb(181, 56, 15)	0.126865934
+contrast	rgb(181, 56, 15)	rgb(73, 171, 42)	2.019012592
+readable	rgb(181, 56, 15)	rgb(73, 171, 42)	false
+hex8	#ebeeffbb	#ebeeffbb
+rgb	#ebeeffbb	rgba(235, 238, 255, 0.73)
+hsl	#ebeeffbb	hsla(231, 100%, 96%, 0.73)
+lighten	#ebeeffbb	18	#ffffffbb
+darken	#ebeeffbb	18	#8fa0ffbb
+saturate	#ebeeffbb	18	#ebeeffbb
+desaturate	#ebeeffbb	18	#edeffdbb
+spin	#ebeeffbb	-165	#fdffebbb
+mix	#ebeeffbb	hsl(213, 25%, 88%)	18	#e8ebfbc7
+luminance	#ebeeffbb	0.860312389
+contrast	#ebeeffbb	hsl(213, 25%, 88%)	1.153912299
+readable	#ebeeffbb	hsl(213, 25%, 88%)	false
+hex8	24a5D2	#24a5d2ff
+rgb	24a5D2	rgb(36, 165, 210)
+hsl	24a5D2	hsl(196, 71%, 48%)
+lighten	24a5D2	27	#93d5edff
+darken	24a5D2	27	#10495cff
+saturate	24a5D2	27	#03b5f3ff
+desaturate	24a5D2	27	#4595b1ff
+spin	24a5D2	170	#d23424ff
+mix	24a5D2	547071	27	#3197b8ff
+luminance	24a5D2	0.319384783
+contrast	24a5D2	547071	1.878347432
+readable	24a5D2	547071	false
+hex8	#c7dea47d	#c7dea47d
+rgb	#c7dea47d	rgba(199, 222, 164, 0.49)
+hsl	#c7dea47d	hsla(84, 47%, 76%, 0.49)
+lighten	#c7dea47d	30	#ffffff7d
+darken	#c7dea47d	30	#80ab3e7d
+saturate	#c7dea47d	30	#cbf1917d
+desaturate	#c7dea47d	30	#c3cbb77d
+spin	#c7dea47d	-11	#d2dea47d
+mix	#c7dea47d	#104	30	#909b87a4
+luminance	#c7dea47d	0.670650021
+contrast	#c7dea47d	#104	13.016285708
+readable	#c7dea47d	#104	true
+hex8	d0faEF	#d0faefff
+rgb	d0faEF	rgb(208, 250, 239)
+hsl	d0faEF	hsl(164, 81%, 90%)
+lighten	d0faEF	93	#ffffffff
+darken	d0faEF	93	#000000ff
+saturate	d0faEF	93	#cbfff1ff
+desaturate	d0faEF	93	#e5e5e5ff
+spin	d0faEF	4	#d0faf2ff
+mix	d0faEF	rgb(78, 71, 183)	93	#5754bbff
+luminance	d0faEF	0.880131060
+contrast	d0faEF	rgb(78, 71, 183)	6.394817871
+readable	d0faEF	rgb(78, 71, 183)	true
+hex8	hsl(351, 83%, 9%)	#2a040aff
+rgb	hsl(351, 83%, 9%)	rgb(42, 4, 10)
+hsl	hsl(351, 83%, 9%)	hsl(351, 83%, 9%)
+lighten	hsl(351, 83%, 9%)	99	#ffffffff
+darken	hsl(351, 83%, 9%)	99	#000000ff
+saturate	hsl(351, 83%, 9%)	99	#2e0007ff
+desaturate	hsl(351, 83%, 9%)	99	#171717ff
+spin	hsl(351, 83%, 9%)	-284	#262a04ff
+mix	hsl(351, 83%, 9%)	#70e	99	#7600ecff
+luminance	hsl(351, 83%, 9%)	0.006009882
+contrast	hsl(351, 83%, 9%)	#70e	2.695057451
+readable	hsl(351, 83%, 9%)	#70e	false
+hex8	rgb(66%, 84%, 65%)	#a8d6a6ff
+rgb	rgb(66%, 84%, 65%)	rgb(168, 214, 166)
+hsl	rgb(66%, 84%, 65%)	hsl(117, 37%, 75%)
+lighten	rgb(66%, 84%, 65%)	89	#ffffffff
+darken	rgb(66%, 84%, 65%)	89	#000000ff
+saturate	rgb(66%, 84%, 65%)	89	#84ff7dff
+desaturate	rgb(66%, 84%, 65%)	89	#bebebeff
+spin	rgb(66%, 84%, 65%)	-51	#d1d6a6ff
+mix	rgb(66%, 84%, 65%)	#a509ef	89	#a520e7ff
+luminance	rgb(66%, 84%, 65%)	0.591711393
+contrast	rgb(66%, 84%, 65%)	#a509ef	3.303244115
+readable	rgb(66%, 84%, 65%)	#a509ef	false
+hex8	hsl(334, 1%, 1%)	#030303ff
+rgb	hsl(334, 1%, 1%)	rgb(3, 3, 3)
+hsl	hsl(334, 1%, 1%)	hsl(334, 1%, 1%)
+lighten	hsl(334, 1%, 1%)	44	#747273ff
+darken	hsl(334, 1%, 1%)	44	#000000ff
+saturate	hsl(334, 1%, 1%)	44	#040102ff
+desaturate	hsl(334, 1%, 1%)	44	#030303ff
+spin	hsl(334, 1%, 1%)	81	#030303ff
+mix	hsl(334, 1%, 1%)	35efC0	44	#196b56ff
+luminance	hsl(334, 1%, 1%)	0.000910581
+contrast	hsl(334, 1%, 1%)	35efC0	14.004094579
+readable	hsl(334, 1%, 1%)	35efC0	true
+hex8	rgba(22, 240, 198, 1)	#16f0c6ff
+rgb	rgba(22, 240, 198, 1)	rgb(22, 240, 198)
+hsl	rgba(22, 240, 198, 1)	hsl(168, 88%, 51%)
+lighten	rgba(22, 240, 198, 1)	40	#d6fcf5ff
+darken	rgba(22, 240, 198, 1)	40	#04362dff
+saturate	rgba(22, 240, 198, 1)	40	#07ffcfff
+desaturate	rgba(22, 240, 198, 1)	40	#48bea8ff
+spin	rgba(22, 240, 198, 1)	56	#164ff0ff
+mix	rgba(22, 240, 198, 1)	#1593b7fe	40	#16cbc0ff
+luminance	rgba(22, 240, 198, 1)	0.665679665
+contrast	rgba(22, 240, 198, 1)	#1593b7fe	2.430501285
+readable	rgba(22, 240, 198, 1)	#1593b7fe	false
+hex8	hsl(320, 66%, 70%)	#e580c3ff
+rgb	hsl(320, 66%, 70%)	rgb(229, 128, 195)
+hsl	hsl(320, 66%, 70%)	hsl(320, 66%, 70%)
+lighten	hsl(320, 66%, 70%)	61	#ffffffff
+darken	hsl(320, 66%, 70%)	61	#26081cff
+saturate	hsl(320, 66%, 70%)	61	#ff66ccff
+desaturate	hsl(320, 66%, 70%)	61	#b6afb4ff
+spin	hsl(320, 66%, 70%)	126	#b9e580ff
+mix	hsl(320, 66%, 70%)	rgb(58%, 21%, 36%)	61	#b45384ff
+luminance	hsl(320, 66%, 70%)	0.360364870
+contrast	hsl(320, 66%, 70%)	rgb(58%, 21%, 36%)	2.790280454
+readable	hsl(320, 66%, 70%)	rgb(58%, 21%, 36%)	false
+hex8	41c089	#41c089ff
+rgb	41c089	rgb(65, 192, 137)
+hsl	41c089	hsl(154, 50%, 50%)
+lighten	41c089	30	#b4e6d0ff
+darken	41c089	30	#1a4e37ff
+saturate	41c089	30	#1be68eff
+desaturate	41c089	30	#679a84ff
+spin	41c089	-213	#c041beff
+mix	41c089	rgb(50%, 7%, 85%)	30	#548ca1ff
+luminance	41c089	0.406292340
+contrast	41c089	rgb(50%, 7%, 85%)	3.035561929
+readable	41c089	rgb(50%, 7%, 85%)	false
+hex8	#d453ec	#d453ecff
+rgb	#d453ec	rgb(212, 83, 236)
+hsl	#d453ec	hsl(291, 80%, 63%)
+lighten	#d453ec	76	#ffffffff
+darken	#d453ec	76	#000000ff
+saturate	#d453ec	76	#e140ffff
+desaturate	#d453ec	76	#a29ca3ff
+spin	#d453ec	-191	#87ec53ff
+mix	#d453ec	35f602	76	#5bcf3aff
+luminance	#d453ec	0.262396905
+contrast	#d453ec	35f602	2.294286532
+readable	#d453ec	35f602	false
+hex8	rgba(140, 19, 4, 0)	#8c130400
+rgb	rgba(140, 19, 4, 0)	rgba(140, 19, 4, 0)
+hsl	rgba(140, 19, 4, 0)	hsla(7, 94%, 28%, 0)
+lighten	rgba(140, 19, 4, 0)	23	#f8270d00
+darken	rgba(140, 19, 4, 0)	23	#1a040100
+saturate	rgba(140, 19, 4, 0)	23	#90100000
+desaturate	rgba(140, 19, 4, 0)	23	#7b201500
+spin	rgba(140, 19, 4, 0)	197	#04568c00
+mix	rgba(140, 19, 4, 0)	#20bc78	23	#733a1f3b
+luminance	rgba(140, 19, 4, 0)	0.060499596
+contrast	rgba(140, 19, 4, 0)	#20bc78	3.857894800
+readable	rgba(140, 19, 4, 0)	#20bc78	false
+hex8	58cdDB	#58cddbff
+rgb	58cdDB	rgb(88, 205, 219)
+hsl	58cdDB	hsl(186, 65%, 60%)
+lighten	58cdDB	48	#ffffffff
+darken	58cdDB	48	#0b2f33ff
+saturate	58cdDB	48	#34e9ffff
+desaturate	58cdDB	48	#89a7aaff
+spin	58cdDB	-314	#5869dbff
+mix	58cdDB	rgba(165, 164, 117, 0.25)	48	#7db9aaa3
+luminance	58cdDB	0.508518234
+contrast	58cdDB	rgba(165, 164, 117, 0.25)	1.367757126
+readable	58cdDB	rgba(165, 164, 117, 0.25)	false
+hex8	hsla(160, 51%, 34%, 0)	#2a836500
+rgb	hsla(160, 51%, 34%, 0)	rgba(42, 131, 101, 0)
+hsl	hsla(160, 51%, 34%, 0)	hsla(160, 51%, 34%, 0)
+lighten	hsla(160, 51%, 34%, 0)	56	#d8f3ea00
+darken	hsla(160, 51%, 34%, 0)	56	#00000000
+saturate	hsla(160, 51%, 34%, 0)	56	#00ad7400
+desaturate	hsla(160, 51%, 34%, 0)	56	#57575700
+spin	hsla(160, 51%, 34%, 0)	179	#832a4900
+mix	hsla(160, 51%, 34%, 0)	rgb(242, 36, 137)	56	#9a4e798f
+luminance	hsla(160, 51%, 34%, 0)	0.176644252
+contrast	hsla(160, 51%, 34%, 0)	rgb(242, 36, 137)	1.188873781
+readable	hsla(160, 51%, 34%, 0)	rgb(242, 36, 137)	false
+hex8	hsla(335, 92%, 35%, 0.72)	#ab074cb8
+rgb	hsla(335, 92%, 35%, 0.72)	rgba(171, 7, 76, 0.72)
+hsl	hsla(335, 92%, 35%, 0.72)	hsla(335, 92%, 35%, 0.72)
+lighten	hsla(335, 92%, 35%, 0.72)	6	#c90859b8
+darken	hsla(335, 92%, 35%, 0.72)	6	#8e063fb8
+saturate	hsla(335, 92%, 35%, 0.72)	6	#b1024bb8
+desaturate	hsla(335, 92%, 35%, 0.72)	6	#a60d4cb8
+spin	hsla(335, 92%, 35%, 0.72)	-289	#ab8507b8
+mix	hsla(335, 92%, 35%, 0.72)	ac0cC2	6	#ab0753bc
+luminance	hsla(335, 92%, 35%, 0.72)	0.093316874
+contrast	hsla(335, 92%, 35%, 0.72)	ac0cC2	1.250979118
+readable	hsla(335, 92%, 35%, 0.72)	ac0cC2	false
+hex8	#5db33b3e	#5db33b3e
+rgb	#5db33b3e	rgba(93, 179, 59, 0.24)
+hsl	#5db33b3e	hsla(103, 50%, 47%, 0.24)
+lighten	#5db33b3e	59	#ffffff3e
+darken	#5db33b3e	59	#0000003e
+saturate	#5db33b3e	59	#43ee003e
+desaturate	#5db33b3e	59	#7777773e
+spin	#5db33b3e	215	#b33b8f3e
+mix	#5db33b3e	#396	59	#44a454b0
+luminance	#5db33b3e	0.348831221
+contrast	#5db33b3e	#396	1.354468790
+readable	#5db33b3e	#396	false
+hex8	rgb(22%, 14%, 65%)	#3824a6ff
+rgb	rgb(22%, 14%, 65%)	rgb(56, 36, 166)
+hsl	rgb(22%, 14%, 65%)	hsl(249, 65%, 40%)
+lighten	rgb(22%, 14%, 65%)	55	#ebe8faff
+darken	rgb(22%, 14%, 65%)	55	#000000ff
+saturate	rgb(22%, 14%, 65%)	55	#2000c9ff
+desaturate	rgb(22%, 14%, 65%)	55	#5e5b6eff
+spin	rgb(22%, 14%, 65%)	310	#247ca6ff
+mix	rgb(22%, 14%, 65%)	rgb(33%, 68%, 81%)	55	#476fbdff
+luminance	rgb(22%, 14%, 65%)	0.048556793
+contrast	rgb(22%, 14%, 65%)	rgb(33%, 68%, 81%)	4.188138696
+readable	rgb(22%, 14%, 65%)	rgb(33%, 68%, 81%)	false
+hex8	#741	#774411ff
+rgb	#741	rgb(119, 68, 17)
+hsl	#741	hsl(30, 75%, 27%)
+lighten	#741	45	#edb781ff
+darken	#741	45	#000000ff
+saturate	#741	45	#884400ff
+desaturate	#741	45	#584430ff
+spin	#741	-270	#117711ff
+mix	#741	hsla(243, 0%, 58%, 0.05)	45	#84684c92
+luminance	#741	0.080966537
+contrast	#741	hsla(243, 0%, 58%, 0.05)	2.642952004
+readable	#741	hsla(243, 0%, 58%, 0.05)	false
+hex8	dd8727	#dd8727ff
+rgb	dd8727	rgb(221, 135, 39)
+hsl	dd8727	hsl(32, 73%, 51%)
+lighten	dd8727	6	#e19641ff
+darken	dd8727	6	#c6771fff
+saturate	dd8727	6	#e4871fff
+desaturate	dd8727	6	#d5872eff
+spin	dd8727	-180	#277dddff
+mix	dd8727	hsla(125, 20%, 78%, 0.15)	6	#db8c30f2
+luminance	dd8727	0.328465813
+contrast	dd8727	hsla(125, 20%, 78%, 0.15)	1.730731183
+readable	dd8727	hsla(125, 20%, 78%, 0.15)	false
+hex8	rgb(99, 141, 73)	#638d49ff
+rgb	rgb(99, 141, 73)	rgb(99, 141, 73)
+hsl	rgb(99, 141, 73)	hsl(97, 32%, 42%)
+lighten	rgb(99, 141, 73)	54	#f4f8f1ff
+darken	rgb(99, 141, 73)	54	#000000ff
+saturate	rgb(99, 141, 73)	54	#55c70fff
+desaturate	rgb(99, 141, 73)	54	#6b6b6bff
+spin	rgb(99, 141, 73)	69	#498d7dff
+mix	rgb(99, 141, 73)	#84ef34	54	#75c23eff
+luminance	rgb(99, 141, 73)	0.221834410
+contrast	rgb(99, 141, 73)	#84ef34	2.644494890
+readable	rgb(99, 141, 73)	#84ef34	false
+hex8	b53cEE	#b53ceeff
+rgb	b53cEE	rgb(181, 60, 238)
+hsl	b53cEE	hsl(281, 84%, 58%)
+lighten	b53cEE	51	#ffffffff
+darken	b53cEE	51	#190323ff
+saturate	b53cEE	51	#bb2bffff
+desaturate	b53cEE	51	#a272b8ff
+spin	b53cEE	-38	#443ceeff
+mix	b53cEE	rgb(115, 99, 35)	51	#935086ff
+luminance	b53cEE	0.192285210
+contrast	b53cEE	rgb(115, 99, 35)	1.369627051
+readable	b53cEE	rgb(115, 99, 35)	false
+hex8	rgb(26%, 38%, 18%)	#42612eff
+rgb	rgb(26%, 38%, 18%)	rgb(66, 97, 46)
+hsl	rgb(26%, 38%, 18%)	hsl(96, 36%, 28%)
+lighten	rgb(26%, 38%, 18%)	87	#ffffffff
+darken	rgb(26%, 38%, 18%)	87	#000000ff
+saturate	rgb(26%, 38%, 18%)	87	#398f00ff
+desaturate	rgb(26%, 38%, 18%)	87	#474747ff
+spin	rgb(26%, 38%, 18%)	114	#2e4761ff
+mix	rgb(26%, 38%, 18%)	rgb(7%, 96%, 40%)	87	#18e25fff
+luminance	rgb(26%, 38%, 18%)	0.099048959
+contrast	rgb(26%, 38%, 18%)	rgb(7%, 96%, 40%)	4.789884049
+readable	rgb(26%, 38%, 18%)	rgb(7%, 96%, 40%)	true
+hex8	#716bce	#716bceff
+rgb	#716bce	rgb(113, 107, 206)
+hsl	#716bce	hsl(244, 50%, 61%)
+lighten	#716bce	73	#ffffffff
+darken	#716bce	73	#000000ff
+saturate	#716bce	73	#463affff
+desaturate	#716bce	73	#9c9c9cff
+spin	#716bce	359	#6f6bceff
+mix	#716bce	rgb(4, 81, 252)	73	#2158f0ff
+luminance	#716bce	0.184823319
+contrast	#716bce	rgb(4, 81, 252)	1.309014016
+readable	#716bce	rgb(4, 81, 252)	false
+hex8	#7b15a36b	#7b15a36b
+rgb	#7b15a36b	rgba(123, 21, 163, 0.42)
+hsl	#7b15a36b	hsla(283, 77%, 36%, 0.42)
+lighten	#7b15a36b	11	#a01bd56b
+darken	#7b15a36b	11	#550f716b
+saturate	#7b15a36b	11	#7f0bad6b
+desaturate	#7b15a36b	11	#771f996b
+spin	#7b15a36b	-212	#89a3156b
+mix	#7b15a36b	rgba(106, 254, 164, 0.47)	11	#792fa36c
+luminance	#7b15a36b	0.073916282
+contrast	#7b15a36b	rgba(106, 254, 164, 0.47)	6.587361056
+readable	#7b15a36b	rgba(106, 254, 164, 0.47)	true
+hex8	#46abff3a	#46abff3a
+rgb	#46abff3a	rgba(70, 171, 255, 0.23)
+hsl	#46abff3a	hsla(207, 100%, 64%, 0.23)
+lighten	#46abff3a	29	#daeeff3a
+darken	#46abff3a	29	#0061b13a
+saturate	#46abff3a	29	#46abff3a
+desaturate	#46abff3a	29	#61a9e43a
+spin	#46abff3a	-303	#9146ff3a
+mix	#46abff3a	#dd3	29	#72bac473
+luminance	#46abff3a	0.376479111
+contrast	#46abff3a	#dd3	1.695840886
+readable	#46abff3a	#dd3	false
+hex8	hsla(79, 10%, 52%, 0.96)	#899178f5
+rgb	hsla(79, 10%, 52%, 0.96)	rgba(137, 145, 120, 0.96)
+hsl	hsla(79, 10%, 52%, 0.96)	hsla(79, 10%, 52%, 0.96)
+lighten	hsla(79, 10%, 52%, 0.96)	36	#e2e3ddf5
+darken	hsla(79, 10%, 52%, 0.96)	36	#2a2d25f5
+saturate	hsla(79, 10%, 52%, 0.96)	36	#99bd4cf5
+desaturate	hsla(79, 10%, 52%, 0.96)	36	#858585f5
+spin	hsla(79, 10%, 52%, 0.96)	95	#78918ef5
+mix	hsla(79, 10%, 52%, 0.96)	rgb(53, 76, 150)	36	#6b7883f8
+luminance	hsla(79, 10%, 52%, 0.96)	0.269252290
+contrast	hsla(79, 10%, 52%, 0.96)	rgb(53, 76, 150)	2.431884209
+readable	hsla(79, 10%, 52%, 0.96)	rgb(53, 76, 150)	false
+hex8	#036bc3	#036bc3ff
+rgb	#036bc3	rgb(3, 107, 195)
+hsl	#036bc3	hsl(208, 97%, 39%)
+lighten	#036bc3	39	#90cbfdff
+darken	#036bc3	39	#000000ff
+saturate	#036bc3	39	#006bc6ff
+desaturate	#036bc3	39	#2a689cff
+spin	#036bc3	-262	#c303b1ff
+mix	#036bc3	hsl(276, 80%, 93%)	39	#5f98d9ff
+luminance	#036bc3	0.144748797
+contrast	#036bc3	hsl(276, 80%, 93%)	4.275541289
+readable	#036bc3	hsl(276, 80%, 93%)	false
+hex8	rgba(236, 201, 31, 1)	#ecc91fff
+rgb	rgba(236, 201, 31, 1)	rgb(236, 201, 31)
+hsl	rgba(236, 201, 31, 1)	hsl(50, 84%, 52%)
+lighten	rgba(236, 201, 31, 1)	65	#ffffffff
+darken	rgba(236, 201, 31, 1)	65	#000000ff
+saturate	rgba(236, 201, 31, 1)	65	#ffd60cff
+desaturate	rgba(236, 201, 31, 1)	65	#9d956eff
+spin	rgba(236, 201, 31, 1)	-267	#1fec6dff
+mix	rgba(236, 201, 31, 1)	rgba(15, 164, 70, 1)	65	#5cb138ff
+luminance	rgba(236, 201, 31, 1)	0.597050845
+contrast	rgba(236, 201, 31, 1)	rgba(15, 164, 70, 1)	2.016069258
+readable	rgba(236, 201, 31, 1)	rgba(15, 164, 70, 1)	false
+hex8	hsl(107, 22%, 91%)	#e5ede3ff
+rgb	hsl(107, 22%, 91%)	rgb(229, 237, 227)
+hsl	hsl(107, 22%, 91%)	hsl(107, 22%, 91%)
+lighten	hsl(107, 22%, 91%)	9	#ffffffff
+darken	hsl(107, 22%, 91%)	9	#cbdbc7ff
+saturate	hsl(107, 22%, 91%)	9	#e4efe1ff
+desaturate	hsl(107, 22%, 91%)	9	#e6ebe5ff
+spin	hsl(107, 22%, 91%)	71	#e3ededff
+mix	hsl(107, 22%, 91%)	hsl(358, 6%, 42%)	9	#dbe1d8ff
+luminance	hsl(107, 22%, 91%)	0.827724382
+contrast	hsl(107, 22%, 91%)	hsl(358, 6%, 42%)	4.662706620
+readable	hsl(107, 22%, 91%)	hsl(358, 6%, 42%)	true
+hex8	rgb(63%, 47%, 32%)	#a17852ff
+rgb	rgb(63%, 47%, 32%)	rgb(161, 120, 82)
+hsl	rgb(63%, 47%, 32%)	hsl(29, 33%, 48%)
+lighten	rgb(63%, 47%, 32%)	3	#aa7f58ff
+darken	rgb(63%, 47%, 32%)	3	#96704cff
+saturate	rgb(63%, 47%, 32%)	3	#a4784eff
+desaturate	rgb(63%, 47%, 32%)	3	#9d7855ff
+spin	rgb(63%, 47%, 32%)	96	#52a158ff
+mix	rgb(63%, 47%, 32%)	hsl(319, 15%, 82%)	3	#a37a56ff
+luminance	rgb(63%, 47%, 32%)	0.216192049
+contrast	rgb(63%, 47%, 32%)	hsl(319, 15%, 82%)	2.501707153
+readable	rgb(63%, 47%, 32%)	hsl(319, 15%, 82%)	false
+hex8	hsla(237, 45%, 93%, 0.01)	#e5e6f503
+rgb	hsla(237, 45%, 93%, 0.01)	rgba(229, 230, 245, 0.01)
+hsl	hsla(237, 45%, 93%, 0.01)	hsla(237, 45%, 93%, 0.01)
+lighten	hsla(237, 45%, 93%, 0.01)	4	#f4f4fb03
+darken	hsla(237, 45%, 93%, 0.01)	4	#d6d8f003
+saturate	hsla(237, 45%, 93%, 0.01)	4	#e4e5f603
+desaturate	hsla(237, 45%, 93%, 0.01)	4	#e6e7f403
+spin	hsla(237, 45%, 93%, 0.01)	-102	#e5f5e903
+mix	hsla(237, 45%, 93%, 0.01)	#e46	4	#e5e0ef0d
+luminance	hsla(237, 45%, 93%, 0.01)	0.798442144
+contrast	hsla(237, 45%, 93%, 0.01)	#e46	3.001136333
+readable	hsla(237, 45%, 93%, 0.01)	#e46	false
+hex8	rgba(117, 214, 92, 0.5)	#75d65c80
+rgb	rgba(117, 214, 92, 0.5)	rgba(117, 214, 92, 0.5)
+hsl	rgba(117, 214, 92, 0.5)	hsla(108, 60%, 60%, 0.5)
+lighten	rgba(117, 214, 92, 0.5)	62	#ffffff80
+darken	rgba(117, 214, 92, 0.5)	62	#00000080
+saturate	rgba(117, 214, 92, 0.5)	62	#5dff3380
+desaturate	rgba(117, 214, 92, 0.5)	62	#99999980
+spin	rgba(117, 214, 92, 0.5)	69	#5cd6cf80
+mix	rgba(117, 214, 92, 0.5)	rgb(96%, 33%, 49%)	62	#c48570cf
+luminance	rgba(117, 214, 92, 0.5)	0.526477491
+contrast	rgba(117, 214, 92, 0.5)	rgb(96%, 33%, 49%)	1.788425845
+readable	rgba(117, 214, 92, 0.5)	rgb(96%, 33%, 49%)	false
+hex8	hsla(332, 21%, 70%, 0.47)	#c3a2b178
+rgb	hsla(332, 21%, 70%, 0.47)	rgba(195, 162, 177, 0.47)
+hsl	hsla(332, 21%, 70%, 0.47)	hsla(332, 21%, 70%, 0.47)
+lighten	hsla(332, 21%, 70%, 0.47)	12	#dbc7d078
+darken	hsla(332, 21%, 70%, 0.47)	12	#aa7d9278
+saturate	hsla(332, 21%, 70%, 0.47)	12	#cc99b178
+desaturate	hsla(332, 21%, 70%, 0.47)	12	#b9acb278
+spin	hsla(332, 21%, 70%, 0.47)	174	#a2c3b078
+mix	hsla(332, 21%, 70%, 0.47)	rgba(62, 24, 12, 0.13)	12	#b3919d6d
+luminance	hsla(332, 21%, 70%, 0.47)	0.406170877
+contrast	hsla(332, 21%, 70%, 0.47)	rgba(62, 24, 12, 0.13)	6.804513771
+readable	hsla(332, 21%, 70%, 0.47)	rgba(62, 24, 12, 0.13)	true
+hex8	rgb(186, 21, 140)	#ba158cff
+rgb	rgb(186, 21, 140)	rgb(186, 21, 140)
+hsl	rgb(186, 21, 140)	hsl(317, 80%, 41%)
+lighten	rgb(186, 21, 140)	32	#f181d2ff
+darken	rgb(186, 21, 140)	32	#27041eff
+saturate	rgb(186, 21, 140)	32	#cf0095ff
+desaturate	rgb(186, 21, 140)	32	#99367dff
+spin	rgb(186, 21, 140)	96	#baa615ff
+mix	rgb(186, 21, 140)	rgb(59%, 44%, 80%)	32	#ae32a0ff
+luminance	rgb(186, 21, 140)	0.128688838
+contrast	rgb(186, 21, 140)	rgb(59%, 44%, 80%)	1.535182889
+readable	rgb(186, 21, 140)	rgb(59%, 44%, 80%)	false
+hex8	#1dd	#11ddddff
+rgb	#1dd	rgb(17, 221, 221)
+hsl	#1dd	hsl(180, 86%, 47%)
+lighten	#1dd	42	#c9fbfbff
+darken	#1dd	42	#021616ff
+saturate	#1dd	42	#00eeeeff
+desaturate	#1dd	42	#43ababff
+spin	#1dd	-350	#11bbddff
+mix	#1dd	hsla(254, 3%, 81%, 0.88)	42	#60d6d8f2
+luminance	#1dd	0.570525315
+contrast	#1dd	hsla(254, 3%, 81%, 0.88)	1.069070346
+readable	#1dd	hsla(254, 3%, 81%, 0.88)	false
+hex8	rgb(196, 62, 239)	#c43eefff
+rgb	rgb(196, 62, 239)	rgb(196, 62, 239)
+hsl	rgb(196, 62, 239)	hsl(285, 85%, 59%)
+lighten	rgb(196, 62, 239)	90	#ffffffff
+darken	rgb(196, 62, 239)	90	#000000ff
+saturate	rgb(196, 62, 239)	90	#cc2effff
+desaturate	rgb(196, 62, 239)	90	#969696ff
+spin	rgb(196, 62, 239)	-44	#423eefff
+mix	rgb(196, 62, 239)	#bca4d5	90	#bd9ad8ff
+luminance	rgb(196, 62, 239)	0.214130063
+contrast	rgb(196, 62, 239)	#bca4d5	1.781182372
+readable	rgb(196, 62, 239)	#bca4d5	false
+hex8	#2fe3f3	#2fe3f3ff
+rgb	#2fe3f3	rgb(47, 227, 243)
+hsl	#2fe3f3	hsl(185, 89%, 57%)
+lighten	#2fe3f3	33	#cef8fcff
+darken	#2fe3f3	33	#076a73ff
+saturate	#2fe3f3	33	#23edffff
+desaturate	#2fe3f3	33	#53c5cfff
+spin	#2fe3f3	297	#2ff335ff
+mix	#2fe3f3	rgb(2%, 86%, 74%)	33	#21e0e1ff
+luminance	#2fe3f3	0.620135724
+contrast	#2fe3f3	rgb(2%, 86%, 74%)	1.128755647
+readable	#2fe3f3	rgb(2%, 86%, 74%)	false
+hex8	#fd0771	#fd0771ff
+rgb	#fd0771	rgb(253, 7, 113)
+hsl	#fd0771	hsl(334, 98%, 51%)
+lighten	#fd0771	11	#fd3f91ff
+darken	#fd0771	11	#ca0258ff
+saturate	#fd0771	11	#ff0571ff
+desaturate	#fd0771	11	#ef1573ff
+spin	#fd0771	235	#0785fdff
+mix	#fd0771	rgb(237, 45, 148)	11	#fb0b75ff
+luminance	#fd0771	0.222268589
+contrast	#fd0771	rgb(237, 45, 148)	1.007677571
+readable	#fd0771	rgb(237, 45, 148)	false
+hex8	47ff8F	#47ff8fff
+rgb	47ff8F	rgb(71, 255, 143)
+hsl	47ff8F	hsl(143, 100%, 64%)
+lighten	47ff8F	57	#ffffffff
+darken	47ff8F	57	#00230eff
+saturate	47ff8F	57	#47ff8fff
+desaturate	47ff8F	57	#7bcb9aff
+spin	47ff8F	-339	#47ffcfff
+mix	47ff8F	hsl(132, 80%, 60%)	57	#47f479ff
+luminance	47ff8F	0.748427632
+contrast	47ff8F	hsl(132, 80%, 60%)	1.196043578
+readable	47ff8F	hsl(132, 80%, 60%)	false
+hex8	#b573c0	#b573c0ff
+rgb	#b573c0	rgb(181, 115, 192)
+hsl	#b573c0	hsl(291, 38%, 60%)
+lighten	#b573c0	10	#c896d0ff
+darken	#b573c0	10	#a250b0ff
+saturate	#b573c0	10	#bc69caff
+desaturate	#b573c0	10	#ae7db6ff
+spin	#b573c0	-275	#c08873ff
+mix	#b573c0	6028E8	10	#ad6cc4ff
+luminance	#b573c0	0.258909957
+contrast	#b573c0	6028E8	2.082926325
+readable	#b573c0	6028E8	false
+hex8	hsla(349, 34%, 56%, 0.71)	#b56977b5
+rgb	hsla(349, 34%, 56%, 0.71)	rgba(181, 105, 119, 0.71)
+hsl	hsla(349, 34%, 56%, 0.71)	hsla(349, 34%, 56%, 0.71)
+lighten	hsla(349, 34%, 56%, 0.71)	32	#ebd6dab5
+darken	hsla(349, 34%, 56%, 0.71)	32	#522830b5
+saturate	hsla(349, 34%, 56%, 0.71)	32	#d94560b5
+desaturate	hsla(349, 34%, 56%, 0.71)	32	#918d8db5
+spin	hsla(349, 34%, 56%, 0.71)	-150	#699db5b5
+mix	hsla(349, 34%, 56%, 0.71)	rgb(99%, 36%, 33%)	32	#cc656ccd
+luminance	hsla(349, 34%, 56%, 0.71)	0.212588171
+contrast	hsla(349, 34%, 56%, 0.71)	rgb(99%, 36%, 33%)	1.294415985
+readable	hsla(349, 34%, 56%, 0.71)	rgb(99%, 36%, 33%)	false
+hex8	cb2166	#cb2166ff
+rgb	cb2166	rgb(203, 33, 102)
+hsl	cb2166	hsl(336, 72%, 46%)
+lighten	cb2166	56	#ffffffff
+darken	cb2166	56	#000000ff
+saturate	cb2166	56	#ec0060ff
+desaturate	cb2166	56	#896372ff
+spin	cb2166	219	#21a1cbff
+mix	cb2166	rgba(170, 68, 185, 0.8)	56	#b93594e2
+luminance	cb2166	0.147435323
+contrast	cb2166	rgba(170, 68, 185, 0.8)	1.072912094
+readable	cb2166	rgba(170, 68, 185, 0.8)	false
+hex8	rgb(218, 242, 83)	#daf253ff
+rgb	rgb(218, 242, 83)	rgb(218, 242, 83)
+hsl	rgb(218, 242, 83)	hsl(69, 86%, 64%)
+lighten	rgb(218, 242, 83)	75	#ffffffff
+darken	rgb(218, 242, 83)	75	#000000ff
+saturate	rgb(218, 242, 83)	75	#e3ff46ff
+desaturate	rgb(218, 242, 83)	75	#aaad98ff
+spin	rgb(218, 242, 83)	-110	#f253bfff
+mix	rgb(218, 242, 83)	#317	75	#5d496eff
+luminance	rgb(218, 242, 83)	0.790342209
+contrast	rgb(218, 242, 83)	#317	11.300064297
+readable	rgb(218, 242, 83)	#317	true
+hex8	rgba(101, 186, 153, 1)	#65ba99ff
+rgb	rgba(101, 186, 153, 1)	rgb(101, 186, 153)
+hsl	rgba(101, 186, 153, 1)	hsl(157, 38%, 56%)
+lighten	rgba(101, 186, 153, 1)	72	#ffffffff
+darken	rgba(101, 186, 153, 1)	72	#000000ff
+saturate	rgba(101, 186, 153, 1)	72	#20ffa8ff
+desaturate	rgba(101, 186, 153, 1)	72	#8f8f8fff
+spin	rgba(101, 186, 153, 1)	-332	#65b3baff
+mix	rgba(101, 186, 153, 1)	hsl(105, 88%, 47%)	72	#4dd635ff
+luminance	rgba(101, 186, 153, 1)	0.401844204
+contrast	rgba(101, 186, 153, 1)	hsl(105, 88%, 47%)	1.329560603
+readable	rgba(101, 186, 153, 1)	hsl(105, 88%, 47%)	false
+hex8	rgb(4%, 5%, 31%)	#0a0d4fff
+rgb	rgb(4%, 5%, 31%)	rgb(10, 13, 79)
+hsl	rgb(4%, 5%, 31%)	hsl(238, 77%, 18%)
+lighten	rgb(4%, 5%, 31%)	18	#151aa0ff
+darken	rgb(4%, 5%, 31%)	18	#000000ff
+saturate	rgb(4%, 5%, 31%)	18	#020557ff
+desaturate	rgb(4%, 5%, 31%)	18	#121447ff
+spin	rgb(4%, 5%, 31%)	-283	#4f0a3eff
+mix	rgb(4%, 5%, 31%)	rgb(125, 185, 35)	18	#1f2c47ff
+luminance	rgb(4%, 5%, 31%)	0.009168908
+contrast	rgb(4%, 5%, 31%)	rgb(125, 185, 35)	7.466632142
+readable	rgb(4%, 5%, 31%)	rgb(125, 185, 35)	true
+hex8	rgb(51%, 91%, 29%)	#82e84aff
+rgb	rgb(51%, 91%, 29%)	rgb(130, 232, 74)
+hsl	rgb(51%, 91%, 29%)	hsl(99, 78%, 60%)
+lighten	rgb(51%, 91%, 29%)	92	#ffffffff
+darken	rgb(51%, 91%, 29%)	92	#000000ff
+saturate	rgb(51%, 91%, 29%)	92	#7bff33ff
+desaturate	rgb(51%, 91%, 29%)	92	#999999ff
+spin	rgb(51%, 91%, 29%)	82	#4ae6e8ff
+mix	rgb(51%, 91%, 29%)	#198	92	#1a9f83ff
+luminance	rgb(51%, 91%, 29%)	0.629534642
+contrast	rgb(51%, 91%, 29%)	#198	2.289598164
+readable	rgb(51%, 91%, 29%)	#198	false
+hex8	#734	#773344ff
+rgb	#734	rgb(119, 51, 68)
+hsl	#734	hsl(345, 40%, 33%)
+lighten	#734	6	#8c3c50ff
+darken	#734	6	#622a38ff
+saturate	#734	6	#7c2e41ff
+desaturate	#734	6	#723847ff
+spin	#734	-287	#777533ff
+mix	#734	hsl(162, 59%, 55%)	6	#743c4aff
+luminance	#734	0.067069465
+contrast	#734	hsl(162, 59%, 55%)	4.639829727
+readable	#734	hsl(162, 59%, 55%)	true
+hex8	hsl(56, 30%, 9%)	#1e1d10ff
+rgb	hsl(56, 30%, 9%)	rgb(30, 29, 16)
+hsl	hsl(56, 30%, 9%)	hsl(56, 30%, 9%)
+lighten	hsl(56, 30%, 9%)	54	#bdb984ff
+darken	hsl(56, 30%, 9%)	54	#000000ff
+saturate	hsl(56, 30%, 9%)	54	#2a2804ff
+desaturate	hsl(56, 30%, 9%)	54	#171717ff
+spin	hsl(56, 30%, 9%)	272	#1e1017ff
+mix	hsl(56, 30%, 9%)	f20901	54	#901208ff
+luminance	hsl(56, 30%, 9%)	0.011921595
+contrast	hsl(56, 30%, 9%)	f20901	3.887950776
+readable	hsl(56, 30%, 9%)	f20901	false
+hex8	#aa1c2f	#aa1c2fff
+rgb	#aa1c2f	rgb(170, 28, 47)
+hsl	#aa1c2f	hsl(352, 72%, 39%)
+lighten	#aa1c2f	100	#ffffffff
+darken	#aa1c2f	100	#000000ff
+saturate	#aa1c2f	100	#c6001aff
+desaturate	#aa1c2f	100	#636363ff
+spin	#aa1c2f	-40	#aa1c8eff
+mix	#aa1c2f	hsl(303, 49%, 81%)	100	#e6b7e4ff
+luminance	#aa1c2f	0.095817914
+contrast	#aa1c2f	hsl(303, 49%, 81%)	4.203283509
+readable	#aa1c2f	hsl(303, 49%, 81%)	false
+hex8	rgba(88, 41, 74, 0)	#58294a00
+rgb	rgba(88, 41, 74, 0)	rgba(88, 41, 74, 0)
+hsl	rgba(88, 41, 74, 0)	hsla(318, 36%, 25%, 0)
+lighten	rgba(88, 41, 74, 0)	14	#89407300
+darken	rgba(88, 41, 74, 0)	14	#27122100
+saturate	rgba(88, 41, 74, 0)	14	#61204e00
+desaturate	rgba(88, 41, 74, 0)	14	#4f324600
+spin	rgba(88, 41, 74, 0)	141	#3a582900
+mix	rgba(88, 41, 74, 0)	hsl(123, 19%, 52%)	14	#5b394f24
+luminance	rgba(88, 41, 74, 0)	0.041549956
+contrast	rgba(88, 41, 74, 0)	hsl(123, 19%, 52%)	3.626216474
+readable	rgba(88, 41, 74, 0)	hsl(123, 19%, 52%)	false
+hex8	#bbdae6	#bbdae6ff
+rgb	#bbdae6	rgb(187, 218, 230)
+hsl	#bbdae6	hsl(197, 46%, 82%)
+lighten	#bbdae6	52	#ffffffff
+darken	#bbdae6	52	#295b6fff
+saturate	#bbdae6	52	#a3e5feff
+desaturate	#bbdae6	52	#d0d0d0ff
+spin	#bbdae6	91	#ddbbe6ff
+mix	#bbdae6	rgb(99%, 53%, 58%)	52	#ddafbbff
+luminance	#bbdae6	0.664207739
+contrast	#bbdae6	rgb(99%, 53%, 58%)	1.581452264
+readable	#bbdae6	rgb(99%, 53%, 58%)	false
+hex8	#177d15	#177d15ff
+rgb	#177d15	rgb(23, 125, 21)
+hsl	#177d15	hsl(119, 71%, 29%)
+lighten	#177d15	9	#1ea41cff
+darken	#177d15	9	#10560eff
+saturate	#177d15	9	#11840eff
+desaturate	#177d15	9	#1d761cff
+spin	#177d15	-246	#15217dff
+mix	#177d15	#e080b571	9	#297d23f2
+luminance	#177d15	0.149035326
+contrast	#177d15	#e080b571	1.990693472
+readable	#177d15	#e080b571	false
+hex8	#e6a	#ee66aaff
+rgb	#e6a	rgb(238, 102, 170)
+hsl	#e6a	hsl(330, 80%, 67%)
+lighten	#e6a	47	#ffffffff
+darken	#e6a	47	#5a0a32ff
+saturate	#e6a	47	#ff55aaff
+desaturate	#e6a	47	#c68eaaff
+spin	#e6a	-157	#66eedeff
+mix	#e6a	hsla(209, 97%, 29%, 0.84)	47	#7f5a9fec
+luminance	#e6a	0.305821648
+contrast	#e6a	hsla(209, 97%, 29%, 0.84)	2.902981225
+readable	#e6a	hsla(209, 97%, 29%, 0.84)	false
+hex8	rgb(94%, 92%, 9%)	#f0eb17ff
+rgb	rgb(94%, 92%, 9%)	rgb(240, 235, 23)
+hsl	rgb(94%, 92%, 9%)	hsl(59, 88%, 52%)
+lighten	rgb(94%, 92%, 9%)	71	#ffffffff
+darken	rgb(94%, 92%, 9%)	71	#000000ff
+saturate	rgb(94%, 92%, 9%)	71	#fff908ff
+desaturate	rgb(94%, 92%, 9%)	71	#98976fff
+spin	rgb(94%, 92%, 9%)	-315	#52f017ff
+mix	rgb(94%, 92%, 9%)	#90c0da9e	71	#accca1ba
+luminance	rgb(94%, 92%, 9%)	0.780037884
+contrast	rgb(94%, 92%, 9%)	#90c0da9e	1.545967260
+readable	rgb(94%, 92%, 9%)	#90c0da9e	false
+hex8	#63a008af	#63a008af
+rgb	#63a008af	rgba(99, 160, 8, 0.69)
+hsl	#63a008af	hsla(84, 90%, 33%, 0.69)
+lighten	#63a008af	40	#c6f87caf
+darken	#63a008af	40	#000000af
+saturate	#63a008af	40	#65a800af
+desaturate	#63a008af	40	#5c7e2aaf
+spin	#63a008af	-100	#a00830af
+mix	#63a008af	#a851defe	40	#7f805ecf
+luminance	#63a008af	0.278117921
+contrast	#63a008af	#a851defe	1.340152992
+readable	#63a008af	#a851defe	false
+hex8	hsla(188, 63%, 42%, 0.28)	#289daf47
+rgb	hsla(188, 63%, 42%, 0.28)	rgba(40, 157, 175, 0.28)
+hsl	hsla(188, 63%, 42%, 0.28)	hsla(188, 63%, 42%, 0.28)
+lighten	hsla(188, 63%, 42%, 0.28)	78	#ffffff47
+darken	hsla(188, 63%, 42%, 0.28)	78	#00000047
+saturate	hsla(188, 63%, 42%, 0.28)	78	#00bad647
+desaturate	hsla(188, 63%, 42%, 0.28)	78	#6b6b6b47
+spin	hsla(188, 63%, 42%, 0.28)	-15	#28af9f47
+mix	hsla(188, 63%, 42%, 0.28)	hsl(271, 39%, 75%)	78	#9fa4cfd7
+luminance	hsla(188, 63%, 42%, 0.28)	0.276602033
+contrast	hsla(188, 63%, 42%, 0.28)	hsl(271, 39%, 75%)	1.483051757
+readable	hsla(188, 63%, 42%, 0.28)	hsl(271, 39%, 75%)	false
+hex8	#175a4d35	#175a4d35
+rgb	#175a4d35	rgba(23, 90, 77, 0.21)
+hsl	#175a4d35	hsla(168, 59%, 22%, 0.21)
+lighten	#175a4d35	35	#51d3b935
+darken	#175a4d35	35	#00000035
+saturate	#175a4d35	35	#036e5935
+desaturate	#175a4d35	35	#2b464135
+spin	#175a4d35	-270	#2b175a35
+mix	#175a4d35	hsla(194, 87%, 53%, 0.35)	35	#1a7d8642
+luminance	#175a4d35	0.080303091
+contrast	#175a4d35	hsla(194, 87%, 53%, 0.35)	3.743956073
+readable	#175a4d35	hsla(194, 87%, 53%, 0.35)	false
+hex8	17d9CC	#17d9ccff
+rgb	17d9CC	rgb(23, 217, 204)
+hsl	17d9CC	hsl(176, 81%, 47%)
+lighten	17d9CC	75	#ffffffff
+darken	17d9CC	75	#000000ff
+saturate	17d9CC	75	#00f0e0ff
+desaturate	17d9CC	75	#717f7eff
+spin	17d9CC	-27	#17d975ff
+mix	17d9CC	#4bec12f1	75	#3ee741f4
+luminance	17d9CC	0.541675001
+contrast	17d9CC	#4bec12f1	1.124442192
+readable	17d9CC	#4bec12f1	false
+hex8	d0819B	#d0819bff
+rgb	d0819B	rgb(208, 129, 155)
+hsl	d0819B	hsl(340, 46%, 66%)
+lighten	d0819B	1	#d1859eff
+darken	d0819B	1	#cf7d98ff
+saturate	d0819B	1	#d1809bff
+desaturate	d0819B	1	#cf829bff
+spin	d0819B	-146	#81bdd0ff
+mix	d0819B	#874d6351	1	#cf809afd
+luminance	d0819B	0.314769684
+contrast	d0819B	#874d6351	2.229711200
+readable	d0819B	#874d6351	false
+hex8	89f062	#89f062ff
+rgb	89f062	rgb(137, 240, 98)
+hsl	89f062	hsl(104, 83%, 66%)
+lighten	89f062	40	#ffffffff
+darken	89f062	40	#2a7a0cff
+saturate	89f062	40	#82ff53ff
+desaturate	89f062	40	#98ce84ff
+spin	89f062	275	#f08e62ff
+mix	89f062	hsla(291, 13%, 37%, 0.48)	40	#7bb166ca
+luminance	89f062	0.685203834
+contrast	89f062	hsla(291, 13%, 37%, 0.48)	4.908004955
+readable	89f062	hsla(291, 13%, 37%, 0.48)	true
+hex8	#4e8	#44ee88ff
+rgb	#4e8	rgb(68, 238, 136)
+hsl	#4e8	hsl(144, 83%, 60%)
+lighten	#4e8	83	#ffffffff
+darken	#4e8	83	#000000ff
+saturate	#4e8	83	#33ff85ff
+desaturate	#4e8	83	#999999ff
+spin	#4e8	92	#444feeff
+mix	#4e8	#dd9	83	#c3e096ff
+luminance	#4e8	0.641555884
+contrast	#4e8	#dd9	1.075617522
+readable	#4e8	#dd9	false
+hex8	rgba(25, 107, 185, 1)	#196bb9ff
+rgb	rgba(25, 107, 185, 1)	rgb(25, 107, 185)
+hsl	rgba(25, 107, 185, 1)	hsl(209, 76%, 41%)
+lighten	rgba(25, 107, 185, 1)	96	#ffffffff
+darken	rgba(25, 107, 185, 1)	96	#000000ff
+saturate	rgba(25, 107, 185, 1)	96	#006cd2ff
+desaturate	rgba(25, 107, 185, 1)	96	#696969ff
+spin	rgba(25, 107, 185, 1)	244	#60b919ff
+mix	rgba(25, 107, 185, 1)	rgb(71, 118, 164)	96	#4576a5ff
+luminance	rgba(25, 107, 185, 1)	0.142248457
+contrast	rgba(25, 107, 185, 1)	rgb(71, 118, 164)	1.143145493
+readable	rgba(25, 107, 185, 1)	rgb(71, 118, 164)	false
+hex8	hsla(249, 43%, 62%, 0.1)	#8174c81a
+rgb	hsla(249, 43%, 62%, 0.1)	rgba(129, 116, 200, 0.1)
+hsl	hsla(249, 43%, 62%, 0.1)	hsla(249, 43%, 62%, 0.1)
+lighten	hsla(249, 43%, 62%, 0.1)	96	#ffffff1a
+darken	hsla(249, 43%, 62%, 0.1)	96	#0000001a
+saturate	hsla(249, 43%, 62%, 0.1)	96	#5a3dff1a
+desaturate	hsla(249, 43%, 62%, 0.1)	96	#9e9e9e1a
+spin	hsla(249, 43%, 62%, 0.1)	250	#74c88f1a
+mix	hsla(249, 43%, 62%, 0.1)	hsla(340, 97%, 59%, 0.13)	96	#f7347821
+luminance	hsla(249, 43%, 62%, 0.1)	0.213280401
+contrast	hsla(249, 43%, 62%, 0.1)	hsla(340, 97%, 59%, 0.13)	1.108188328
+readable	hsla(249, 43%, 62%, 0.1)	hsla(340, 97%, 59%, 0.13)	false
+hex8	#896d545f	#896d545f
+rgb	#896d545f	rgba(137, 109, 84, 0.37)
+hsl	#896d545f	hsla(28, 24%, 43%, 0.37)
+lighten	#896d545f	71	#ffffff5f
+darken	#896d545f	71	#0000005f
+saturate	#896d545f	71	#d769065f
+desaturate	#896d545f	71	#6e6e6e5f
+spin	#896d545f	-306	#7589545f
+mix	#896d545f	hsla(236, 29%, 0%, 0.37)	71	#2820185f
+luminance	#896d545f	0.168957369
+contrast	#896d545f	hsla(236, 29%, 0%, 0.37)	4.379147371
+readable	#896d545f	hsla(236, 29%, 0%, 0.37)	false
+hex8	#0781bb	#0781bbff
+rgb	#0781bb	rgb(7, 129, 187)
+hsl	#0781bb	hsl(199, 93%, 38%)
+lighten	#0781bb	3	#088bcaff
+darken	#0781bb	3	#0677acff
+saturate	#0781bb	3	#0482beff
+desaturate	#0781bb	3	#0a80b8ff
+spin	#0781bb	97	#b007bbff
+mix	#0781bb	rgba(46, 235, 210, 1)	3	#0884bcff
+luminance	#0781bb	0.193335409
+contrast	#0781bb	rgba(46, 235, 210, 1)	2.862330940
+readable	#0781bb	rgba(46, 235, 210, 1)	false
+hex8	hsl(113, 4%, 21%)	#343833ff
+rgb	hsl(113, 4%, 21%)	rgb(52, 56, 51)
+hsl	hsl(113, 4%, 21%)	hsl(113, 4%, 21%)
+lighten	hsl(113, 4%, 21%)	49	#b0b6afff
+darken	hsl(113, 4%, 21%)	49	#000000ff
+saturate	hsl(113, 4%, 21%)	49	#205219ff
+desaturate	hsl(113, 4%, 21%)	49	#363636ff
+spin	hsl(113, 4%, 21%)	-37	#373833ff
+mix	hsl(113, 4%, 21%)	rgb(132, 115, 123)	49	#5b5556ff
+luminance	hsl(113, 4%, 21%)	0.037974275
+contrast	hsl(113, 4%, 21%)	rgb(132, 115, 123)	2.682268375
+readable	hsl(113, 4%, 21%)	rgb(132, 115, 123)	false
+hex8	4b2936	#4b2936ff
+rgb	4b2936	rgb(75, 41, 54)
+hsl	4b2936	hsl(337, 29%, 23%)
+lighten	4b2936	22	#94516aff
+darken	4b2936	22	#020102ff
+saturate	4b2936	22	#581c33ff
+desaturate	4b2936	22	#3e3639ff
+spin	4b2936	-286	#4b4629ff
+mix	4b2936	hsla(54, 20%, 35%, 0.79)	22	#52373af3
+luminance	4b2936	0.033480737
+contrast	4b2936	hsla(54, 20%, 35%, 0.79)	2.213847382
+readable	4b2936	hsla(54, 20%, 35%, 0.79)	false
+hex8	#2f235d	#2f235dff
+rgb	#2f235d	rgb(47, 35, 93)
+hsl	#2f235d	hsl(252, 45%, 25%)
+lighten	#2f235d	97	#ffffffff
+darken	#2f235d	97	#000000ff
+saturate	#2f235d	97	#1a0080ff
+desaturate	#2f235d	97	#404040ff
+spin	#2f235d	-218	#5d4423ff
+mix	#2f235d	hsl(278, 1%, 20%)	97	#333235ff
+luminance	#2f235d	0.025967147
+contrast	#2f235d	hsl(278, 1%, 20%)	1.083750725
+readable	#2f235d	hsl(278, 1%, 20%)	false
+hex8	312621	#312621ff
+rgb	312621	rgb(49, 38, 33)
+hsl	312621	hsl(19, 20%, 16%)
+lighten	312621	50	#b9a298ff
+darken	312621	50	#000000ff
+saturate	312621	50	#451e0cff
+desaturate	312621	50	#292929ff
+spin	312621	-175	#212b31ff
+mix	312621	f927B8	50	#95276dff
+luminance	312621	0.021489997
+contrast	312621	f927B8	4.203590404
+readable	312621	f927B8	false
+hex8	hsla(87, 82%, 16%, 0.72)	#2c4a07b8
+rgb	hsla(87, 82%, 16%, 0.72)	rgba(44, 74, 7, 0.72)
+hsl	hsla(87, 82%, 16%, 0.72)	hsla(87, 82%, 16%, 0.72)
+lighten	hsla(87, 82%, 16%, 0.72)	80	#f6fdecb8
+darken	hsla(87, 82%, 16%, 0.72)	80	#000000b8
+saturate	hsla(87, 82%, 16%, 0.72)	80	#2d5200b8
+desaturate	hsla(87, 82%, 16%, 0.72)	80	#292a28b8
+spin	hsla(87, 82%, 16%, 0.72)	306	#4a2c07b8
+mix	hsla(87, 82%, 16%, 0.72)	c713E7	80	#a81ebaf1
+luminance	hsla(87, 82%, 16%, 0.72)	0.054483716
+contrast	hsla(87, 82%, 16%, 0.72)	c713E7	2.237418545
+readable	hsla(87, 82%, 16%, 0.72)	c713E7	false
+hex8	rgba(210, 114, 47, 0)	#d2722f00
+rgb	rgba(210, 114, 47, 0)	rgba(210, 114, 47, 0)
+hsl	rgba(210, 114, 47, 0)	hsla(25, 64%, 50%, 0)
+lighten	rgba(210, 114, 47, 0)	62	#ffffff00
+darken	rgba(210, 114, 47, 0)	62	#00000000
+saturate	rgba(210, 114, 47, 0)	62	#ff6a0200
+desaturate	rgba(210, 114, 47, 0)	62	#84807d00
+spin	rgba(210, 114, 47, 0)	-352	#d2882f00
+mix	rgba(210, 114, 47, 0)	rgb(63%, 54%, 66%)	62	#b4817a9e
+luminance	rgba(210, 114, 47, 0)	0.259415015
+contrast	rgba(210, 114, 47, 0)	rgb(63%, 54%, 66%)	1.085311845
+readable	rgba(210, 114, 47, 0)	rgb(63%, 54%, 66%)	false
+hex8	hsl(1, 10%, 27%)	#4c3e3eff
+rgb	hsl(1, 10%, 27%)	rgb(76, 62, 62)
+hsl	hsl(1, 10%, 27%)	hsl(1, 10%, 27%)
+lighten	hsl(1, 10%, 27%)	54	#d3cacaff
+darken	hsl(1, 10%, 27%)	54	#000000ff
+saturate	hsl(1, 10%, 27%)	54	#711a19ff
+desaturate	hsl(1, 10%, 27%)	54	#454545ff
+spin	hsl(1, 10%, 27%)	-49	#4c3e49ff
+mix	hsl(1, 10%, 27%)	rgba(163, 36, 151, 0.91)	54	#7b306ef3
+luminance	hsl(1, 10%, 27%)	0.053295490
+contrast	hsl(1, 10%, 27%)	rgba(163, 36, 151, 0.91)	1.576317457
+readable	hsl(1, 10%, 27%)	rgba(163, 36, 151, 0.91)	false
+hex8	hsl(300, 79%, 37%)	#a914a9ff
+rgb	hsl(300, 79%, 37%)	rgb(169, 20, 169)
+hsl	hsl(300, 79%, 37%)	hsl(300, 79%, 37%)
+lighten	hsl(300, 79%, 37%)	12	#e01ae0ff
+darken	hsl(300, 79%, 37%)	12	#720d72ff
+saturate	hsl(300, 79%, 37%)	12	#b408b4ff
+desaturate	hsl(300, 79%, 37%)	12	#9e1f9eff
+spin	hsl(300, 79%, 37%)	95	#a96b14ff
+mix	hsl(300, 79%, 37%)	rgb(43, 7, 187)	12	#9a12abff
+luminance	hsl(300, 79%, 37%)	0.117999007
+contrast	hsl(300, 79%, 37%)	rgb(43, 7, 187)	1.815537121
+readable	hsl(300, 79%, 37%)	rgb(43, 7, 187)	false
+hex8	#f97	#ff9977ff
+rgb	#f97	rgb(255, 153, 119)
+hsl	#f97	hsl(15, 100%, 73%)
+lighten	#f97	2	#ffa181ff
+darken	#f97	2	#ff916dff
+saturate	#f97	2	#ff9977ff
+desaturate	#f97	2	#fe9a78ff
+spin	#f97	-314	#fdff77ff
+mix	#f97	#23f	2	#fb977aff
+luminance	#f97	0.453743750
+contrast	#f97	#23f	3.374549325
+readable	#f97	#23f	false
+hex8	#526	#552266ff
+rgb	#526	rgb(85, 34, 102)
+hsl	#526	hsl(285, 50%, 27%)
+lighten	#526	39	#bd7cd3ff
+darken	#526	39	#000000ff
+saturate	#526	39	#620780ff
+desaturate	#526	39	#483d4bff
+spin	#526	-161	#226627ff
+mix	#526	hsl(313, 80%, 56%)	39	#8f298aff
+luminance	#526	0.040346590
+contrast	#526	hsl(313, 80%, 56%)	3.183837508
+readable	#526	hsl(313, 80%, 56%)	false
+hex8	hsl(78, 4%, 86%)	#dcdddaff
+rgb	hsl(78, 4%, 86%)	rgb(220, 221, 218)
+hsl	hsl(78, 4%, 86%)	hsl(78, 4%, 86%)
+lighten	hsl(78, 4%, 86%)	53	#ffffffff
+darken	hsl(78, 4%, 86%)	53	#555751ff
+saturate	hsl(78, 4%, 86%)	53	#e3f0c7ff
+desaturate	hsl(78, 4%, 86%)	53	#dbdbdbff
+spin	hsl(78, 4%, 86%)	305	#dddbdaff
+mix	hsl(78, 4%, 86%)	hsl(37, 1%, 18%)	53	#80807eff
+luminance	hsl(78, 4%, 86%)	0.719905023
+contrast	hsl(78, 4%, 86%)	hsl(37, 1%, 18%)	9.967319061
+readable	hsl(78, 4%, 86%)	hsl(37, 1%, 18%)	true
+hex8	rgb(203, 199, 98)	#cbc762ff
+rgb	rgb(203, 199, 98)	rgb(203, 199, 98)
+hsl	rgb(203, 199, 98)	hsl(58, 50%, 59%)
+lighten	rgb(203, 199, 98)	73	#ffffffff
+darken	rgb(203, 199, 98)	73	#000000ff
+saturate	rgb(203, 199, 98)	73	#fff72eff
+desaturate	rgb(203, 199, 98)	73	#969696ff
+spin	rgb(203, 199, 98)	-260	#62cba4ff
+mix	rgb(203, 199, 98)	hsla(39, 74%, 29%, 0.71)	73	#957728c9
+luminance	rgb(203, 199, 98)	0.544251998
+contrast	rgb(203, 199, 98)	hsla(39, 74%, 29%, 0.71)	3.490164967
+readable	rgb(203, 199, 98)	hsla(39, 74%, 29%, 0.71)	false
+hex8	rgb(220, 9, 10)	#dc090aff
+rgb	rgb(220, 9, 10)	rgb(220, 9, 10)
+hsl	rgb(220, 9, 10)	hsl(360, 92%, 45%)
+lighten	rgb(220, 9, 10)	91	#ffffffff
+darken	rgb(220, 9, 10)	91	#000000ff
+saturate	rgb(220, 9, 10)	91	#e50001ff
+desaturate	rgb(220, 9, 10)	91	#747171ff
+spin	rgb(220, 9, 10)	-260	#50dc09ff
+mix	rgb(220, 9, 10)	6710E2	91	#720fcfff
+luminance	rgb(220, 9, 10)	0.154329327
+contrast	rgb(220, 9, 10)	6710E2	1.486557594
+readable	rgb(220, 9, 10)	6710E2	false
+hex8	rgb(141, 119, 153)	#8d7799ff
+rgb	rgb(141, 119, 153)	rgb(141, 119, 153)
+hsl	rgb(141, 119, 153)	hsl(279, 14%, 53%)
+lighten	rgb(141, 119, 153)	63	#ffffffff
+darken	rgb(141, 119, 153)	63	#000000ff
+saturate	rgb(141, 119, 153)	63	#a32ce4ff
+desaturate	rgb(141, 119, 153)	63	#888888ff
+spin	rgb(141, 119, 153)	101	#998277ff
+mix	rgb(141, 119, 153)	rgb(63%, 21%, 43%)	63	#9a4e7eff
+luminance	rgb(141, 119, 153)	0.211562795
+contrast	rgb(141, 119, 153)	rgb(63%, 21%, 43%)	1.600634966
+readable	rgb(141, 119, 153)	rgb(63%, 21%, 43%)	false
+hex8	#f5f	#ff55ffff
+rgb	#f5f	rgb(255, 85, 255)
+hsl	#f5f	hsl(300, 100%, 67%)
+lighten	#f5f	87	#ffffffff
+darken	#f5f	87	#000000ff
+saturate	#f5f	87	#ff55ffff
+desaturate	#f5f	87	#b59fb5ff
+spin	#f5f	64	#ff6055ff
+mix	#f5f	rgba(171, 10, 40, 0.5)	87	#b6144490
+luminance	#f5f	0.349769992
+contrast	#f5f	rgba(171, 10, 40, 0.5)	2.849757546
+readable	#f5f	rgba(171, 10, 40, 0.5)	false
+hex8	rgb(90%, 4%, 97%)	#e60af7ff
+rgb	rgb(90%, 4%, 97%)	rgb(230, 10, 247)
+hsl	rgb(90%, 4%, 97%)	hsl(295, 94%, 51%)
+lighten	rgb(90%, 4%, 97%)	97	#ffffffff
+darken	rgb(90%, 4%, 97%)	97	#000000ff
+saturate	rgb(90%, 4%, 97%)	97	#ec03ffff
+desaturate	rgb(90%, 4%, 97%)	97	#818181ff
+spin	rgb(90%, 4%, 97%)	99	#f7920aff
+mix	rgb(90%, 4%, 97%)	hsla(11, 90%, 30%, 0.35)	97	#94200f5e
+luminance	rgb(90%, 4%, 97%)	0.237554771
+contrast	rgb(90%, 4%, 97%)	hsla(11, 90%, 30%, 0.35)	2.371588305
+readable	rgb(90%, 4%, 97%)	hsla(11, 90%, 30%, 0.35)	false
+hex8	hsla(82, 95%, 46%, 0.86)	#93e506db
+rgb	hsla(82, 95%, 46%, 0.86)	rgba(147, 229, 6, 0.86)
+hsl	hsla(82, 95%, 46%, 0.86)	hsla(82, 95%, 46%, 0.86)
+lighten	hsla(82, 95%, 46%, 0.86)	97	#ffffffdb
+darken	hsla(82, 95%, 46%, 0.86)	97	#000000db
+saturate	hsla(82, 95%, 46%, 0.86)	97	#95eb00db
+desaturate	hsla(82, 95%, 46%, 0.86)	97	#757575db
+spin	hsla(82, 95%, 46%, 0.86)	-248	#06b1e5db
+mix	hsla(82, 95%, 46%, 0.86)	#8835592c	97	#883a5731
+luminance	hsla(82, 95%, 46%, 0.86)	0.622548157
+contrast	hsla(82, 95%, 46%, 0.86)	#8835592c	4.981205376
+readable	hsla(82, 95%, 46%, 0.86)	#8835592c	true
+hex8	#7d5279	#7d5279ff
+rgb	#7d5279	rgb(125, 82, 121)
+hsl	#7d5279	hsl(306, 21%, 41%)
+lighten	#7d5279	55	#f6f1f6ff
+darken	#7d5279	55	#000000ff
+saturate	#7d5279	55	#b619a7ff
+desaturate	#7d5279	55	#676767ff
+spin	#7d5279	153	#617d52ff
+mix	#7d5279	#d6b	55	#b25d9dff
+luminance	#7d5279	0.117750367
+contrast	#7d5279	#d6b	1.994794477
+readable	#7d5279	#d6b	false
+hex8	#734530	#734530ff
+rgb	#734530	rgb(115, 69, 48)
+hsl	#734530	hsl(19, 41%, 32%)
+lighten	#734530	76	#ffffffff
+darken	#734530	76	#000000ff
+saturate	#734530	76	#a33300ff
+desaturate	#734530	76	#515151ff
+spin	#734530	300	#73305eff
+mix	#734530	hsla(84, 17%, 77%, 0.78)	76	#b2ad99d4
+luminance	#734530	0.081144819
+contrast	#734530	hsla(84, 17%, 77%, 0.78)	4.932985610
+readable	#734530	hsla(84, 17%, 77%, 0.78)	true
+hex8	hsla(302, 2%, 10%, 0.39)	#1a191a63
+rgb	hsla(302, 2%, 10%, 0.39)	rgba(26, 25, 26, 0.39)
+hsl	hsla(302, 2%, 10%, 0.39)	hsla(302, 2%, 10%, 0.39)
+lighten	hsla(302, 2%, 10%, 0.39)	93	#ffffff63
+darken	hsla(302, 2%, 10%, 0.39)	93	#00000063
+saturate	hsla(302, 2%, 10%, 0.39)	93	#32013063
+desaturate	hsla(302, 2%, 10%, 0.39)	93	#1a1a1a63
+spin	hsla(302, 2%, 10%, 0.39)	-242	#1a1a1963
+mix	hsla(302, 2%, 10%, 0.39)	hsla(341, 17%, 100%, 0.86)	93	#efefefd3
+luminance	hsla(302, 2%, 10%, 0.39)	0.009894548
+contrast	hsla(302, 2%, 10%, 0.39)	hsla(341, 17%, 100%, 0.86)	17.530810918
+readable	hsla(302, 2%, 10%, 0.39)	hsla(341, 17%, 100%, 0.86)	true
+hex8	hsla(267, 100%, 0%, 0.7)	#000000b3
+rgb	hsla(267, 100%, 0%, 0.7)	rgba(0, 0, 0, 0.7)
+hsl	hsla(267, 100%, 0%, 0.7)	hsla(0, 0%, 0%, 0.7)
+lighten	hsla(267, 100%, 0%, 0.7)	86	#dbdbdbb3
+darken	hsla(267, 100%, 0%, 0.7)	86	#000000b3
+saturate	hsla(267, 100%, 0%, 0.7)	86	#000000b3
+desaturate	hsla(267, 100%, 0%, 0.7)	86	#000000b3
+spin	hsla(267, 100%, 0%, 0.7)	292	#000000b3
+mix	hsla(267, 100%, 0%, 0.7)	hsla(113, 75%, 6%, 0.88)	86	#061703da
+luminance	hsla(267, 100%, 0%, 0.7)	0.000000000
+contrast	hsla(267, 100%, 0%, 0.7)	hsla(113, 75%, 6%, 0.88)	1.167560534
+readable	hsla(267, 100%, 0%, 0.7)	hsla(113, 75%, 6%, 0.88)	false
+hex8	hsl(311, 42%, 38%)	#8a387bff
+rgb	hsl(311, 42%, 38%)	rgb(138, 56, 123)
+hsl	hsl(311, 42%, 38%)	hsl(311, 42%, 38%)
+lighten	hsl(311, 42%, 38%)	14	#b851a5ff
+darken	hsl(311, 42%, 38%)	14	#57244dff
+saturate	hsl(311, 42%, 38%)	14	#972b83ff
+desaturate	hsl(311, 42%, 38%)	14	#7c4672ff
+spin	hsl(311, 42%, 38%)	-271	#8a6e38ff
+mix	hsl(311, 42%, 38%)	hsla(1, 49%, 31%, 0.29)	14	#87366fe6
+luminance	hsl(311, 42%, 38%)	0.096616808
+contrast	hsl(311, 42%, 38%)	hsla(1, 49%, 31%, 0.29)	1.375304224
+readable	hsl(311, 42%, 38%)	hsla(1, 49%, 31%, 0.29)	false
+hex8	rgb(32%, 99%, 87%)	#52fcdeff
+rgb	rgb(32%, 99%, 87%)	rgb(82, 252, 222)
+hsl	rgb(32%, 99%, 87%)	hsl(169, 97%, 66%)
+lighten	rgb(32%, 99%, 87%)	95	#ffffffff
+darken	rgb(32%, 99%, 87%)	95	#000000ff
+saturate	rgb(32%, 99%, 87%)	95	#4fffdfff
+desaturate	rgb(32%, 99%, 87%)	95	#a5a9a8ff
+spin	rgb(32%, 99%, 87%)	53	#5284fcff
+mix	rgb(32%, 99%, 87%)	rgb(84%, 15%, 18%)	95	#cf3137ff
+luminance	rgb(32%, 99%, 87%)	0.766885720
+contrast	rgb(32%, 99%, 87%)	rgb(84%, 15%, 18%)	3.912358230
+readable	rgb(32%, 99%, 87%)	rgb(84%, 15%, 18%)	false
+hex8	#028	#002288ff
+rgb	#028	rgb(0, 34, 136)
+hsl	#028	hsl(225, 100%, 27%)
+lighten	#028	33	#3165ffff
+darken	#028	33	#000000ff
+saturate	#028	33	#002288ff
+desaturate	#028	33	#162d72ff
+spin	#028	264	#008814ff
+mix	#028	rgb(10, 229, 6)	33	#03625dff
+luminance	#028	0.029216285
+contrast	#028	rgb(10, 229, 6)	7.715118378
+readable	#028	rgb(10, 229, 6)	true
+hex8	rgb(143, 38, 176)	#8f26b0ff
+rgb	rgb(143, 38, 176)	rgb(143, 38, 176)
+hsl	rgb(143, 38, 176)	hsl(286, 64%, 42%)
+lighten	rgb(143, 38, 176)	49	#f0d9f7ff
+darken	rgb(143, 38, 176)	49	#000000ff
+saturate	rgb(143, 38, 176)	49	#a300d6ff
+desaturate	rgb(143, 38, 176)	49	#745a7cff
+spin	rgb(143, 38, 176)	160	#75b026ff
+mix	rgb(143, 38, 176)	#f4a30b	49	#c0635fff
+luminance	rgb(143, 38, 176)	0.103604554
+contrast	rgb(143, 38, 176)	#f4a30b	3.284514879
+readable	rgb(143, 38, 176)	#f4a30b	false
+hex8	#9f7	#99ff77ff
+rgb	#9f7	rgb(153, 255, 119)
+hsl	#9f7	hsl(105, 100%, 73%)
+lighten	#9f7	95	#ffffffff
+darken	#9f7	95	#000000ff
+saturate	#9f7	95	#99ff77ff
+desaturate	#9f7	95	#b9beb8ff
+spin	#9f7	335	#d2ff77ff
+mix	#9f7	rgb(202, 42, 42)	95	#c8352eff
+luminance	#9f7	0.796242140
+contrast	#9f7	rgb(202, 42, 42)	4.366652781
+readable	#9f7	rgb(202, 42, 42)	false
+hex8	rgb(84%, 52%, 4%)	#d6850aff
+rgb	rgb(84%, 52%, 4%)	rgb(214, 133, 10)
+hsl	rgb(84%, 52%, 4%)	hsl(36, 91%, 44%)
+lighten	rgb(84%, 52%, 4%)	25	#f8be68ff
+darken	rgb(84%, 52%, 4%)	25	#5c3904ff
+saturate	rgb(84%, 52%, 4%)	25	#e08700ff
+desaturate	rgb(84%, 52%, 4%)	25	#ba7f26ff
+spin	rgb(84%, 52%, 4%)	229	#5f0ad6ff
+mix	rgb(84%, 52%, 4%)	#a040e911	25	#c97442c3
+luminance	rgb(84%, 52%, 4%)	0.310931138
+contrast	rgb(84%, 52%, 4%)	#a040e911	1.638840513
+readable	rgb(84%, 52%, 4%)	#a040e911	false
+hex8	rgba(229, 225, 97, 1)	#e5e161ff
+rgb	rgba(229, 225, 97, 1)	rgb(229, 225, 97)
+hsl	rgba(229, 225, 97, 1)	hsl(58, 72%, 64%)
+lighten	rgba(229, 225, 97, 1)	22	#f5f3c1ff
+darken	rgba(229, 225, 97, 1)	22	#b8b31eff
+saturate	rgba(229, 225, 97, 1)	22	#f9f44dff
+desaturate	rgba(229, 225, 97, 1)	22	#d1ce75ff
+spin	rgba(229, 225, 97, 1)	-52	#e56f61ff
+mix	rgba(229, 225, 97, 1)	rgba(114, 66, 215, 0.85)	22	#ccbe7bf7
+luminance	rgba(229, 225, 97, 1)	0.713715082
+contrast	rgba(229, 225, 97, 1)	rgba(114, 66, 215, 0.85)	4.394184225
+readable	rgba(229, 225, 97, 1)	rgba(114, 66, 215, 0.85)	false
+hex8	#850	#885500ff
+rgb	#850	rgb(136, 85, 0)
+hsl	#850	hsl(38, 100%, 27%)
+lighten	#850	42	#ffc35fff
+darken	#850	42	#000000ff
+saturate	#850	42	#885500ff
+desaturate	#850	42	#6b4e1dff
+spin	#850	345	#883300ff
+mix	#850	#400	42	#6b3100ff
+luminance	#850	0.117312394
+contrast	#850	#400	2.686047728
+readable	#850	#400	false
+hex8	#667b89ae	#667b89ae
+rgb	#667b89ae	rgba(102, 123, 137, 0.68)
+hsl	#667b89ae	hsla(204, 15%, 47%, 0.68)
+lighten	#667b89ae	72	#ffffffae
+darken	#667b89ae	72	#000000ae
+saturate	#667b89ae	72	#108cdfae
+desaturate	#667b89ae	72	#777777ae
+spin	#667b89ae	-88	#688966ae
+mix	#667b89ae	#2451ec	72	#365dd0e8
+luminance	#667b89ae	0.187968411
+contrast	#667b89ae	#2451ec	1.374264499
+readable	#667b89ae	#2451ec	false
+hex8	#a52c5d25	#a52c5d25
+rgb	#a52c5d25	rgba(165, 44, 93, 0.15)
+hsl	#a52c5d25	hsla(336, 58%, 41%, 0.15)
+lighten	#a52c5d25	95	#ffffff25
+darken	#a52c5d25	95	#00000025
+saturate	#a52c5d25	95	#d1005525
+desaturate	#a52c5d25	95	#68686825
+spin	#a52c5d25	352	#a52c6d25
+mix	#a52c5d25	2a6678	95	#306377f4
+luminance	#a52c5d25	0.105910105
+contrast	#a52c5d25	2a6678	1.048748502
+readable	#a52c5d25	2a6678	false
+hex8	hsla(170, 17%, 71%, 0.61)	#a8c2bd9c
+rgb	hsla(170, 17%, 71%, 0.61)	rgba(168, 194, 189, 0.61)
+hsl	hsla(170, 17%, 71%, 0.61)	hsla(170, 17%, 71%, 0.61)
+lighten	hsla(170, 17%, 71%, 0.61)	35	#ffffff9c
+darken	hsla(170, 17%, 71%, 0.61)	35	#4c6b669c
+saturate	hsla(170, 17%, 71%, 0.61)	35	#8fdccf9c
+desaturate	hsla(170, 17%, 71%, 0.61)	35	#b5b5b59c
+spin	hsla(170, 17%, 71%, 0.61)	140	#c2a8bd9c
+mix	hsla(170, 17%, 71%, 0.61)	#cf5f7841	35	#b69fa57c
+luminance	hsla(170, 17%, 71%, 0.61)	0.505825271
+contrast	hsla(170, 17%, 71%, 0.61)	#cf5f7841	1.998948546
+readable	hsla(170, 17%, 71%, 0.61)	#cf5f7841	false
+hex8	#98194b	#98194bff
+rgb	#98194b	rgb(152, 25, 75)
+hsl	#98194b	hsl(336, 72%, 35%)
+lighten	#98194b	70	#ffffffff
+darken	#98194b	70	#000000ff
+saturate	#98194b	70	#b10046ff
+desaturate	#98194b	70	#5a5758ff
+spin	#98194b	-153	#199198ff
+mix	#98194b	#718	70	#811376ff
+luminance	#98194b	0.078786614
+contrast	#98194b	#718	1.160196957
+readable	#98194b	#718	false
+hex8	rgb(209, 219, 189)	#d1dbbdff
+rgb	rgb(209, 219, 189)	rgb(209, 219, 189)
+hsl	rgb(209, 219, 189)	hsl(80, 29%, 80%)
+lighten	rgb(209, 219, 189)	55	#ffffffff
+darken	rgb(209, 219, 189)	55	#46522dff
+saturate	rgb(209, 219, 189)	55	#daf7a1ff
+desaturate	rgb(209, 219, 189)	55	#ccccccff
+spin	rgb(209, 219, 189)	-38	#dbd2bdff
+mix	rgb(209, 219, 189)	rgba(195, 127, 203, 0.61)	55	#c9a8c5c8
+luminance	rgb(209, 219, 189)	0.678924685
+contrast	rgb(209, 219, 189)	rgba(195, 127, 203, 0.61)	2.019593550
+readable	rgb(209, 219, 189)	rgba(195, 127, 203, 0.61)	false
+hex8	rgb(87%, 52%, 66%)	#de85a8ff
+rgb	rgb(87%, 52%, 66%)	rgb(222, 133, 168)
+hsl	rgb(87%, 52%, 66%)	hsl(336, 57%, 70%)
+lighten	rgb(87%, 52%, 66%)	71	#ffffffff
+darken	rgb(87%, 52%, 66%)	71	#000000ff
+saturate	rgb(87%, 52%, 66%)	71	#ff63a2ff
+desaturate	rgb(87%, 52%, 66%)	71	#b1b1b1ff
+spin	rgb(87%, 52%, 66%)	-344	#de8591ff
+mix	rgb(87%, 52%, 66%)	763862	71	#944e76ff
+luminance	rgb(87%, 52%, 66%)	0.351318063
+contrast	rgb(87%, 52%, 66%)	763862	3.194764787
+readable	rgb(87%, 52%, 66%)	763862	false
+hex8	hsl(148, 66%, 23%)	#146138ff
+rgb	hsl(148, 66%, 23%)	rgb(20, 97, 56)
+hsl	hsl(148, 66%, 23%)	hsl(148, 66%, 23%)
+lighten	hsl(148, 66%, 23%)	90	#ffffffff
+darken	hsl(148, 66%, 23%)	90	#000000ff
+saturate	hsl(148, 66%, 23%)	90	#007537ff
+desaturate	hsl(148, 66%, 23%)	90	#3b3b3bff
+spin	hsl(148, 66%, 23%)	157	#61145bff
+mix	hsl(148, 66%, 23%)	#5e1e17ef	90	#57251af1
+luminance	hsl(148, 66%, 23%)	0.089836346
+contrast	hsl(148, 66%, 23%)	#5e1e17ef	1.670666824
+readable	hsl(148, 66%, 23%)	#5e1e17ef	false
+hex8	hsla(322, 34%, 24%, 0.27)	#52284345
+rgb	hsla(322, 34%, 24%, 0.27)	rgba(82, 40, 67, 0.27)
+hsl	hsla(322, 34%, 24%, 0.27)	hsla(322, 34%, 24%, 0.27)
+lighten	hsla(322, 34%, 24%, 0.27)	77	#ffffff45
+darken	hsla(322, 34%, 24%, 0.27)	77	#00000045
+saturate	hsla(322, 34%, 24%, 0.27)	77	#7a004e45
+desaturate	hsla(322, 34%, 24%, 0.27)	77	#3d3d3d45
+spin	hsla(322, 34%, 24%, 0.27)	352	#52284845
+mix	hsla(322, 34%, 24%, 0.27)	35187D	77	#3c1c70d4
+luminance	hsla(322, 34%, 24%, 0.27)	0.037166696
+contrast	hsla(322, 34%, 24%, 0.27)	35187D	1.104659495
+readable	hsla(322, 34%, 24%, 0.27)	35187D	false
+hex8	rgb(169, 46, 100)	#a92e64ff
+rgb	rgb(169, 46, 100)	rgb(169, 46, 100)
+hsl	rgb(169, 46, 100)	hsl(334, 57%, 42%)
+lighten	rgb(169, 46, 100)	2	#b13069ff
+darken	rgb(169, 46, 100)	2	#a12c5fff
+saturate	rgb(169, 46, 100)	2	#ab2c64ff
+desaturate	rgb(169, 46, 100)	2	#a73064ff
+spin	rgb(169, 46, 100)	-114	#2e58a9ff
+mix	rgb(169, 46, 100)	hsl(96, 45%, 92%)	2	#aa3267ff
+luminance	rgb(169, 46, 100)	0.113091064
+contrast	rgb(169, 46, 100)	hsl(96, 45%, 92%)	5.669301904
+readable	rgb(169, 46, 100)	hsl(96, 45%, 92%)	true
+hex8	hsla(150, 69%, 8%, 0.01)	#06221403
+rgb	hsla(150, 69%, 8%, 0.01)	rgba(6, 34, 20, 0.01)
+hsl	hsla(150, 69%, 8%, 0.01)	hsla(150, 69%, 8%, 0.01)
+lighten	hsla(150, 69%, 8%, 0.01)	29	#1d9f5e03
+darken	hsla(150, 69%, 8%, 0.01)	29	#00000003
+saturate	hsla(150, 69%, 8%, 0.01)	29	#00281403
+desaturate	hsla(150, 69%, 8%, 0.01)	29	#0c1d1403
+spin	hsla(150, 69%, 8%, 0.01)	-30	#06220603
+mix	hsla(150, 69%, 8%, 0.01)	rgb(24, 194, 255)	29	#0b50584c
+luminance	hsla(150, 69%, 8%, 0.01)	0.012332797
+contrast	hsla(150, 69%, 8%, 0.01)	rgb(24, 194, 255)	8.181529770
+readable	hsla(150, 69%, 8%, 0.01)	rgb(24, 194, 255)	true
+hex8	#c234eb	#c234ebff
+rgb	#c234eb	rgb(194, 52, 235)
+hsl	#c234eb	hsl(287, 82%, 56%)
+lighten	#c234eb	25	#e5a8f6ff
+darken	#c234eb	25	#740e91ff
+saturate	#c234eb	25	#cd20ffff
+desaturate	#c234eb	25	#b350cfff
+spin	#c234eb	-88	#34b2ebff
+mix	#c234eb	rgb(8%, 89%, 73%)	25	#9760dfff
+luminance	#c234eb	0.199234754
+contrast	#c234eb	rgb(8%, 89%, 73%)	2.553097508
+readable	#c234eb	rgb(8%, 89%, 73%)	false
+hex8	rgba(228, 110, 200, 0.5)	#e46ec880
+rgb	rgba(228, 110, 200, 0.5)	rgba(228, 110, 200, 0.5)
+hsl	rgba(228, 110, 200, 0.5)	hsla(314, 69%, 66%, 0.5)
+lighten	rgba(228, 110, 200, 0.5)	1	#e572ca80
+darken	rgba(228, 110, 200, 0.5)	1	#e36ac680
+saturate	rgba(228, 110, 200, 0.5)	1	#e56dc880
+desaturate	rgba(228, 110, 200, 0.5)	1	#e36fc880
+spin	rgba(228, 110, 200, 0.5)	79	#e4af6e80
+mix	rgba(228, 110, 200, 0.5)	#00b98a6d	1	#e26fc77f
+luminance	rgba(228, 110, 200, 0.5)	0.318159718
+contrast	rgba(228, 110, 200, 0.5)	#00b98a6d	1.128121839
+readable	rgba(228, 110, 200, 0.5)	#00b98a6d	false
+hex8	rgb(29%, 73%, 48%)	#4aba7aff
+rgb	rgb(29%, 73%, 48%)	rgb(74, 186, 122)
+hsl	rgb(29%, 73%, 48%)	hsl(146, 45%, 51%)
+lighten	rgb(29%, 73%, 48%)	77	#ffffffff
+darken	rgb(29%, 73%, 48%)	77	#000000ff
+saturate	rgb(29%, 73%, 48%)	77	#05ff71ff
+desaturate	rgb(29%, 73%, 48%)	77	#828282ff
+spin	rgb(29%, 73%, 48%)	-171	#ba4a79ff
+mix	rgb(29%, 73%, 48%)	#69a260	77	#62a866ff
+luminance	rgb(29%, 73%, 48%)	0.379787978
+contrast	rgb(29%, 73%, 48%)	#69a260	1.238994591
+readable	rgb(29%, 73%, 48%)	#69a260	false
+hex8	rgb(110, 89, 197)	#6e59c5ff
+rgb	rgb(110, 89, 197)	rgb(110, 89, 197)
+hsl	rgb(110, 89, 197)	hsl(252, 48%, 56%)
+lighten	rgb(110, 89, 197)	90	#ffffffff
+darken	rgb(110, 89, 197)	90	#000000ff
+saturate	rgb(110, 89, 197)	90	#4b1fffff
+desaturate	rgb(110, 89, 197)	90	#8f8f8fff
+spin	rgb(110, 89, 197)	-74	#59c5c1ff
+mix	rgb(110, 89, 197)	hsla(181, 20%, 18%, 0.63)	90	#2c3a45aa
+luminance	rgb(110, 89, 197)	0.144909713
+contrast	rgb(110, 89, 197)	hsla(181, 20%, 18%, 0.63)	2.319932021
+readable	rgb(110, 89, 197)	hsla(181, 20%, 18%, 0.63)	false
+hex8	hsl(326, 82%, 6%)	#1c0311ff
+rgb	hsl(326, 82%, 6%)	rgb(28, 3, 17)
+hsl	hsl(326, 82%, 6%)	hsl(326, 82%, 6%)
+lighten	hsl(326, 82%, 6%)	46	#e92092ff
+darken	hsl(326, 82%, 6%)	46	#000000ff
+saturate	hsl(326, 82%, 6%)	46	#1f0011ff
+desaturate	hsl(326, 82%, 6%)	46	#150a10ff
+spin	hsl(326, 82%, 6%)	257	#030a1cff
+mix	hsl(326, 82%, 6%)	rgb(229, 152, 182)	46	#78485dff
+luminance	hsl(326, 82%, 6%)	0.003524720
+contrast	hsl(326, 82%, 6%)	rgb(229, 152, 182)	8.872888107
+readable	hsl(326, 82%, 6%)	rgb(229, 152, 182)	true
+hex8	hsl(222, 6%, 10%)	#18191bff
+rgb	hsl(222, 6%, 10%)	rgb(24, 25, 27)
+hsl	hsl(222, 6%, 10%)	hsl(222, 6%, 10%)
+lighten	hsl(222, 6%, 10%)	88	#fafafaff
+darken	hsl(222, 6%, 10%)	88	#000000ff
+saturate	hsl(222, 6%, 10%)	88	#021031ff
+desaturate	hsl(222, 6%, 10%)	88	#1a1a1aff
+spin	hsl(222, 6%, 10%)	73	#1b181bff
+mix	hsl(222, 6%, 10%)	hsl(350, 56%, 24%)	88	#561b25ff
+luminance	hsl(222, 6%, 10%)	0.009685834
+contrast	hsl(222, 6%, 10%)	hsl(350, 56%, 24%)	1.400114904
+readable	hsl(222, 6%, 10%)	hsl(350, 56%, 24%)	false
+hex8	rgba(207, 90, 116, 1)	#cf5a74ff
+rgb	rgba(207, 90, 116, 1)	rgb(207, 90, 116)
+hsl	rgba(207, 90, 116, 1)	hsl(347, 55%, 58%)
+lighten	rgba(207, 90, 116, 1)	90	#ffffffff
+darken	rgba(207, 90, 116, 1)	90	#000000ff
+saturate	rgba(207, 90, 116, 1)	90	#ff2a59ff
+desaturate	rgba(207, 90, 116, 1)	90	#949494ff
+spin	rgba(207, 90, 116, 1)	144	#5acf6fff
+mix	rgba(207, 90, 116, 1)	2640AA	90	#3743a5ff
+luminance	rgba(207, 90, 116, 1)	0.218386809
+contrast	rgba(207, 90, 116, 1)	2640AA	2.240077357
+readable	rgba(207, 90, 116, 1)	2640AA	false
+hex8	#efe8de	#efe8deff
+rgb	#efe8de	rgb(239, 232, 222)
+hsl	#efe8de	hsl(35, 35%, 90%)
+lighten	#efe8de	95	#ffffffff
+darken	#efe8de	95	#000000ff
+saturate	#efe8de	95	#ffebceff
+desaturate	#efe8de	95	#e6e6e6ff
+spin	#efe8de	-278	#dfefdeff
+mix	#efe8de	hsla(125, 59%, 77%, 0.77)	95	#a6e7abc7
+luminance	#efe8de	0.813378744
+contrast	#efe8de	hsla(125, 59%, 77%, 0.77)	1.188238959
+readable	#efe8de	hsla(125, 59%, 77%, 0.77)	false
+hex8	#9a2aa81b	#9a2aa81b
+rgb	#9a2aa81b	rgba(154, 42, 168, 0.11)
+hsl	#9a2aa81b	hsla(293, 60%, 41%, 0.11)
+lighten	#9a2aa81b	50	#f3dbf61b
+darken	#9a2aa81b	50	#0000001b
+saturate	#9a2aa81b	50	#bb00d21b
+desaturate	#9a2aa81b	50	#715e731b
+spin	#9a2aa81b	-281	#a8442a1b
+mix	#9a2aa81b	63b9AD	50	#7f72ab8d
+luminance	#9a2aa81b	0.113531067
+contrast	#9a2aa81b	63b9AD	2.774255907
+readable	#9a2aa81b	63b9AD	false
+hex8	#831ac5e8	#831ac5e8
+rgb	#831ac5e8	rgba(131, 26, 197, 0.91)
+hsl	#831ac5e8	hsla(277, 77%, 44%, 0.91)
+lighten	#831ac5e8	7	#9721e2e8
+darken	#831ac5e8	7	#6e16a5e8
+saturate	#831ac5e8	7	#8512cde8
+desaturate	#831ac5e8	7	#8122bde8
+spin	#831ac5e8	-218	#c5c21ae8
+mix	#831ac5e8	rgb(94%, 57%, 13%)	7	#8b22baea
+luminance	#831ac5e8	0.095953010
+contrast	#831ac5e8	rgb(94%, 57%, 13%)	3.006849140
+readable	#831ac5e8	rgb(94%, 57%, 13%)	false
+hex8	#81d8ad37	#81d8ad37
+rgb	#81d8ad37	rgba(129, 216, 173, 0.22)
+hsl	#81d8ad37	hsla(150, 53%, 68%, 0.22)
+lighten	#81d8ad37	11	#ace5c937
+darken	#81d8ad37	11	#56cb9137
+saturate	#81d8ad37	11	#78e1ad37
+desaturate	#81d8ad37	11	#8acfad37
+spin	#81d8ad37	-162	#d8819237
+mix	#81d8ad37	#8dc6aec0	11	#82d6ad46
+luminance	#81d8ad37	0.567959908
+contrast	#81d8ad37	#8dc6aec0	1.142109676
+readable	#81d8ad37	#8dc6aec0	false
+hex8	rgb(44%, 49%, 67%)	#707dabff
+rgb	rgb(44%, 49%, 67%)	rgb(112, 125, 171)
+hsl	rgb(44%, 49%, 67%)	hsl(227, 26%, 55%)
+lighten	rgb(44%, 49%, 67%)	35	#e0e3edff
+darken	rgb(44%, 49%, 67%)	35	#272d42ff
+saturate	rgb(44%, 49%, 67%)	35	#4866d3ff
+desaturate	rgb(44%, 49%, 67%)	35	#8d8d8dff
+spin	rgb(44%, 49%, 67%)	221	#8fab70ff
+mix	rgb(44%, 49%, 67%)	#9f3	35	#7eab81ff
+luminance	rgb(44%, 49%, 67%)	0.210522501
+contrast	rgb(44%, 49%, 67%)	#9f3	3.206299673
+readable	rgb(44%, 49%, 67%)	#9f3	false
+hex8	#80c7828e	#80c7828e
+rgb	#80c7828e	rgba(128, 199, 130, 0.56)
+hsl	#80c7828e	hsla(122, 39%, 64%, 0.56)
+lighten	#80c7828e	9	#a0d5a18e
+darken	#80c7828e	9	#60b9638e
+saturate	#80c7828e	9	#78cf7a8e
+desaturate	#80c7828e	9	#88bf8a8e
+spin	#80c7828e	-349	#80c78f8e
+mix	#80c7828e	#a799a3	9	#84c38598
+luminance	#80c7828e	0.470477479
+contrast	#80c7828e	#a799a3	1.346911264
+readable	#80c7828e	#a799a3	false
+hex8	rgba(59, 212, 167, 0.5)	#3bd4a780
+rgb	rgba(59, 212, 167, 0.5)	rgba(59, 212, 167, 0.5)
+hsl	rgba(59, 212, 167, 0.5)	hsla(162, 64%, 53%, 0.5)
+lighten	rgba(59, 212, 167, 0.5)	83	#ffffff80
+darken	rgba(59, 212, 167, 0.5)	83	#00000080
+saturate	rgba(59, 212, 167, 0.5)	83	#10ffb980
+desaturate	rgba(59, 212, 167, 0.5)	83	#87878780
+spin	rgba(59, 212, 167, 0.5)	293	#7ad43b80
+mix	rgba(59, 212, 167, 0.5)	#6bb6b4dc	83	#63bbb2cc
+luminance	rgba(59, 212, 167, 0.5)	0.508067942
+contrast	rgba(59, 212, 167, 0.5)	#6bb6b4dc	1.243550451
+readable	rgba(59, 212, 167, 0.5)	#6bb6b4dc	false
+hex8	hsl(254, 40%, 26%)	#34285dff
+rgb	hsl(254, 40%, 26%)	rgb(52, 40, 93)
+hsl	hsl(254, 40%, 26%)	hsl(254, 40%, 26%)
+lighten	hsl(254, 40%, 26%)	79	#ffffffff
+darken	hsl(254, 40%, 26%)	79	#000000ff
+saturate	hsl(254, 40%, 26%)	79	#1f0085ff
+desaturate	hsl(254, 40%, 26%)	79	#424242ff
+spin	hsl(254, 40%, 26%)	278	#285d56ff
+mix	hsl(254, 40%, 26%)	31e2F5	79	#32bbd5ff
+luminance	hsl(254, 40%, 26%)	0.030379615
+contrast	hsl(254, 40%, 26%)	31e2F5	8.290441915
+readable	hsl(254, 40%, 26%)	31e2F5	true
+hex8	#eb9357	#eb9357ff
+rgb	#eb9357	rgb(235, 147, 87)
+hsl	#eb9357	hsl(24, 79%, 63%)
+lighten	#eb9357	29	#fbe8dbff
+darken	#eb9357	29	#9c4a13ff
+saturate	#eb9357	29	#ff8f43ff
+desaturate	#eb9357	29	#d09872ff
+spin	#eb9357	-143	#5a57ebff
+mix	#eb9357	hsla(108, 13%, 17%, 0.48)	29	#b27749d9
+luminance	#eb9357	0.392177244
+contrast	#eb9357	hsla(108, 13%, 17%, 0.48)	5.677905524
+readable	#eb9357	hsla(108, 13%, 17%, 0.48)	true
+hex8	hsl(312, 48%, 8%)	#1e0b1aff
+rgb	hsl(312, 48%, 8%)	rgb(30, 11, 26)
+hsl	hsl(312, 48%, 8%)	hsl(312, 48%, 8%)
+lighten	hsl(312, 48%, 8%)	54	#cd70baff
+darken	hsl(312, 48%, 8%)	54	#000000ff
+saturate	hsl(312, 48%, 8%)	54	#290021ff
+desaturate	hsl(312, 48%, 8%)	54	#141414ff
+spin	hsl(312, 48%, 8%)	92	#1e190bff
+mix	hsl(312, 48%, 8%)	rgba(116, 103, 92, 1)	54	#4c3d3eff
+luminance	hsl(312, 48%, 8%)	0.005899448
+contrast	hsl(312, 48%, 8%)	rgba(116, 103, 92, 1)	3.432271146
+readable	hsl(312, 48%, 8%)	rgba(116, 103, 92, 1)	false
+hex8	#3e5	#33ee55ff
+rgb	#3e5	rgb(51, 238, 85)
+hsl	#3e5	hsl(131, 85%, 57%)
+lighten	#3e5	14	#75f38cff
+darken	#3e5	14	#11c932ff
+saturate	#3e5	14	#24fd4bff
+desaturate	#3e5	14	#42df5fff
+spin	#3e5	41	#33eed5ff
+mix	#3e5	#6bf	14	#3ae76dff
+luminance	#3e5	0.625087558
+contrast	#3e5	#6bf	1.334549456
+readable	#3e5	#6bf	false
+hex8	rgb(26, 219, 212)	#1adbd4ff
+rgb	rgb(26, 219, 212)	rgb(26, 219, 212)
+hsl	rgb(26, 219, 212)	hsl(178, 79%, 48%)
+lighten	rgb(26, 219, 212)	86	#ffffffff
+darken	rgb(26, 219, 212)	86	#000000ff
+saturate	rgb(26, 219, 212)	86	#00f5ecff
+desaturate	rgb(26, 219, 212)	86	#7a7a7aff
+spin	rgb(26, 219, 212)	-125	#dbc41aff
+mix	rgb(26, 219, 212)	rgb(82%, 39%, 42%)	86	#b7747aff
+luminance	rgb(26, 219, 212)	0.556361140
+contrast	rgb(26, 219, 212)	rgb(82%, 39%, 42%)	2.124561835
+readable	rgb(26, 219, 212)	rgb(82%, 39%, 42%)	false
+hex8	rgb(92%, 3%, 100%)	#eb08ffff
+rgb	rgb(92%, 3%, 100%)	rgb(235, 8, 255)
+hsl	rgb(92%, 3%, 100%)	hsl(295, 100%, 52%)
+lighten	rgb(92%, 3%, 100%)	72	#ffffffff
+darken	rgb(92%, 3%, 100%)	72	#000000ff
+saturate	rgb(92%, 3%, 100%)	72	#eb08ffff
+desaturate	rgb(92%, 3%, 100%)	72	#a061a6ff
+spin	rgb(92%, 3%, 100%)	-191	#49ff08ff
+mix	rgb(92%, 3%, 100%)	rgb(160, 177, 135)	72	#b582a9ff
+luminance	rgb(92%, 3%, 100%)	0.250558336
+contrast	rgb(92%, 3%, 100%)	rgb(160, 177, 135)	1.519409991
+readable	rgb(92%, 3%, 100%)	rgb(160, 177, 135)	false
+hex8	#3436cd7a	#3436cd7a
+rgb	#3436cd7a	rgba(52, 54, 205, 0.48)
+hsl	#3436cd7a	hsla(239, 60%, 50%, 0.48)
+lighten	#3436cd7a	16	#7577dd7a
+darken	#3436cd7a	16	#23248d7a
+saturate	#3436cd7a	16	#2022e17a
+desaturate	#3436cd7a	16	#484ab97a
+spin	#3436cd7a	-314	#a734cd7a
+mix	#3436cd7a	rgb(70%, 99%, 88%)	16	#4856d08f
+luminance	#3436cd7a	0.077761758
+contrast	#3436cd7a	rgb(70%, 99%, 88%)	7.011983293
+readable	#3436cd7a	rgb(70%, 99%, 88%)	true
+hex8	hsl(201, 97%, 9%)	#011e2dff
+rgb	hsl(201, 97%, 9%)	rgb(1, 30, 45)
+hsl	hsl(201, 97%, 9%)	hsl(201, 96%, 9%)
+lighten	hsl(201, 97%, 9%)	4	#012b41ff
+darken	hsl(201, 97%, 9%)	4	#011119ff
+saturate	hsl(201, 97%, 9%)	4	#001e2eff
+desaturate	hsl(201, 97%, 9%)	4	#021d2cff
+spin	hsl(201, 97%, 9%)	-1	#011e2dff
+mix	hsl(201, 97%, 9%)	rgb(28%, 37%, 2%)	4	#04212bff
+luminance	hsl(201, 97%, 9%)	0.011244611
+contrast	hsl(201, 97%, 9%)	rgb(28%, 37%, 2%)	2.344036047
+readable	hsl(201, 97%, 9%)	rgb(28%, 37%, 2%)	false
+hex8	54ad6C	#54ad6cff
+rgb	54ad6C	rgb(84, 173, 108)
+hsl	54ad6C	hsl(136, 35%, 50%)
+lighten	54ad6C	83	#ffffffff
+darken	54ad6C	83	#000000ff
+saturate	54ad6C	83	#02ff46ff
+desaturate	54ad6C	83	#808080ff
+spin	54ad6C	-304	#549badff
+mix	54ad6C	rgb(96%, 70%, 42%)	83	#dab26bff
+luminance	54ad6C	0.328546677
+contrast	54ad6C	rgb(96%, 70%, 42%)	1.524626073
+readable	54ad6C	rgb(96%, 70%, 42%)	false
+hex8	#87a8e9	#87a8e9ff
+rgb	#87a8e9	rgb(135, 168, 233)
+hsl	#87a8e9	hsl(220, 69%, 72%)
+lighten	#87a8e9	38	#ffffffff
+darken	#87a8e9	38	#1b4393ff
+saturate	#87a8e9	38	#71a1ffff
+desaturate	#87a8e9	38	#a2b1ceff
+spin	#87a8e9	-99	#87e988ff
+mix	#87a8e9	hsla(25, 38%, 58%, 0.28)	38	#9c9eb9b9
+luminance	#87a8e9	0.390393525
+contrast	#87a8e9	hsla(25, 38%, 58%, 0.28)	1.225695014
+readable	#87a8e9	hsla(25, 38%, 58%, 0.28)	false
+hex8	rgba(162, 100, 134, 1)	#a26486ff
+rgb	rgba(162, 100, 134, 1)	rgb(162, 100, 134)
+hsl	rgba(162, 100, 134, 1)	hsl(327, 25%, 51%)
+lighten	rgba(162, 100, 134, 1)	30	#dbc4d1ff
+darken	rgba(162, 100, 134, 1)	30	#442938ff
+saturate	rgba(162, 100, 134, 1)	30	#c73f8aff
+desaturate	rgba(162, 100, 134, 1)	30	#838383ff
+spin	rgba(162, 100, 134, 1)	-223	#74a264ff
+mix	rgba(162, 100, 134, 1)	hsla(30, 46%, 79%, 0.46)	30	#b58293d6
+luminance	rgba(162, 100, 134, 1)	0.185169555
+contrast	rgba(162, 100, 134, 1)	hsla(30, 46%, 79%, 0.46)	2.811433824
+readable	rgba(162, 100, 134, 1)	hsla(30, 46%, 79%, 0.46)	false
+hex8	#99d	#9999ddff
+rgb	#99d	rgb(153, 153, 221)
+hsl	#99d	hsl(240, 50%, 73%)
+lighten	#99d	41	#ffffffff
+darken	#99d	41	#29297cff
+saturate	#99d	41	#7d7df9ff
+desaturate	#99d	41	#b5b5c1ff
+spin	#99d	-28	#99b9ddff
+mix	#99d	hsla(229, 27%, 15%, 0.88)	41	#666796f2
+luminance	#99d	0.347752281
+contrast	#99d	hsla(229, 27%, 15%, 0.88)	6.117711879
+readable	#99d	hsla(229, 27%, 15%, 0.88)	true
+hex8	#7eab9a	#7eab9aff
+rgb	#7eab9a	rgb(126, 171, 154)
+hsl	#7eab9a	hsl(157, 21%, 58%)
+lighten	#7eab9a	67	#ffffffff
+darken	#7eab9a	67	#000000ff
+saturate	#7eab9a	67	#37f2abff
+desaturate	#7eab9a	67	#949494ff
+spin	#7eab9a	260	#aba97eff
+mix	#7eab9a	hsla(11, 72%, 2%, 0.23)	67	#303a337b
+luminance	#7eab9a	0.358945338
+contrast	#7eab9a	hsla(11, 72%, 2%, 0.23)	7.978809283
+readable	#7eab9a	hsla(11, 72%, 2%, 0.23)	true
+hex8	#69a	#6699aaff
+rgb	#69a	rgb(102, 153, 170)
+hsl	#69a	hsl(195, 29%, 53%)
+lighten	#69a	12	#8db3c0ff
+darken	#69a	12	#4b7888ff
+saturate	#69a	12	#58a0b8ff
+desaturate	#69a	12	#74929cff
+spin	#69a	-199	#aa666bff
+mix	#69a	0fb5B0	12	#5c9cabff
+luminance	#69a	0.285095257
+contrast	#69a	0fb5B0	1.232004736
+readable	#69a	0fb5B0	false
+hex8	#f11141fa	#f11141fa
+rgb	#f11141fa	rgba(241, 17, 65, 0.98)
+hsl	#f11141fa	hsla(347, 89%, 51%, 0.98)
+lighten	#f11141fa	95	#fffffffa
+darken	#f11141fa	95	#000000fa
+saturate	#f11141fa	95	#ff0339fa
+desaturate	#f11141fa	95	#818181fa
+spin	#f11141fa	358	#f11148fa
+mix	#f11141fa	rgb(56%, 81%, 64%)	95	#94c69eff
+luminance	#f11141fa	0.194833236
+contrast	#f11141fa	rgb(56%, 81%, 64%)	2.373437180
+readable	#f11141fa	rgb(56%, 81%, 64%)	false
+hex8	rgba(124, 100, 185, 0.5)	#7c64b980
+rgb	rgba(124, 100, 185, 0.5)	rgba(124, 100, 185, 0.5)
+hsl	rgba(124, 100, 185, 0.5)	hsla(257, 38%, 56%, 0.5)
+lighten	rgba(124, 100, 185, 0.5)	12	#a08ecc80
+darken	rgba(124, 100, 185, 0.5)	12	#5d469a80
+saturate	rgba(124, 100, 185, 0.5)	12	#7656c680
+desaturate	rgba(124, 100, 185, 0.5)	12	#8272ab80
+spin	rgba(124, 100, 185, 0.5)	-287	#b9648f80
+mix	rgba(124, 100, 185, 0.5)	rgb(81%, 15%, 40%)	12	#865daf8f
+luminance	rgba(124, 100, 185, 0.5)	0.169022114
+contrast	rgba(124, 100, 185, 0.5)	rgb(81%, 15%, 40%)	1.062650134
+readable	rgba(124, 100, 185, 0.5)	rgb(81%, 15%, 40%)	false
+hex8	#0ae5b81d	#0ae5b81d
+rgb	#0ae5b81d	rgba(10, 229, 184, 0.11)
+hsl	#0ae5b81d	hsla(168, 92%, 47%, 0.11)
+lighten	#0ae5b81d	83	#ffffff1d
+darken	#0ae5b81d	83	#0000001d
+saturate	#0ae5b81d	83	#00efbe1d
+desaturate	#0ae5b81d	83	#6d827e1d
+spin	#0ae5b81d	-77	#75e50a1d
+mix	#0ae5b81d	rgba(52, 94, 211, 0)	83	#2d75ce05
+luminance	#0ae5b81d	0.595638444
+contrast	#0ae5b81d	rgba(52, 94, 211, 0)	3.501555083
+readable	#0ae5b81d	rgba(52, 94, 211, 0)	false
+hex8	rgba(76, 66, 36, 0.5)	#4c422480
+rgb	rgba(76, 66, 36, 0.5)	rgba(76, 66, 36, 0.5)
+hsl	rgba(76, 66, 36, 0.5)	hsla(45, 36%, 22%, 0.5)
+lighten	rgba(76, 66, 36, 0.5)	89	#ffffff80
+darken	rgba(76, 66, 36, 0.5)	89	#00000080
+saturate	rgba(76, 66, 36, 0.5)	89	#70540080
+desaturate	rgba(76, 66, 36, 0.5)	89	#38383880
+spin	rgba(76, 66, 36, 0.5)	178	#242f4c80
+mix	rgba(76, 66, 36, 0.5)	hsl(65, 35%, 24%)	89	#4f5128f1
+luminance	rgba(76, 66, 36, 0.5)	0.055603038
+contrast	rgba(76, 66, 36, 0.5)	hsl(65, 35%, 24%)	1.231212577
+readable	rgba(76, 66, 36, 0.5)	hsl(65, 35%, 24%)	false
+hex8	#f625a8e5	#f625a8e5
+rgb	#f625a8e5	rgba(246, 37, 168, 0.9)
+hsl	#f625a8e5	hsla(322, 92%, 55%, 0.9)
+lighten	#f625a8e5	21	#fa8cd1e5
+darken	#f625a8e5	21	#a9076ce5
+saturate	#f625a8e5	21	#ff1caae5
+desaturate	#f625a8e5	21	#de3da2e5
+spin	#f625a8e5	147	#4af625e5
+mix	#f625a8e5	rgba(164, 253, 190, 1)	21	#e552adea
+luminance	#f625a8e5	0.237431193
+contrast	#f625a8e5	rgba(164, 253, 190, 1)	3.021967696
+readable	#f625a8e5	rgba(164, 253, 190, 1)	false
+hex8	#56d425d6	#56d425d6
+rgb	#56d425d6	rgba(86, 212, 37, 0.84)
+hsl	#56d425d6	hsla(103, 70%, 49%, 0.84)
+lighten	#56d425d6	64	#ffffffd6
+darken	#56d425d6	64	#000000d6
+saturate	#56d425d6	64	#46f900d6
+desaturate	#56d425d6	64	#798475d6
+spin	#56d425d6	-329	#25d44ed6
+mix	#56d425d6	#1a94f9	64	#30abadf0
+luminance	#56d425d6	0.491989721
+contrast	#56d425d6	#1a94f9	1.630584972
+readable	#56d425d6	#1a94f9	false
+hex8	rgb(71%, 20%, 34%)	#b53357ff
+rgb	rgb(71%, 20%, 34%)	rgb(181, 51, 87)
+hsl	rgb(71%, 20%, 34%)	hsl(344, 56%, 46%)
+lighten	rgb(71%, 20%, 34%)	34	#e8adbeff
+darken	rgb(71%, 20%, 34%)	34	#2e0d16ff
+saturate	rgb(71%, 20%, 34%)	34	#dc0c45ff
+desaturate	rgb(71%, 20%, 34%)	34	#8e5a68ff
+spin	rgb(71%, 20%, 34%)	330	#b53398ff
+mix	rgb(71%, 20%, 34%)	#ce9e81	34	#be5765ff
+luminance	rgb(71%, 20%, 34%)	0.128795298
+contrast	rgb(71%, 20%, 34%)	#ce9e81	2.469892149
+readable	rgb(71%, 20%, 34%)	#ce9e81	false
+hex8	hsla(14, 3%, 91%, 0.19)	#e9e8e730
+rgb	hsla(14, 3%, 91%, 0.19)	rgba(233, 232, 231, 0.19)
+hsl	hsla(14, 3%, 91%, 0.19)	hsla(14, 3%, 91%, 0.19)
+lighten	hsla(14, 3%, 91%, 0.19)	25	#ffffff30
+darken	hsla(14, 3%, 91%, 0.19)	25	#aba7a630
+saturate	hsla(14, 3%, 91%, 0.19)	25	#eee5e230
+desaturate	hsla(14, 3%, 91%, 0.19)	25	#e8e8e830
+spin	hsla(14, 3%, 91%, 0.19)	-345	#e9e8e730
+mix	hsla(14, 3%, 91%, 0.19)	hsl(246, 86%, 68%)	25	#ccc8ea64
+luminance	hsla(14, 3%, 91%, 0.19)	0.808063854
+contrast	hsla(14, 3%, 91%, 0.19)	hsl(246, 86%, 68%)	3.430326591
+readable	hsla(14, 3%, 91%, 0.19)	hsl(246, 86%, 68%)	false
+hex8	rgb(24, 186, 103)	#18ba67ff
+rgb	rgb(24, 186, 103)	rgb(24, 186, 103)
+hsl	rgb(24, 186, 103)	hsl(149, 77%, 41%)
+lighten	rgb(24, 186, 103)	43	#b7f6d6ff
+darken	rgb(24, 186, 103)	43	#000000ff
+saturate	rgb(24, 186, 103)	43	#00d266ff
+desaturate	rgb(24, 186, 103)	43	#458d68ff
+spin	rgb(24, 186, 103)	340	#18ba31ff
+mix	rgb(24, 186, 103)	rgba(63, 174, 98, 1)	43	#29b565ff
+luminance	rgb(24, 186, 103)	0.362912739
+contrast	rgb(24, 186, 103)	rgba(63, 174, 98, 1)	1.109661087
+readable	rgb(24, 186, 103)	rgba(63, 174, 98, 1)	false
+hex8	rgb(227, 223, 54)	#e3df36ff
+rgb	rgb(227, 223, 54)	rgb(227, 223, 54)
+hsl	rgb(227, 223, 54)	hsl(59, 76%, 55%)
+lighten	rgb(227, 223, 54)	85	#ffffffff
+darken	rgb(227, 223, 54)	85	#000000ff
+saturate	rgb(227, 223, 54)	85	#fffa1aff
+desaturate	rgb(227, 223, 54)	85	#8c8c8cff
+spin	rgb(227, 223, 54)	136	#36b9e3ff
+mix	rgb(227, 223, 54)	hsla(287, 25%, 26%, 0.34)	85	#634c4f70
+luminance	rgb(227, 223, 54)	0.693725877
+contrast	rgb(227, 223, 54)	hsla(287, 25%, 26%, 0.34)	7.876585426
+readable	rgb(227, 223, 54)	hsla(287, 25%, 26%, 0.34)	true
+hex8	rgb(46%, 5%, 62%)	#750d9eff
+rgb	rgb(46%, 5%, 62%)	rgb(117, 13, 158)
+hsl	rgb(46%, 5%, 62%)	hsl(283, 85%, 34%)
+lighten	rgb(46%, 5%, 62%)	6	#8a0fbaff
+darken	rgb(46%, 5%, 62%)	6	#600a82ff
+saturate	rgb(46%, 5%, 62%)	6	#7808a3ff
+desaturate	rgb(46%, 5%, 62%)	6	#731299ff
+spin	rgb(46%, 5%, 62%)	-330	#9e0d7eff
+mix	rgb(46%, 5%, 62%)	hsla(300, 89%, 89%, 0.5)	6	#7d18a4f7
+luminance	rgb(46%, 5%, 62%)	0.065383776
+contrast	rgb(46%, 5%, 62%)	hsla(300, 89%, 89%, 0.5)	6.496994964
+readable	rgb(46%, 5%, 62%)	hsla(300, 89%, 89%, 0.5)	true
+hex8	rgb(220, 139, 228)	#dc8be4ff
+rgb	rgb(220, 139, 228)	rgb(220, 139, 228)
+hsl	rgb(220, 139, 228)	hsl(295, 62%, 72%)
+lighten	rgb(220, 139, 228)	10	#e8b4eeff
+darken	rgb(220, 139, 228)	10	#d062daff
+saturate	rgb(220, 139, 228)	10	#e284ebff
+desaturate	rgb(220, 139, 228)	10	#d692ddff
+spin	rgb(220, 139, 228)	-121	#8be4dbff
+mix	rgb(220, 139, 228)	hsla(287, 52%, 52%, 0.04)	10	#d784e1e7
+luminance	rgb(220, 139, 228)	0.392823179
+contrast	rgb(220, 139, 228)	hsla(287, 52%, 52%, 0.04)	2.042845534
+readable	rgb(220, 139, 228)	hsla(287, 52%, 52%, 0.04)	false
+hex8	rgb(15%, 67%, 100%)	#26abffff
+rgb	rgb(15%, 67%, 100%)	rgb(38, 171, 255)
+hsl	rgb(15%, 67%, 100%)	hsl(203, 100%, 57%)
+lighten	rgb(15%, 67%, 100%)	1	#2badffff
+darken	rgb(15%, 67%, 100%)	1	#21a9ffff
+saturate	rgb(15%, 67%, 100%)	1	#26abffff
+desaturate	rgb(15%, 67%, 100%)	1	#27abfeff
+spin	rgb(15%, 67%, 100%)	-260	#ff26f3ff
+mix	rgb(15%, 67%, 100%)	ef665F	1	#28aafdff
+luminance	rgb(15%, 67%, 100%)	0.367578889
+contrast	rgb(15%, 67%, 100%)	ef665F	1.239853790
+readable	rgb(15%, 67%, 100%)	ef665F	false
+hex8	#b0605770	#b0605770
+rgb	#b0605770	rgba(176, 96, 87, 0.44)
+hsl	#b0605770	hsla(6, 36%, 52%, 0.44)
+lighten	#b0605770	57	#ffffff70
+darken	#b0605770	57	#00000070
+saturate	#b0605770	57	#f6281170
+desaturate	#b0605770	57	#83838370
+spin	#b0605770	-313	#b0a65770
+mix	#b0605770	hsla(249, 5%, 29%, 0.76)	57	#7451529f
+luminance	#b0605770	0.182839684
+contrast	#b0605770	hsla(249, 5%, 29%, 0.76)	2.066018806
+readable	#b0605770	hsla(249, 5%, 29%, 0.76)	false
+hex8	#402d18f3	#402d18f3
+rgb	#402d18f3	rgba(64, 45, 24, 0.95)
+hsl	#402d18f3	hsla(32, 45%, 17%, 0.95)
+lighten	#402d18f3	92	#fffffff3
+darken	#402d18f3	92	#000000f3
+saturate	#402d18f3	92	#582e00f3
+desaturate	#402d18f3	92	#2c2c2cf3
+spin	#402d18f3	276	#40183bf3
+mix	#402d18f3	hsl(142, 20%, 94%)	92	#dfe3defe
+luminance	#402d18f3	0.030327088
+contrast	#402d18f3	hsl(142, 20%, 94%)	11.619704723
+readable	#402d18f3	hsl(142, 20%, 94%)	true
+hex8	rgb(127, 84, 133)	#7f5485ff
+rgb	rgb(127, 84, 133)	rgb(127, 84, 133)
+hsl	rgb(127, 84, 133)	hsl(293, 23%, 43%)
+lighten	rgb(127, 84, 133)	32	#c9afcdff
+darken	rgb(127, 84, 133)	32	#1f1521ff
+saturate	rgb(127, 84, 133)	32	#9931a8ff
+desaturate	rgb(127, 84, 133)	32	#6c6c6cff
+spin	rgb(127, 84, 133)	104	#857254ff
+mix	rgb(127, 84, 133)	hsl(113, 32%, 10%)	32	#5c4460ff
+luminance	rgb(127, 84, 133)	0.125461286
+contrast	rgb(127, 84, 133)	hsl(113, 32%, 10%)	2.774980847
+readable	rgb(127, 84, 133)	hsl(113, 32%, 10%)	false
+hex8	hsla(257, 42%, 94%, 0.22)	#ede9f638
+rgb	hsla(257, 42%, 94%, 0.22)	rgba(237, 233, 246, 0.22)
+hsl	hsla(257, 42%, 94%, 0.22)	hsla(257, 42%, 94%, 0.22)
+lighten	hsla(257, 42%, 94%, 0.22)	69	#ffffff38
+darken	hsla(257, 42%, 94%, 0.22)	69	#34255b38
+saturate	hsla(257, 42%, 94%, 0.22)	69	#e9e0ff38
+desaturate	hsla(257, 42%, 94%, 0.22)	69	#f0f0f038
+spin	hsla(257, 42%, 94%, 0.22)	-264	#f6e9eb38
+mix	hsla(257, 42%, 94%, 0.22)	#4b84e696	69	#7da3eb79
+luminance	hsla(257, 42%, 94%, 0.22)	0.829361727
+contrast	hsla(257, 42%, 94%, 0.22)	#4b84e696	3.062745039
+readable	hsla(257, 42%, 94%, 0.22)	#4b84e696	false
+hex8	rgba(129, 24, 130, 0.5)	#81188280
+rgb	rgba(129, 24, 130, 0.5)	rgba(129, 24, 130, 0.5)
+hsl	rgba(129, 24, 130, 0.5)	hsla(299, 69%, 30%, 0.5)
+lighten	rgba(129, 24, 130, 0.5)	90	#ffffff80
+darken	rgba(129, 24, 130, 0.5)	90	#00000080
+saturate	rgba(129, 24, 130, 0.5)	90	#99009a80
+desaturate	rgba(129, 24, 130, 0.5)	90	#4d4d4d80
+spin	rgba(129, 24, 130, 0.5)	-28	#50188280
+mix	rgba(129, 24, 130, 0.5)	#cc94efd5	90	#c588e4cc
+luminance	rgba(129, 24, 130, 0.5)	0.069321007
+contrast	rgba(129, 24, 130, 0.5)	#cc94efd5	3.792221875
+readable	rgba(129, 24, 130, 0.5)	#cc94efd5	false
+hex8	rgb(90%, 96%, 50%)	#e6f580ff
+rgb	rgb(90%, 96%, 50%)	rgb(230, 245, 128)
+hsl	rgb(90%, 96%, 50%)	hsl(68, 85%, 73%)
+lighten	rgb(90%, 96%, 50%)	22	#fafde7ff
+darken	rgb(90%, 96%, 50%)	22	#d1ec18ff
+saturate	rgb(90%, 96%, 50%)	22	#edff75ff
+desaturate	rgb(90%, 96%, 50%)	22	#dae68fff
+spin	rgb(90%, 96%, 50%)	260	#f580beff
+mix	rgb(90%, 96%, 50%)	hsl(85, 52%, 1%)	22	#b4c064ff
+luminance	rgb(90%, 96%, 50%)	0.836863226
+contrast	rgb(90%, 96%, 50%)	hsl(85, 52%, 1%)	17.360936991
+readable	rgb(90%, 96%, 50%)	hsl(85, 52%, 1%)	true
+hex8	hsla(311, 59%, 78%, 0.11)	#e8a6dc1c
+rgb	hsla(311, 59%, 78%, 0.11)	rgba(232, 166, 220, 0.11)
+hsl	hsla(311, 59%, 78%, 0.11)	hsla(311, 59%, 78%, 0.11)
+lighten	hsla(311, 59%, 78%, 0.11)	77	#ffffff1c
+darken	hsla(311, 59%, 78%, 0.11)	77	#0401041c
+saturate	hsla(311, 59%, 78%, 0.11)	77	#ff8fea1c
+desaturate	hsla(311, 59%, 78%, 0.11)	77	#c7c7c71c
+spin	hsla(311, 59%, 78%, 0.11)	126	#d5e8a61c
+mix	hsla(311, 59%, 78%, 0.11)	rgb(82%, 99%, 52%)	77	#d6e899cb
+luminance	hsla(311, 59%, 78%, 0.11)	0.495955484
+contrast	hsla(311, 59%, 78%, 0.11)	rgb(82%, 99%, 52%)	1.646097063
+readable	hsla(311, 59%, 78%, 0.11)	rgb(82%, 99%, 52%)	false
+hex8	#f98a46aa	#f98a46aa
+rgb	#f98a46aa	rgba(249, 138, 70, 0.67)
+hsl	#f98a46aa	hsla(23, 94%, 63%, 0.67)
+lighten	#f98a46aa	51	#ffffffaa
+darken	#f98a46aa	51	#391702aa
+saturate	#f98a46aa	51	#ff8940aa
+desaturate	#f98a46aa	51	#c89677aa
+spin	#f98a46aa	326	#f94667aa
+mix	#f98a46aa	hsl(308, 75%, 30%)	51	#be4d5fd5
+luminance	#f98a46aa	0.387588913
+contrast	#f98a46aa	hsl(308, 75%, 30%)	3.687758355
+readable	#f98a46aa	hsl(308, 75%, 30%)	false
+hex8	#e349d7bb	#e349d7bb
+rgb	#e349d7bb	rgba(227, 73, 215, 0.73)
+hsl	#e349d7bb	hsla(305, 73%, 59%, 0.73)
+lighten	#e349d7bb	3	#e556dabb
+darken	#e349d7bb	3	#e13cd4bb
+saturate	#e349d7bb	3	#e646dabb
+desaturate	#e349d7bb	3	#e04cd4bb
+spin	#e349d7bb	-58	#5a49e3bb
+mix	#e349d7bb	#a943bd4e	3	#e149d6b8
+luminance	#e349d7bb	0.260022772
+contrast	#e349d7bb	#a943bd4e	1.467671176
+readable	#e349d7bb	#a943bd4e	false
+hex8	rgba(188, 67, 181, 0)	#bc43b500
+rgb	rgba(188, 67, 181, 0)	rgba(188, 67, 181, 0)
+hsl	rgba(188, 67, 181, 0)	hsla(303, 47%, 50%, 0)
+lighten	rgba(188, 67, 181, 0)	83	#ffffff00
+darken	rgba(188, 67, 181, 0)	83	#00000000
+saturate	rgba(188, 67, 181, 0)	83	#ff00f000
+desaturate	rgba(188, 67, 181, 0)	83	#80808000
+spin	rgba(188, 67, 181, 0)	-87	#4372bc00
+mix	rgba(188, 67, 181, 0)	#225efd	83	#3c59f1d4
+luminance	rgba(188, 67, 181, 0)	0.180418716
+contrast	rgba(188, 67, 181, 0)	#225efd	1.127439998
+readable	rgba(188, 67, 181, 0)	#225efd	false
+hex8	#de1857	#de1857ff
+rgb	#de1857	rgb(222, 24, 87)
+hsl	#de1857	hsl(341, 80%, 48%)
+lighten	#de1857	2	#e61a5bff
+darken	#de1857	2	#d51753ff
+saturate	#de1857	2	#e01656ff
+desaturate	#de1857	2	#dc1a58ff
+spin	#de1857	353	#de186eff
+mix	#de1857	hsla(115, 95%, 37%, 0.61)	2	#da1b55fd
+luminance	#de1857	0.168709831
+contrast	#de1857	hsla(115, 95%, 37%, 0.61)	1.803332709
+readable	#de1857	hsla(115, 95%, 37%, 0.61)	false
+hex8	rgba(154, 84, 158, 0.5)	#9a549e80
+rgb	rgba(154, 84, 158, 0.5)	rgba(154, 84, 158, 0.5)
+hsl	rgba(154, 84, 158, 0.5)	hsla(297, 31%, 47%, 0.5)
+lighten	rgba(154, 84, 158, 0.5)	81	#ffffff80
+darken	rgba(154, 84, 158, 0.5)	81	#00000080
+saturate	rgba(154, 84, 158, 0.5)	81	#e500f280
+desaturate	rgba(154, 84, 158, 0.5)	81	#79797980
+spin	rgba(154, 84, 158, 0.5)	-170	#549e5c80
+mix	rgba(154, 84, 158, 0.5)	rgb(216, 121, 171)	81	#cc72a9e7
+luminance	rgba(154, 84, 158, 0.5)	0.156792943
+contrast	rgba(154, 84, 158, 0.5)	rgb(216, 121, 171)	1.751217807
+readable	rgba(154, 84, 158, 0.5)	rgb(216, 121, 171)	false
+hex8	#1a135376	#1a135376
+rgb	#1a135376	rgba(26, 19, 83, 0.46)
+hsl	#1a135376	hsla(247, 63%, 20%, 0.46)
+lighten	#1a135376	55	#a097e776
+darken	#1a135376	55	#00000076
+saturate	#1a135376	55	#0b006676
+desaturate	#1a135376	55	#302f3776
+spin	#1a135376	-33	#132f5376
+mix	#1a135376	#d025e0a1	55	#7e1da18e
+luminance	#1a135376	0.013098901
+contrast	#1a135376	#d025e0a1	3.980235857
+readable	#1a135376	#d025e0a1	false
+hex8	hsla(318, 11%, 60%, 0.32)	#a48e9d52
+rgb	hsla(318, 11%, 60%, 0.32)	rgba(164, 142, 157, 0.32)
+hsl	hsla(318, 11%, 60%, 0.32)	hsla(318, 11%, 60%, 0.32)
+lighten	hsla(318, 11%, 60%, 0.32)	38	#faf9fa52
+darken	hsla(318, 11%, 60%, 0.32)	38	#3e323b52
+saturate	hsla(318, 11%, 60%, 0.32)	38	#cb67ad52
+desaturate	hsla(318, 11%, 60%, 0.32)	38	#99999952
+spin	hsla(318, 11%, 60%, 0.32)	-348	#a48e9952
+mix	hsla(318, 11%, 60%, 0.32)	#666	38	#8c7f8893
+luminance	hsla(318, 11%, 60%, 0.32)	0.296728364
+contrast	hsla(318, 11%, 60%, 0.32)	#666	1.896054828
+readable	hsla(318, 11%, 60%, 0.32)	#666	false
+hex8	rgb(15, 237, 52)	#0fed34ff
+rgb	rgb(15, 237, 52)	rgb(15, 237, 52)
+hsl	rgb(15, 237, 52)	hsl(130, 88%, 49%)
+lighten	rgb(15, 237, 52)	98	#ffffffff
+darken	rgb(15, 237, 52)	98	#000000ff
+saturate	rgb(15, 237, 52)	98	#00fc2aff
+desaturate	rgb(15, 237, 52)	98	#7e7e7eff
+spin	rgb(15, 237, 52)	329	#5ded0fff
+mix	rgb(15, 237, 52)	hsl(169, 43%, 41%)	98	#3b9883ff
+luminance	rgb(15, 237, 52)	0.609178650
+contrast	rgb(15, 237, 52)	hsl(169, 43%, 41%)	2.237020992
+readable	rgb(15, 237, 52)	hsl(169, 43%, 41%)	false
+hex8	rgba(241, 243, 104, 0)	#f1f36800
+rgb	rgba(241, 243, 104, 0)	rgba(241, 243, 104, 0)
+hsl	rgba(241, 243, 104, 0)	hsla(61, 85%, 68%, 0)
+lighten	rgba(241, 243, 104, 0)	61	#ffffff00
+darken	rgba(241, 243, 104, 0)	61	#21210300
+saturate	rgba(241, 243, 104, 0)	61	#fdff5c00
+desaturate	rgba(241, 243, 104, 0)	61	#c1c19a00
+spin	rgba(241, 243, 104, 0)	145	#68b7f300
+mix	rgba(241, 243, 104, 0)	hsla(180, 17%, 67%, 0.41)	61	#bed09940
+luminance	rgba(241, 243, 104, 0)	0.838014326
+contrast	rgba(241, 243, 104, 0)	hsla(180, 17%, 67%, 0.41)	1.763024416
+readable	rgba(241, 243, 104, 0)	hsla(180, 17%, 67%, 0.41)	false
+hex8	rgb(35%, 43%, 57%)	#596e91ff
+rgb	rgb(35%, 43%, 57%)	rgb(89, 110, 145)
+hsl	rgb(35%, 43%, 57%)	hsl(218, 24%, 46%)
+lighten	rgb(35%, 43%, 57%)	83	#ffffffff
+darken	rgb(35%, 43%, 57%)	83	#000000ff
+saturate	rgb(35%, 43%, 57%)	83	#0055ebff
+desaturate	rgb(35%, 43%, 57%)	83	#757575ff
+spin	rgb(35%, 43%, 57%)	18	#595d91ff
+mix	rgb(35%, 43%, 57%)	rgba(232, 42, 141, 0.5)	83	#d0368e95
+luminance	rgb(35%, 43%, 57%)	0.153200416
+contrast	rgb(35%, 43%, 57%)	rgba(232, 42, 141, 0.5)	1.266474832
+readable	rgb(35%, 43%, 57%)	rgba(232, 42, 141, 0.5)	false
+hex8	#fc5	#ffcc55ff
+rgb	#fc5	rgb(255, 204, 85)
+hsl	#fc5	hsl(42, 100%, 67%)
+lighten	#fc5	29	#fff8e9ff
+darken	#fc5	29	#c08600ff
+saturate	#fc5	29	#ffcc55ff
+desaturate	#fc5	29	#e6c26eff
+spin	#fc5	-22	#ff8e55ff
+mix	#fc5	#86a	29	#dcae6eff
+luminance	#fc5	0.651016084
+contrast	#fc5	#86a	3.096461714
+readable	#fc5	#86a	false
+hex8	rgb(213, 161, 130)	#d5a182ff
+rgb	rgb(213, 161, 130)	rgb(213, 161, 130)
+hsl	rgb(213, 161, 130)	hsl(22, 50%, 67%)
+lighten	rgb(213, 161, 130)	79	#ffffffff
+darken	rgb(213, 161, 130)	79	#000000ff
+saturate	rgb(213, 161, 130)	79	#ff9658ff
+desaturate	rgb(213, 161, 130)	79	#abababff
+spin	rgb(213, 161, 130)	-233	#82d5abff
+mix	rgb(213, 161, 130)	#70e	79	#8b22d7ff
+luminance	rgb(213, 161, 130)	0.412475781
+contrast	rgb(213, 161, 130)	#70e	3.063771052
+readable	rgb(213, 161, 130)	#70e	false
+hex8	#f60	#ff6600ff
+rgb	#f60	rgb(255, 102, 0)
+hsl	#f60	hsl(24, 100%, 50%)
+lighten	#f60	81	#ffffffff
+darken	#f60	81	#000000ff
+saturate	#f60	81	#ff6600ff
+desaturate	#f60	81	#987b67ff
+spin	#f60	-344	#ffaa00ff
+mix	#f60	bca4BB	81	#c99897ff
+luminance	#f60	0.307627424
+contrast	#f60	bca4BB	1.281505226
+readable	#f60	bca4BB	false
+hex8	rgba(53, 30, 145, 0.92)	#351e91eb
+rgb	rgba(53, 30, 145, 0.92)	rgba(53, 30, 145, 0.92)
+hsl	rgba(53, 30, 145, 0.92)	hsla(252, 66%, 34%, 0.92)
+lighten	rgba(53, 30, 145, 0.92)	97	#ffffffeb
+darken	rgba(53, 30, 145, 0.92)	97	#000000eb
+saturate	rgba(53, 30, 145, 0.92)	97	#2300afeb
+desaturate	rgba(53, 30, 145, 0.92)	97	#575757eb
+spin	rgba(53, 30, 145, 0.92)	31	#701e91eb
+mix	rgba(53, 30, 145, 0.92)	#a2b2b295	97	#9faeb198
+luminance	rgba(53, 30, 145, 0.92)	0.037297643
+contrast	rgba(53, 30, 145, 0.92)	#a2b2b295	5.468248898
+readable	rgba(53, 30, 145, 0.92)	#a2b2b295	true
+hex8	rgb(246, 163, 229)	#f6a3e5ff
+rgb	rgb(246, 163, 229)	rgb(246, 163, 229)
+hsl	rgb(246, 163, 229)	hsl(312, 82%, 80%)
+lighten	rgb(246, 163, 229)	97	#ffffffff
+darken	rgb(246, 163, 229)	97	#000000ff
+saturate	rgb(246, 163, 229)	97	#ff9aeaff
+desaturate	rgb(246, 163, 229)	97	#ccccccff
+spin	rgb(246, 163, 229)	38	#f6a3b0ff
+mix	rgb(246, 163, 229)	hsla(132, 88%, 82%, 0.24)	97	#abf6ba43
+luminance	rgb(246, 163, 229)	0.514443588
+contrast	rgb(246, 163, 229)	hsla(132, 88%, 82%, 0.24)	1.500400822
+readable	rgb(246, 163, 229)	hsla(132, 88%, 82%, 0.24)	false
+hex8	#ccb0c677	#ccb0c677
+rgb	#ccb0c677	rgba(204, 176, 198, 0.47)
+hsl	#ccb0c677	hsla(313, 22%, 75%, 0.47)
+lighten	#ccb0c677	67	#ffffff77
+darken	#ccb0c677	67	#170f1577
+saturate	#ccb0c677	67	#f884df77
+desaturate	#ccb0c677	67	#bebebe77
+spin	#ccb0c677	-295	#ccb8b077
+mix	#ccb0c677	rgba(137, 249, 135, 0.9)	67	#9fe19cc1
+luminance	#ccb0c677	0.479652544
+contrast	#ccb0c677	rgba(137, 249, 135, 0.9)	1.507006798
+readable	#ccb0c677	rgba(137, 249, 135, 0.9)	false
+hex8	rgb(133, 87, 125)	#85577dff
+rgb	rgb(133, 87, 125)	rgb(133, 87, 125)
+hsl	rgb(133, 87, 125)	hsl(310, 21%, 43%)
+lighten	rgb(133, 87, 125)	31	#cbafc6ff
+darken	rgb(133, 87, 125)	31	#251823ff
+saturate	rgb(133, 87, 125)	31	#a73593ff
+desaturate	rgb(133, 87, 125)	31	#6e6e6eff
+spin	rgb(133, 87, 125)	-144	#57857bff
+mix	rgb(133, 87, 125)	rgba(132, 182, 119, 0)	31	#85747bb0
+luminance	rgb(133, 87, 125)	0.132836039
+contrast	rgb(133, 87, 125)	rgba(132, 182, 119, 0)	2.444449153
+readable	rgb(133, 87, 125)	rgba(132, 182, 119, 0)	false
+hex8	cb7275	#cb7275ff
+rgb	cb7275	rgb(203, 114, 117)
+hsl	cb7275	hsl(358, 46%, 62%)
+lighten	cb7275	55	#ffffffff
+darken	cb7275	55	#1b0a0aff
+saturate	cb7275	55	#ff3e44ff
+desaturate	cb7275	55	#9e9e9eff
+spin	cb7275	117	#79cb72ff
+mix	cb7275	#98c0b523	55	#af9d9886
+luminance	cb7275	0.260154919
+contrast	cb7275	#98c0b523	1.699501332
+readable	cb7275	#98c0b523	false
+hex8	rgb(192, 79, 11)	#c04f0bff
+rgb	rgb(192, 79, 11)	rgb(192, 79, 11)
+hsl	rgb(192, 79, 11)	hsl(23, 89%, 40%)
+lighten	rgb(192, 79, 11)	17	#f3782fff
+darken	rgb(192, 79, 11)	17	#6e2d06ff
+saturate	rgb(192, 79, 11)	17	#cb4c00ff
+desaturate	rgb(192, 79, 11)	17	#af531cff
+spin	rgb(192, 79, 11)	348	#c02b0bff
+mix	rgb(192, 79, 11)	rgba(91, 216, 163, 0.5)	17	#af6625e9
+luminance	rgb(192, 79, 11)	0.168225940
+contrast	rgb(192, 79, 11)	rgba(91, 216, 163, 0.5)	2.702713702
+readable	rgb(192, 79, 11)	rgba(91, 216, 163, 0.5)	false
+hex8	0757E1	#0757e1ff
+rgb	0757E1	rgb(7, 87, 225)
+hsl	0757E1	hsl(218, 94%, 45%)
+lighten	0757E1	3	#075df0ff
+darken	0757E1	3	#0751d2ff
+saturate	0757E1	3	#0456e4ff
+desaturate	0757E1	3	#0a58deff
+spin	0757E1	-268	#e107bdff
+mix	0757E1	rgba(140, 242, 28, 0.16)	3	#0b5cdbf9
+luminance	0757E1	0.122978037
+contrast	0757E1	rgba(140, 242, 28, 0.16)	4.287454757
+readable	0757E1	rgba(140, 242, 28, 0.16)	false
+hex8	hsla(298, 77%, 51%, 0.35)	#dc22e259
+rgb	hsla(298, 77%, 51%, 0.35)	rgba(220, 34, 226, 0.35)
+hsl	hsla(298, 77%, 51%, 0.35)	hsla(298, 77%, 51%, 0.35)
+lighten	hsla(298, 77%, 51%, 0.35)	74	#ffffff59
+darken	hsla(298, 77%, 51%, 0.35)	74	#00000059
+saturate	hsla(298, 77%, 51%, 0.35)	74	#f705ff59
+desaturate	hsla(298, 77%, 51%, 0.35)	74	#867e8659
+spin	hsla(298, 77%, 51%, 0.35)	280	#2268e259
+mix	hsla(298, 77%, 51%, 0.35)	#daee48	74	#dbb970d4
+luminance	hsla(298, 77%, 51%, 0.35)	0.218506856
+contrast	hsla(298, 77%, 51%, 0.35)	#daee48	3.036137632
+readable	hsla(298, 77%, 51%, 0.35)	#daee48	false
+hex8	hsl(73, 47%, 26%)	#546123ff
+rgb	hsl(73, 47%, 26%)	rgb(84, 97, 35)
+hsl	hsl(73, 47%, 26%)	hsl(73, 47%, 26%)
+lighten	hsl(73, 47%, 26%)	79	#ffffffff
+darken	hsl(73, 47%, 26%)	79	#000000ff
+saturate	hsl(73, 47%, 26%)	79	#688500ff
+desaturate	hsl(73, 47%, 26%)	79	#424242ff
+spin	hsl(73, 47%, 26%)	138	#234161ff
+mix	hsl(73, 47%, 26%)	hsla(12, 41%, 37%, 0.22)	79	#7b4c3462
+luminance	hsl(73, 47%, 26%)	0.105555554
+contrast	hsl(73, 47%, 26%)	hsla(12, 41%, 37%, 0.22)	1.052576874
+readable	hsl(73, 47%, 26%)	hsla(12, 41%, 37%, 0.22)	false
+hex8	rgb(51%, 18%, 80%)	#822eccff
+rgb	rgb(51%, 18%, 80%)	rgb(130, 46, 204)
+hsl	rgb(51%, 18%, 80%)	hsl(272, 63%, 49%)
+lighten	rgb(51%, 18%, 80%)	32	#d1b0edff
+darken	rgb(51%, 18%, 80%)	32	#2d1047ff
+saturate	rgb(51%, 18%, 80%)	32	#8506f4ff
+desaturate	rgb(51%, 18%, 80%)	32	#7f56a4ff
+spin	rgb(51%, 18%, 80%)	25	#c42eccff
+mix	rgb(51%, 18%, 80%)	#b9c71b	32	#945f93ff
+luminance	rgb(51%, 18%, 80%)	0.110594499
+contrast	rgb(51%, 18%, 80%)	#b9c71b	3.502004593
+readable	rgb(51%, 18%, 80%)	#b9c71b	false
+hex8	#78b	#7788bbff
+rgb	#78b	rgb(119, 136, 187)
+hsl	#78b	hsl(225, 33%, 60%)
+lighten	#78b	42	#ffffffff
+darken	#78b	42	#1f263dff
+saturate	#78b	42	#4c73e6ff
+desaturate	#78b	42	#999999ff
+spin	#78b	86	#bb77afff
+mix	#78b	984973	42	#856e9dff
+luminance	#78b	0.251181135
+contrast	#78b	984973	1.703677800
+readable	#78b	984973	false
+hex8	rgb(59%, 90%, 35%)	#96e659ff
+rgb	rgb(59%, 90%, 35%)	rgb(150, 230, 89)
+hsl	rgb(59%, 90%, 35%)	hsl(94, 73%, 63%)
+lighten	rgb(59%, 90%, 35%)	53	#ffffffff
+darken	rgb(59%, 90%, 35%)	53	#162a06ff
+saturate	rgb(59%, 90%, 35%)	53	#93ff40ff
+desaturate	rgb(59%, 90%, 35%)	53	#9db38cff
+spin	rgb(59%, 90%, 35%)	-16	#bce559ff
+mix	rgb(59%, 90%, 35%)	hsla(179, 50%, 5%, 0.34)	53	#4a7634a6
+luminance	rgb(59%, 90%, 35%)	0.637989278
+contrast	rgb(59%, 90%, 35%)	hsla(179, 50%, 5%, 0.34)	12.392898590
+readable	rgb(59%, 90%, 35%)	hsla(179, 50%, 5%, 0.34)	true
+hex8	#87e	#8877eeff
+rgb	#87e	rgb(136, 119, 238)
+hsl	#87e	hsl(249, 78%, 70%)
+lighten	#87e	54	#ffffffff
+darken	#87e	54	#120948ff
+saturate	#87e	54	#7c66ffff
+desaturate	#87e	54	#a6a0c5ff
+spin	#87e	222	#8aee77ff
+mix	#87e	hsla(305, 97%, 73%, 0.19)	54	#c777f08f
+luminance	#87e	0.246009384
+contrast	#87e	hsla(305, 97%, 73%, 0.19)	1.536677741
+readable	#87e	hsla(305, 97%, 73%, 0.19)	false
+hex8	rgb(21%, 30%, 35%)	#364d59ff
+rgb	rgb(21%, 30%, 35%)	rgb(54, 77, 89)
+hsl	rgb(21%, 30%, 35%)	hsl(201, 25%, 28%)
+lighten	rgb(21%, 30%, 35%)	78	#ffffffff
+darken	rgb(21%, 30%, 35%)	78	#000000ff
+saturate	rgb(21%, 30%, 35%)	78	#005c8fff
+desaturate	rgb(21%, 30%, 35%)	78	#474747ff
+spin	rgb(21%, 30%, 35%)	15	#364459ff
+mix	rgb(21%, 30%, 35%)	#83d685	78	#72b87bff
+luminance	rgb(21%, 30%, 35%)	0.068132929
+contrast	rgb(21%, 30%, 35%)	#83d685	5.046169983
+readable	rgb(21%, 30%, 35%)	#83d685	true
+hex8	rgba(46, 10, 228, 0.34)	#2e0ae457
+rgb	rgba(46, 10, 228, 0.34)	rgba(46, 10, 228, 0.34)
+hsl	rgba(46, 10, 228, 0.34)	hsla(250, 92%, 47%, 0.34)
+lighten	rgba(46, 10, 228, 0.34)	17	#694df757
+darken	rgba(46, 10, 228, 0.34)	17	#1d069157
+saturate	rgba(46, 10, 228, 0.34)	17	#2700ee57
+desaturate	rgba(46, 10, 228, 0.34)	17	#3c1ed057
+spin	rgba(46, 10, 228, 0.34)	-69	#0ae1e457
+mix	rgba(46, 10, 228, 0.34)	hsl(200, 12%, 38%)	17	#3519d073
+luminance	rgba(46, 10, 228, 0.34)	0.063993611
+contrast	rgba(46, 10, 228, 0.34)	hsl(200, 12%, 38%)	1.521381971
+readable	rgba(46, 10, 228, 0.34)	hsl(200, 12%, 38%)	false
+hex8	hsl(247, 61%, 96%)	#f0effbff
+rgb	hsl(247, 61%, 96%)	rgb(240, 239, 251)
+hsl	hsl(247, 61%, 96%)	hsl(247, 61%, 96%)
+lighten	hsl(247, 61%, 96%)	68	#ffffffff
+darken	hsl(247, 61%, 96%)	68	#261c73ff
+saturate	hsl(247, 61%, 96%)	68	#edebffff
+desaturate	hsl(247, 61%, 96%)	68	#f5f5f5ff
+spin	hsl(247, 61%, 96%)	29	#f6effbff
+mix	hsl(247, 61%, 96%)	hsl(8, 38%, 90%)	68	#efe3e6ff
+luminance	hsl(247, 61%, 96%)	0.872233036
+contrast	hsl(247, 61%, 96%)	hsl(8, 38%, 90%)	1.141934614
+readable	hsl(247, 61%, 96%)	hsl(8, 38%, 90%)	false
+hex8	rgb(6%, 36%, 15%)	#0f5c26ff
+rgb	rgb(6%, 36%, 15%)	rgb(15, 92, 38)
+hsl	rgb(6%, 36%, 15%)	hsl(138, 71%, 21%)
+lighten	rgb(6%, 36%, 15%)	56	#9aeeb4ff
+darken	rgb(6%, 36%, 15%)	56	#000000ff
+saturate	rgb(6%, 36%, 15%)	56	#006b20ff
+desaturate	rgb(6%, 36%, 15%)	56	#2d3e32ff
+spin	rgb(6%, 36%, 15%)	19	#0f5c3eff
+mix	rgb(6%, 36%, 15%)	rgb(43%, 14%, 67%)	56	#443d70ff
+luminance	rgb(6%, 36%, 15%)	0.078957910
+contrast	rgb(6%, 36%, 15%)	rgb(43%, 14%, 67%)	1.030260187
+readable	rgb(6%, 36%, 15%)	rgb(43%, 14%, 67%)	false
+hex8	#888	#888888ff
+rgb	#888	rgb(136, 136, 136)
+hsl	#888	hsl(0, 0%, 53%)
+lighten	#888	38	#e9e9e9ff
+darken	#888	38	#272727ff
+saturate	#888	38	#b55b5bff
+desaturate	#888	38	#888888ff
+spin	#888	-295	#888888ff
+mix	#888	rgb(158, 215, 38)	38	#90a663ff
+luminance	#888	0.246201327
+contrast	#888	rgb(158, 215, 38)	2.059744952
+readable	#888	rgb(158, 215, 38)	false
+hex8	hsla(147, 75%, 72%, 0.2)	#82edb233
+rgb	hsla(147, 75%, 72%, 0.2)	rgba(130, 237, 178, 0.2)
+hsl	hsla(147, 75%, 72%, 0.2)	hsla(147, 75%, 72%, 0.2)
+lighten	hsla(147, 75%, 72%, 0.2)	99	#ffffff33
+darken	hsla(147, 75%, 72%, 0.2)	99	#00000033
+saturate	hsla(147, 75%, 72%, 0.2)	99	#70ffb033
+desaturate	hsla(147, 75%, 72%, 0.2)	99	#b8b8b833
+spin	hsla(147, 75%, 72%, 0.2)	179	#ed82bf33
+mix	hsla(147, 75%, 72%, 0.2)	ce4eA5	99	#cd50a5fd
+luminance	hsla(147, 75%, 72%, 0.2)	0.685285525
+contrast	hsla(147, 75%, 72%, 0.2)	ce4eA5	2.797123522
+readable	hsla(147, 75%, 72%, 0.2)	ce4eA5	false

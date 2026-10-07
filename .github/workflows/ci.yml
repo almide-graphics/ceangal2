@@ -35,6 +35,9 @@ jobs:
       - name: line breaking matches Unicode's LineBreakTest.txt (tests/linebreak/cases.txt)
         working-directory: ceangal
         run: ../tools/almide test src/linebreak_test.almd
+      - name: colours match tinycolor2 (tests/absorb/color.txt), web and native
+        working-directory: ceangal
+        run: ../tools/almide test src/color_test.almd --target wasm && ../tools/almide test src/color_test.almd
       - name: Arabic shaping matches HarfBuzz (tests/shaping/arabic.txt)
         working-directory: ceangal
         run: ../tools/almide test src/arabic_test.almd --target wasm

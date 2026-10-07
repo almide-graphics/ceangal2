@@ -26,6 +26,7 @@ MODULES = [
     ("ceangal.http", "ceangal/src/http.almd", "HTTP requests"),
     ("ceangal.text", "ceangal/src/text.almd", "fonts: shaping, measuring and drawing text"),
     ("ceangal.syntax", "ceangal/src/syntax.almd", "Almide syntax highlighting"),
+    ("ceangal.color", "ceangal/src/color.almd", "colour strings, lighten / darken / mix, WCAG contrast"),
     ("snaidhm", "snaidhm/src/mod.almd", "the renderer: colours, frames, shapes, images"),
     ("snaidhm.vector", "snaidhm/src/vector.almd", "vector paths: fill and stroke"),
     ("snaidhm.font", "snaidhm/src/font.almd", "TrueType parsing and glyph rasterising"),

@@ -1,0 +1,288 @@
+// Colors as apps write them: parsing CSS-style strings (#rgb, #rgba,
+// #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla()), writing them back,
+// lightening, darkening, saturating, turning the hue, mixing, and WCAG
+// luminance and contrast. It behaves as tinycolor2 1.6.0 does, checked
+// against the results recorded in tests/absorb/color.txt (ADR 0023); its
+// code was written here from that behaviour, not taken from tinycolor2.
+
+import math
+import snaidhm
+
+// Red, green and blue from 0 to 255 (not rounded), alpha from 0 to 1. (Not
+// named Rgba: snaidhm.vector has an Rgba, and a type takes over another
+// module's type of the same name, almide/almide#3439.)
+type Swatch = { r: Float, g: Float, b: Float, a: Float }
+
+type Hsla = { h: Float, s: Float, l: Float, a: Float }
+
+// A number in a color string: its value, whether it had "%", whether it parsed.
+type Num = { v: Float, pct: Bool, ok: Bool }
+
+// ── Parsing ──
+
+fn lower(c: Int) -> Int = if c >= 65 and c <= 90 then c + 32 else c
+
+// `s` as character codes, lowercased (ASCII) and trimmed.
+fn codes(s: String) -> List[Int] = {
+  let b = bytes.from_string(s)
+  var out: List[Int] = []
+  for i in 0..<bytes.len(b) { list.push(out, lower(bytes.read_u8(b, i))) }
+  var lo = 0
+  var hi = list.len(out)
+  while lo < hi and (out[lo] == 32 or out[lo] == 9) { lo = lo + 1 }
+  while hi > lo and (out[hi - 1] == 32 or out[hi - 1] == 9) { hi = hi - 1 }
+  list.slice(out, lo, hi)
+}
+
+fn hex_digit(c: Int) -> Int =
+  if c >= 48 and c <= 57 then c - 48 else if c >= 97 and c <= 102 then c - 87 else -1
+
+fn starts(cs: List[Int], word: String) -> Bool = {
+  let w = codes(word)
+  var good = list.len(cs) >= list.len(w)
+  for i in 0..<list.len(w) { if good and cs[i] != w[i] then good = false else () }
+  good
+}
+
+// A number: an optional sign, digits with an optional fraction, an optional "%".
+fn number(cs: List[Int]) -> Num = {
+  let n = list.len(cs)
+  var i = 0
+  var neg = false
+  if i < n and (cs[i] == 43 or cs[i] == 45) then { neg = cs[i] == 45; i = i + 1 } else ()
+  var mant = 0
+  var scale = 1
+  var digits = 0
+  while i < n and cs[i] >= 48 and cs[i] <= 57 { mant = mant * 10 + cs[i] - 48; digits = digits + 1; i = i + 1 }
+  if i < n and cs[i] == 46 then {
+    i = i + 1
+    while i < n and cs[i] >= 48 and cs[i] <= 57 { mant = mant * 10 + cs[i] - 48; scale = scale * 10; digits = digits + 1; i = i + 1 }
+  } else ()
+  let pct = i < n and cs[i] == 37
+  let end = if pct then i + 1 else i
+  // one division, so the value is the nearest Float to the decimal written
+  let v = int.to_float(mant) / int.to_float(scale)
+  { v: if neg then 0.0 - v else v, pct: pct, ok: digits > 0 and end == n and digits <= 15 }
+}
+
+// The arguments of `name(...)`: separated by commas and/or spaces.
+fn args(cs: List[Int], skip: Int) -> List[List[Int]] = {
+  var out: List[List[Int]] = []
+  var cur: List[Int] = []
+  for i in skip..<(list.len(cs) - 1) {
+    let c = cs[i]
+    if c == 44 or c == 32 or c == 9 then {
+      if list.len(cur) > 0 then { list.push(out, cur); cur = [] } else ()
+    } else list.push(cur, c)
+  }
+  if list.len(cur) > 0 then list.push(out, cur) else ()
+  out
+}
+
+// `v` within 0..max as a fraction of max; a percentage is of max.
+fn bound01(v: Float, max: Float, pct: Bool) -> Float = {
+  let n0 = float.min(max, float.max(0.0, v))
+  let n = if pct then float.floor(n0 * max) / 100.0 else n0
+  if float.abs(n - max) < 0.000001 then 1.0
+  else (n - float.floor(n / max) * max) / max
+}
+
+fn alpha(v: Float) -> Float = if v < 0.0 or v > 1.0 then 1.0 else v
+
+// A fraction given as a number: up to 1 is a fraction, else a percentage.
+fn fraction(x: Num) -> Float =
+  if not x.pct and x.v <= 1.0 then bound01(x.v * 100.0, 100.0, true) else bound01(x.v, 100.0, x.pct)
+
+// Channels below 1 are rounded, as tinycolor2 does.
+fn made(r: Float, g: Float, b: Float, a: Float) -> Swatch = {
+  r: if r < 1.0 then float.round(r) else r,
+  g: if g < 1.0 then float.round(g) else g,
+  b: if b < 1.0 then float.round(b) else b,
+  a: a,
+}
+
+fn hue2rgb(p: Float, q: Float, t0: Float) -> Float = {
+  let t = if t0 < 0.0 then t0 + 1.0 else if t0 > 1.0 then t0 - 1.0 else t0
+  if t < 1.0 / 6.0 then p + (q - p) * 6.0 * t
+  else if t < 0.5 then q
+  else if t < 2.0 / 3.0 then p + (q - p) * (2.0 / 3.0 - t) * 6.0
+  else p
+}
+
+// h, s, l as fractions to red, green and blue (0–255).
+fn hsl_rgb(h: Float, s: Float, l: Float, a: Float) -> Swatch =
+  if s == 0.0 then made(l * 255.0, l * 255.0, l * 255.0, a)
+  else {
+    let q = if l < 0.5 then l * (1.0 + s) else l + s - l * s
+    let p = 2.0 * l - q
+    made(hue2rgb(p, q, h + 1.0 / 3.0) * 255.0, hue2rgb(p, q, h) * 255.0, hue2rgb(p, q, h - 1.0 / 3.0) * 255.0, a)
+  }
+
+fn from_hex(cs: List[Int]) -> Option[Swatch] = {
+  let d = list.map(cs, (c) => hex_digit(c))
+  var good = true
+  for x in d { if x < 0 then good = false else () }
+  let n = list.len(d)
+  if not good then none
+  else if n == 3 or n == 4 then {
+    let a = if n == 4 then alpha(int.to_float(d[3] * 17) / 255.0) else 1.0
+    some(made(int.to_float(d[0] * 17), int.to_float(d[1] * 17), int.to_float(d[2] * 17), a))
+  }
+  else if n == 6 or n == 8 then {
+    let a = if n == 8 then alpha(int.to_float(d[6] * 16 + d[7]) / 255.0) else 1.0
+    some(made(int.to_float(d[0] * 16 + d[1]), int.to_float(d[2] * 16 + d[3]), int.to_float(d[4] * 16 + d[5]), a))
+  }
+  else none
+}
+
+// The color `s` describes, if it is one of the forms above.
+pub fn parse(s: String) -> Option[Swatch] = {
+  let cs = codes(s)
+  let n = list.len(cs)
+  let fn_form = n > 0 and cs[n - 1] == 41
+  let rgba = fn_form and starts(cs, "rgba(")
+  let rgb = fn_form and not rgba and starts(cs, "rgb(")
+  let hsla = fn_form and starts(cs, "hsla(")
+  let hsl = fn_form and not hsla and starts(cs, "hsl(")
+  if rgb or rgba or hsl or hsla then {
+    let xs = list.map(args(cs, if rgba or hsla then 5 else 4), (a) => number(a))
+    let want = if rgba or hsla then 4 else 3
+    var good = list.len(xs) == want
+    for x in xs { if not x.ok then good = false else () }
+    if not good then none
+    else {
+      let a = if want == 4 then alpha(xs[3].v) else 1.0
+      if rgb or rgba then
+        some(made(bound01(xs[0].v, 255.0, xs[0].pct) * 255.0, bound01(xs[1].v, 255.0, xs[1].pct) * 255.0,
+          bound01(xs[2].v, 255.0, xs[2].pct) * 255.0, a))
+      else some(hsl_rgb(bound01(xs[0].v, 360.0, xs[0].pct), fraction(xs[1]), fraction(xs[2]), a))
+    }
+  }
+  else from_hex(if n > 0 and cs[0] == 35 then list.drop(cs, 1) else cs)
+}
+
+// ── Writing ──
+
+fn round_i(x: Float) -> Int = float.to_int(float.floor(x + 0.5))
+
+fn hex2(n: Int) -> String = {
+  let ds = "0123456789abcdef"
+  let k = int.max(0, int.min(255, n))
+  string.slice(ds, k / 16, k / 16 + 1) + string.slice(ds, k % 16, k % 16 + 1)
+}
+
+// "#rrggbb".
+pub fn to_hex(c: Swatch) -> String = "#" + hex2(round_i(c.r)) + hex2(round_i(c.g)) + hex2(round_i(c.b))
+
+// "#rrggbbaa".
+pub fn to_hex8(c: Swatch) -> String = to_hex(c) + hex2(round_i(c.a * 255.0))
+
+// Alpha to two decimals, written as briefly as possible ("0.5", "1").
+fn alpha_text(a: Float) -> String = {
+  let k = round_i(a * 100.0)
+  if k % 100 == 0 then int.to_string(k / 100)
+  else if k % 10 == 0 then "0." + int.to_string(k / 10)
+  else if k < 10 then "0.0" + int.to_string(k)
+  else "0." + int.to_string(k)
+}
+
+fn opaque(c: Swatch) -> Bool = round_i(c.a * 100.0) == 100
+
+// "rgb(r, g, b)", or "rgba(r, g, b, a)" when not opaque.
+pub fn to_rgb_string(c: Swatch) -> String = {
+  let body = int.to_string(round_i(c.r)) + ", " + int.to_string(round_i(c.g)) + ", " + int.to_string(round_i(c.b))
+  if opaque(c) then "rgb(" + body + ")" else "rgba(" + body + ", " + alpha_text(c.a) + ")"
+}
+
+// "hsl(h, s%, l%)", or "hsla(h, s%, l%, a)" when not opaque.
+pub fn to_hsl_string(c: Swatch) -> String = {
+  let x = to_hsl(c)
+  let body = int.to_string(round_i(x.h)) + ", " + int.to_string(round_i(x.s * 100.0)) + "%, " + int.to_string(round_i(x.l * 100.0)) + "%"
+  if opaque(c) then "hsl(" + body + ")" else "hsla(" + body + ", " + alpha_text(c.a) + ")"
+}
+
+// ── Changing ──
+
+// Hue in degrees (0–360), saturation and lightness as fractions.
+pub fn to_hsl(c: Swatch) -> Hsla = {
+  let r = bound01(c.r, 255.0, false)
+  let g = bound01(c.g, 255.0, false)
+  let b = bound01(c.b, 255.0, false)
+  let mx = float.max(r, float.max(g, b))
+  let mn = float.min(r, float.min(g, b))
+  let l = (mx + mn) / 2.0
+  if mx == mn then { h: 0.0, s: 0.0, l: l, a: c.a }
+  else {
+    let d = mx - mn
+    let s = if l > 0.5 then d / (2.0 - mx - mn) else d / (mx + mn)
+    let h = if mx == r then (g - b) / d + (if g < b then 6.0 else 0.0)
+      else if mx == g then (b - r) / d + 2.0
+      else (r - g) / d + 4.0
+    { h: h / 6.0 * 360.0, s: s, l: l, a: c.a }
+  }
+}
+
+// A color from hue (degrees), saturation and lightness (fractions).
+pub fn from_hsl(x: Hsla) -> Swatch =
+  hsl_rgb(bound01(x.h, 360.0, false), bound01(x.s * 100.0, 100.0, true), bound01(x.l * 100.0, 100.0, true), alpha(x.a))
+
+fn clamp01(x: Float) -> Float = float.min(1.0, float.max(0.0, x))
+
+// Lighter by `amount` percentage points of lightness.
+pub fn lighten(c: Swatch, amount: Float) -> Swatch = { let x = to_hsl(c); from_hsl({ ...x, l: clamp01(x.l + amount / 100.0) }) }
+// Darker by `amount` percentage points of lightness.
+pub fn darken(c: Swatch, amount: Float) -> Swatch = { let x = to_hsl(c); from_hsl({ ...x, l: clamp01(x.l - amount / 100.0) }) }
+// More saturated by `amount` percentage points.
+pub fn saturate(c: Swatch, amount: Float) -> Swatch = { let x = to_hsl(c); from_hsl({ ...x, s: clamp01(x.s + amount / 100.0) }) }
+// Less saturated by `amount` percentage points.
+pub fn desaturate(c: Swatch, amount: Float) -> Swatch = { let x = to_hsl(c); from_hsl({ ...x, s: clamp01(x.s - amount / 100.0) }) }
+
+// The hue turned by `degrees` (either way).
+pub fn spin(c: Swatch, degrees: Float) -> Swatch = {
+  let x = to_hsl(c)
+  let h0 = x.h + degrees
+  let h = h0 - float.floor(h0 / 360.0) * 360.0
+  // the remainder keeps the sign of the dividend, as in JavaScript
+  let hue = if h0 < 0.0 then (if h == 0.0 then 0.0 else h) else h0 - float.floor(h0 / 360.0) * 360.0
+  from_hsl({ ...x, h: hue })
+}
+
+fn rounded(c: Swatch) -> Swatch = { r: float.round(c.r), g: float.round(c.g), b: float.round(c.b), a: c.a }
+
+// `a` mixed with `b`: `amount` percent of the way from a to b.
+pub fn mix(a: Swatch, b: Swatch, amount: Float) -> Swatch = {
+  let p = amount / 100.0
+  let x = rounded(a)
+  let y = rounded(b)
+  let ch = (u: Float, w: Float) => bound01((w - u) * p + u, 255.0, false) * 255.0
+  made(ch(x.r, y.r), ch(x.g, y.g), ch(x.b, y.b), alpha((y.a - x.a) * p + x.a))
+}
+
+// ── Luminance and contrast (WCAG 2) ──
+
+fn linear(v: Float) -> Float = if v <= 0.03928 then v / 12.92 else math.fpow((v + 0.055) / 1.055, 2.4)
+
+// Relative luminance, from 0 (black) to 1 (white).
+pub fn luminance(c: Swatch) -> Float = {
+  let x = rounded(c)
+  0.2126 * linear(x.r / 255.0) + 0.7152 * linear(x.g / 255.0) + 0.0722 * linear(x.b / 255.0)
+}
+
+// The contrast ratio of two colors, from 1 to 21.
+pub fn contrast(a: Swatch, b: Swatch) -> Float = {
+  let la = luminance(a)
+  let lb = luminance(b)
+  (float.max(la, lb) + 0.05) / (float.min(la, lb) + 0.05)
+}
+
+// Whether text in one color is readable on the other: WCAG AA for normal
+// text (a contrast ratio of 4.5 or more).
+pub fn readable(a: Swatch, b: Swatch) -> Bool = contrast(a, b) >= 4.5
+
+// ── Drawing ──
+
+// For drawing (snaidhm's channels are fractions).
+pub fn to_color(c: Swatch) -> snaidhm.Color = snaidhm.rgba(c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a)
+
+// A drawing color as a swatch.
+pub fn from_color(c: snaidhm.Color) -> Swatch = { r: c.r * 255.0, g: c.g * 255.0, b: c.b * 255.0, a: c.a }

@@ -1,0 +1,52 @@
+// ceangal.color against tinycolor2 1.6.0's results (tests/absorb/color.txt,
+// tools/absorb/gen_color_cases.mjs): every case must match.
+import fs
+import self.color as color
+
+fn hex8_of(s: String) -> String = match color.parse(s) { some(c) => color.to_hex8(c), none => "invalid" }
+
+fn col(s: String) -> color.Swatch = match color.parse(s) { some(c) => c, none => { r: 0.0, g: 0.0, b: 0.0, a: 1.0 } }
+
+fn near(x: Float, want: String) -> Bool = match float.parse(want) {
+  ok(w) => float.abs(x - w) < 0.0000001,
+  err(_) => false,
+}
+
+fn num(s: String) -> Float = match float.parse(s) { ok(v) => v, err(_) => 0.0 }
+
+fn check(c: List[String]) -> Bool = {
+  let op = c[0]
+  if op == "valid" then (match color.parse(c[1]) { some(_) => "true", none => "false" }) == c[2]
+  else if op == "hex8" then hex8_of(c[1]) == c[2]
+  else if op == "rgb" then color.to_rgb_string(col(c[1])) == c[2]
+  else if op == "hsl" then color.to_hsl_string(col(c[1])) == c[2]
+  else if op == "lighten" then color.to_hex8(color.lighten(col(c[1]), num(c[2]))) == c[3]
+  else if op == "darken" then color.to_hex8(color.darken(col(c[1]), num(c[2]))) == c[3]
+  else if op == "saturate" then color.to_hex8(color.saturate(col(c[1]), num(c[2]))) == c[3]
+  else if op == "desaturate" then color.to_hex8(color.desaturate(col(c[1]), num(c[2]))) == c[3]
+  else if op == "spin" then color.to_hex8(color.spin(col(c[1]), num(c[2]))) == c[3]
+  else if op == "mix" then color.to_hex8(color.mix(col(c[1]), col(c[2]), num(c[3]))) == c[4]
+  else if op == "luminance" then near(color.luminance(col(c[1])), c[2])
+  else if op == "contrast" then near(color.contrast(col(c[1]), col(c[2])), c[3])
+  else if op == "readable" then (if color.readable(col(c[1]), col(c[2])) then "true" else "false") == c[3]
+  else false
+}
+
+effect fn failures() -> Int = {
+  var failed = 0
+  var shown = 0
+  for line in string.split(fs.read_text("../tests/absorb/color.txt")!, "\n") {
+    if line != "" then {
+      let c = string.split(line, "\t")
+      if not check(c) then {
+        failed = failed + 1
+        if shown < 30 then { println("FAIL " + line); shown = shown + 1 } else ()
+      } else ()
+    } else ()
+  }
+  failed
+}
+
+test "every recorded tinycolor2 result matches" {
+  assert_eq(failures()!, 0)
+}

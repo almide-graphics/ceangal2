@@ -16,6 +16,7 @@ The guides are in [../guide](../guide/README.md).
 | [`ceangal.http`](ceangal.http.md) | HTTP requests | 6 |
 | [`ceangal.text`](ceangal.text.md) | fonts: shaping, measuring and drawing text | 33 |
 | [`ceangal.syntax`](ceangal.syntax.md) | Almide syntax highlighting | 5 |
+| [`ceangal.color`](ceangal.color.md) | colour strings, lighten / darken / mix, WCAG contrast | 21 |
 | [`snaidhm`](snaidhm.md) | the renderer: colours, frames, shapes, images | 20 |
 | [`snaidhm.vector`](snaidhm.vector.md) | vector paths: fill and stroke | 10 |
 | [`snaidhm.font`](snaidhm.font.md) | TrueType parsing and glyph rasterising | 11 |
