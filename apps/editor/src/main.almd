@@ -32,7 +32,7 @@ fn big_doc() -> String = {
   for i in 0..<10000 {
     list.push(parts, "let value_" + int.to_string(i) + " = compute(" + int.to_string(i) + ", \"row\")  // line " + int.to_string(i + 1))
   }
-  string.join(parts, "\n")
+  list.join(parts, "\n")
 }
 
 fn view() -> v.View =

@@ -118,8 +118,8 @@ fn hex_list(s: String) -> List[Int] = {
   for w in string.split(s, " ") {
     if w != "" then {
       var v = 0
-      for c in string.chars(w) {
-        let d = match string.codepoint(c) { some(x) => x, none => 48 }
+      for c in string.to_list(w) {
+        let d = match string.to_codepoint(c) { some(x) => x, none => 48 }
         v = v * 16 + (if d >= 65 then d - 55 else d - 48)
       }
       list.push(out, v)

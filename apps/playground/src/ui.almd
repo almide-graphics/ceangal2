@@ -145,7 +145,7 @@ fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
 fn icon(name: String, size: Float, rgb: Int) -> v.View =
   v.custom("icon-" + name, (x, y, w, h) => {
     let k = ceangal.pixel_scale()
-    let px = float.to_int(size * k + 0.999)
+    let px = int.from_saturating(size * k + 0.999)
     let tex = icons.texture(name, rgb, px)
     if tex != 0 then snaidhm.image(tex, (x + (w - size) / 2.0) * k, (y + (h - size) / 2.0) * k, size * k, size * k, 0.0, 1.0) else ()
   }) |> v.size(size, size)
@@ -224,7 +224,7 @@ fn theme_button() -> v.View = {
       let r = 4.0 * k
       snaidhm.fill(cx - r, cy - r, r * 2.0, r * 2.0, r, fg)
       for i in 0..<8 {
-        let a = int.to_float(i) * 0.7854
+        let a = float.from(i) * 0.7854
         let px = cx + math.cos(a) * 7.5 * k
         let py = cy + math.sin(a) * 7.5 * k
         let d = 1.4 * k
@@ -589,9 +589,9 @@ fn gui_view() -> v.View =
   })
     |> v.grow(1.0) |> v.role(13) |> v.label("Program window")
     |> v.text_input("gui")
-    |> v.on_pointer((p) => { if p.phase == 0 then ceangal.focus("gui") else (); st.gui_event(4, p.phase, p.id, p.x, p.y, int.to_float(p.buttons), int.to_float(p.mods)) })
+    |> v.on_pointer((p) => { if p.phase == 0 then ceangal.focus("gui") else (); st.gui_event(4, p.phase, p.id, p.x, p.y, float.from(p.buttons), float.from(p.mods)) })
     |> v.on_wheel((x, y, dx, dy) => st.gui_event(5, 0, 1, x, y, dx, dy))
-    |> v.on_key((phase, code, mods) => st.gui_event(6, phase, code, int.to_float(mods), 0.0, 0.0, 0.0))
+    |> v.on_key((phase, code, mods) => st.gui_event(6, phase, code, float.from(mods), 0.0, 0.0, 0.0))
     |> v.on_text((kind, s, cur) => st.gui_text(kind, s, cur))
 
 fn picture_view() -> v.View = {
@@ -603,8 +603,8 @@ fn picture_view() -> v.View = {
   else v.custom("picture", (x, y, w, h) => {
     let tex = st.picture_texture()
     let k = ceangal.pixel_scale()
-    let pw = int.to_float(p.w)
-    let ph = int.to_float(p.h)
+    let pw = float.from(p.w)
+    let ph = float.from(p.h)
     let s = float.min((w - 24.0) / pw, (h - 24.0) / ph)
     let dw = pw * s
     let dh = ph * s

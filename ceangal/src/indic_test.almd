@@ -12,7 +12,7 @@ fn ours(f: font.Font, script: Int, cps: List[Int]) -> String = {
     list.push(parts, "${g.gid}:${g.cluster}:${g.advance}:${g.x - pen}:${g.y}")
     pen = pen + g.advance
   }
-  string.join(parts, " ")
+  list.join(parts, " ")
 }
 
 effect fn check_all() -> Int = {
@@ -26,12 +26,12 @@ effect fn check_all() -> Int = {
       let f = match list.find(fonts, (p) => p.0 == name) {
         some(p) => p.1,
         none => {
-          let loaded = font.parse(fs.read_bytes_raw("../assets/fonts/" + name + ".ttf")!)
+          let loaded = font.parse(fs.read_bytes("../assets/fonts/" + name + ".ttf")!)
           list.push(fonts, (name, loaded))
           loaded
         },
       }
-      let cps = list.map(string.chars(cols[1]), (c) => match string.codepoint(c) { some(v) => v, none => 0 })
+      let cps = list.map(string.to_list(cols[1]), (c) => match string.to_codepoint(c) { some(v) => v, none => 0 })
       let script = indic.script_of(match list.find(cps, (c) => indic.script_of(c) >= 0) { some(c) => c, none => 0 })
       let got = ours(f, script, cps)
       if got != cols[2] then {

@@ -20,7 +20,7 @@ pub fn rows(s: String, k: Int) -> List[List[Int]] = {
   var v = 0
   var scale = 1
   while p < n {
-    let d = digit(bytes.read_u8(b, p))
+    let d = digit(bytes.get(b, p) ?? 0)
     p = p + 1
     if d >= 32 then { v = v + (d - 32) * scale; scale = scale * 32 }
     else {

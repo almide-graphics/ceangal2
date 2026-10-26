@@ -734,7 +734,7 @@ pub fn shape(f: font.Font, script: Int, cps: List[Int]) -> List[Out] = {
   buf = otl.substitute(f, lay, pl.other, buf)
   // positions
   let space = font.glyph_index(f, 32)
-  let pos0 = list.map(buf, (g) => { xa: if is_joiner_cp(g.cp) then 0 else float.to_int(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
+  let pos0 = list.map(buf, (g) => { xa: if is_joiner_cp(g.cp) then 0 else int.from_saturating(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
   let pos = otl.position(f, lay, pl.gpos, buf, pos0)
   var out: List[Out] = []
   var pen = 0

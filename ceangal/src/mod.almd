@@ -364,10 +364,10 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
   } else if kind == 3 then frame(x)
   else if kind == 4 then {
     if a == 0 then keyboard_used = false else ()
-    if pointer(a, b, x, y, float.to_int(z), float.to_int(w)) then 1 else 0
+    if pointer(a, b, x, y, int.from_saturating(z), int.from_saturating(w)) then 1 else 0
   }
   else if kind == 5 then { if wheel(x, y, z, w, b) then 1 else 0 }
-  else if kind == 6 then { keyboard_used = true; if key(a, b, float.to_int(x)) then 1 else 0 }
+  else if kind == 6 then { keyboard_used = true; if key(a, b, int.from_saturating(x)) then 1 else 0 }
   else if kind == 7 then {
     let t = event_string()
     let fi = find_key(focus_key)
@@ -382,12 +382,12 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
   else if kind == 11 then {
     dark_mode = int.band(a, 1) == 1
-    kb_height = int.to_float(a / 2)
+    kb_height = float.from(a / 2)
     // b: 1 reduce motion, 2 high contrast, + 256 × the text scale in %
     prefer_less_motion = int.band(b, 1) != 0
     prefer_contrast = int.band(b, 2) != 0
     let pct = b / 256
-    text_scale = if pct > 0 then float.max(0.8, float.min(2.0, int.to_float(pct) / 100.0)) else 1.0
+    text_scale = if pct > 0 then float.max(0.8, float.min(2.0, float.from(pct) / 100.0)) else 1.0
     safe_t = float.max(0.0, x)
     safe_r = float.max(0.0, y)
     safe_b = float.max(0.0, z)
@@ -463,7 +463,7 @@ pub fn asset(name: String) -> Bytes? = {
   let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
   if n < 0 then none
   else {
-    var buf = bytes.new(n)
+    var buf = bytes.zeros(n)
     let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
     some(buf)
   }
@@ -514,7 +514,7 @@ pub fn copy_text(s: String) -> Unit = {
 
 fn event_bytes() -> Bytes = {
   let n = sys.event_len()
-  var buf = bytes.new(n)
+  var buf = bytes.zeros(n)
   if n > 0 then { let _ = sys.event_read(bytes.data_ptr(buf), n) } else ()
   buf
 }
@@ -557,7 +557,7 @@ fn render() -> Unit = {
   frame_rects = rects
   tx.begin_frame()
   caret_w = -1.0
-  snaidhm.begin(float.to_int(float.ceil(width * scale)), float.to_int(float.ceil(height * scale)))
+  snaidhm.begin(int.from_saturating(float.ceil(width * scale)), int.from_saturating(float.ceil(height * scale)))
   overlays = []
   paint(root, rects, 0)
   // overlays last (and the overlays inside them after them)
@@ -654,11 +654,11 @@ fn layout_with_wraps(root: v.View, views: List[v.View]) -> List[lay.LayoutRect] 
       let s = vw.style
       let inner = laid[i].w - s.pl - s.pr
       let rows = list.len(tx.wrap_rows(vw.content, float.max(1.0, inner), s.font_size, s.mono, s.bold))
-      let h = int.to_float(rows) * tx.line_height(s.font_size, s.mono) + s.pt + s.pb
+      let h = float.from(rows) * tx.line_height(s.font_size, s.mono) + s.pt + s.pb
       if float.abs(h - laid[i].h) > 0.5 then {
         changed = true
         if map.len(wrap_heights) > 500 then wrap_heights = map.new() else ()
-        map.insert(wrap_heights, wrap_key(vw), h)
+        wrap_heights = map.set(wrap_heights, wrap_key(vw), h)
       } else ()
     } else ()
   }

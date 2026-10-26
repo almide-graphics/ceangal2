@@ -14,13 +14,13 @@ fn crc_table() -> List[Int] = {
 pub fn crc32(b: Bytes) -> Int = {
   let t = crc_table()
   var c = 4294967295
-  for i in 0..<bytes.len(b) { c = int.bxor(t[int.band(int.bxor(c, bytes.read_u8(b, i)), 255)], int.bshr(c, 8)) }
+  for i in 0..<bytes.len(b) { c = int.bxor(t[int.band(int.bxor(c, bytes.get(b, i) ?? 0), 255)], int.bshr(c, 8)) }
   int.bxor(c, 4294967295)
 }
 
 fn u16(mut out: List[Int], v: Int) -> Unit = { list.push(out, int.band(v, 255)); list.push(out, int.band(int.bshr(v, 8), 255)) }
 fn u32(mut out: List[Int], v: Int) -> Unit = { u16(out, int.band(v, 65535)); u16(out, int.band(int.bshr(v, 16), 65535)) }
-fn raw(mut out: List[Int], b: Bytes) -> Unit = { for i in 0..<bytes.len(b) { list.push(out, bytes.read_u8(b, i)) } }
+fn raw(mut out: List[Int], b: Bytes) -> Unit = { for i in 0..<bytes.len(b) { list.push(out, bytes.get(b, i) ?? 0) } }
 
 // 2026-01-01 00:00 in DOS format.
 let DOS_DATE = 23585
@@ -76,7 +76,7 @@ pub fn build(entries: List[(String, String)]) -> Bytes = {
   u32(out, size)
   u32(out, start)
   u16(out, 0)
-  var r = bytes.new(list.len(out))
-  for i in 0..<list.len(out) { bytes.set_at(r, i, out[i]) }
+  var r = bytes.zeros(list.len(out))
+  for i in 0..<list.len(out) { r = bytes.set(r, i, out[i]) }
   r
 }

@@ -14,7 +14,7 @@ pub fn get(key: String) -> String? = {
   let n = host.storage_len(bytes.data_ptr(k), bytes.len(k))
   if n < 0 then none
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = host.storage_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
     some(bytes.to_string_lossy(b))
   }
@@ -39,7 +39,7 @@ pub fn secret_get(key: String) -> String? = {
   let n = host.secret_len(bytes.data_ptr(k), bytes.len(k))
   if n < 0 then none
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = host.secret_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
     some(bytes.to_string_lossy(b))
   }

@@ -58,7 +58,7 @@ var turns = 0                  // programs written in this conversation
 var phase = 0            // 0 idle, 1 streaming, 2 waiting for the run
 var req_id = -1
 var http_status = 0
-var pending: Bytes = bytes.new(0)   // undecoded tail of the SSE stream
+var pending: Bytes = bytes.zeros(0)   // undecoded tail of the SSE stream
 var error_body = ""
 var generated = ""
 var messages: List[Msg] = []
@@ -79,7 +79,7 @@ fn kv_get(k: String, secret: Bool) -> String = {
   let n = if secret then storage.secret_len(bytes.data_ptr(kb), bytes.len(kb)) else storage.storage_len(bytes.data_ptr(kb), bytes.len(kb))
   if n <= 0 then ""
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = if secret then storage.secret_read(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(b), n) else storage.storage_read(bytes.data_ptr(kb), bytes.len(kb), bytes.data_ptr(b), n)
     bytes.to_string_lossy(b)
   }
@@ -141,7 +141,7 @@ pub fn set_mode(new_program: Bool) -> Unit = { mode = if new_program then 1 else
 fn names(fs: List[(String, String)]) -> String = {
   var ns: List[String] = []
   for (n, _) in fs { list.push(ns, n) }
-  string.join(ns, ", ")
+  list.join(ns, ", ")
 }
 
 // What the next request will see and write, in a line.
@@ -235,7 +235,7 @@ fn diff(before: String, after: String) -> (String, Int, Int) = {
     else if i < list.len(a) and (j >= list.len(b) or not list.contains(b, a[i])) then { list.push(out, "- " + a[i]); minus = minus + 1; i = i + 1 }
     else { list.push(out, "- " + a[i]); list.push(out, "+ " + b[j]); plus = plus + 1; minus = minus + 1; i = i + 1; j = j + 1 }
   }
-  (string.join(list.take(out, 80), "\n"), plus, minus)
+  (list.join(list.take(out, 80), "\n"), plus, minus)
 }
 
 // ── Files in requests and replies ──
@@ -266,7 +266,7 @@ fn split_files(t: String, fallback: String) -> List[(String, String)] = {
   for line in string.split(t, "\n") {
     match marker_name(line) {
       some(n) => {
-        if name != "" then list.push(out, (name, string.join(buf, "\n"))) else ()
+        if name != "" then list.push(out, (name, list.join(buf, "\n"))) else ()
         name = n
         buf = []
         any = true
@@ -274,8 +274,8 @@ fn split_files(t: String, fallback: String) -> List[(String, String)] = {
       none => if not is_fence(line) then list.push(buf, line) else (),
     }
   }
-  if any then { if name != "" then list.push(out, (name, string.join(buf, "\n"))) else () }
-  else list.push(out, (fallback, string.join(buf, "\n")))
+  if any then { if name != "" then list.push(out, (name, list.join(buf, "\n"))) else () }
+  else list.push(out, (fallback, list.join(buf, "\n")))
   var tidy: List[(String, String)] = []
   for (n, c) in out { list.push(tidy, (n, string.trim(c) + "\n")) }
   tidy
@@ -315,8 +315,8 @@ fn summary(before: List[(String, String)], wrote: List[(String, String)]) -> (St
       } else ()
     }
   }
-  let line = if list.len(parts) == 0 then "no changes" else string.join(parts, ", ")
-  (line, string.join(detail, "\n"))
+  let line = if list.len(parts) == 0 then "no changes" else list.join(parts, ", ")
+  (line, list.join(detail, "\n"))
 }
 
 // ── Requests ──
@@ -328,7 +328,7 @@ fn endpoint(real: String) -> String = {
   let n = sys.asset_len(bytes.data_ptr(k), bytes.len(k))
   if n <= 0 then real
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = sys.asset_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
     let base = string.trim(bytes.to_string_lossy(b))
     match string.index_of(real, "/v1") { some(i) => base + string.drop(real, i), none => base }
@@ -340,7 +340,7 @@ fn system_prompt() -> String = {
   let n = sys.asset_len(bytes.data_ptr(k), bytes.len(k))
   if n <= 0 then "You write Almide (.almd) programs. Output only source code."
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = sys.asset_read(bytes.data_ptr(k), bytes.len(k), bytes.data_ptr(b), n)
     bytes.to_string_lossy(b)
   }
@@ -348,7 +348,7 @@ fn system_prompt() -> String = {
 
 fn msg_values(ms: List[Msg]) -> List[Value] = {
   var out: List[Value] = []
-  for m in ms { list.push(out, value.object([("role", value.str(m.role)), ("content", value.str(m.content))])) }
+  for m in ms { list.push(out, value.object([("role", value.string(m.role)), ("content", value.string(m.content))])) }
   out
 }
 
@@ -371,7 +371,7 @@ fn start_stream() -> Unit = {
   let key = string.trim(ed.to_string(key_field))
   let m = models(provider)[model_ix]
   generated = ""
-  pending = bytes.new(0)
+  pending = bytes.zeros(0)
   error_body = ""
   http_status = 0
   // The code stays on screen until the first streamed text replaces it, and
@@ -401,25 +401,25 @@ fn start_stream() -> Unit = {
   let body =
     if provider == 0 then {
       var fields: List[(String, Value)] = [
-        ("model", value.str(m.id)), ("max_tokens", value.int(16000)), ("system", value.str(sp)),
+        ("model", value.string(m.id)), ("max_tokens", value.int(16000)), ("system", value.string(sp)),
         ("stream", value.bool(true)), ("messages", value.array(msg_values(messages))),
       ]
       // low effort keeps adaptive thinking shallow so the first token lands fast
-      if m.effort then list.push(fields, ("output_config", value.object([("effort", value.str("low"))]))) else ()
+      if m.effort then list.push(fields, ("output_config", value.object([("effort", value.string("low"))]))) else ()
       value.object(fields)
     } else if provider == 1 then
       value.object([
-        ("model", value.str(m.id)), ("max_tokens", value.int(4096)), ("stream", value.bool(true)),
-        ("messages", value.array([value.object([("role", value.str("system")), ("content", value.str(sp))])] + msg_values(messages))),
+        ("model", value.string(m.id)), ("max_tokens", value.int(4096)), ("stream", value.bool(true)),
+        ("messages", value.array([value.object([("role", value.string("system")), ("content", value.string(sp))])] + msg_values(messages))),
       ])
     else {
       var contents: List[Value] = []
       for mm in messages {
         let role = if mm.role == "assistant" then "model" else "user"
-        list.push(contents, value.object([("role", value.str(role)), ("parts", value.array([value.object([("text", value.str(mm.content))])]))]))
+        list.push(contents, value.object([("role", value.string(role)), ("parts", value.array([value.object([("text", value.string(mm.content))])]))]))
       }
       value.object([
-        ("system_instruction", value.object([("parts", value.array([value.object([("text", value.str(sp))])]))])),
+        ("system_instruction", value.object([("parts", value.array([value.object([("text", value.string(sp))])]))])),
         ("contents", value.array(contents)),
       ])
     }
@@ -431,7 +431,7 @@ fn start_stream() -> Unit = {
 
 // ── SSE ──
 
-fn field_of(v: Value, k: String) -> Value? = match value.field(v, k) { ok(x) => some(x), err(_) => none }
+fn field_of(v: Value, k: String) -> Value? = match value.get(v, k) { some(x) => some(x), none => none }
 
 fn first_of(v: Value?) -> Value? = match v {
   some(x) => match value.as_array(x) { ok(xs) => list.get(xs, 0), err(_) => none },
@@ -467,9 +467,9 @@ fn event_text(data: String) -> String = match json.parse(data) {
 // Feed a body chunk: decode whole lines only (a UTF-8 sequence or a line may
 // straddle two chunks), and append any streamed text to the active tab.
 fn feed(chunk: Bytes) -> Unit = {
-  let all = bytes.concat(pending, chunk)
+  let all = pending + chunk
   var last_nl = -1
-  for i in 0..<bytes.len(all) { if bytes.read_u8(all, i) == 10 then last_nl = i else () }
+  for i in 0..<bytes.len(all) { if bytes.get(all, i) ?? 0 == 10 then last_nl = i else () }
   if last_nl < 0 then pending = all
   else {
     let text = bytes.to_string_lossy(bytes.slice(all, 0, last_nl + 1))

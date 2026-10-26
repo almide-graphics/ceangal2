@@ -1,6 +1,6 @@
 [package]
 name = "ceangal"
-version = "0.1.0"
+version = "0.2.0"
 
 [native-deps]
 toml = "0.8"

@@ -28,7 +28,7 @@ fn lower(c: Int) -> Int = if c >= 65 and c <= 90 then c + 32 else c
 fn codes(s: String) -> List[Int] = {
   let b = bytes.from_string(s)
   var out: List[Int] = []
-  for i in 0..<bytes.len(b) { list.push(out, lower(bytes.read_u8(b, i))) }
+  for i in 0..<bytes.len(b) { list.push(out, lower(bytes.get(b, i) ?? 0)) }
   var lo = 0
   var hi = list.len(out)
   while lo < hi and (out[lo] == 32 or out[lo] == 9) { lo = lo + 1 }
@@ -63,7 +63,7 @@ fn number(cs: List[Int]) -> Num = {
   let pct = i < n and cs[i] == 37
   let end = if pct then i + 1 else i
   // one division, so the value is the nearest Float to the decimal written
-  let v = int.to_float(mant) / int.to_float(scale)
+  let v = float.from(mant) / float.from(scale)
   { v: if neg then 0.0 - v else v, pct: pct, ok: digits > 0 and end == n and digits <= 15 }
 }
 
@@ -127,12 +127,12 @@ fn from_hex(cs: List[Int]) -> Option[Swatch] = {
   let n = list.len(d)
   if not good then none
   else if n == 3 or n == 4 then {
-    let a = if n == 4 then alpha(int.to_float(d[3] * 17) / 255.0) else 1.0
-    some(made(int.to_float(d[0] * 17), int.to_float(d[1] * 17), int.to_float(d[2] * 17), a))
+    let a = if n == 4 then alpha(float.from(d[3] * 17) / 255.0) else 1.0
+    some(made(float.from(d[0] * 17), float.from(d[1] * 17), float.from(d[2] * 17), a))
   }
   else if n == 6 or n == 8 then {
-    let a = if n == 8 then alpha(int.to_float(d[6] * 16 + d[7]) / 255.0) else 1.0
-    some(made(int.to_float(d[0] * 16 + d[1]), int.to_float(d[2] * 16 + d[3]), int.to_float(d[4] * 16 + d[5]), a))
+    let a = if n == 8 then alpha(float.from(d[6] * 16 + d[7]) / 255.0) else 1.0
+    some(made(float.from(d[0] * 16 + d[1]), float.from(d[2] * 16 + d[3]), float.from(d[4] * 16 + d[5]), a))
   }
   else none
 }
@@ -165,7 +165,7 @@ pub fn parse(s: String) -> Option[Swatch] = {
 
 // ── Writing ──
 
-fn round_i(x: Float) -> Int = float.to_int(float.floor(x + 0.5))
+fn round_i(x: Float) -> Int = int.from_saturating(float.floor(x + 0.5))
 
 fn hex2(n: Int) -> String = {
   let ds = "0123456789abcdef"
@@ -262,7 +262,7 @@ pub fn mix(a: Swatch, b: Swatch, amount: Float) -> Swatch = {
 
 // ── Luminance and contrast (WCAG 2) ──
 
-fn linear(v: Float) -> Float = if v <= 0.03928 then v / 12.92 else math.fpow((v + 0.055) / 1.055, 2.4)
+fn linear(v: Float) -> Float = if v <= 0.03928 then v / 12.92 else float.pow((v + 0.055) / 1.055, 2.4)
 
 // Relative luminance, from 0 (black) to 1 (white).
 pub fn luminance(c: Swatch) -> Float = {

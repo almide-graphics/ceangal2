@@ -1,6 +1,6 @@
 [package]
 name = "snaidhm"
-version = "0.1.0"
+version = "0.2.0"
 description = "GPU renderer for ceangal2: instanced SDF quads, glyph atlas, images"
 
 [native-deps]

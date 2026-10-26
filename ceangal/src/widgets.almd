@@ -195,10 +195,10 @@ fn tick(c: snaidhm.Color) -> v.View =
 fn bar(x0: Float, y0: Float, x1: Float, y1: Float, t: Float, c: snaidhm.Color) -> Unit = {
   let dx = x1 - x0
   let dy = y1 - y0
-  let len = float.sqrt(dx * dx + dy * dy)
-  let steps = int.max(2, float.to_int(len / (t * 0.35)))
+  let len = math.sqrt(dx * dx + dy * dy)
+  let steps = int.max(2, int.from_saturating(len / (t * 0.35)))
   for i in 0..<steps + 1 {
-    let f = int.to_float(i) / int.to_float(steps)
+    let f = float.from(i) / float.from(steps)
     snaidhm.fill(x0 + dx * f - t / 2.0, y0 + dy * f - t / 2.0, t, t, t / 2.0, c)
   }
 }
@@ -294,7 +294,7 @@ let TRIGGER_H = 40.0
 fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
   // above the control when the list would run past the window's bottom
   let r = ui.rect_of(key)
-  let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
+  let tall = float.from(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
   let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
   let list_v = popup_list(th, key, name, items, chosen, list_role, item_role, on_pick)
   let placed = if up then v.bottom(list_v, fit(th, TRIGGER_H) + POPUP_GAP) else v.top(list_v, fit(th, TRIGGER_H) + POPUP_GAP)
@@ -415,7 +415,7 @@ pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], v
     let (px, py) = ui.popup_point()
     // inside the window: a menu near the right or bottom edge opens leftward / upward
     let wide = 180.0
-    let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
+    let tall = float.from(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
     let x = if px + wide > ui.viewport_width() then float.max(0.0, px - wide) else px
     let y = if py + tall > ui.viewport_height() then float.max(0.0, py - tall) else py
     let menu = popup_list(th, mkey, key, list.map(items, (it) => it.0), -1, 24, 25, run)
@@ -433,7 +433,7 @@ fn snap(x: Float, lo: Float, hi: Float, step: Float) -> Float =
   if step <= 0.0 then clamp(x, lo, hi) else clamp(lo + float.round((x - lo) / step) * step, lo, hi)
 
 // A number shown without a trailing ".0".
-fn num(x: Float) -> String = if float.round(x) == x then int.to_string(float.to_int(x)) else float.to_string(x)
+fn num(x: Float) -> String = if float.round(x) == x then int.to_string(int.from_saturating(x)) else float.to_string(x)
 
 let keep_snap = snap
 let keep_num = num
@@ -487,7 +487,7 @@ pub fn progress(th: Theme, label: String, fraction: Float) -> v.View = {
   let f = clamp(fraction, 0.0, 1.0)
   v.box(v.empty() |> v.h_pct(100.0) |> v.w_pct(f * 100.0) |> v.rounded(4.0) |> v.bg(th.accent))
     |> v.h(8.0) |> v.rounded(4.0) |> v.bg(th.raised) |> v.clip()
-    |> v.role(20) |> v.label(label) |> v.value(() => int.to_string(float.to_int(f * 100.0)) + "%")
+    |> v.role(20) |> v.label(label) |> v.value(() => int.to_string(int.from_saturating(f * 100.0)) + "%")
 }
 
 // ── Text entry ──
@@ -516,10 +516,10 @@ fn lower(s: String) -> String = {
   let b = bytes.from_string(s)
   var out: List[Int] = []
   for i in 0..<bytes.len(b) {
-    let c = bytes.read_u8(b, i)
+    let c = bytes.get(b, i) ?? 0
     list.push(out, if c >= 65 and c <= 90 then c + 32 else c)
   }
-  string.from_bytes(out)
+  bytes.to_string_lossy(bytes.from_list(out))
 }
 
 // The options that contain `q` (ignoring the case of A–Z), those that
@@ -557,7 +557,7 @@ pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor,
   else ()
   let pick = (i: Int) => {
     // the option in the field, the caret after it
-    if i >= 0 and i < list.len(found) then set(ed.set_cursor(ed.set_text(get(), found[i]), 0, list.len(string.chars(found[i])))) else ()
+    if i >= 0 and i < list.len(found) then set(ed.set_cursor(ed.set_text(get(), found[i]), 0, list.len(string.to_list(found[i])))) else ()
     ui.close_popup()
   }
   let field = ed.field(key, get, set, { ...th.editor, bg: th.surface }) |> v.grow(1.0) |> v.label(label)
@@ -604,12 +604,12 @@ pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int
   let off = ui.scroll_offset(key)
   let seen = ui.rect_of(key).h
   let height = if seen > 0.0 then seen else 800.0
-  let first = int.max(0, float.to_int(float.floor(off / row_h)) - 4)
-  let last = int.min(count, float.to_int(float.ceil((off + height) / row_h)) + 4)
-  var rows: List[v.View] = [v.empty() |> v.h(int.to_float(first) * row_h) |> v.a11y_hidden()]
-  let page = int.max(1, float.to_int(height / row_h) - 1)
+  let first = int.max(0, int.from_saturating(float.floor(off / row_h)) - 4)
+  let last = int.min(count, int.from_saturating(float.ceil((off + height) / row_h)) + 4)
+  var rows: List[v.View] = [v.empty() |> v.h(float.from(first) * row_h) |> v.a11y_hidden()]
+  let page = int.max(1, int.from_saturating(height / row_h) - 1)
   for i in first..<int.max(first, last) { list.push(rows, vrow(th, key, i, count, row_h, page, row(i) |> v.h(row_h))) }
-  list.push(rows, v.empty() |> v.h(int.to_float(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
+  list.push(rows, v.empty() |> v.h(float.from(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
   v.col(rows) |> v.scroll_y(key) |> v.role(6) |> v.label(int.to_string(count) + " items")
 }
 
@@ -640,7 +640,7 @@ fn vkey(key: String, i: Int, count: Int, row_h: Float, page: Int, phase: Int, co
 fn vgo(key: String, j: Int, row_h: Float) -> Unit = {
   let off = ui.scroll_offset(key)
   let h = ui.rect_of(key).h
-  let top = int.to_float(j) * row_h
+  let top = float.from(j) * row_h
   if top < off then ui.scroll_to(key, top)
   else if top + row_h > off + h then ui.scroll_to(key, top + row_h - h)
   else ()

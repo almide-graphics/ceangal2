@@ -51,12 +51,12 @@ pub fn raw(b: Bytes) -> Bytes = {
     var best_len = 0
     var best_dist = 0
     if i + 2 < n then {
-      let h = (bytes.read_u8(b, i) * 409 + bytes.read_u8(b, i + 1) * 31 + bytes.read_u8(b, i + 2)) % 4096
+      let h = (bytes.get(b, i) ?? 0 * 409 + bytes.get(b, i + 1) ?? 0 * 31 + bytes.get(b, i + 2) ?? 0) % 4096
       var cand = head[h]
       var tries = 0
       while cand >= 0 and i - cand <= 32768 and tries < 32 {
         var l = 0
-        while l < 258 and i + l < n and bytes.read_u8(b, cand + l) == bytes.read_u8(b, i + l) { l = l + 1 }
+        while l < 258 and i + l < n and bytes.get(b, cand + l) ?? 0 == bytes.get(b, i + l) ?? 0 { l = l + 1 }
         if l > best_len then { best_len = l; best_dist = i - cand } else ()
         cand = prev[cand]
         tries = tries + 1
@@ -74,21 +74,21 @@ pub fn raw(b: Bytes) -> Bytes = {
       // index the skipped positions so later matches can find them
       for k in (i + 1)..<(i + best_len) {
         if k + 2 < n then {
-          let h2 = (bytes.read_u8(b, k) * 409 + bytes.read_u8(b, k + 1) * 31 + bytes.read_u8(b, k + 2)) % 4096
+          let h2 = (bytes.get(b, k) ?? 0 * 409 + bytes.get(b, k + 1) ?? 0 * 31 + bytes.get(b, k + 2) ?? 0) % 4096
           prev[k] = head[h2]
           head[h2] = k
         } else ()
       }
       i = i + best_len
     } else {
-      put_sym(out, w, bytes.read_u8(b, i))
+      put_sym(out, w, bytes.get(b, i) ?? 0)
       i = i + 1
     }
   }
   put_sym(out, w, 256)
   let pad = (8 - w[1]) % 8   // a separate let: almide/almide#3306
   if pad > 0 then put(out, w, 0, pad) else ()
-  var r = bytes.new(list.len(out))
-  for j in 0..<list.len(out) { bytes.set_at(r, j, out[j]) }
+  var r = bytes.zeros(list.len(out))
+  for j in 0..<list.len(out) { r = bytes.set(r, j, out[j]) }
   r
 }

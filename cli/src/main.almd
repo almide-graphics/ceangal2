@@ -97,12 +97,12 @@ fn env_pairs(app: mf.App, sdk: String) -> List[(String, String)] = {
     ("APP_NAME", app.name), ("APP_VERSION", app.version), ("APP_BUILD", int.to_string(app.build)),
     ("VERSION", app.version), ("VERSION_CODE", int.to_string(app.build)),
     ("APP_ENTRY", app.entry), ("APP_ICON", app.icon), ("APP_ICON_BG", app.icon_bg),
-    ("APP_ASSETS", string.join(assets, "\n")), ("APP_NETWORK", if app.network then "1" else "0"),
+    ("APP_ASSETS", list.join(assets, "\n")), ("APP_NETWORK", if app.network then "1" else "0"),
     ("APP_CATEGORY", app.category), ("APP_COPYRIGHT", app.copyright),
     ("APP_DESCRIPTION", app.description), ("APP_PUBLISHER", if app.publisher == "" then app.name else app.publisher),
-    ("APP_LANGUAGES", string.join(app.languages, " ")),
-    ("APP_NATIVE_DIR", app.native_dir), ("APP_NATIVE_DEPS", string.join(deps, "\n")),
-    ("APP_WEB_BOOT", app.web_boot), ("APP_WEB_FILES", string.join(app.web_files, "\n")),
+    ("APP_LANGUAGES", list.join(app.languages, " ")),
+    ("APP_NATIVE_DIR", app.native_dir), ("APP_NATIVE_DEPS", list.join(deps, "\n")),
+    ("APP_WEB_BOOT", app.web_boot), ("APP_WEB_FILES", list.join(app.web_files, "\n")),
     ("APP_WEB_PREBUILD", app.web_prebuild), ("APP_WEB_OUT", app.web_out), ("APP_LINUX_ID", app.linux_id),
     ("APP_STORE", app.store), ("APP_OUT", app.out), ("CEANGAL_APP_ID", app.id),
   ]
@@ -148,7 +148,7 @@ effect fn run_tests(app: mf.App, sdk: String, target: String, given: List[String
     if target == "native" or target == "all" then {
       let exe = build_native(app, sdk)!
       let sep = if sh.os() == "windows" then ";" else ":"
-      let assets = string.join(app.assets + [sdk + "/assets"], sep)
+      let assets = list.join(app.assets + [sdk + "/assets"], sep)
       dev.say("ceangal test native: " + int.to_string(list.len(files)) + " file(s)")
       fs.mkdir_p(shots + "/native")!
       for f in files {
@@ -193,7 +193,7 @@ fn run(app: mf.App, sdk: String, target: String) -> Result[Unit, String] =
   else if target == "macos" or target == "linux" or target == "windows" or target == "native" then {
     let exe = build_native(app, sdk)!
     let sep = if sh.os() == "windows" then ";" else ":"
-    let assets = string.join(app.assets + [sdk + "/assets"], sep)
+    let assets = list.join(app.assets + [sdk + "/assets"], sep)
     check(sh.run_env(exe, [], app.dir, ["CEANGAL_ASSETS"], [assets]), app.name)
   }
   else if target == "ios" then check(script(app, sdk, "run_ios.sh", []), "the iOS run")
@@ -210,7 +210,7 @@ effect fn editor_manifest(app: mf.App, sdk: String) -> Result[Unit, String] = {
     + "ceangal = { path = \"" + sdk + "/ceangal\" }\nsnaidhm = { path = \"" + sdk + "/snaidhm\" }\n"
   let current = if fs.exists(file) then fs.read_text(file)! else ""
   if current == text or (current != "" and not string.starts_with(current, EDITOR_HEADER)) then ok(())
-  else fs.write(file, text)
+  else fs.write_text(file, text)
 }
 
 effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
@@ -253,7 +253,7 @@ effect fn with_app(o: Opts, cmd: String) -> Result[Unit, String] = {
       else if target == "macos" or target == "linux" or target == "windows" or target == "native" then {
         let exe = app.out + "/native/" + app.key + (if sh.os() == "windows" then ".exe" else "")
         let sep = if sh.os() == "windows" then ";" else ":"
-        dev.desktop(app, sdk, env_pairs(app, sdk), exe, string.join(app.assets + [sdk + "/assets"], sep))
+        dev.desktop(app, sdk, env_pairs(app, sdk), exe, list.join(app.assets + [sdk + "/assets"], sep))
       }
       else err("ceangal dev runs web, macos, linux or windows (\"" + target + "\" is not one); for phones: ceangal run ios / android")
     }

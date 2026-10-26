@@ -134,8 +134,8 @@ fn set_baseline(fs: List[(String, String)]) -> Unit = {
 
 fn files_json_of(fs: List[(String, String)]) -> String = {
   var items: List[Value] = []
-  for (n, t) in fs { list.push(items, value.object([("name", value.str(n)), ("content", value.str(t))])) }
-  value.stringify(value.object([("v", value.int(1)), ("files", value.array(items))]))
+  for (n, t) in fs { list.push(items, value.object([("name", value.string(n)), ("content", value.string(t))])) }
+  json.stringify(value.object([("v", value.int(1)), ("files", value.array(items))]))
 }
 
 pub fn untouched() -> Bool = {
@@ -160,8 +160,8 @@ pub fn files() -> List[(String, String)] = {
 
 pub fn files_json() -> String = {
   var pairs: List[(String, Value)] = []
-  for (n, t) in files() { list.push(pairs, (n, value.str(t))) }
-  value.stringify(value.object(pairs))
+  for (n, t) in files() { list.push(pairs, (n, value.string(t))) }
+  json.stringify(value.object(pairs))
 }
 
 pub fn current() -> ed.Editor = tabs[active].ed
@@ -321,7 +321,7 @@ pub fn tick(now: Float) -> Bool = {
   if version_text == "" then {
     let n = runner.runner_version_len()
     if n > 0 then {
-      var b = bytes.new(n)
+      var b = bytes.zeros(n)
       let _ = runner.runner_version_read(bytes.data_ptr(b), n)
       version_text = bytes.to_string_lossy(b)
     } else sys.request_frame_after(250.0)
@@ -330,17 +330,17 @@ pub fn tick(now: Float) -> Bool = {
 }
 
 fn field_int(body: String, key: String) -> Int = match json.parse(body) {
-  ok(v) => json.get_int(v, key) ?? -1,
+  ok(v) => value.get_int(v, key) ?? -1,
   err(_) => -1,
 }
 
 fn field_float(body: String, key: String) -> Float = match json.parse(body) {
-  ok(v) => json.get_float(v, key) ?? -1.0,
+  ok(v) => value.get_float(v, key) ?? -1.0,
   err(_) => -1.0,
 }
 
 fn field_str(body: String, key: String) -> String = match json.parse(body) {
-  ok(v) => json.get_string(v, key) ?? "",
+  ok(v) => value.get_string(v, key) ?? "",
   err(_) => body,
 }
 
@@ -350,12 +350,12 @@ fn apply_diagnostics(body: String) -> Unit = {
   var count = 0
   var first = ""
   for d in arr {
-    let file = json.get_string(d, "file") ?? ENTRY
-    let line = (json.get_int(d, "line") ?? 1) - 1
-    let col = (json.get_int(d, "col") ?? 1) - 1
-    let end_col = (json.get_int(d, "endCol") ?? (col + 2)) - 1
-    let level = json.get_string(d, "level") ?? "error"
-    let msg = json.get_string(d, "message") ?? ""
+    let file = value.get_string(d, "file") ?? ENTRY
+    let line = (value.get_int(d, "line") ?? 1) - 1
+    let col = (value.get_int(d, "col") ?? 1) - 1
+    let end_col = (value.get_int(d, "endCol") ?? (col + 2)) - 1
+    let level = value.get_string(d, "level") ?? "error"
+    let msg = value.get_string(d, "message") ?? ""
     let sev = if level == "error" then 0 else if level == "warning" then 1 else 2
     for i in 0..<list.len(tabs) {
       if tabs[i].name == file then {
@@ -379,12 +379,12 @@ fn finish_run(ok_run: Bool, body: String) -> Unit = {
   finished_run = run_id
   if ok_run then {
     let code = field_int(body, "exitCode")
-    run_ms = float.to_int(field_float(body, "runMs"))
-    compile_ms = float.to_int(field_float(body, "compileMs"))
+    run_ms = int.from_saturating(field_float(body, "runMs"))
+    compile_ms = int.from_saturating(field_float(body, "compileMs"))
     if code == 0 then status = "Exited 0" else { status = "Exited " + int.to_string(code); append_out("exit " + int.to_string(code), 1) }
     last_run_ok = code == 0
-    last_run_error = if code == 0 then "" else string.join(stderr_text, "\n") + "\nexit code " + int.to_string(code)
-    picture = visual.detect(string.join(stdout_text, "\n"))
+    last_run_error = if code == 0 then "" else list.join(stderr_text, "\n") + "\nexit code " + int.to_string(code)
+    picture = visual.detect(list.join(stdout_text, "\n"))
     if code == 0 and picture.kind != visual.NoVisual then out_tab = 1 else ()
   } else {
     let phase = field_str(body, "phase")
@@ -426,7 +426,7 @@ var categories: List[Category] = []
 fn asset_bytes(name: String) -> Bytes = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
-  var b = bytes.new(if n < 0 then 0 else n)
+  var b = bytes.zeros(if n < 0 then 0 else n)
   if n > 0 then { let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(b), n) } else ()
   b
 }
@@ -436,7 +436,7 @@ fn asset_text(name: String) -> String? = {
   let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
   if n < 0 then none
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(b), n)
     some(bytes.to_string_lossy(b))
   }
@@ -446,14 +446,14 @@ pub fn load_manifest() -> Unit = match asset_text("examples/manifest.json") {
   some(t) => match json.parse(t) {
     ok(v) => {
       var cats: List[Category] = []
-      for c in json.get_array(v, "categories") ?? [] {
+      for c in value.get_array(v, "categories") ?? [] {
         var exs: List[Example] = []
-        for e in json.get_array(c, "examples") ?? [] {
+        for e in value.get_array(c, "examples") ?? [] {
           var fs: List[String] = []
-          for f in json.get_array(e, "files") ?? [] { list.push(fs, value.as_string(f) ?? "") }
-          list.push(exs, { id: json.get_string(e, "id") ?? "", title: json.get_string(e, "title") ?? "", files: fs })
+          for f in value.get_array(e, "files") ?? [] { list.push(fs, value.as_string(f) ?? "") }
+          list.push(exs, { id: value.get_string(e, "id") ?? "", title: value.get_string(e, "title") ?? "", files: fs })
         }
-        list.push(cats, { title: json.get_string(c, "title") ?? "", examples: exs })
+        list.push(cats, { title: value.get_string(c, "title") ?? "", examples: exs })
       }
       categories = cats
     },
@@ -519,7 +519,7 @@ fn load_theme() -> Unit = {
   let key = bytes.from_string(THEME_KEY)
   let n = storage.storage_len(bytes.data_ptr(key), bytes.len(key))
   if n > 0 then {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = storage.storage_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(b), n)
     let t = bytes.to_string_lossy(b)
     theme_pref = if t == "1" then 1 else if t == "2" then 2 else 0
@@ -531,7 +531,7 @@ pub fn restore() -> Bool = {
   let n = storage.storage_len(bytes.data_ptr(key), bytes.len(key))
   if n <= 0 then false
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = storage.storage_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(b), n)
     match parse_share_json(bytes.to_string_lossy(b)) {
       some(fs) => {
@@ -539,7 +539,7 @@ pub fn restore() -> Bool = {
         let bk = bytes.from_string(BASELINE_KEY)
         let bn = storage.storage_len(bytes.data_ptr(bk), bytes.len(bk))
         if bn > 0 then {
-          var bb = bytes.new(bn)
+          var bb = bytes.zeros(bn)
           let _ = storage.storage_read(bytes.data_ptr(bk), bytes.len(bk), bytes.data_ptr(bb), bn)
           baseline = parse_share_json(bytes.to_string_lossy(bb)) ?? []
         } else ()
@@ -557,11 +557,11 @@ fn share_json() -> String = files_json_of(files())
 
 fn parse_share_json(t: String) -> List[(String, String)]? = match json.parse(t) {
   ok(v) => {
-    if (json.get_int(v, "v") ?? 0) != 1 then none
+    if (value.get_int(v, "v") ?? 0) != 1 then none
     else {
       var fs: List[(String, String)] = []
-      for f in json.get_array(v, "files") ?? [] {
-        list.push(fs, (json.get_string(f, "name") ?? "main.almd", json.get_string(f, "content") ?? ""))
+      for f in value.get_array(v, "files") ?? [] {
+        list.push(fs, (value.get_string(f, "name") ?? "main.almd", value.get_string(f, "content") ?? ""))
       }
       if list.len(fs) == 0 then none else some(fs)
     }
@@ -597,7 +597,7 @@ fn launch() -> String = {
   let n = sys.launch_len()
   if n <= 0 then ""
   else {
-    var b = bytes.new(n)
+    var b = bytes.zeros(n)
     let _ = sys.launch_read(bytes.data_ptr(b), n)
     bytes.to_string_lossy(b)
   }
@@ -670,8 +670,8 @@ var logo_dark_tex = -1
 fn load_logo(name: String) -> Int = {
   let d = asset_bytes(name)
   if bytes.len(d) > 4 then {
-    let w = bytes.get_or(d, 0, 0) * 256 + bytes.get_or(d, 1, 0)
-    let h = bytes.get_or(d, 2, 0) * 256 + bytes.get_or(d, 3, 0)
+    let w = bytes.get(d, 0) ?? 0 * 256 + bytes.get(d, 1) ?? 0
+    let h = bytes.get(d, 2) ?? 0 * 256 + bytes.get(d, 3) ?? 0
     snaidhm.create_image(w, h, bytes.slice(d, 4, bytes.len(d)))
   } else 0
 }

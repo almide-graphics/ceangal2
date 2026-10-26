@@ -10,9 +10,9 @@ type Layer = { gid: Int, color: Int }
 // Where a font's COLR and CPAL tables are (0 = absent).
 type Colr = { colr: Int, cpal: Int }
 
-fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
-fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
-fn tag(s: String) -> Int = bytes.read_u32_be(bytes.from_string(s), 0)
+fn u16(b: Bytes, p: Int) -> Int = bytes.get_u16_be(b, p) ?? 0
+fn u32(b: Bytes, p: Int) -> Int = bytes.get_u32_be(b, p) ?? 0
+fn tag(s: String) -> Int = bytes.get_u32_be(bytes.from_string(s), 0) ?? 0
 
 // The colour tables of `f`.
 pub fn tables(f: font.Font) -> Colr = { colr: font.table(f, tag("COLR")), cpal: font.table(f, tag("CPAL")) }
@@ -54,5 +54,5 @@ fn palette_color(b: Bytes, cpal: Int, index: Int) -> Int =
   else {
     let rec = cpal + u32(b, cpal + 8) + (u16(b, cpal + 12) + index) * 4
     // stored blue, green, red, alpha
-    ((bytes.read_u8(b, rec + 2) * 256 + bytes.read_u8(b, rec + 1)) * 256 + bytes.read_u8(b, rec)) * 256 + bytes.read_u8(b, rec + 3)
+    ((bytes.get(b, rec + 2) ?? 0 * 256 + bytes.get(b, rec + 1) ?? 0) * 256 + bytes.get(b, rec) ?? 0) * 256 + bytes.get(b, rec + 3) ?? 0
   }
