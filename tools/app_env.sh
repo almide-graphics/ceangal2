@@ -50,6 +50,9 @@ version = "$APP_VERSION"
 ceangal = { path = "$sdk/ceangal" }
 snaidhm = { path = "$sdk/snaidhm" }
 
+[permissions]
+native = ["ceangal", "snaidhm"]
+
 [native-deps]
 $APP_NATIVE_DEPS
 ${2:-}

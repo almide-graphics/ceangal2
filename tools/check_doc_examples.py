@@ -86,7 +86,8 @@ def main():
     (work / "src").mkdir()
     (work / "almide.toml").write_text(
         f'[package]\nname = "docexamples"\nversion = "0.1.0"\n\n[dependencies]\n'
-        f'ceangal = {{ path = "{ROOT / "ceangal"}" }}\nsnaidhm = {{ path = "{ROOT / "snaidhm"}" }}\n')
+        f'ceangal = {{ path = "{ROOT / "ceangal"}" }}\nsnaidhm = {{ path = "{ROOT / "snaidhm"}" }}\n'
+        f'\n[permissions]\nnative = ["ceangal", "snaidhm"]\n')
     failed = checked = skipped = 0
     for md in sorted(GUIDE.glob("*.md")):
         prelude_file = GUIDE / "examples" / (md.stem + ".prelude.almd")

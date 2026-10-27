@@ -6,6 +6,9 @@ description = "UI framework for Almide (ceangal2): one ABI, every platform"
 [dependencies]
 snaidhm = { path = "../snaidhm" }
 
+[permissions]
+native = ["snaidhm"]
+
 [native-deps]
 winit = { version = "0.30", features = ["android-native-activity"] }
 png = "0.18"

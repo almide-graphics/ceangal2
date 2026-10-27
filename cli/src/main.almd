@@ -208,6 +208,7 @@ effect fn editor_manifest(app: mf.App, sdk: String) -> Result[Unit, String] = {
   let file = app.dir + "/almide.toml"
   let text = EDITOR_HEADER + "\n[package]\nname = \"" + app.key + "\"\nversion = \"" + app.version + "\"\n\n[dependencies]\n"
     + "ceangal = { path = \"" + sdk + "/ceangal\" }\nsnaidhm = { path = \"" + sdk + "/snaidhm\" }\n"
+    + "\n[permissions]\nnative = [\"ceangal\", \"snaidhm\"]\n"
   let current = if fs.exists(file) then fs.read_text(file)! else ""
   if current == text or (current != "" and not string.starts_with(current, EDITOR_HEADER)) then ok(())
   else fs.write_text(file, text)

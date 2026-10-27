@@ -5,3 +5,6 @@ version = "0.2.0"
 [dependencies]
 ceangal = { path = "../../ceangal" }
 snaidhm = { path = "../../snaidhm" }
+
+[permissions]
+native = ["ceangal", "snaidhm"]
