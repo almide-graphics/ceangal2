@@ -5,6 +5,7 @@
 // and draws them in a single pass, split only where the bound image texture
 // changes. Coordinates are physical pixels, top-left origin.
 
+import ffi
 import self.gpu
 import self.shader
 import self.color as col
@@ -63,17 +64,17 @@ var batch_start: List[Int] = []
 fn ensure_ready() -> Unit = {
   if not ready then {
     let src = bytes.from_string(shader.WGSL)
-    let sh = gpu.create_shader(bytes.data_ptr(src), bytes.len(src))
+    let sh = gpu.create_shader(ffi.to_int(ffi.address(src)), bytes.len(src))
     let vs = bytes.from_string("vs_main")
     let fs = bytes.from_string("fs_main")
-    pipeline = gpu.create_render_pipeline(sh, bytes.data_ptr(vs), bytes.len(vs),
-      bytes.data_ptr(fs), bytes.len(fs), gpu.surface_format(), gpu.BLEND_PREMUL)
+    pipeline = gpu.create_render_pipeline(sh, ffi.to_int(ffi.address(vs)), bytes.len(vs),
+      ffi.to_int(ffi.address(fs)), bytes.len(fs), gpu.surface_format(), gpu.BLEND_PREMUL)
     globals_buf = gpu.create_buffer(16, gpu.BUF_UNIFORM + gpu.BUF_COPY_DST)
     atlas_tex = gpu.create_texture(ATLAS_SIZE, ATLAS_SIZE, gpu.FORMAT_R8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
     linear_sampler = gpu.create_sampler(gpu.FILTER_LINEAR)
     white_tex = gpu.create_texture(1, 1, gpu.FORMAT_RGBA8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
     let white = bytes.from_list([255, 255, 255, 255])
-    gpu.write_texture(white_tex, 0, 0, 1, 1, bytes.data_ptr(white), 4, 4)
+    gpu.write_texture(white_tex, 0, 0, 1, 1, ffi.to_int(ffi.address(white)), 4, 4)
     group1_white = image_group(white_tex)
     grow_instances(1024)
     ready = true
@@ -135,7 +136,7 @@ pub fn atlas_size() -> Int = ATLAS_SIZE
 pub fn create_image(w: Int, h: Int, rgba: Bytes) -> Int = {
   ensure_ready()
   let tex = gpu.create_texture(w, h, gpu.FORMAT_RGBA8, gpu.TEX_BINDING + gpu.TEX_COPY_DST)
-  if tex != 0 and w > 0 and h > 0 then gpu.write_texture(tex, 0, 0, w, h, bytes.data_ptr(rgba), bytes.len(rgba), w * 4) else ()
+  if tex != 0 and w > 0 and h > 0 then gpu.write_texture(tex, 0, 0, w, h, ffi.to_int(ffi.address(rgba)), bytes.len(rgba), w * 4) else ()
   tex
 }
 
@@ -148,7 +149,7 @@ pub fn release_image(tex: Int) -> Unit = {
 // Write an 8-bit coverage bitmap (w*h, row-major) into the atlas at (x, y).
 pub fn upload_coverage(x: Int, y: Int, w: Int, h: Int, pixels: Bytes) -> Unit = {
   ensure_ready()
-  if w > 0 and h > 0 then gpu.write_texture(atlas_tex, x, y, w, h, bytes.data_ptr(pixels), bytes.len(pixels), w) else ()
+  if w > 0 and h > 0 then gpu.write_texture(atlas_tex, x, y, w, h, ffi.to_int(ffi.address(pixels)), bytes.len(pixels), w) else ()
 }
 
 // ── Frame ──
@@ -290,8 +291,8 @@ pub fn end(clear: Color) -> Bool = {
     var globals = bytes.zeros(16)
     bytes.put_f32_le(globals, 0, float.from(frame_w))
     bytes.put_f32_le(globals, 4, float.from(frame_h))
-    gpu.write_buffer(globals_buf, 0, bytes.data_ptr(globals), 16)
-    if count > 0 then gpu.write_buffer(inst_buf, 0, bytes.data_ptr(data), count * 80) else ()
+    gpu.write_buffer(globals_buf, 0, ffi.to_int(ffi.address(globals)), 16)
+    if count > 0 then gpu.write_buffer(inst_buf, 0, ffi.to_int(ffi.address(data)), count * 80) else ()
     let pass = gpu.pass_begin(target, gpu.LOAD_CLEAR, clear.r * clear.a, clear.g * clear.a, clear.b * clear.a, clear.a)
     gpu.pass_pipeline(pass, pipeline)
     gpu.pass_bind(pass, 0, group0)

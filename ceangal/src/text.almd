@@ -14,6 +14,7 @@
 // atlas (shelf-packed); a full atlas is cleared at the start of the next
 // frame and refilled lazily.
 
+import ffi
 import snaidhm
 import snaidhm.font as font
 import snaidhm.otl as otl
@@ -90,11 +91,11 @@ fn invisible(cp: Int) -> Bool =
 
 fn load_asset(name: String) -> Bytes = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
+  let n = sys.asset_len(ffi.to_int(ffi.address(key)), bytes.len(key))
   if n <= 0 then bytes.zeros(0)
   else {
     var buf = bytes.zeros(n)
-    let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
+    let _ = sys.asset_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(buf)), n)
     buf
   }
 }

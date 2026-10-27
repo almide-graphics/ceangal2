@@ -5,6 +5,7 @@
 // handled event marks the UI dirty; the next frame event rebuilds the view
 // tree, lays it out and paints it through snaidhm.
 
+import ffi
 import snaidhm
 import math
 import self.view as v
@@ -460,11 +461,11 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
 // such file.
 pub fn asset(name: String) -> Bytes? = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
+  let n = sys.asset_len(ffi.to_int(ffi.address(key)), bytes.len(key))
   if n < 0 then none
   else {
     var buf = bytes.zeros(n)
-    let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
+    let _ = sys.asset_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(buf)), n)
     some(buf)
   }
 }
@@ -478,13 +479,13 @@ pub fn asset_text(name: String) -> String? = match asset(name) {
 // Open `url` in the system browser (a new tab on the web).
 pub fn open_url(url: String) -> Unit = {
   let b = bytes.from_string(url)
-  sys.open_url(bytes.data_ptr(b), bytes.len(b))
+  sys.open_url(ffi.to_int(ffi.address(b)), bytes.len(b))
 }
 
 // The window's title (the page's on the web; phones show none).
 pub fn set_title(title: String) -> Unit = {
   let b = bytes.from_string(title)
-  sys.set_title(bytes.data_ptr(b), bytes.len(b))
+  sys.set_title(ffi.to_int(ffi.address(b)), bytes.len(b))
 }
 
 // Offer `data` to the user to save as `name`: a save dialog on the desktop,
@@ -496,7 +497,7 @@ pub fn save_file(name: String, data: Bytes) -> Int = {
   let n = bytes.from_string(name)
   // bound, not returned directly: a value-returning call in tail position
   // sees its Bytes already freed on wasm (almide/almide#3420)
-  let id = file.file_save(bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(data), bytes.len(data))
+  let id = file.file_save(ffi.to_int(ffi.address(n)), bytes.len(n), ffi.to_int(ffi.address(data)), bytes.len(data))
   id
 }
 
@@ -509,13 +510,13 @@ pub fn open_text_file() -> Int = file.file_open(0)
 // Put `s` on the system clipboard.
 pub fn copy_text(s: String) -> Unit = {
   let b = bytes.from_string(s)
-  clip.clipboard_write(bytes.data_ptr(b), bytes.len(b))
+  clip.clipboard_write(ffi.to_int(ffi.address(b)), bytes.len(b))
 }
 
 fn event_bytes() -> Bytes = {
   let n = sys.event_len()
   var buf = bytes.zeros(n)
-  if n > 0 then { let _ = sys.event_read(bytes.data_ptr(buf), n) } else ()
+  if n > 0 then { let _ = sys.event_read(ffi.to_int(ffi.address(buf)), n) } else ()
   buf
 }
 
@@ -596,13 +597,13 @@ fn emit_a11y() -> Unit = {
       let lb = bytes.from_string(label)
       let focused_flag = if vw.focusable and vw.key != "" and vw.key == focus_key then 2 else 0
       let flags = (if vw.focusable then 1 else 0) + focused_flag + vw.states
-      a11y.a11y_node(i + 1, 0, role, r.x, r.y, r.w, r.h, flags, bytes.data_ptr(lb), bytes.len(lb))
+      a11y.a11y_node(i + 1, 0, role, r.x, r.y, r.w, r.h, flags, ffi.to_int(ffi.address(lb)), bytes.len(lb))
       let id = vw.key + "\u{1}" + label
       let val = if refresh then vw.value() else cached_value(id)
       if refresh and val != "" then list.push(fresh, (id, val)) else ()
       if val != "" then {
         let vb = bytes.from_string(val)
-        a11y.a11y_value(i + 1, bytes.data_ptr(vb), bytes.len(vb))
+        a11y.a11y_value(i + 1, ffi.to_int(ffi.address(vb)), bytes.len(vb))
       } else ()
     } else ()
   }

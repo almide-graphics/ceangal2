@@ -14,6 +14,7 @@
 // the macOS sandbox entitlement); on the web, the server must allow the
 // page's origin (CORS).
 
+import ffi
 import self.host.net as net
 
 // Start a request: method ("GET", "POST", …), URL, headers, body ("" for
@@ -21,14 +22,14 @@ import self.host.net as net
 pub fn request(method: String, url: String, headers: List[(String, String)], body: String) -> Int = {
   let m = bytes.from_string(method)
   let u = bytes.from_string(url)
-  let id = net.http_begin(bytes.data_ptr(m), bytes.len(m), bytes.data_ptr(u), bytes.len(u))
+  let id = net.http_begin(ffi.to_int(ffi.address(m)), bytes.len(m), ffi.to_int(ffi.address(u)), bytes.len(u))
   for h in headers {
     let n = bytes.from_string(h.0)
     let v = bytes.from_string(h.1)
-    net.http_header(id, bytes.data_ptr(n), bytes.len(n), bytes.data_ptr(v), bytes.len(v))
+    net.http_header(id, ffi.to_int(ffi.address(n)), bytes.len(n), ffi.to_int(ffi.address(v)), bytes.len(v))
   }
   let b = bytes.from_string(body)
-  net.http_send(id, bytes.data_ptr(b), bytes.len(b))
+  net.http_send(id, ffi.to_int(ffi.address(b)), bytes.len(b))
   id
 }
 

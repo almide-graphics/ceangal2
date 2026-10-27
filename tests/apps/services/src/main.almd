@@ -3,6 +3,7 @@
 // The first line comes from the app's own extension (native/twice.rs,
 // web/boot.js), the second from a bundled asset.
 
+import ffi
 import ceangal
 import ceangal.view as v
 import ceangal.storage as storage
@@ -21,7 +22,7 @@ fn twice_len(s: String) -> Int = {
   let b = bytes.from_string(s)
   // bound, not returned directly: a value-returning call in tail position
   // sees its Bytes already freed on wasm (almide/almide#3420)
-  let n = twice_text_len(bytes.data_ptr(b), bytes.len(b))
+  let n = twice_text_len(ffi.to_int(ffi.address(b)), bytes.len(b))
   n
 }
 
