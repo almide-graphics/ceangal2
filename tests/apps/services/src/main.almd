@@ -16,13 +16,13 @@ fn twice(n: Int) -> Int = _
 
 @extern(wasm, "twice", "text_len")
 @extern(rust, "crate::twice", "twice_text_len")
-fn twice_text_len(ptr: Int, len: Int) -> Int = _
+fn twice_text_len(text: Region) -> Int = _
 
 fn twice_len(s: String) -> Int = {
   let b = bytes.from_string(s)
   // bound, not returned directly: a value-returning call in tail position
   // sees its Bytes already freed on wasm (almide/almide#3420)
-  let n = twice_text_len(ffi.to_int(ffi.address(b)), bytes.len(b))
+  let n = twice_text_len(ffi.region(b))
   n
 }
 

@@ -130,7 +130,7 @@ fn set_baseline(fs: List[(String, String)]) -> Unit = {
   baseline = fs
   let payload = bytes.from_string(files_json_of(fs))
   let key = bytes.from_string(BASELINE_KEY)
-  storage.storage_write(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(payload)), bytes.len(payload))
+  storage.storage_write(ffi.region(key), ffi.region(payload))
 }
 
 fn files_json_of(fs: List[(String, String)]) -> String = {
@@ -263,7 +263,7 @@ pub fn run() -> Unit = {
     clear_output()
     let fj = bytes.from_string(files_json())
     let en = bytes.from_string(ENTRY)
-    run_id = runner.runner_run(ffi.to_int(ffi.address(fj)), bytes.len(fj), ffi.to_int(ffi.address(en)), bytes.len(en))
+    run_id = runner.runner_run(ffi.region(fj), ffi.region(en))
     running = true
     compile_ms = -1
     run_ms = -1
@@ -288,7 +288,7 @@ pub fn stop() -> Unit =
 fn start_check() -> Unit = {
   let fj = bytes.from_string(files_json())
   let en = bytes.from_string(ENTRY)
-  check_id = runner.runner_check(ffi.to_int(ffi.address(fj)), bytes.len(fj), ffi.to_int(ffi.address(en)), bytes.len(en))
+  check_id = runner.runner_check(ffi.region(fj), ffi.region(en))
   checked_version = total_version()
 }
 
@@ -296,14 +296,14 @@ pub fn show_rust() -> Unit = {
   out_tab = 2
   let fj = bytes.from_string(files_json())
   let en = bytes.from_string(ENTRY)
-  rust_id = runner.runner_rust(ffi.to_int(ffi.address(fj)), bytes.len(fj), ffi.to_int(ffi.address(en)), bytes.len(en))
+  rust_id = runner.runner_rust(ffi.region(fj), ffi.region(en))
   rust_view = ed.set_text(rust_view, "// compiling…")
 }
 
 pub fn show_ast() -> Unit = {
   out_tab = 3
   let src = bytes.from_string(ed.to_string(current()))
-  ast_id = runner.runner_ast(ffi.to_int(ffi.address(src)), bytes.len(src))
+  ast_id = runner.runner_ast(ffi.region(src))
   ast_view = ed.set_text(ast_view, "// parsing…")
 }
 
@@ -426,19 +426,19 @@ var categories: List[Category] = []
 
 fn asset_bytes(name: String) -> Bytes = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(ffi.to_int(ffi.address(key)), bytes.len(key))
+  let n = sys.asset_len(ffi.region(key))
   var b = bytes.zeros(if n < 0 then 0 else n)
-  if n > 0 then { let _ = sys.asset_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(b)), n) } else ()
+  if n > 0 then { let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(b)), n) } else ()
   b
 }
 
 fn asset_text(name: String) -> String? = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(ffi.to_int(ffi.address(key)), bytes.len(key))
+  let n = sys.asset_len(ffi.region(key))
   if n < 0 then none
   else {
     var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(b)), n)
+    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
     some(bytes.to_string_lossy(b))
   }
 }
@@ -498,7 +498,7 @@ fn save() -> Unit = {
     saved_version = v
     let payload = bytes.from_string(share_json())
     let key = bytes.from_string(STORAGE_KEY)
-    storage.storage_write(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(payload)), bytes.len(payload))
+    storage.storage_write(ffi.region(key), ffi.region(payload))
   } else ()
 }
 
@@ -513,15 +513,15 @@ pub fn toggle_theme() -> Unit = {
   theme_pref = if is_light() then 2 else 1
   let key = bytes.from_string(THEME_KEY)
   let v = bytes.from_string(int.to_string(theme_pref))
-  storage.storage_write(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(v)), bytes.len(v))
+  storage.storage_write(ffi.region(key), ffi.region(v))
 }
 
 fn load_theme() -> Unit = {
   let key = bytes.from_string(THEME_KEY)
-  let n = storage.storage_len(ffi.to_int(ffi.address(key)), bytes.len(key))
+  let n = storage.storage_len(ffi.region(key))
   if n > 0 then {
     var b = bytes.zeros(n)
-    let _ = storage.storage_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(b)), n)
+    let _ = storage.storage_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
     let t = bytes.to_string_lossy(b)
     theme_pref = if t == "1" then 1 else if t == "2" then 2 else 0
   } else ()
@@ -529,19 +529,19 @@ fn load_theme() -> Unit = {
 
 pub fn restore() -> Bool = {
   let key = bytes.from_string(STORAGE_KEY)
-  let n = storage.storage_len(ffi.to_int(ffi.address(key)), bytes.len(key))
+  let n = storage.storage_len(ffi.region(key))
   if n <= 0 then false
   else {
     var b = bytes.zeros(n)
-    let _ = storage.storage_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(b)), n)
+    let _ = storage.storage_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
     match parse_share_json(bytes.to_string_lossy(b)) {
       some(fs) => {
         set_files(fs)
         let bk = bytes.from_string(BASELINE_KEY)
-        let bn = storage.storage_len(ffi.to_int(ffi.address(bk)), bytes.len(bk))
+        let bn = storage.storage_len(ffi.region(bk))
         if bn > 0 then {
           var bb = bytes.zeros(bn)
-          let _ = storage.storage_read(ffi.to_int(ffi.address(bk)), bytes.len(bk), ffi.to_int(ffi.address(bb)), bn)
+          let _ = storage.storage_read(ffi.region(bk), ffi.to_int(ffi.address(bb)), bn)
           baseline = parse_share_json(bytes.to_string_lossy(bb)) ?? []
         } else ()
         true
@@ -574,7 +574,7 @@ pub fn share() -> Unit = {
   let enc = string.replace(base64.encode_url(deflate.raw(bytes.from_string(share_json()))), "=", "")
   let url = base_url + "#code=" + enc
   let loc = bytes.from_string("#code=" + enc)
-  sys.set_location(ffi.to_int(ffi.address(loc)), bytes.len(loc))
+  sys.set_location(ffi.region(loc))
   ceangal.copy_text(url)
   status = "Share link copied (" + int.to_string(string.len(url)) + " chars)"
 }
@@ -708,7 +708,7 @@ pub fn export_zip() -> Unit = {
   }
   let z = zip.build(entries)
   let name = bytes.from_string("almide-playground.zip")
-  let _ = file.file_save(ffi.to_int(ffi.address(name)), bytes.len(name), ffi.to_int(ffi.address(z)), bytes.len(z))
+  let _ = file.file_save(ffi.region(name), ffi.region(z))
   status = "Exported almide-playground.zip — unzip and `almide run src/main.almd`"
 }
 
@@ -730,7 +730,7 @@ pub fn gui_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Flo
 pub fn gui_text(kind: Int, s: String, cursor: Int) -> Bool = {
   let b = bytes.from_string(s)
   // bound first: almide/almide#3420
-  let r = runner.runner_gui_text(kind, ffi.to_int(ffi.address(b)), bytes.len(b), cursor)
+  let r = runner.runner_gui_text(kind, ffi.region(b), cursor)
   r == 1
 }
 pub fn gui_ime(i: Int) -> Float = runner.runner_gui_ime(i)

@@ -22,18 +22,21 @@ native builds (desktop, iOS, Android). `@extern(wasm, "<namespace>",
 that builds for the web needs both.
 
 Only `Int` (i64) and `Float` (f64) cross the boundary in both directions.
-Pass text and bytes as a pointer and a length:
+Pass text and bytes as an `ffi.Region` (`import ffi`): JavaScript gets it as
+a pointer and a length, the length the runtime holds for it (ADR-0031):
 
 ```almide
+import ffi
+
 @extern(wasm, "twice", "text_len")
 @extern(rust, "crate::twice", "twice_text_len")
-fn twice_text_len(ptr: Int, len: Int) -> Int = _
+fn twice_text_len(text: Region) -> Int = _
 
 fn twice_len(s: String) -> Int = {
   let b = bytes.from_string(s)
   // bound, not returned directly: a value-returning call in tail position
   // sees its Bytes already freed on wasm (almide/almide#3420)
-  let n = twice_text_len(bytes.data_ptr(b), bytes.len(b))
+  let n = twice_text_len(ffi.region(b))
   n
 }
 ```
@@ -53,8 +56,9 @@ crate:
 // native/twice.rs
 pub fn twice_int(n: i64) -> i64 { n * 2 }
 
-pub fn twice_text_len(ptr: i64, len: i64) -> i64 {
-    let s = crate::sys::string(ptr, len);
+pub fn twice_text_len(text: impl std::borrow::Borrow<crate::Region>) -> i64 {
+    let text = text.borrow();
+    let s = crate::sys::string(text.base as i64, text.len);
     (s.chars().count() * 2) as i64
 }
 ```

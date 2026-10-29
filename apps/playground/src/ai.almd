@@ -77,11 +77,11 @@ pub fn busy() -> Bool = phase != 0
 
 fn kv_get(k: String, secret: Bool) -> String = {
   let kb = bytes.from_string(k)
-  let n = if secret then storage.secret_len(ffi.to_int(ffi.address(kb)), bytes.len(kb)) else storage.storage_len(ffi.to_int(ffi.address(kb)), bytes.len(kb))
+  let n = if secret then storage.secret_len(ffi.region(kb)) else storage.storage_len(ffi.region(kb))
   if n <= 0 then ""
   else {
     var b = bytes.zeros(n)
-    let _ = if secret then storage.secret_read(ffi.to_int(ffi.address(kb)), bytes.len(kb), ffi.to_int(ffi.address(b)), n) else storage.storage_read(ffi.to_int(ffi.address(kb)), bytes.len(kb), ffi.to_int(ffi.address(b)), n)
+    let _ = if secret then storage.secret_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n) else storage.storage_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n)
     bytes.to_string_lossy(b)
   }
 }
@@ -89,8 +89,8 @@ fn kv_get(k: String, secret: Bool) -> String = {
 fn kv_set(k: String, v: String, secret: Bool) -> Unit = {
   let kb = bytes.from_string(k)
   let vb = bytes.from_string(v)
-  if secret then storage.secret_write(ffi.to_int(ffi.address(kb)), bytes.len(kb), ffi.to_int(ffi.address(vb)), bytes.len(vb))
-  else storage.storage_write(ffi.to_int(ffi.address(kb)), bytes.len(kb), ffi.to_int(ffi.address(vb)), bytes.len(vb))
+  if secret then storage.secret_write(ffi.region(kb), ffi.region(vb))
+  else storage.storage_write(ffi.region(kb), ffi.region(vb))
 }
 
 fn key_name(p: Int) -> String = "ai-key-" + int.to_string(p)
@@ -326,11 +326,11 @@ fn summary(before: List[(String, String)], wrote: List[(String, String)]) -> (St
 // (never shipped; not reachable from a link, so a key cannot be redirected).
 fn endpoint(real: String) -> String = {
   let k = bytes.from_string("ai/base.txt")
-  let n = sys.asset_len(ffi.to_int(ffi.address(k)), bytes.len(k))
+  let n = sys.asset_len(ffi.region(k))
   if n <= 0 then real
   else {
     var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), n)
+    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
     let base = string.trim(bytes.to_string_lossy(b))
     match string.index_of(real, "/v1") { some(i) => base + string.drop(real, i), none => base }
   }
@@ -338,11 +338,11 @@ fn endpoint(real: String) -> String = {
 
 fn system_prompt() -> String = {
   let k = bytes.from_string("ai/system.md")
-  let n = sys.asset_len(ffi.to_int(ffi.address(k)), bytes.len(k))
+  let n = sys.asset_len(ffi.region(k))
   if n <= 0 then "You write Almide (.almd) programs. Output only source code."
   else {
     var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), n)
+    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
     bytes.to_string_lossy(b)
   }
 }
@@ -356,7 +356,7 @@ fn msg_values(ms: List[Msg]) -> List[Value] = {
 fn header(id: Int, name: String, v: String) -> Unit = {
   let nb = bytes.from_string(name)
   let vb = bytes.from_string(v)
-  net.http_header(id, ffi.to_int(ffi.address(nb)), bytes.len(nb), ffi.to_int(ffi.address(vb)), bytes.len(vb))
+  net.http_header(id, ffi.region(nb), ffi.region(vb))
 }
 
 fn begin(url: String) -> Int = {
@@ -364,7 +364,7 @@ fn begin(url: String) -> Int = {
   let ub = bytes.from_string(url)
   // bound, not returned directly: a value-returning call in tail position
   // sees its Bytes already freed on wasm (almide/almide#3420)
-  let id = net.http_begin(ffi.to_int(ffi.address(mb)), bytes.len(mb), ffi.to_int(ffi.address(ub)), bytes.len(ub))
+  let id = net.http_begin(ffi.region(mb), ffi.region(ub))
   id
 }
 
@@ -425,7 +425,7 @@ fn start_stream() -> Unit = {
       ])
     }
   let bb = bytes.from_string(json.stringify(body))
-  net.http_send(id, ffi.to_int(ffi.address(bb)), bytes.len(bb))
+  net.http_send(id, ffi.region(bb))
   req_id = id
   phase = 1
 }

@@ -91,11 +91,11 @@ fn invisible(cp: Int) -> Bool =
 
 fn load_asset(name: String) -> Bytes = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(ffi.to_int(ffi.address(key)), bytes.len(key))
+  let n = sys.asset_len(ffi.region(key))
   if n <= 0 then bytes.zeros(0)
   else {
     var buf = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.to_int(ffi.address(key)), bytes.len(key), ffi.to_int(ffi.address(buf)), n)
+    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(buf)), n)
     buf
   }
 }

@@ -12,11 +12,11 @@ import self.host.storage as host
 // The value saved under `key`, none when there is none.
 pub fn get(key: String) -> String? = {
   let k = bytes.from_string(key)
-  let n = host.storage_len(ffi.to_int(ffi.address(k)), bytes.len(k))
+  let n = host.storage_len(ffi.region(k))
   if n < 0 then none
   else {
     var b = bytes.zeros(n)
-    let _ = host.storage_read(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), n)
+    let _ = host.storage_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
     some(bytes.to_string_lossy(b))
   }
 }
@@ -25,23 +25,23 @@ pub fn get(key: String) -> String? = {
 pub fn set(key: String, value: String) -> Unit = {
   let k = bytes.from_string(key)
   let b = bytes.from_string(value)
-  host.storage_write(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), bytes.len(b))
+  host.storage_write(ffi.region(k), ffi.region(b))
 }
 
 // Delete the value under `key`.
 pub fn remove(key: String) -> Unit = {
   let k = bytes.from_string(key)
-  host.storage_remove(ffi.to_int(ffi.address(k)), bytes.len(k))
+  host.storage_remove(ffi.region(k))
 }
 
 // A secret saved under `key` (in the credential store), none when there is none.
 pub fn secret_get(key: String) -> String? = {
   let k = bytes.from_string(key)
-  let n = host.secret_len(ffi.to_int(ffi.address(k)), bytes.len(k))
+  let n = host.secret_len(ffi.region(k))
   if n < 0 then none
   else {
     var b = bytes.zeros(n)
-    let _ = host.secret_read(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), n)
+    let _ = host.secret_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
     some(bytes.to_string_lossy(b))
   }
 }
@@ -50,11 +50,11 @@ pub fn secret_get(key: String) -> String? = {
 pub fn secret_set(key: String, value: String) -> Unit = {
   let k = bytes.from_string(key)
   let b = bytes.from_string(value)
-  host.secret_write(ffi.to_int(ffi.address(k)), bytes.len(k), ffi.to_int(ffi.address(b)), bytes.len(b))
+  host.secret_write(ffi.region(k), ffi.region(b))
 }
 
 // Delete the secret under `key`.
 pub fn secret_remove(key: String) -> Unit = {
   let k = bytes.from_string(key)
-  host.secret_remove(ffi.to_int(ffi.address(k)), bytes.len(k))
+  host.secret_remove(ffi.region(k))
 }
