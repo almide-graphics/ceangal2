@@ -18,14 +18,16 @@ fn on_key(phase: Int, code: Int, mods: Int) -> Bool =
 
 // One line every ceangal app carries (almide/almide#3281).
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 
 effect fn main() -> Unit = {
   st.boot()!
+  st.load_logos()!
+  ai.ensure_loaded()!
   ceangal.run(ceangal.app(ui.root)
     |> ceangal.background(snaidhm.hex(0x0B1420))
-    |> ceangal.on_key(on_key)
-    |> ceangal.on_frame((t) => { let more = st.tick(t); ai.tick(); more })
+    |> ceangal.on_key((phase, code, mods) => on_key(phase, code, mods))
+    |> ceangal.on_frame((t) => { let more = st.tick(t)!; ai.tick()!; more })
     |> ceangal.on_result((id, code, body) => if ai.on_result(id, code, body) then () else st.on_result(id, code, body)))
 }

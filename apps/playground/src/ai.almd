@@ -75,13 +75,14 @@ pub fn busy() -> Bool = phase != 0
 
 // ── Persistence: provider, model, and the key in secret storage ──
 
-fn kv_get(k: String, secret: Bool) -> String = {
+effect fn kv_get(k: String, secret: Bool) -> String = {
   let kb = bytes.from_string(k)
   let n = if secret then storage.secret_len(ffi.region(kb)) else storage.storage_len(ffi.region(kb))
   if n <= 0 then ""
   else {
-    var b = bytes.zeros(n)
-    let _ = if secret then storage.secret_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n) else storage.storage_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = if secret then storage.secret_read(ffi.region(kb), b_r) else storage.storage_read(ffi.region(kb), b_r)
+    let b = ffi.to_bytes(b_r)!
     bytes.to_string_lossy(b)
   }
 }
@@ -95,24 +96,26 @@ fn kv_set(k: String, v: String, secret: Bool) -> Unit = {
 
 fn key_name(p: Int) -> String = "ai-key-" + int.to_string(p)
 
-fn load_provider(p: Int) -> Unit = {
+effect fn load_provider(p: Int) -> Unit = {
   provider = p
-  key_field = ed.with_secret(ed.text_field(kv_get(key_name(p), true), key_placeholder(p)), true)
-  let saved = kv_get("ai-model-" + int.to_string(p), false)
+  key_field = ed.with_secret(ed.text_field(kv_get(key_name(p), true)!, key_placeholder(p)), true)
+  let saved = kv_get("ai-model-" + int.to_string(p), false)!
   var ix = 0
   let ms = models(p)
   for i in 0..<list.len(ms) { if ms[i].id == saved then ix = i else () }
   model_ix = ix
 }
 
-fn ensure_loaded() -> Unit = if not loaded then {
+// Reads the saved provider, model and key (host storage, an effect): main
+// runs it before the first frame, so the view reads plain state.
+pub effect fn ensure_loaded() -> Unit = if not loaded then {
   loaded = true
-  let p = int.parse(kv_get("ai-provider", false)) ?? 0
-  load_provider(if p >= 0 and p <= 2 then p else 0)
+  let p = int.parse(kv_get("ai-provider", false)!) ?? 0
+  load_provider(if p >= 0 and p <= 2 then p else 0)!
 } else ()
 
-pub fn toggle() -> Unit = {
-  ensure_loaded()
+pub effect fn toggle() -> Unit = {
+  ensure_loaded()!
   open = not open
   // without a key the card stays until Done (it must not vanish mid-typing)
   if open and not has_key() then settings_open = true else ()
@@ -123,12 +126,12 @@ pub fn close() -> Unit = { open = false }
 
 // The key / provider / model card: shown until a key is set, then on ⚙.
 pub fn show_settings() -> Bool = settings_open or not has_key()
-pub fn toggle_settings() -> Unit = {
-  ensure_loaded()
+pub effect fn toggle_settings() -> Unit = {
+  ensure_loaded()!
   settings_open = not show_settings()
   if settings_open then ceangal.focus("ai-key") else ceangal.focus("ai-prompt")
 }
-pub fn model_label() -> String = { ensure_loaded(); models(provider)[model_ix].label }
+pub fn model_label() -> String = models(provider)[model_ix].label
 
 // A new session: the conversation starts over (the files stay as they are).
 pub fn new_chat() -> Unit = if phase == 0 then { entries = []; expanded = []; turns = 0; mode = -1; ceangal.focus("ai-prompt") } else ()
@@ -168,11 +171,11 @@ pub fn toggle_entry(i: Int) -> Unit =
 pub fn is_expanded(i: Int) -> Bool = list.contains(expanded, i)
 
 // A suggestion chip: fill the prompt and send it.
-pub fn suggest(s: String) -> Unit = { prompt_field = ed.set_text(prompt_field, s); generate() }
+pub effect fn suggest(s: String) -> Unit = { prompt_field = ed.set_text(prompt_field, s); generate()! }
 
-pub fn select_provider(p: Int) -> Unit = {
+pub effect fn select_provider(p: Int) -> Unit = {
   kv_set(key_name(provider), ed.to_string(key_field), true)
-  load_provider(p)
+  load_provider(p)!
   kv_set("ai-provider", int.to_string(p), false)
 }
 
@@ -190,7 +193,7 @@ pub fn set_key_field(e: ed.Editor) -> Unit = {
 
 pub fn set_prompt_field(e: ed.Editor) -> Unit = { prompt_field = e }
 
-pub fn has_key() -> Bool = { ensure_loaded(); string.trim(ed.to_string(key_field)) != "" }
+pub fn has_key() -> Bool = string.trim(ed.to_string(key_field)) != ""
 
 // ── The conversation ──
 
@@ -324,25 +327,27 @@ fn summary(before: List[(String, String)], wrote: List[(String, String)]) -> (St
 
 // Tests point the providers at a mock server with an `ai/base.txt` asset
 // (never shipped; not reachable from a link, so a key cannot be redirected).
-fn endpoint(real: String) -> String = {
+effect fn endpoint(real: String) -> String = {
   let k = bytes.from_string("ai/base.txt")
   let n = sys.asset_len(ffi.region(k))
   if n <= 0 then real
   else {
-    var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(k), b_r)
+    let b = ffi.to_bytes(b_r)!
     let base = string.trim(bytes.to_string_lossy(b))
     match string.index_of(real, "/v1") { some(i) => base + string.drop(real, i), none => base }
   }
 }
 
-fn system_prompt() -> String = {
+effect fn system_prompt() -> String = {
   let k = bytes.from_string("ai/system.md")
   let n = sys.asset_len(ffi.region(k))
   if n <= 0 then "You write Almide (.almd) programs. Output only source code."
   else {
-    var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(k), b_r)
+    let b = ffi.to_bytes(b_r)!
     bytes.to_string_lossy(b)
   }
 }
@@ -368,7 +373,7 @@ fn begin(url: String) -> Int = {
   id
 }
 
-fn start_stream() -> Unit = {
+effect fn start_stream() -> Unit = {
   let key = string.trim(ed.to_string(key_field))
   let m = models(provider)[model_ix]
   generated = ""
@@ -381,24 +386,24 @@ fn start_stream() -> Unit = {
   started = false
   let id =
     if provider == 0 then {
-      let r = begin(endpoint("https://api.anthropic.com/v1/messages"))
+      let r = begin(endpoint("https://api.anthropic.com/v1/messages")!)
       header(r, "content-type", "application/json")
       header(r, "x-api-key", key)
       header(r, "anthropic-version", "2023-06-01")
       header(r, "anthropic-dangerous-direct-browser-access", "true")
       r
     } else if provider == 1 then {
-      let r = begin(endpoint("https://api.openai.com/v1/chat/completions"))
+      let r = begin(endpoint("https://api.openai.com/v1/chat/completions")!)
       header(r, "content-type", "application/json")
       header(r, "authorization", "Bearer " + key)
       r
     } else {
-      let r = begin(endpoint("https://generativelanguage.googleapis.com/v1beta/models/" + m.id + ":streamGenerateContent?alt=sse"))
+      let r = begin(endpoint("https://generativelanguage.googleapis.com/v1beta/models/" + m.id + ":streamGenerateContent?alt=sse")!)
       header(r, "content-type", "application/json")
       header(r, "x-goog-api-key", key)
       r
     }
-  let sp = system_prompt()
+  let sp = system_prompt()!
   let body =
     if provider == 0 then {
       var fields: List[(String, Value)] = [
@@ -496,8 +501,8 @@ fn feed(chunk: Bytes) -> Unit = {
 
 fn finish(msg: String) -> Unit = { phase = 0; req_id = -1; st.set_status(msg) }
 
-pub fn generate() -> Unit = {
-  ensure_loaded()
+pub effect fn generate() -> Unit = {
+  ensure_loaded()!
   if phase != 0 then stop()
   else if not has_key() then { open = true; settings_open = true; st.set_status("Enter your API key first"); ceangal.focus("ai-key") }
   else {
@@ -520,14 +525,14 @@ pub fn generate() -> Unit = {
       replacing = fresh
       attempt = 0
       st.set_status("Generating…")
-      start_stream()
+      start_stream()!
     }
   }
 }
 
 // "Fix with AI" after a failed run: start the repair loop from the project.
-pub fn fix_last_run() -> Unit = {
-  ensure_loaded()
+pub effect fn fix_last_run() -> Unit = {
+  ensure_loaded()!
   if not has_key() then { open = true; settings_open = true; st.set_status("Add an API key to fix with AI"); ceangal.focus("ai-key") }
   else if phase == 0 and not st.last_run_ok and st.last_run_error != "" then {
     if ceangal.viewport_width() >= 760.0 then open = true else ()
@@ -538,16 +543,16 @@ pub fn fix_last_run() -> Unit = {
     replacing = false
     attempt = 1
     st.set_status("Repairing (1/" + int.to_string(MAX_REPAIRS) + ")…")
-    start_stream()
+    start_stream()!
   } else ()
 }
 
-fn repair(error: String) -> Unit = {
+effect fn repair(error: String) -> Unit = {
   attempt = attempt + 1
   replacing = false
   list.push(messages, { role: "user", content: error + REPAIR_INSTRUCTION })
   st.set_status("Repairing (" + int.to_string(attempt) + "/" + int.to_string(MAX_REPAIRS) + ")…")
-  start_stream()
+  start_stream()!
 }
 
 pub fn stop() -> Unit = if phase != 0 then {
@@ -619,7 +624,7 @@ pub fn on_result(id: Int, code: Int, body: Bytes) -> Bool =
   }
 
 // Per frame: notice when the run we started has finished.
-pub fn tick() -> Unit = if phase == 2 and st.finished_run == my_run and not st.running then {
+pub effect fn tick() -> Unit = if phase == 2 and st.finished_run == my_run and not st.running then {
   if st.last_run_ok then {
     note(2, if attempt == 0 then "Compiled and ran" else "Fixed — compiled and ran", "")
     turns = turns + 1
@@ -627,7 +632,7 @@ pub fn tick() -> Unit = if phase == 2 and st.finished_run == my_run and not st.r
     finish(if attempt == 0 then "Generated & running" else "Repaired (" + int.to_string(attempt) + ") & running")
   } else if attempt < MAX_REPAIRS then {
     note(3, first_line(st.last_run_error), st.last_run_error)
-    repair(st.last_run_error)
+    repair(st.last_run_error)!
   } else {
     note(3, first_line(st.last_run_error), st.last_run_error)
     note(5, "Gave up after " + int.to_string(MAX_REPAIRS) + " fixes", "")

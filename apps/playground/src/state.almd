@@ -308,7 +308,7 @@ pub fn show_ast() -> Unit = {
 }
 
 // Per frame: debounce checks after edits, save, refresh the version text.
-pub fn tick(now: Float) -> Bool = {
+pub effect fn tick(now: Float) -> Bool = {
   let v = total_version()
   if v != checked_version and check_due < 0.0 then {
     check_due = now + CHECK_DEBOUNCE_MS
@@ -322,8 +322,9 @@ pub fn tick(now: Float) -> Bool = {
   if version_text == "" then {
     let n = runner.runner_version_len()
     if n > 0 then {
-      var b = bytes.zeros(n)
-      let _ = runner.runner_version_read(ffi.to_int(ffi.address(b)), n)
+      let b_r = ffi.alloc(n)!
+      let _ = runner.runner_version_read(b_r)
+      let b = ffi.to_bytes(b_r)!
       version_text = bytes.to_string_lossy(b)
     } else sys.request_frame_after(250.0)
   } else ()
@@ -424,26 +425,30 @@ type Category = { title: String, examples: List[Example] }
 
 var categories: List[Category] = []
 
-fn asset_bytes(name: String) -> Bytes = {
+effect fn asset_bytes(name: String) -> Bytes = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(ffi.region(key))
-  var b = bytes.zeros(if n < 0 then 0 else n)
-  if n > 0 then { let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(b)), n) } else ()
-  b
+  if n <= 0 then bytes.new()
+  else {
+    let r = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(key), r)
+    ffi.to_bytes(r)!
+  }
 }
 
-fn asset_text(name: String) -> String? = {
+effect fn asset_text(name: String) -> String? = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(ffi.region(key))
   if n < 0 then none
   else {
-    var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(key), b_r)
+    let b = ffi.to_bytes(b_r)!
     some(bytes.to_string_lossy(b))
   }
 }
 
-pub fn load_manifest() -> Unit = match asset_text("examples/manifest.json") {
+pub effect fn load_manifest() -> Unit = match asset_text("examples/manifest.json")! {
   some(t) => match json.parse(t) {
     ok(v) => {
       var cats: List[Category] = []
@@ -463,13 +468,13 @@ pub fn load_manifest() -> Unit = match asset_text("examples/manifest.json") {
   none => (),
 }
 
-pub fn load_example(id: String) -> Bool = {
+pub effect fn load_example(id: String) -> Bool = {
   var found = false
   for c in categories {
     for e in c.examples {
       if e.id == id and not found then {
         var fs: List[(String, String)] = []
-        for f in e.files { list.push(fs, (f, asset_text("examples/" + id + "/" + f) ?? "")) }
+        for f in e.files { list.push(fs, (f, asset_text("examples/" + id + "/" + f)! ?? "")) }
         set_files(fs)
         set_baseline(fs)
         clear_output()
@@ -484,8 +489,8 @@ pub fn load_example(id: String) -> Bool = {
   found
 }
 
-pub fn load_default() -> Unit = {
-  let fs = [(ENTRY, asset_text("examples/default.almd") ?? "effect fn main() -> Unit = println(\"Hello, Almide!\")\n")]
+pub effect fn load_default() -> Unit = {
+  let fs = [(ENTRY, asset_text("examples/default.almd")! ?? "effect fn main() -> Unit = println(\"Hello, Almide!\")\n")]
   set_files(fs)
   set_baseline(fs)
 }
@@ -516,32 +521,35 @@ pub fn toggle_theme() -> Unit = {
   storage.storage_write(ffi.region(key), ffi.region(v))
 }
 
-fn load_theme() -> Unit = {
+effect fn load_theme() -> Unit = {
   let key = bytes.from_string(THEME_KEY)
   let n = storage.storage_len(ffi.region(key))
   if n > 0 then {
-    var b = bytes.zeros(n)
-    let _ = storage.storage_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = storage.storage_read(ffi.region(key), b_r)
+    let b = ffi.to_bytes(b_r)!
     let t = bytes.to_string_lossy(b)
     theme_pref = if t == "1" then 1 else if t == "2" then 2 else 0
   } else ()
 }
 
-pub fn restore() -> Bool = {
+pub effect fn restore() -> Bool = {
   let key = bytes.from_string(STORAGE_KEY)
   let n = storage.storage_len(ffi.region(key))
   if n <= 0 then false
   else {
-    var b = bytes.zeros(n)
-    let _ = storage.storage_read(ffi.region(key), ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = storage.storage_read(ffi.region(key), b_r)
+    let b = ffi.to_bytes(b_r)!
     match parse_share_json(bytes.to_string_lossy(b)) {
       some(fs) => {
         set_files(fs)
         let bk = bytes.from_string(BASELINE_KEY)
         let bn = storage.storage_len(ffi.region(bk))
         if bn > 0 then {
-          var bb = bytes.zeros(bn)
-          let _ = storage.storage_read(ffi.region(bk), ffi.to_int(ffi.address(bb)), bn)
+          let bb_r = ffi.alloc(bn)!
+          let _ = storage.storage_read(ffi.region(bk), bb_r)
+          let bb = ffi.to_bytes(bb_r)!
           baseline = parse_share_json(bytes.to_string_lossy(bb)) ?? []
         } else ()
         true
@@ -594,12 +602,13 @@ effect fn decode_share(code: String) -> List[(String, String)]? = {
 
 // ── Boot: share hash > ?example= > saved tabs > default ──
 
-fn launch() -> String = {
+effect fn launch() -> String = {
   let n = sys.launch_len()
   if n <= 0 then ""
   else {
-    var b = bytes.zeros(n)
-    let _ = sys.launch_read(ffi.to_int(ffi.address(b)), n)
+    let b_r = ffi.alloc(n)!
+    let _ = sys.launch_read(b_r)
+    let b = ffi.to_bytes(b_r)!
     bytes.to_string_lossy(b)
   }
 }
@@ -618,14 +627,14 @@ fn param(l: String, name: String) -> String? = {
 }
 
 pub effect fn boot() -> Unit = {
-  load_manifest()
-  let l = launch()
+  load_manifest()!
+  let l = launch()!
   if string.starts_with(l, "http") then {
     let cut = match string.index_of(l, "#") { some(i) => string.take(l, i), none => l }
     base_url = match string.index_of(cut, "?") { some(i) => string.take(cut, i), none => cut }
   } else ()
   embed = param(l, "embed") == some("1")
-  load_theme()
+  load_theme()!
   // ?theme=light|dark (embeds, screenshots) wins over the saved choice
   match param(l, "theme") {
     some(t) => { if t == "light" then theme_pref = 1 else if t == "dark" then theme_pref = 2 else () },
@@ -640,9 +649,9 @@ pub effect fn boot() -> Unit = {
     },
     none => (),
   }
-  if not restored then match param(l, "example") { some(id) => { restored = load_example(id) }, none => () } else ()
-  if not restored and not embed then restored = restore() else ()
-  if not restored then load_default() else ()
+  if not restored then match param(l, "example") { some(id) => { restored = load_example(id)! }, none => () } else ()
+  if not restored and not embed then restored = restore()! else ()
+  if not restored then load_default()! else ()
   if param(l, "autorun") == some("1") then run() else ()
 }
 
@@ -668,21 +677,29 @@ pub fn set_ast_view(e: ed.Editor) -> Unit = { ast_view = e }
 var logo_tex = -1
 var logo_dark_tex = -1
 
-fn load_logo(name: String) -> Int = {
-  let d = asset_bytes(name)
+var logo_data = bytes.new()
+var logo_dark_data = bytes.new()
+
+// The logos' pixels (bundled assets, an effect): main reads them; the
+// textures are made on first use, once the GPU is up.
+pub effect fn load_logos() -> Unit = {
+  logo_data = asset_bytes("brand/logo.rgba")!
+  logo_dark_data = asset_bytes("brand/logo-dark.rgba")!
+}
+
+fn logo_image(d: Bytes) -> Int =
   if bytes.len(d) > 4 then {
     let w = bytes.get(d, 0) ?? 0 * 256 + bytes.get(d, 1) ?? 0
     let h = bytes.get(d, 2) ?? 0 * 256 + bytes.get(d, 3) ?? 0
     snaidhm.create_image(w, h, bytes.slice(d, 4, bytes.len(d)))
   } else 0
-}
 
 pub fn logo_texture(dark: Bool) -> Int =
   if dark then {
-    if logo_dark_tex < 0 then logo_dark_tex = load_logo("brand/logo-dark.rgba") else ()
+    if logo_dark_tex < 0 then logo_dark_tex = logo_image(logo_dark_data) else ()
     logo_dark_tex
   } else {
-    if logo_tex < 0 then logo_tex = load_logo("brand/logo.rgba") else ()
+    if logo_tex < 0 then logo_tex = logo_image(logo_data) else ()
     logo_tex
   }
 
