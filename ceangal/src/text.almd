@@ -89,14 +89,16 @@ fn invisible(cp: Int) -> Bool =
     or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
     or (cp >= 0xE0100 and cp <= 0xE01EF)
 
-fn load_asset(name: String) -> Bytes = {
+// The host fills a writable ffi.alloc Region with the asset: an effect, so
+// fonts load in `load_fonts` (run by the dispatcher), never while measuring.
+effect fn load_asset(name: String) -> Bytes = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(ffi.region(key))
-  if n <= 0 then bytes.zeros(0)
+  if n <= 0 then bytes.new()
   else {
-    var buf = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(buf)), n)
-    buf
+    let dst = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(key), dst)
+    ffi.to_bytes(dst)!
   }
 }
 
@@ -106,16 +108,40 @@ var generation = 0
 // (the web fetches them on first use) is stale when this changes.
 pub fn font_generation() -> Int = generation
 
+// Slots measured before their font loaded: `load_fonts` loads them.
+var font_wanted: List[Bool] = list.repeat(false, 17)
+
 fn font_at(slot: Int) -> font.Font = {
   if list.len(fonts) == 0 then fonts = list.repeat(font.empty_font(), list.len(FONT_FILES)) else ()
   if not font_tried[slot] then {
-    let f = font.parse(load_asset(FONT_FILES[slot]))
-    fonts[slot] = f
-    // A missing asset may still be loading (the web fetches fallback fonts
-    // the first time they are needed): draw again on the next frame.
-    if f.ok then { font_tried[slot] = true; generation = generation + 1 } else { waiting = true; sys.request_frame() }
-    f
+    // Not loaded yet: the dispatcher loads it before the next event, and
+    // the frame after that draws with it.
+    font_wanted[slot] = true
+    waiting = true
+    sys.request_frame()
+    fonts[slot]
   } else fonts[slot]
+}
+
+// Load every font text asked for since the last call (and, the first time,
+// the UI, bold and mono fonts, so the first frame has them). A missing asset
+// may still be loading (the web fetches fallback fonts the first time they
+// are needed): text that still lacks it asks again, as it draws.
+pub effect fn load_fonts() -> Unit = {
+  if list.len(fonts) == 0 then {
+    fonts = list.repeat(font.empty_font(), list.len(FONT_FILES))
+    font_wanted[FONT_UI] = true
+    font_wanted[FONT_UI_BOLD] = true
+    font_wanted[FONT_MONO] = true
+  } else ()
+  for slot in 0..<list.len(FONT_FILES) {
+    if font_wanted[slot] and not font_tried[slot] then {
+      let f = font.parse(load_asset(FONT_FILES[slot])!)
+      fonts[slot] = f
+      font_wanted[slot] = false
+      if f.ok then { font_tried[slot] = true; generation = generation + 1 } else ()
+    } else ()
+  }
 }
 
 fn chain(mono: Bool, bold: Bool) -> List[Int] =

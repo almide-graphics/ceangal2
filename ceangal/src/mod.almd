@@ -25,10 +25,10 @@ import self.host.a11y as a11y
 type App = {
   view: () -> v.View,
   background: snaidhm.Color,
-  on_key: (Int, Int, Int) -> Bool,     // (phase, key, mods) -> handled
-  on_text: (Int, String) -> Bool,      // (kind, text) -> handled
-  on_frame: (Float) -> Bool,           // (time ms) -> wants another frame
-  on_result: (Int, Int, Bytes) -> Unit, // async request (id, status, body)
+  on_key: effect (Int, Int, Int) -> Bool,     // (phase, key, mods) -> handled
+  on_text: effect (Int, String) -> Bool,      // (kind, text) -> handled
+  on_frame: effect (Float) -> Bool,           // (time ms) -> wants another frame
+  on_result: effect (Int, Int, Bytes) -> Unit, // async request (id, status, body)
 }
 
 // An app that draws `view()` on a white background and handles no keys,
@@ -49,15 +49,15 @@ pub fn background(a: App, c: snaidhm.Color) -> App = { ...a, background: c }
 // Shortcuts (Cmd/Ctrl+…) reach the app first, except the editing ones a
 // text view owns (select all, copy, cut, undo, redo); other keys only when
 // the focused view did not take them.
-pub fn on_key(a: App, f: (Int, Int, Int) -> Bool) -> App = { ...a, on_key: f }
+pub fn on_key(a: App, f: effect (Int, Int, Int) -> Bool) -> App = { ...a, on_key: f }
 // Text the focused view did not take: f(kind, text), true = handled. Kind
 // 0 commit, 1 IME preedit, 2 preedit end, 3 paste.
-pub fn on_text(a: App, f: (Int, String) -> Bool) -> App = { ...a, on_text: f }
+pub fn on_text(a: App, f: effect (Int, String) -> Bool) -> App = { ...a, on_text: f }
 // Called every frame with the clock (ms) while it returns true: animations.
-pub fn on_frame(a: App, f: (Float) -> Bool) -> App = { ...a, on_frame: f }
+pub fn on_frame(a: App, f: effect (Float) -> Bool) -> App = { ...a, on_frame: f }
 // The answer to an asynchronous host request (an HTTP fetch, a file picker):
 // f(id, status, body).
-pub fn on_result(a: App, f: (Int, Int, Bytes) -> Unit) -> App = { ...a, on_result: f }
+pub fn on_result(a: App, f: effect (Int, Int, Bytes) -> Unit) -> App = { ...a, on_result: f }
 
 // Change the running app's background (the colour around the views, e.g.
 // under the safe-area insets) — for apps that switch themes.
@@ -353,8 +353,15 @@ pub fn clock_ms() -> Float = sys.now_ms()
 // ── Dispatch (docs/abi.md §2) ──
 
 // The host's entry point: every event comes through here (docs/abi.md §2).
-// Apps do not call it; tests can, to drive an app without a host.
-pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+// Apps do not call it; tests can, to drive an app without a host. It is an
+// effect fn: the host fills event payloads and assets into Regions, and the
+// handlers it runs may read storage and assets too.
+pub effect fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int = {
+  tx.load_fonts()!
+  dispatch_event(kind, a, b, x, y, z, w)!
+}
+
+effect fn dispatch_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
   if kind == 1 or kind == 2 then {
     width = x
     height = y
@@ -362,22 +369,22 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     started = true
     invalidate()
     0
-  } else if kind == 3 then frame(x)
+  } else if kind == 3 then frame(x)!
   else if kind == 4 then {
     if a == 0 then keyboard_used = false else ()
-    if pointer(a, b, x, y, int.from_saturating(z), int.from_saturating(w)) then 1 else 0
+    if pointer(a, b, x, y, int.from_saturating(z), int.from_saturating(w))! then 1 else 0
   }
-  else if kind == 5 then { if wheel(x, y, z, w, b) then 1 else 0 }
-  else if kind == 6 then { keyboard_used = true; if key(a, b, int.from_saturating(x)) then 1 else 0 }
+  else if kind == 5 then { if wheel(x, y, z, w, b)! then 1 else 0 }
+  else if kind == 6 then { keyboard_used = true; if key(a, b, int.from_saturating(x))! then 1 else 0 }
   else if kind == 7 then {
-    let t = event_string()
+    let t = event_string()!
     let fi = find_key(focus_key)
-    let by_view = fi >= 0 and frame_views[fi].on_text(a, t, b)
-    let handled = by_view or current.on_text(a, t)
+    let by_view = fi >= 0 and frame_views[fi].on_text(a, t, b)!
+    let handled = by_view or current.on_text(a, t)!
     if handled then invalidate() else ()
     if handled then 1 else 0
   } else if kind == 10 then {
-    current.on_result(a, b, event_bytes())
+    current.on_result(a, b, event_bytes()!)!
     invalidate()
     0
   } else if kind == 9 then { if a == 1 then invalidate() else (); 0 }
@@ -396,17 +403,17 @@ pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Floa
     invalidate()
     0
   }
-  else if kind == 12 then { if a11y_action(a, b) then 1 else 0 }
+  else if kind == 12 then { if a11y_action(a, b)! then 1 else 0 }
   else 0
 
-fn key(phase: Int, code: Int, mods: Int) -> Bool = {
+effect fn key(phase: Int, code: Int, mods: Int) -> Bool = {
   let fi = find_key(focus_key)
   // App shortcuts (Cmd/Ctrl+…) win over the focused widget, except the
   // editing ones a text widget owns (select all, copy, cut, undo, redo).
   let editing = code == 20 or code == 21 or code == 23 or code == 24 or code == 25
-  var handled = is_shortcut(mods) and not editing and current.on_key(phase, code, mods)
-  if not handled then handled = fi >= 0 and frame_views[fi].on_key(phase, code, mods) else ()
-  if not handled then handled = current.on_key(phase, code, mods) else ()
+  var handled = is_shortcut(mods) and not editing and current.on_key(phase, code, mods)!
+  if not handled then handled = fi >= 0 and frame_views[fi].on_key(phase, code, mods)! else ()
+  if not handled then handled = current.on_key(phase, code, mods)! else ()
   if not handled and phase != 1 and code == 2 then {
     cycle_focus(has_shift(mods))
     handled = true
@@ -421,7 +428,7 @@ fn key(phase: Int, code: Int, mods: Int) -> Bool = {
     if c >= 0 and fi < list.len(frame_rects) then {
       let r = frame_rects[fi]
       context_touch = false
-      frame_views[c].on_context(r.x + 8.0, r.y + r.h)
+      frame_views[c].on_context(r.x + 8.0, r.y + r.h)!
       handled = true
     } else ()
   } else ()
@@ -434,7 +441,7 @@ fn key(phase: Int, code: Int, mods: Int) -> Bool = {
 }
 
 // Lines are 40 px for line-unit wheels.
-fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
+effect fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
   let k = if unit == 0 then 40.0 else 1.0
   var target = -1
   let n = int.min(list.len(frame_views), list.len(frame_rects))
@@ -450,7 +457,7 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
     true
   } else {
     let r = frame_rects[target]
-    let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)
+    let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)!
     if handled then invalidate() else ()
     handled
   }
@@ -459,19 +466,21 @@ fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
 // A file bundled with the app (ceangal.toml `assets`): `name` is its path
 // inside an assets directory ("data/words.txt"). None when there is no
 // such file.
-pub fn asset(name: String) -> Bytes? = {
+// The host writes the file straight into a writable ffi.alloc Region, so
+// this is an effect fn: call it with `!` from main or an event handler.
+pub effect fn asset(name: String) -> Bytes? = {
   let key = bytes.from_string(name)
   let n = sys.asset_len(ffi.region(key))
   if n < 0 then none
   else {
-    var buf = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(buf)), n)
-    some(buf)
+    let dst = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(key), dst)
+    some(ffi.to_bytes(dst)!)
   }
 }
 
 // A bundled text file (UTF-8), none when there is none.
-pub fn asset_text(name: String) -> String? = match asset(name) {
+pub effect fn asset_text(name: String) -> String? = match asset(name)! {
   some(b) => some(bytes.to_string_lossy(b)),
   none => none,
 }
@@ -513,22 +522,26 @@ pub fn copy_text(s: String) -> Unit = {
   clip.clipboard_write(ffi.region(b))
 }
 
-fn event_bytes() -> Bytes = {
+// The current event's payload: the host fills a Region of event_len bytes.
+effect fn event_bytes() -> Bytes = {
   let n = sys.event_len()
-  var buf = bytes.zeros(n)
-  if n > 0 then { let _ = sys.event_read(ffi.to_int(ffi.address(buf)), n) } else ()
-  buf
+  if n <= 0 then bytes.new()
+  else {
+    let dst = ffi.alloc(n)!
+    let _ = sys.event_read(dst)
+    ffi.to_bytes(dst)!
+  }
 }
 
-fn event_string() -> String = bytes.to_string_lossy(event_bytes())
+effect fn event_string() -> String = bytes.to_string_lossy(event_bytes()!)
 
 // ── Frame ──
 
-fn frame(t: Float) -> Int = {
+effect fn frame(t: Float) -> Int = {
   frame_time = t
   let flinging = advance_flings(t)
   if flinging then dirty = true else ()
-  let animating = current.on_frame(t) or flinging
+  let animating = current.on_frame(t)! or flinging
   // a font still loading: draw again until it is there
   if tx.take_waiting() then dirty = true else ()
   // a toast's time is up; the pointer has rested long enough for a tooltip
@@ -536,7 +549,7 @@ fn frame(t: Float) -> Int = {
   if toast_text != "" and now >= toast_until then dirty = true else ()
   if hover_pending and now - hover_since >= TOOLTIP_DELAY_MS then { hover_pending = false; dirty = true } else ()
   if tip_key != "" and tip_until >= 0.0 and now >= tip_until then { tip_key = ""; dirty = true } else ()
-  fire_long_press()
+  fire_long_press()!
   if dirty or animating then {
     dirty = false
     render()
@@ -620,14 +633,14 @@ fn emit_a11y() -> Unit = {
   }
 }
 
-fn a11y_action(id: Int, action: Int) -> Bool = {
+effect fn a11y_action(id: Int, action: Int) -> Bool = {
   let i = id - 1
   if i < 0 or i >= list.len(frame_views) then false
-  else if action == 1 and frame_views[i].clickable then { frame_views[i].on_click(); invalidate(); true }
+  else if action == 1 and frame_views[i].clickable then { frame_views[i].on_click()!; invalidate(); true }
   else if action == 2 and frame_views[i].focusable then { focus(frame_views[i].key); true }
   // increment / decrement (a slider): as the Right / Left arrow keys
   else if action == 3 or action == 4 then {
-    let done = frame_views[i].on_key(0, if action == 3 then 11 else 10, 0)
+    let done = frame_views[i].on_key(0, if action == 3 then 11 else 10, 0)!
     if done then invalidate() else ()
     done
   }
@@ -686,7 +699,12 @@ fn to_node(view: v.View) -> lay.Node = {
   let height = if s.height != unset or s.height_pct != unset then s.height
     else if wrapping then (match map.get(wrap_heights, wrap_key(view)) { some(h) => h, none => intrinsic.h + s.pt + s.pb })
     else if is_text then intrinsic.h + s.pt + s.pb else unset
-  {
+  let padding = edges(s.pt, s.pr, s.pb, s.pl)
+  let margin = edges(s.mt, s.mr, s.mb, s.ml)
+  let kids = children_of(view)
+  // built in three steps: the wasm leg holds at most 8 Float fields of one
+  // record literal at a time (hold-depth-f64)
+  let flow = {
     ...base,
     id: id,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
@@ -698,23 +716,29 @@ fn to_node(view: v.View) -> lay.Node = {
     gap_main: s.gap,
     grow: s.grow,
     shrink: if wrapping and s.shrink == 0.0 then 1.0 else s.shrink,
-    padding: edges(s.pt, s.pr, s.pb, s.pl),
-    margin: edges(s.mt, s.mr, s.mb, s.ml),
+    padding: padding,
+    margin: margin,
+    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
+    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
+    children: kids,
+  }
+  let sized = {
+    ...flow,
     width: width,
     height: height,
     min_width: s.min_width,
     min_height: s.min_height,
     max_width: if wrapping and s.max_width == unset and width == unset then intrinsic.w + s.pl + s.pr else s.max_width,
     max_height: s.max_height,
+  }
+  {
+    ...sized,
     width_pct: s.width_pct,
     height_pct: s.height_pct,
-    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
-    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
     pos_top: s.pos_top,
     pos_right: s.pos_right,
     pos_bottom: s.pos_bottom,
     pos_left: s.pos_left,
-    children: children_of(view),
   }
 }
 
@@ -862,7 +886,7 @@ fn scroller_at(x: Float, y: Float) -> Int = {
 // A finger on a scroll view: once it moves past the slop it scrolls the view
 // (the press on whatever is under it is cancelled, so no click fires).
 // Returns true when the event was consumed.
-fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
+effect fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
   if phase == 0 then {
     let i = scroller_at(x, y)
     drag_scroll = if i >= 0 then scroll_index(frame_views[i].key) else -1
@@ -883,7 +907,7 @@ fn touch_scroll(phase: Int, x: Float, y: Float) -> Bool =
       if pressed >= 0 then {
         let fv = frame_views[pressed]
         let r = frame_rects[pressed]
-        if fv.pointer then { let _ = fv.on_pointer({ phase: 3, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: 0, mods: 0, id: 1 }) } else ()
+        if fv.pointer then { let _ = fv.on_pointer({ phase: 3, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: 0, mods: 0, id: 1 })! } else ()
         pressed = -1
       } else ()
     } else ()
@@ -1096,9 +1120,9 @@ fn cursor_at(x: Float, y: Float) -> Int = {
   if over >= 0 then over else c
 }
 
-fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
-  if id >= 1 and touch_scroll(phase, x, y) then true
-  else pointer_target(phase, id, x, y, buttons, mods)
+effect fn pointer(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
+  if id >= 1 and touch_scroll(phase, x, y)! then true
+  else pointer_target(phase, id, x, y, buttons, mods)!
 
 // ── Context gestures ──
 
@@ -1156,7 +1180,7 @@ fn track_long_press(phase: Int, id: Int, x: Float, y: Float) -> Unit =
   else if id == lp_id and (phase == 2 or phase == 3) then lp_id = -1
   else ()
 
-fn fire_long_press() -> Unit =
+effect fn fire_long_press() -> Unit =
   if lp_id >= 0 and not lp_fired and sys.now_ms() - lp_t >= LONG_PRESS_MS then {
     let c = context_at(lp_x, lp_y)
     if c >= 0 then {
@@ -1164,17 +1188,17 @@ fn fire_long_press() -> Unit =
       pressed = -1
       pressed_key = ""
       context_touch = true
-      frame_views[c].on_context(lp_x, lp_y)
+      frame_views[c].on_context(lp_x, lp_y)!
       dirty = true
     } else lp_id = -1
   } else ()
 
-fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
+effect fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool =
   // a right-click: the context handler under the pointer, and nothing else
   if id == 0 and phase == 0 and int.band(buttons, 2) != 0 and context_at(x, y) >= 0 then {
     right_swallow = true
     context_touch = false
-    frame_views[context_at(x, y)].on_context(x, y)
+    frame_views[context_at(x, y)].on_context(x, y)!
     invalidate()
     true
   } else if right_swallow and id == 0 and phase == 2 then { right_swallow = false; true }
@@ -1191,10 +1215,10 @@ fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: I
     true
   } else {
     if id >= 1 then track_long_press(phase, id, x, y) else ()
-    pointer_inner(phase, id, x, y, buttons, mods)
+    pointer_inner(phase, id, x, y, buttons, mods)!
   }
 
-fn pointer_inner(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
+effect fn pointer_inner(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: Int) -> Bool = {
   if phase == 1 then {
     let c = cursor_at(x, y)
     if c != hover_cursor then { hover_cursor = c; sys.set_cursor(c) } else ()
@@ -1247,7 +1271,7 @@ fn pointer_inner(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: In
     let r = frame_rects[target]
     var handled = false
     if fv.pointer then {
-      handled = fv.on_pointer({ phase: phase, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: buttons, mods: mods, id: id })
+      handled = fv.on_pointer({ phase: phase, x: x - r.x, y: y - r.y, w: r.w, h: r.h, buttons: buttons, mods: mods, id: id })!
     } else ()
     if phase == 0 then {
       pressed = target
@@ -1258,7 +1282,7 @@ fn pointer_inner(phase: Int, id: Int, x: Float, y: Float, buttons: Int, mods: In
       if pressed_key != "" then invalidate() else ()
       pressed_key = ""
       if phase == 2 and fv.clickable and inside(r, x, y) then {
-        fv.on_click()
+        fv.on_click()!
         handled = true
       } else ()
       pressed = -1

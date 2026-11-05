@@ -77,14 +77,14 @@ type View = {
   content: String,
   style: Style,
   key: String,
-  on_click: () -> Unit,
+  on_click: effect () -> Unit,
   clickable: Bool,
-  on_pointer: (Pointer) -> Bool,
+  on_pointer: effect (Pointer) -> Bool,
   pointer: Bool,
-  on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
+  on_wheel: effect (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
   wheel: Bool,
   // A right-click or a long press: (x, y) in window px.
-  on_context: (Float, Float) -> Unit,
+  on_context: effect (Float, Float) -> Unit,
   context: Bool,
   // A vertical scroll view (see scroll_y): children move up by the offset
   // ceangal keeps for `key`; wheel and touch drag scroll it.
@@ -95,8 +95,8 @@ type View = {
   text_input: Bool,
   // Taps inside leave focus where it is (a key bar above the soft keyboard).
   keeps_focus: Bool,
-  on_key: (Int, Int, Int) -> Bool,           // (phase, key, mods)
-  on_text: (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
+  on_key: effect (Int, Int, Int) -> Bool,           // (phase, key, mods)
+  on_text: effect (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
   on_focus: (Bool) -> Unit,
   paint: Painter,
   label: String,
@@ -264,16 +264,16 @@ pub fn bold(v: View) -> View = { ...v, style: { ...v.style, bold: true } }
 
 // Run `f` on a click or tap (press and release on the view); the pointer
 // becomes a hand over it. Give it a role and label for screen readers.
-pub fn on_click(v: View, f: () -> Unit) -> View = { ...v, on_click: f, clickable: true, style: { ...v.style, cursor: 2 } }
+pub fn on_click(v: View, f: effect () -> Unit) -> View = { ...v, on_click: f, clickable: true, style: { ...v.style, cursor: 2 } }
 // Every pointer event over the view (and, once pressed, until release):
 // return true to take it (drags, sliders). Positions are relative to the view.
-pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View = { ...v, on_pointer: f, pointer: true }
+pub fn on_pointer(v: View, f: effect (Pointer) -> Bool) -> View = { ...v, on_pointer: f, pointer: true }
 // Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
-pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View = { ...v, on_wheel: f, wheel: true }
+pub fn on_wheel(v: View, f: effect (Float, Float, Float, Float) -> Bool) -> View = { ...v, on_wheel: f, wheel: true }
 // A right-click on the view, or a long press on a touch screen (0.5 s
 // without moving): f(x, y), the point in window logical px. Its release
 // does nothing else.
-pub fn on_context(v: View, f: (Float, Float) -> Unit) -> View = { ...v, on_context: f, context: true }
+pub fn on_context(v: View, f: effect (Float, Float) -> Unit) -> View = { ...v, on_context: f, context: true }
 
 // Make a view scroll its content vertically when it is taller than the view
 // (give it a height or max height). `key` keeps the offset across frames.
@@ -288,10 +288,10 @@ pub fn text_input(v: View, k: String) -> View = { ...v, key: k, focusable: true,
 pub fn keeps_focus(v: View) -> View = { ...v, keeps_focus: true }
 // Keys while this view has focus: f(phase, code, mods), true = handled
 // (phase 0 down, 1 up, 2 repeat; codes in docs/abi.md §2.2).
-pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }
+pub fn on_key(v: View, f: effect (Int, Int, Int) -> Bool) -> View = { ...v, on_key: f }
 // Text while this view has focus: f(kind, text, preedit cursor), true =
 // handled (kind 0 commit, 1 IME preedit, 2 preedit end, 3 paste).
-pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View = { ...v, on_text: f }
+pub fn on_text(v: View, f: effect (Int, String, Int) -> Bool) -> View = { ...v, on_text: f }
 // Called with true when the view gains focus, false when it loses it.
 pub fn on_focus(v: View, f: (Bool) -> Unit) -> View = { ...v, on_focus: f }
 // The mouse cursor over the view: 0 arrow, 1 text, 2 hand, 3 grab,

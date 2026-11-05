@@ -4,20 +4,23 @@
 // libsecret; the browser's localStorage on the web (docs/abi.md §4.6).
 //
 //   storage.set("theme", "dark")
-//   let theme = storage.get("theme") ?? "light"
+//   let theme = storage.get("theme")! ?? "light"
+//
+// A read is an effect fn: the host fills a writable ffi.alloc Region in
+// place, so call it with `!` from main or an event handler.
 
 import ffi
 import self.host.storage as host
 
 // The value saved under `key`, none when there is none.
-pub fn get(key: String) -> String? = {
+pub effect fn get(key: String) -> String? = {
   let k = bytes.from_string(key)
   let n = host.storage_len(ffi.region(k))
   if n < 0 then none
   else {
-    var b = bytes.zeros(n)
-    let _ = host.storage_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
-    some(bytes.to_string_lossy(b))
+    let dst = ffi.alloc(n)!
+    let _ = host.storage_read(ffi.region(k), dst)
+    some(bytes.to_string_lossy(ffi.to_bytes(dst)!))
   }
 }
 
@@ -35,14 +38,14 @@ pub fn remove(key: String) -> Unit = {
 }
 
 // A secret saved under `key` (in the credential store), none when there is none.
-pub fn secret_get(key: String) -> String? = {
+pub effect fn secret_get(key: String) -> String? = {
   let k = bytes.from_string(key)
   let n = host.secret_len(ffi.region(k))
   if n < 0 then none
   else {
-    var b = bytes.zeros(n)
-    let _ = host.secret_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
-    some(bytes.to_string_lossy(b))
+    let dst = ffi.alloc(n)!
+    let _ = host.secret_read(ffi.region(k), dst)
+    some(bytes.to_string_lossy(ffi.to_bytes(dst)!))
   }
 }
 

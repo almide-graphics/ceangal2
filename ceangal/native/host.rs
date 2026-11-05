@@ -16,9 +16,30 @@ use std::sync::Arc;
 
 use crate::gpu::{self, GpuContext};
 
-/// The guest dispatcher (`ceangal.dispatch`), under its generated name.
+/// The guest dispatcher (`ceangal.dispatch`), under its generated name. It is
+/// an `effect fn` (host fills are effects), so it answers a `Result`; an `err`
+/// stops the app, as it traps on wasm.
 fn dispatch(kind: i64, a: i64, b: i64, x: f64, y: f64, z: f64, w: f64) -> i64 {
-    crate::almide_rt_ceangal_v0_dispatch(kind, a, b, x, y, z, w)
+    crate::almide_rt_ceangal_v0_dispatch(kind, a, b, x, y, z, w).into_event()
+}
+
+trait IntoEvent {
+    fn into_event(self) -> i64;
+}
+
+impl IntoEvent for i64 {
+    fn into_event(self) -> i64 {
+        self
+    }
+}
+
+impl<E: std::fmt::Display> IntoEvent for Result<i64, E> {
+    fn into_event(self) -> i64 {
+        match self {
+            Ok(v) => v,
+            Err(e) => panic!("ceangal.dispatch: {e}"),
+        }
+    }
 }
 
 pub const EV_INIT: i64 = 1;
