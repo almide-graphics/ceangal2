@@ -28,9 +28,9 @@ fn twice_len(s: String) -> Int = {
 
 fn twiced() -> String = "twice " + int.to_string(twice(21)) + " " + int.to_string(twice_len("añb"))
 
-fn bundled() -> String = "asset: " + (ceangal.asset_text("data/words.txt") ?? "missing")
-
-var shown = storage.get("note") ?? "none"
+// Host reads are effects: main loads these once, the view only shows them.
+var bundled = "asset: missing"
+var shown = "none"
 var file_req = -1
 var file_status = "no file"
 var req = -1
@@ -48,10 +48,10 @@ let keep_export = export
 let keep_open_file = open_file
 let keep_copy = copy
 
-fn save() -> Unit = {
+effect fn save() -> Unit = {
   storage.set("note", "saved")
   storage.secret_set("token", "secret")
-  shown = (storage.get("note") ?? "?") + "+" + (storage.secret_get("token") ?? "?")
+  shown = (storage.get("note")! ?? "?") + "+" + (storage.secret_get("token")! ?? "?")
   storage.remove("note")
   storage.secret_remove("token")
   ceangal.set_title("Saved")
@@ -64,7 +64,7 @@ let keep_save = save
 fn view() -> v.View =
   v.col([
     v.text(twiced()) |> v.label(twiced()),
-    v.text(bundled()) |> v.label(bundled()),
+    v.text(bundled) |> v.label(bundled),
     v.text(shown) |> v.label(shown),
     v.text(answer) |> v.label(answer),
     v.text(file_status) |> v.label(file_status),
@@ -73,14 +73,17 @@ fn view() -> v.View =
       v.text("Export") |> v.px(12.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => export()) |> v.role(3) |> v.label("Export"),
       v.text("Open") |> v.px(12.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => open_file()) |> v.role(3) |> v.label("Open"),
     ]) |> v.gap(8.0),
-    v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()) |> v.role(3) |> v.label("Save"),
+    v.text("Save") |> v.px(16.0) |> v.py(8.0) |> v.bg(snaidhm.hex(0xDDDDDD)) |> v.on_click(() => save()!) |> v.role(3) |> v.label("Save"),
   ]) |> v.gap(12.0) |> v.padding(24.0)
 
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 
 // `result` goes in as a lambda: a top-level fn value with a Bytes
 // parameter does not compile natively (almide/almide#3419).
-effect fn main() -> Unit =
+effect fn main() -> Unit = {
+  bundled = "asset: " + (ceangal.asset_text("data/words.txt")! ?? "missing")
+  shown = storage.get("note")! ?? "none"
   ceangal.run(ceangal.app(view) |> ceangal.on_result((id, s, b) => result(id, s, b)) |> ceangal.background(snaidhm.hex(0xFFFFFF)))
+}
