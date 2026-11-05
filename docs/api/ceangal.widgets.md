@@ -158,7 +158,7 @@ Text that opens `url` in the browser.
 ### `button`
 
 ```almide
-pub fn button(th: Theme, title: String, on: () -> Unit) -> v.View
+pub fn button(th: Theme, title: String, on: effect () -> Unit) -> v.View
 ```
 
 The main action: filled with the accent colour.
@@ -166,7 +166,7 @@ The main action: filled with the accent colour.
 ### `secondary_button`
 
 ```almide
-pub fn secondary_button(th: Theme, title: String, on: () -> Unit) -> v.View
+pub fn secondary_button(th: Theme, title: String, on: effect () -> Unit) -> v.View
 ```
 
 Another action: outlined.
@@ -174,7 +174,7 @@ Another action: outlined.
 ### `danger_button`
 
 ```almide
-pub fn danger_button(th: Theme, title: String, on: () -> Unit) -> v.View
+pub fn danger_button(th: Theme, title: String, on: effect () -> Unit) -> v.View
 ```
 
 A destructive action.
@@ -182,7 +182,7 @@ A destructive action.
 ### `text_button`
 
 ```almide
-pub fn text_button(th: Theme, title: String, on: () -> Unit) -> v.View
+pub fn text_button(th: Theme, title: String, on: effect () -> Unit) -> v.View
 ```
 
 A light action: accent-coloured text.
@@ -190,7 +190,7 @@ A light action: accent-coloured text.
 ### `button_enabled`
 
 ```almide
-pub fn button_enabled(th: Theme, title: String, enabled: Bool, on: () -> Unit) -> v.View
+pub fn button_enabled(th: Theme, title: String, enabled: Bool, on: effect () -> Unit) -> v.View
 ```
 
 A primary button that can be turned off (shown dimmed, announced as unavailable).
@@ -208,7 +208,7 @@ Functions reached only from closures (almide/almide#3296).
 ### `checkbox`
 
 ```almide
-pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: (Bool) -> Unit) -> v.View
+pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: effect (Bool) -> Unit) -> v.View
 ```
 
 A checkbox and its label; the whole row toggles it.
@@ -216,7 +216,7 @@ A checkbox and its label; the whole row toggles it.
 ### `switch`
 
 ```almide
-pub fn switch(th: Theme, label: String, on: Bool, on_change: (Bool) -> Unit) -> v.View
+pub fn switch(th: Theme, label: String, on: Bool, on_change: effect (Bool) -> Unit) -> v.View
 ```
 
 A switch: a setting that takes effect at once.
@@ -224,7 +224,7 @@ A switch: a setting that takes effect at once.
 ### `radio_group`
 
 ```almide
-pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View
+pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View
 ```
 
 One choice out of a few, as a column of radio buttons.
@@ -232,7 +232,7 @@ One choice out of a few, as a column of radio buttons.
 ### `segmented`
 
 ```almide
-pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View
+pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View
 ```
 
 One choice out of two to five, as joined buttons (a tab bar, a view switcher).
@@ -242,7 +242,7 @@ One choice out of two to five, as joined buttons (a tab bar, a view switcher).
 ### `dropdown`
 
 ```almide
-pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View
+pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View
 ```
 
 One choice out of a list, shown as the current one; the list opens under
@@ -252,7 +252,7 @@ Enter picks; while it is closed, Up / Down change the choice directly.
 ### `menu_button`
 
 ```almide
-pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) -> v.View
+pub fn menu_button(th: Theme, title: String, items: List[(String, effect () -> Unit)]) -> v.View
 ```
 
 A button that opens a menu of actions under it: each entry a title and
@@ -261,7 +261,7 @@ what it does. Keyboard as for a dropdown.
 ### `context_menu`
 
 ```almide
-pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], view: v.View) -> v.View
+pub fn context_menu(th: Theme, key: String, items: List[(String, effect () -> Unit)], view: v.View) -> v.View
 ```
 
 `view` with a context menu: a right-click on it (a long press on a touch
@@ -274,7 +274,7 @@ or Escape closes it. `key` names the menu (unique on the page).
 ### `slider`
 
 ```almide
-pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step: Float, on_change: (Float) -> Unit) -> v.View
+pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step: Float, on_change: effect (Float) -> Unit) -> v.View
 ```
 
 A value from `lo` to `hi` (in steps of `step`; 0 = any). Drag or tap the
@@ -356,7 +356,7 @@ whole list, scrolling as they go, and Enter or Space clicks the row.
 ### `list_item`
 
 ```almide
-pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> v.View
+pub fn list_item(th: Theme, title: String, subtitle: String, on: effect () -> Unit) -> v.View
 ```
 
 A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
@@ -364,7 +364,7 @@ A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
 ### `dialog`
 
 ```almide
-pub fn dialog(th: Theme, base: v.View, title: String, content: List[v.View], actions: List[v.View], on_dismiss: () -> Unit) -> v.View
+pub fn dialog(th: Theme, base: v.View, title: String, content: List[v.View], actions: List[v.View], on_dismiss: effect () -> Unit) -> v.View
 ```
 
 A dialog over `base`: a dimmed backdrop (clicking it calls `on_dismiss`)

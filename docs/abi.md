@@ -47,8 +47,8 @@ single line every app carries (wasm exports only root-module functions):
 
 ```almide
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 ```
 
 Natively the host calls `ceangal.dispatch` directly (the generated Rust name,

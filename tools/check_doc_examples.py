@@ -62,11 +62,13 @@ def module_for(block: str, prelude: str) -> str:
         return block
     prelude = prelude_without(prelude, set(ITEM.findall(block)))
     lines = [l for l in block.splitlines() if not l.startswith("import ")]
+    # the block's own imports beyond the common ones (`import ffi`)
+    extra = [l for l in block.splitlines() if l.startswith("import ") and l not in IMPORTS.splitlines()]
     body = "\n".join(lines).strip()
     first = body.split("\n", 1)[0]
     if re.match(r"^(v|ed|w|ceangal|snaidhm)\.", first):
         body = "fn __example() -> v.View =\n" + "\n".join("  " + l for l in body.splitlines())
-    return IMPORTS + "\n" + prelude + "\n" + body + "\n"
+    return IMPORTS + "".join(l + "\n" for l in extra) + "\n" + prelude + "\n" + body + "\n"
 
 
 def check(src: str, work: Path) -> list:

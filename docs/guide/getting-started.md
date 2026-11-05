@@ -88,8 +88,8 @@ fn view() -> v.View = {
 
 // The web host calls into the app through this export.
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 
 effect fn main() -> Unit = ceangal.run(ceangal.app(view))
 ```
