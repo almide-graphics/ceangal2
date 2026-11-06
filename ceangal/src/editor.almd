@@ -845,9 +845,11 @@ pub fn light_theme() -> Theme = {
 // ── Paint ──
 
 // What painting an editor keeps between frames, per view key: the lexer
-// state every LEX_STEP lines, so a frame lexes from the nearest checkpoint,
-// not from line 0.
-type PaintMemo = { version: Int, marks: List[syn.LexState] }
+// state every LEX_STEP lines (so a frame lexes from the nearest checkpoint,
+// not from line 0) and the laid-out visible lines (so an unchanged line is
+// not shaped again). Lines that leave the window are dropped.
+type LineMemo = { cps: List[Int], size: Float, mono: Bool, dir: Int, fonts: Int, geo: tx.LineGeo }
+type PaintMemo = { version: Int, marks: List[syn.LexState], geos: Map[Int, LineMemo] }
 
 let LEX_STEP = 64
 
@@ -868,9 +870,9 @@ fn lex_over(ln: List[Int], st: syn.LexState) -> syn.LexState =
 fn memo_for(key: String, e: Editor) -> PaintMemo = match map.get(paint_memos, key) {
   some(m) => if m.version == e.version then m else {
     let d = if m.version + 1 == e.version then e.edited_from else 0
-    { version: e.version, marks: list.take(m.marks, d / LEX_STEP + 1) }
+    { version: e.version, marks: list.take(m.marks, d / LEX_STEP + 1), geos: m.geos }
   },
-  none => { version: e.version, marks: [syn.initial()] },
+  none => { version: e.version, marks: [syn.initial()], geos: map.new() },
 }
 
 // Lexer state at the start of `line`, from the nearest checkpoint above it;
@@ -887,6 +889,20 @@ fn state_at(e: Editor, m: PaintMemo, line: Int) -> (syn.LexState, PaintMemo) = {
   var st = marks[want]
   for l in want * LEX_STEP..<line { st = lex_over(e.lines[l], st) }
   (st, { ...m, marks: marks })
+}
+
+// The laid-out line, reused from the last frame when nothing it depends on
+// changed.
+fn line_geo_memo(old: Map[Int, LineMemo], l: Int, cps: List[Int], size: Float, mono: Bool, dir: Int) -> LineMemo = {
+  let fonts = tx.font_generation()
+  let fresh = match map.get(old, l) {
+    some(lm) => if lm.size == size and lm.mono == mono and lm.dir == dir and lm.fonts == fonts and lm.cps == cps then some(lm) else none,
+    none => none,
+  }
+  match fresh {
+    some(lm) => lm,
+    none => { cps: cps, size: size, mono: mono, dir: dir, fonts: fonts, geo: tx.line_geo(cps, size, mono, false, dir) },
+  }
 }
 
 fn paint(key: String, e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: Float) -> Unit = {
@@ -922,6 +938,7 @@ fn paint(key: String, e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w
   let memo0 = memo_for(key, e)
   let (st0, memo) = if e.syntax then state_at(e, memo0, first) else (syn.initial(), memo0)
   var st = st0
+  var geos: Map[Int, LineMemo] = map.new()
   let baseline_off = (lh - tx.line_height(fsize(e), mono)) * 0.5 + tx.ascent(fsize(e), mono)
   snaidhm.push_clip((x + gw) * k, y * k, (w - gw) * k, h * k)
   for l in first...last {
@@ -931,7 +948,9 @@ fn paint(key: String, e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w
     if pre_n > 0 then cps = list.take(cps, e.cur.col) + e.preedit + list.drop(cps, e.cur.col) else ()
     // the line laid out (right-to-left runs reordered; positions stay logical)
     let dir = tx.direction(cps)
-    let lg = tx.line_geo(cps, size, mono, false, dir)
+    let lm = line_geo_memo(memo.geos, l, cps, size, mono, dir)
+    geos = map.set(geos, l, lm)
+    let lg = lm.geo
     let bs = if wrapping(e) then breaks_of(list.map(tx.widths_of(lg), (v) => v / k), cps, wrap_avail(e)) else [0]
     let spans = if e.syntax then {
       let (sp, next) = syn.lex(e.lines[l], st)
@@ -1032,8 +1051,8 @@ fn paint(key: String, e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w
     }
   }
   snaidhm.pop_clip()
-  // keep the checkpoints
-  paint_memos = map.set(paint_memos, key, memo)
+  // keep the checkpoints and the lines laid out this frame (only these)
+  paint_memos = map.set(paint_memos, key, { ...memo, geos: geos })
   // gutter: the number on a line's first row
   if not e.single_line and e.gutter then {
     snaidhm.fill(x * k, y * k, gw * k, h * k, 0.0, th.gutter_bg)
