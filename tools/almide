@@ -10,6 +10,7 @@ if [[ $ver == git:* ]]; then
   dir="$root/.tools/git-$sha"
   bin="$dir/bin/almide"; [[ -x "$bin" ]] || bin="$dir/bin/almide.exe"
   if [[ ! -x "$bin" ]]; then
+    mkdir -p "$root/.tools"
     until mkdir "$root/.tools/git-$sha.lock" 2>/dev/null; do sleep 5; done
     if [[ ! -x "$dir/bin/almide" && ! -x "$dir/bin/almide.exe" ]]; then
       cargo install --locked --git https://github.com/almide/almide --rev "$sha" almide --root "$dir" >&2
