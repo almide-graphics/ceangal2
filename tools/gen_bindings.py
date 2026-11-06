@@ -218,8 +218,16 @@ pub fn link(linker: &mut Linker<Guest>) -> Result<(), wasmi::Error> {"""]
     for ns in GUEST_HOST + GUEST_SANDBOX:
         _, rust_mod, fns = NAMESPACES[ns]
         for name, params, ret in fns:
-            args = ", ".join(f"{p}: {RS[t]}" for p, t in params)
+            # A byte range is an ffi.Region in the binding, which a wasm32
+            # import receives as two i32 (base, len): widen them to the
+            # i64 the host side takes.
+            pair = set()
+            for i, (p, t) in enumerate(params):
+                if p.endswith("ptr") and i + 1 < len(params) and params[i + 1][0].endswith("len"):
+                    pair.update([p, params[i + 1][0]])
+            args = ", ".join(f"{p}: i32" if p in pair else f"{p}: {RS[t]}" for p, t in params)
             sig = f"|mut c: Caller<'_, Guest>{', ' if args else ''}{args}|"
+            widen = "".join(f"let {p} = {p} as u32 as i64; " for p, _ in params if p in pair)
             rt = "" if ret == U else f" -> {RS[ret]}"
             if name == "external_texture":
                 # a program may not sample other contexts (the playground's own)
@@ -240,10 +248,10 @@ pub fn link(linker: &mut Linker<Guest>) -> Result<(), wasmi::Error> {"""]
                     else:
                         call_args.append(p)
                 body = " ".join(pre) + f" {rust_mod}::{name}({', '.join(call_args)})"
-                out.append(f'    linker.func_wrap("{ns}", "{name}", {sig}{rt} {{ let _ = &mut c; {body} }})?;')
+                out.append(f'    linker.func_wrap("{ns}", "{name}", {sig}{rt} {{ let _ = &mut c; {widen}{body} }})?;')
             else:
                 call = ", ".join(["&mut c"] + [p for p, _ in params])
-                out.append(f'    linker.func_wrap("{ns}", "{name}", {sig}{rt} {{ crate::guest::{ns}_{name}({call}) }})?;')
+                out.append(f'    linker.func_wrap("{ns}", "{name}", {sig}{rt} {{ {widen}crate::guest::{ns}_{name}({call}) }})?;')
     out.append("    Ok(())\n}\n")
     path = os.path.join(ROOT, "apps/playground/native/guest_abi.rs")
     with open(path, "w") as f:
