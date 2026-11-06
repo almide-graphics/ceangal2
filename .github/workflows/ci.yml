@@ -19,22 +19,17 @@ jobs:
         with: { name: almide-develop, path: "${{ runner.temp }}/dev/bin/almide" }
 
   pixel:
-    needs: almide-develop
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { ref: epoch15-finish, almide: develop }
-          - { ref: probe/baseline, almide: develop }
-          - { ref: probe/baseline, almide: 0.69.0-rc1 }
-          - { ref: probe/baseline, almide: 0.69.0-rc2 }
-          - { ref: probe/baseline, almide: 0.69.0-rc3 }
-          - { ref: probe/baseline, almide: 0.69.0-rc4 }
-          - { ref: probe/baseline, almide: 0.69.0 }
-          - { ref: main, almide: 0.67.1 }
-          - { ref: main, almide: 0.68.0-rc2 }
-          - { ref: main, almide: 0.66.0 }
+          - { ref: probe/main-tonode, almide: 0.66.0 }
+          - { ref: probe/main-tonode, almide: 0.67.0-rc1 }
+          - { ref: probe/main-tonode, almide: 0.67.0 }
+          - { ref: probe/main-tonode, almide: 0.67.1 }
+          - { ref: probe/main-tonode, almide: 0.68.0-rc1 }
+          - { ref: probe/main-tonode, almide: 0.68.0-rc2 }
     name: pixel ${{ matrix.ref }} @ ${{ matrix.almide }}
     steps:
       - uses: actions/checkout@v4
@@ -63,46 +58,3 @@ jobs:
         if: always()
         run: grep -E 'bench:|^FAIL|^ok' pixel.txt || true
 
-  sizes:
-    needs: almide-develop
-    runs-on: macos-15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { ref: epoch15-finish, almide: develop }
-          - { ref: probe/baseline, almide: develop }
-          - { ref: epoch15-finish, almide: 0.69.0 }
-          - { ref: probe/baseline, almide: 0.69.0 }
-    name: sizes ${{ matrix.ref }} @ ${{ matrix.almide }}
-    steps:
-      - uses: actions/checkout@v4
-        with: { ref: "${{ matrix.ref }}" }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/download-artifact@v4
-        if: matrix.almide == 'develop'
-        with: { name: almide-develop, path: "${{ runner.temp }}/dev" }
-      - name: toolchain
-        run: |
-          if [ "${{ matrix.almide }}" = develop ]; then
-            echo dev > .almide-version
-            mkdir -p .tools/dev/almide-macos-aarch64
-            cp "$RUNNER_TEMP/dev/almide" .tools/dev/almide-macos-aarch64/almide
-            chmod +x .tools/dev/almide-macos-aarch64/almide
-          else
-            echo "${{ matrix.almide }}" > .almide-version
-          fi
-          tools/almide --version
-      - name: web builds
-        continue-on-error: true
-        run: |
-          pip3 install --quiet --break-system-packages pillow
-          (cd "$RUNNER_TEMP" && CEANGAL_SDK="$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tools/ceangal" new hello-app --id dev.example.hello)
-          tools/ceangal build web --app "$RUNNER_TEMP/hello-app" || true
-          tools/ceangal build web --app apps/gallery || true
-          tools/build_web.sh || true
-          tools/ceangal build web --app apps/todo || true
-          find out "$RUNNER_TEMP/hello-app/build" -name '*.wasm' -exec ls -l {} \; || true
-          node tests/perf/budgets.mjs gallery=out/gallery/web todo=out/web hello="$RUNNER_TEMP/hello-app/build/web" || true
