@@ -24,10 +24,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { ref: probe/main-tonode, almide: 0.66.0 }
-          - { ref: probe/main-tonode, almide: 0.67.0-rc1 }
-          - { ref: probe/main-tonode, almide: 0.67.0 }
-          - { ref: probe/main-tonode, almide: 0.67.1 }
           - { ref: probe/main-tonode, almide: 0.68.0-rc1 }
           - { ref: probe/main-tonode, almide: 0.68.0-rc2 }
     name: pixel ${{ matrix.ref }} @ ${{ matrix.almide }}
