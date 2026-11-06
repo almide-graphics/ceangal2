@@ -1,0 +1,9 @@
+// m1 on a local `var` in main, no `mut` param in between.
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+
+effect fn main() -> Unit = {
+  var buf = bytes.zeros(4000000)
+  for i in 0..<20000 { setf(buf, i, getf(buf, i) + 1.0) }
+  println("${getf(buf, 19999)}")
+}

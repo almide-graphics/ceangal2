@@ -34,7 +34,7 @@ jobs:
         run: |
           set +e
           "$A" --version
-          for f in k0_loops_8_params.almd k1_17_params.almd k2_match_grad.almd k3_blend.almd k4_verbatim.almd l1_line_acc.almd; do
+          for f in m1_read_in_mut_arg.almd m2_read_hoisted.almd m3_main_local.almd; do
             for t in wasm native; do
               args=""; [ $t = wasm ] && args="--target wasm"
               s=$(date +%s)

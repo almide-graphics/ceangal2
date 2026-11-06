@@ -1,0 +1,13 @@
+// The buffer lent to a `mut` param and read in another argument of the same call.
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+
+fn bump(mut buf: Bytes, n: Int) -> Unit = {
+  for i in 0..<n { setf(buf, i, getf(buf, i) + 1.0) }
+}
+
+effect fn main() -> Unit = {
+  var buf = bytes.zeros(4000000)
+  bump(buf, 20000)
+  println("${getf(buf, 19999)}")
+}
