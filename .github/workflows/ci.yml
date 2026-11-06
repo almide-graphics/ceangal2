@@ -19,12 +19,12 @@ jobs:
         run: |
           A="$RUNNER_TEMP/dev/bin/almide"
           "$A" --version
-          for f in a_get_set.almd b_set_only.almd c_get_only.almd src/main.almd; do
+          for f in b1_direct.almd b2_forward.almd b3_small.almd; do
             for t in native wasm; do
               args=""; [ $t = wasm ] && args="--target wasm"
               "$A" build "$f" $args -o "/tmp/x-$t" >/dev/null 2>&1 || echo "BUILD FAILED $f $t"
               s=$(date +%s)
-              gtimeout 300 "$A" run "$f" $args 2>&1 | tail -4
+              gtimeout 600 "$A" run "$f" $args 2>&1 | tail -4
               echo "RESULT $f $t exit=${PIPESTATUS[0]} seconds=$(( $(date +%s) - s ))"
             done
           done

@@ -1,0 +1,11 @@
+// A mut param forwarded straight into the stdlib's mut param.
+fn pass(mut b: Bytes, n: Int) -> Unit = {
+  for i in 0..<n { bytes.put_f32_le(b, i * 4, 1.0) }
+}
+
+effect fn main() -> Unit = {
+  let n = 20000
+  var buf = bytes.zeros(n * 4 * 50)
+  pass(buf, n)
+  println("${bytes.get_f32_le(buf, (n - 1) * 4) ?? 0.0}")
+}

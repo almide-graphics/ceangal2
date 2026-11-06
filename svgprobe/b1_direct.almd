@@ -1,0 +1,9 @@
+// The mut helper called straight from main on a local buffer.
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+
+effect fn main() -> Unit = {
+  let n = 20000
+  var buf = bytes.zeros(n * 4 * 50)
+  for i in 0..<n { setf(buf, i, 1.0) }
+  println("${bytes.get_f32_le(buf, (n - 1) * 4) ?? 0.0}")
+}
