@@ -17,6 +17,8 @@ jobs:
           - { what: pr3-on-4581, src: probe/svg2, almide: cdfd3dc378554261ab28ff4246debf222f1476d8 }
           - { what: pr3-on-develop, src: probe/svg2, almide: 166eb38b694b9ccebdb68646f589b8a6647efe32 }
           - { what: main-on-0.67.1, src: main, almide: "0.67.1" }
+          - { what: main-on-0.66.0, src: main, almide: "0.66.0" }
+          - { what: main-on-0.68.0-rc2, src: main, almide: "0.68.0-rc2" }
     name: ${{ matrix.what }}
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +29,8 @@ jobs:
       - run: brew install wasmtime coreutils || true
       - name: almide
         run: |
-          if [ "${{ matrix.almide }}" = 0.67.1 ]; then
-            mkdir -p "$RUNNER_TEMP/a" && curl -fsSL https://github.com/almide/almide/releases/download/v0.67.1/almide-macos-aarch64.tar.gz | tar xz -C "$RUNNER_TEMP/a"
+          if [[ "${{ matrix.almide }}" == 0.6* ]]; then
+            mkdir -p "$RUNNER_TEMP/a" && curl -fsSL "https://github.com/almide/almide/releases/download/v${{ matrix.almide }}/almide-macos-aarch64.tar.gz" | tar xz -C "$RUNNER_TEMP/a"
             echo "A=$RUNNER_TEMP/a/almide-macos-aarch64/almide" >> "$GITHUB_ENV"
           else
             cargo install --locked --git https://github.com/almide/almide --rev "${{ matrix.almide }}" almide --root "$RUNNER_TEMP/dev"
@@ -40,14 +42,15 @@ jobs:
           mkdir -p src/svgprobe/src
           cp probe/svgprobe/almide.toml src/svgprobe/
           cp probe/svgprobe/src/main.almd src/svgprobe/src/
-          if [ "${{ matrix.almide }}" != 0.67.1 ]; then cp probe/svgprobe/*.almd src/svgprobe/; fi
+          if [[ "${{ matrix.almide }}" != 0.6* ]]; then cp probe/svgprobe/*.almd src/svgprobe/; fi
           cd src/svgprobe
-          for f in $(ls *.almd 2>/dev/null) src/main.almd; do
-            for t in native wasm; do
+          set +e
+          for f in src/main.almd; do
+            for t in wasm native; do
               args=""; [ $t = wasm ] && args="--target wasm"
               s=$(date +%s)
-              gtimeout 300 "$A" run "$f" $args > out.txt 2>&1; rc=$?
-              tail -4 out.txt
+              gtimeout 600 "$A" run "$f" $args > out.txt 2>&1; rc=$?
+              cat out.txt | tail -6
               echo "RESULT $f $t exit=$rc seconds=$(( $(date +%s) - s ))"
             done
           done

@@ -2,8 +2,9 @@
 import snaidhm.vector as vector
 
 effect fn main() -> Unit = {
+  let sizes = [64, 256, 512, 1024]
   let svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"200\"><rect width=\"200\" height=\"200\" fill=\"#7aa2f7\"/><circle cx=\"100\" cy=\"100\" r=\"60\" fill=\"#f7768e\"/></svg>"
-  for px in [64, 256, 1024] {
+  for px in sizes {
     let img = vector.rasterize_svg(svg, px)
     println("${px}: ${img.w}x${img.h}")
   }
