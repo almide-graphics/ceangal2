@@ -56,9 +56,9 @@ crate:
 // native/twice.rs
 pub fn twice_int(n: i64) -> i64 { n * 2 }
 
-pub fn twice_text_len(text: impl std::borrow::Borrow<crate::Region>) -> i64 {
-    let text = text.borrow();
-    let s = crate::sys::string(text.base as i64, text.len);
+// a Region parameter arrives natively as its (ptr, len) pair too
+pub fn twice_text_len(text_ptr: *mut u8, text_len: usize) -> i64 {
+    let s = crate::sys::string(text_ptr as i64, text_len as i64);
     (s.chars().count() * 2) as i64
 }
 ```

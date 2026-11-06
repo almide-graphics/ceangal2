@@ -20,7 +20,7 @@ use crate::gpu::{self, GpuContext};
 /// an `effect fn` (host fills are effects), so it answers a `Result`; an `err`
 /// stops the app, as it traps on wasm.
 fn dispatch(kind: i64, a: i64, b: i64, x: f64, y: f64, z: f64, w: f64) -> i64 {
-    crate::almide_rt_ceangal_v0_dispatch(kind, a, b, x, y, z, w).into_event()
+    crate::almide_rt_ceangal_0v0_dispatch(kind, a, b, x, y, z, w).into_event()
 }
 
 trait IntoEvent {
