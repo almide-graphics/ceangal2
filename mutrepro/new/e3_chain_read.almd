@@ -1,0 +1,12 @@
+// A buffer passed down `mut` params, read through a by-value helper at the bottom.
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn inner(mut b: Bytes, i: Int) -> Float = getf(b, i)
+fn middle(mut b: Bytes, n: Int) -> Float = {
+  var s = 0.0
+  for i in 0..<n { s = s + inner(b, i) }
+  s
+}
+effect fn main() -> Unit = {
+  var buf = bytes.zeros(4000000)
+  println("${middle(buf, 20000)}")
+}

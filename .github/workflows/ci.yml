@@ -1,8 +1,8 @@
 name: ci
 
-# TEMPORARY probe (not for merge): the web playground's SVG step. Times
-# snaidhm.vector.rasterize_svg (64/256/1024 px) and the mut-Bytes repros,
-# native and wasm, on almide #4581 head, develop, and (main's snaidhm) v0.67.1.
+# TEMPORARY probe (not for merge): which `mut Bytes` shape makes
+# snaidhm.vector.rasterize_svg slow on wasm from 0.67 on. Each repro (4 MB
+# buffer, 20,000 calls) runs on wasm, then natively, 300 s cap.
 on:
   pull_request:
 
@@ -14,19 +14,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { what: pr3-on-4581, src: probe/svg2, almide: cdfd3dc378554261ab28ff4246debf222f1476d8 }
-          - { what: pr3-on-develop, src: probe/svg2, almide: 166eb38b694b9ccebdb68646f589b8a6647efe32 }
-          - { what: main-on-0.67.1, src: main, almide: "0.67.1" }
-          - { what: main-on-0.66.0, src: main, almide: "0.66.0" }
-          - { what: main-on-0.68.0-rc2, src: main, almide: "0.68.0-rc2" }
-    name: ${{ matrix.what }}
+          - { almide: "0.66.0", set: old }
+          - { almide: "0.67.0-rc1", set: old }
+          - { almide: "0.67.1", set: old }
+          - { almide: "0.68.0-rc2", set: old }
+          - { almide: 166eb38b694b9ccebdb68646f589b8a6647efe32, set: new }
+    name: ${{ matrix.almide }}
     steps:
       - uses: actions/checkout@v4
-        with: { ref: probe/svg2, path: probe }
-      - uses: actions/checkout@v4
-        with: { ref: "${{ matrix.src }}", path: src }
       - uses: dtolnay/rust-toolchain@stable
-      - run: brew install wasmtime coreutils || true
+      - run: brew install coreutils || true
       - name: almide
         run: |
           if [[ "${{ matrix.almide }}" == 0.6* ]]; then
@@ -36,21 +33,17 @@ jobs:
             cargo install --locked --git https://github.com/almide/almide --rev "${{ matrix.almide }}" almide --root "$RUNNER_TEMP/dev"
             echo "A=$RUNNER_TEMP/dev/bin/almide" >> "$GITHUB_ENV"
           fi
-      - name: time each program, native then wasm (300 s cap each)
+      - name: time each repro
+        working-directory: mutrepro/${{ matrix.set }}
         run: |
-          "$A" --version
-          mkdir -p src/svgprobe/src
-          cp probe/svgprobe/almide.toml src/svgprobe/
-          cp probe/svgprobe/src/main.almd src/svgprobe/src/
-          if [[ "${{ matrix.almide }}" != 0.6* ]]; then cp probe/svgprobe/*.almd src/svgprobe/; fi
-          cd src/svgprobe
           set +e
-          for f in src/main.almd; do
+          "$A" --version
+          for f in *.almd; do
             for t in wasm native; do
               args=""; [ $t = wasm ] && args="--target wasm"
               s=$(date +%s)
-              gtimeout 600 "$A" run "$f" $args > out.txt 2>&1; rc=$?
-              cat out.txt | tail -6
+              gtimeout 300 "$A" run "$f" $args > out.txt 2>&1; rc=$?
+              tail -3 out.txt
               echo "RESULT $f $t exit=$rc seconds=$(( $(date +%s) - s ))"
             done
           done

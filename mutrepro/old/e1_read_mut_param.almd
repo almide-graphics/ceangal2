@@ -1,0 +1,11 @@
+// A `mut` param read through a by-value helper, many times.
+fn getf(b: Bytes, i: Int) -> Float = bytes.read_f32_le(b, i * 4)
+fn walk(mut b: Bytes, n: Int) -> Float = {
+  var s = 0.0
+  for i in 0..<n { s = s + getf(b, i) }
+  s
+}
+effect fn main() -> Unit = {
+  var buf = bytes.new(4000000)
+  println("${walk(buf, 20000)}")
+}

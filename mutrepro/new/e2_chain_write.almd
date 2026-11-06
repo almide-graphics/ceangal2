@@ -1,0 +1,10 @@
+// A buffer passed down three `mut` params, written through a `mut` helper.
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+fn inner(mut b: Bytes, i: Int) -> Unit = setf(b, i, 1.0)
+fn middle(mut b: Bytes, n: Int) -> Unit = { for i in 0..<n { inner(b, i) } }
+fn outer(mut b: Bytes, n: Int) -> Unit = middle(b, n)
+effect fn main() -> Unit = {
+  var buf = bytes.zeros(4000000)
+  outer(buf, 20000)
+  println("done")
+}
