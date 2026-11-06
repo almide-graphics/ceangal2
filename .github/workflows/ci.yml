@@ -14,10 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { almide: "0.66.0", set: old }
-          - { almide: "0.67.0-rc1", set: old }
-          - { almide: "0.67.0-rc2", set: old }
-          - { almide: "0.67.1", set: old }
+          - { almide: cdfd3dc378554261ab28ff4246debf222f1476d8 }
     name: ${{ matrix.almide }}
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +30,11 @@ jobs:
             echo "A=$RUNNER_TEMP/dev/bin/almide" >> "$GITHUB_ENV"
           fi
       - name: time each repro
-        working-directory: stage
+        working-directory: comp
         run: |
           set +e
           "$A" --version
-          for f in src/s1_composite.almd src/s2_line_acc.almd src/s3_full.almd; do
+          for f in k0_loops_8_params.almd k1_17_params.almd k2_match_grad.almd k3_blend.almd k4_verbatim.almd l1_line_acc.almd; do
             for t in wasm native; do
               args=""; [ $t = wasm ] && args="--target wasm"
               s=$(date +%s)

@@ -1,0 +1,80 @@
+// l1: line_acc verbatim, the four edges of a 1024x1024 rectangle.
+import math
+
+type Rgba = { r: Float, g: Float, b: Float, a: Float }
+type Mat = { a: Float, b: Float, c: Float, d: Float, e: Float, f: Float }
+type Grad = { linear: Bool, x1: Float, y1: Float, x2: Float, y2: Float, r: Float, offs: List[Float], cols: List[Rgba], user: Bool }
+let transparent: Rgba = { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }
+fn clamp01(x: Float) -> Float = float.max(0.0, float.min(1.0, x))
+fn apply_x(m: Mat, x: Float, y: Float) -> Float = m.a * x + m.c * y + m.e
+fn apply_y(m: Mat, x: Float, y: Float) -> Float = m.b * x + m.d * y + m.f
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+fn col_lo(a: Float, b: Float, w: Int) -> Int = int.min(w, int.max(0, int.from_saturating(float.floor(float.min(a, b))) - 1))
+fn col_hi(a: Float, b: Float, w: Int) -> Int = int.min(w + 2, int.max(2, int.from_saturating(float.ceil(float.max(a, b))) + 3))
+
+fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf: Bytes) -> Unit = {
+  if ay != by then {
+    let stride = w + 2
+    let down = ay < by
+    let dir = if down then 1.0 else -1.0
+    let x0 = if down then ax else bx
+    let y0 = if down then ay else by
+    let x1 = if down then bx else ax
+    let y1 = if down then by else ay
+    let dxdy = (x1 - x0) / (y1 - y0)
+    var x = x0
+    let ystart = int.max(0, int.from_saturating(float.floor(y0)))
+    if y0 < 0.0 then x = x - y0 * dxdy else ()
+    let yend = int.min(h, int.from_saturating(float.ceil(y1)))
+    for yi in ystart..<yend {
+      let row = yi * stride
+      let fy = float.from(yi)
+      let dy = float.min(fy + 1.0, y1) - float.max(fy, y0)
+      let xnext = x + dxdy * dy
+      let d = dy * dir
+      // clamp to the canvas: everything left of 0 lands in column 0
+      let xa = float.max(0.0, float.min(x, xnext))
+      let xb = float.max(0.0, float.max(x, xnext))
+      let xaf = float.floor(xa)
+      let xai = int.min(w, int.from_saturating(xaf))
+      let xbc = float.ceil(xb)
+      let xbi = int.min(w, int.from_saturating(xbc))
+      if xbi <= xai + 1 then {
+        let xmf = float.min(1.0, 0.5 * (xa + xb) - xaf)
+        setf(buf, row + xai, getf(buf, row + xai) + d - d * xmf)
+        setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * xmf)
+      } else {
+        let sl = 1.0 / (xb - xa)
+        let x0f = xa - xaf
+        let a0 = 0.5 * sl * (1.0 - x0f) * (1.0 - x0f)
+        let x1f = xb - xbc + 1.0
+        let am = 0.5 * sl * x1f * x1f
+        setf(buf, row + xai, getf(buf, row + xai) + d * a0)
+        if xbi == xai + 2 then setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * (1.0 - a0 - am))
+        else {
+          let a1 = sl * (1.5 - x0f)
+          setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * (a1 - a0))
+          for xi in (xai + 2)..<(xbi - 1) { setf(buf, row + xi, getf(buf, row + xi) + d * sl) }
+          let a2 = a1 + float.from(xbi - xai - 3) * sl
+          setf(buf, row + xbi - 1, getf(buf, row + xbi - 1) + d * (1.0 - a2 - am))
+        }
+        setf(buf, row + xbi, getf(buf, row + xbi) + d * am)
+      }
+      x = xnext
+    }
+  } else ()
+}
+effect fn main() -> Unit = {
+  let w = 1024
+  let h = 1024
+  let pxo = (w + 2) * h + 4
+  var buf = bytes.zeros((pxo + w * h * 4) * 4)
+  for y in 0..<h { bytes.put_f32_le(buf, (y * (w + 2)) * 4, 1.0) }
+  let m = { a: 1.0, b: 0.0, c: 0.0, d: 1.0, e: 0.0, f: 0.0 }
+  line_acc(0.0, 0.0, 1024.0, 0.0, w, h, buf)
+  line_acc(1024.0, 0.0, 1024.0, 1024.0, w, h, buf)
+  line_acc(1024.0, 1024.0, 0.0, 1024.0, w, h, buf)
+  line_acc(0.0, 1024.0, 0.0, 0.0, w, h, buf)
+  println("${getf(buf, pxo + 4 * (w * h - 1))}")
+}

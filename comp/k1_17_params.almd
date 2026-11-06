@@ -1,0 +1,35 @@
+// k1_17_params: composite built up one feature at a time, 1024x1024 canvas.
+import math
+
+type Rgba = { r: Float, g: Float, b: Float, a: Float }
+type Mat = { a: Float, b: Float, c: Float, d: Float, e: Float, f: Float }
+type Grad = { linear: Bool, x1: Float, y1: Float, x2: Float, y2: Float, r: Float, offs: List[Float], cols: List[Rgba], user: Bool }
+let transparent: Rgba = { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }
+fn clamp01(x: Float) -> Float = float.max(0.0, float.min(1.0, x))
+fn apply_x(m: Mat, x: Float, y: Float) -> Float = m.a * x + m.c * y + m.e
+fn apply_y(m: Mat, x: Float, y: Float) -> Float = m.b * x + m.d * y + m.f
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+
+fn comp(w: Int, h: Int, mut buf: Bytes, pxo: Int, x0: Int, x1: Int, y0: Int, y1: Int, color: Rgba, grad: Grad?, inv: Mat, bx: Float, by: Float, bw: Float, bh: Float, alpha: Float, evenodd: Bool) -> Unit = {
+  let stride = w + 2
+  for y in int.max(0, y0)..<int.min(h, y1) {
+    var sum = 0.0
+    for x in int.max(0, x0)..<int.min(stride, x1) {
+      let i = y * stride + x
+      sum = sum + getf(buf, i)
+      setf(buf, i, 0.0)
+    }
+  }
+}
+
+effect fn main() -> Unit = {
+  let w = 1024
+  let h = 1024
+  let pxo = (w + 2) * h + 4
+  var buf = bytes.zeros((pxo + w * h * 4) * 4)
+  for y in 0..<h { bytes.put_f32_le(buf, (y * (w + 2)) * 4, 1.0) }
+  let m = { a: 1.0, b: 0.0, c: 0.0, d: 1.0, e: 0.0, f: 0.0 }
+  comp(w, h, buf, pxo, 0, w + 2, 0, h, { r: 0.5, g: 0.6, b: 0.9, a: 1.0 }, none, m, 0.0, 0.0, 1.0, 1.0, 1.0, false)
+  println("${getf(buf, pxo + 4 * (w * h - 1))}")
+}
