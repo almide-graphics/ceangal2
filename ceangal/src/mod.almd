@@ -702,43 +702,41 @@ fn to_node(view: v.View) -> lay.Node = {
   let padding = edges(s.pt, s.pr, s.pb, s.pl)
   let margin = edges(s.mt, s.mr, s.mb, s.ml)
   let kids = children_of(view)
-  // built in three steps: the wasm leg holds at most 8 Float fields of one
-  // record literal at a time (hold-depth-f64)
-  let flow = {
-    ...base,
-    id: id,
+  // every field written out, no `...base`: the wasm leg cannot hold more
+  // than 8 Float overrides of a spread at once (hold-depth-f64)
+  {
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
     wrap: if s.wrap then lay.WRAP_WRAP else lay.WRAP_NONE,
-    gap_cross: if s.wrap then s.gap else 0.0,
     justify: s.justify,
     align_items: s.align,
-    align_self: s.align_self,
+    align_content: base.align_content,
     gap_main: s.gap,
+    gap_cross: if s.wrap then s.gap else 0.0,
     grow: s.grow,
     shrink: if wrapping and s.shrink == 0.0 then 1.0 else s.shrink,
+    basis: base.basis,
+    align_self: s.align_self,
     padding: padding,
     margin: margin,
-    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
-    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
-    children: kids,
-  }
-  let sized = {
-    ...flow,
+    border: base.border,
     width: width,
     height: height,
+    aspect_ratio: base.aspect_ratio,
     min_width: s.min_width,
     min_height: s.min_height,
     max_width: if wrapping and s.max_width == unset and width == unset then intrinsic.w + s.pl + s.pr else s.max_width,
     max_height: s.max_height,
-  }
-  {
-    ...sized,
-    width_pct: s.width_pct,
-    height_pct: s.height_pct,
+    display: base.display,
+    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
+    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
     pos_top: s.pos_top,
     pos_right: s.pos_right,
     pos_bottom: s.pos_bottom,
     pos_left: s.pos_left,
+    width_pct: s.width_pct,
+    height_pct: s.height_pct,
+    id: id,
+    children: kids,
   }
 }
 
