@@ -330,9 +330,85 @@ pub fn compile_project_to_rust(files_json: &str, entry: &str) -> Result<String, 
     mono::monomorphize(&mut ir);
     ir_link::ir_link(&mut ir);
     match codegen::codegen(&mut ir, Target::Rust) {
-        CodegenOutput::Source(code) => Ok(code),
+        CodegenOutput::Source(code) => Ok(program_first(&code)),
         CodegenOutput::Binary(_) => Err("Unexpected binary output for Rust target".to_string()),
     }
+}
+
+/// The Rust view shows the program before the runtime the emitter inlines.
+/// Since Almide v0.69.0 the source opens with `mod almide_*` runtime blocks
+/// (hundreds of lines), so the user's code was off screen. Each such block at
+/// the top level, with the attribute lines right above it, moves to the end,
+/// in order. Display only: when the braces cannot be followed (a block never
+/// closes), the code is returned as it was.
+fn program_first(code: &str) -> String {
+    let lines: Vec<&str> = code.lines().collect();
+    let mut program: Vec<&str> = Vec::new();
+    let mut runtime: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < lines.len() {
+        // `#[...]` lines belong to the item after them
+        let mut j = i;
+        while j < lines.len() && lines[j].starts_with("#[") && !lines[j].contains("mod almide_") {
+            j += 1;
+        }
+        let head = lines.get(j).copied().unwrap_or("");
+        let is_runtime = (head.starts_with("mod almide_") || head.starts_with("pub mod almide_")
+            || (head.starts_with("#[") && head.contains("mod almide_")))
+            && head.contains('{');
+        if !is_runtime {
+            program.push(lines[i]);
+            i += 1;
+            continue;
+        }
+        let mut depth: i64 = 0;
+        let mut k = j;
+        loop {
+            if k >= lines.len() {
+                return code.to_string();
+            }
+            depth += brace_delta(lines[k]);
+            k += 1;
+            if depth <= 0 {
+                break;
+            }
+        }
+        runtime.extend_from_slice(&lines[i..k]);
+        i = k;
+    }
+    if runtime.is_empty() {
+        return code.to_string();
+    }
+    let mut out = program.join("\n");
+    out.push_str("\n\n// ── the Almide runtime the emitter inlines ──\n\n");
+    out.push_str(&runtime.join("\n"));
+    out.push('\n');
+    out
+}
+
+/// `{` minus `}` on one line of Rust, outside strings, chars and `//` comments.
+fn brace_delta(line: &str) -> i64 {
+    let b = line.as_bytes();
+    let mut d = 0;
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'/' if b.get(i + 1) == Some(&b'/') => break,
+            b'"' => {
+                i += 1;
+                while i < b.len() && b[i] != b'"' {
+                    if b[i] == b'\\' { i += 1; }
+                    i += 1;
+                }
+            }
+            b'\'' if b.get(i + 2) == Some(&b'\'') => i += 2,
+            b'{' => d += 1,
+            b'}' => d -= 1,
+            _ => {}
+        }
+        i += 1;
+    }
+    d
 }
 
 /// Single-file compatibility wrapper.
@@ -539,6 +615,16 @@ fn main() -> Unit = {
 "##;
         let wasm = compile_to_wasm(source).unwrap();
         assert_eq!(&wasm[0..4], b"\0asm");
+    }
+
+    #[test]
+    fn test_program_first_moves_runtime_blocks_last() {
+        let code = "#![allow(dead_code)]\n#[allow(unused)]\nmod almide_str_block {\n    fn a() { let s = \"}\"; }\n}\nfn main() {\n}\n";
+        let out = program_first(code);
+        assert!(out.find("fn main").unwrap() < out.find("mod almide_str_block").unwrap(), "{out}");
+        assert!(out.contains("let s = \"}\";"));
+        // an unclosed block leaves the code alone
+        assert_eq!(program_first("mod almide_x {\nfn main() {}\n"), "mod almide_x {\nfn main() {}\n");
     }
 
     #[test]
