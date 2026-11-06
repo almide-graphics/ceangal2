@@ -480,6 +480,12 @@ jobs:
       - name: compiler service tests (bundled packages, GUI programs)
         working-directory: apps/playground/compiler
         run: cargo test --release --lib
+      # TEMPORARY (Almide v0.69.0 migration): the lock cargo resolved, to commit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compiler-cargo-lock
+          path: apps/playground/compiler/Cargo.lock
       - name: the Todo example is the Todo app
         run: cmp apps/todo/src/main.almd apps/playground/assets/examples/todo/main.almd
       - name: build dist/web (compiler + app + closure-stub check)
