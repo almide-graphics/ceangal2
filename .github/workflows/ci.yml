@@ -14,16 +14,25 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: almide-develop, path: "${{ runner.temp }}/dev/bin/almide" }
 
+  almide-integration:
+    runs-on: macos-15
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install --locked --git https://github.com/almide/almide --rev a01a3381fcaba75737b30278bf88d887893961f4 almide --root "$RUNNER_TEMP/int"
+      - uses: actions/upload-artifact@v4
+        with: { name: almide-integration, path: "${{ runner.temp }}/int/bin/almide" }
+
   pixel:
-    needs: almide-develop
+    needs: [almide-develop, almide-integration]
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
-        what: [pr3-develop, baseline-develop, main-0.67.1]
+        what: [pr3-develop, pr3-integration, baseline-develop, main-0.67.1]
         rep: [1, 2, 3]
         include:
           - { what: pr3-develop, ref: 7b93b54b097052700ca9b4056824b8a0c9bac9aa, almide: develop }
+          - { what: pr3-integration, ref: 7b93b54b097052700ca9b4056824b8a0c9bac9aa, almide: integration }
           - { what: baseline-develop, ref: b02c453685cfbf5006427ffc6e7cb6e4ac12c2b4, almide: develop }
           - { what: main-0.67.1, ref: c19f664d0a6b9a6c70f98b211bf34e6aa50c9853, almide: 0.67.1 }
     name: pixel ${{ matrix.what }} \#${{ matrix.rep }}
@@ -36,9 +45,12 @@ jobs:
       - uses: actions/download-artifact@v4
         if: matrix.almide == 'develop'
         with: { name: almide-develop, path: "${{ runner.temp }}/dev" }
+      - uses: actions/download-artifact@v4
+        if: matrix.almide == 'integration'
+        with: { name: almide-integration, path: "${{ runner.temp }}/dev" }
       - name: toolchain
         run: |
-          if [ "${{ matrix.almide }}" = develop ]; then
+          if [ "${{ matrix.almide }}" = develop ] || [ "${{ matrix.almide }}" = integration ]; then
             echo dev > .almide-version
             mkdir -p .tools/dev/almide-macos-aarch64
             cp "$RUNNER_TEMP/dev/almide" .tools/dev/almide-macos-aarch64/almide
