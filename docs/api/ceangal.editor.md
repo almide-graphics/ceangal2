@@ -377,15 +377,20 @@ Colours for a light background.
 
 ## Paint
 
-### `PaintMemo`
+### `LineMemo`
 
 ```almide
-type PaintMemo = { version: Int, marks: List[syn.LexState] }
+type LineMemo = { cps: List[Int], size: Float, mono: Bool, dir: Int, fonts: Int, geo: tx.LineGeo }
 ```
 
 What painting an editor keeps between frames, per view key: the lexer
-state every LEX_STEP lines, so a frame lexes from the nearest checkpoint,
-not from line 0.
+state every LEX_STEP lines (so a frame lexes from the nearest checkpoint,
+not from line 0) and the laid-out visible lines (so an unchanged line is
+not shaped again). Lines that leave the window are dropped.
+
+```almide
+type PaintMemo = { version: Int, marks: List[syn.LexState], geos: Map[Int, LineMemo] }
+```
 
 ## View
 
