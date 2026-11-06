@@ -374,7 +374,7 @@ effect fn dispatch_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float
     if a == 0 then keyboard_used = false else ()
     if pointer(a, b, x, y, int.from_saturating(z), int.from_saturating(w))! then 1 else 0
   }
-  else if kind == 5 then { if wheel(x, y, z, w, b)! then 1 else 0 }
+  else if kind == 5 then { if wheel(x, y, z, w, b) then 1 else 0 }
   else if kind == 6 then { keyboard_used = true; if key(a, b, int.from_saturating(x))! then 1 else 0 }
   else if kind == 7 then {
     let t = event_string()!
@@ -428,7 +428,7 @@ effect fn key(phase: Int, code: Int, mods: Int) -> Bool = {
     if c >= 0 and fi < list.len(frame_rects) then {
       let r = frame_rects[fi]
       context_touch = false
-      frame_views[c].on_context(r.x + 8.0, r.y + r.h)!
+      frame_views[c].on_context(r.x + 8.0, r.y + r.h)
       handled = true
     } else ()
   } else ()
@@ -441,7 +441,7 @@ effect fn key(phase: Int, code: Int, mods: Int) -> Bool = {
 }
 
 // Lines are 40 px for line-unit wheels.
-effect fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
+fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
   let k = if unit == 0 then 40.0 else 1.0
   var target = -1
   let n = int.min(list.len(frame_views), list.len(frame_rects))
@@ -457,7 +457,7 @@ effect fn wheel(x: Float, y: Float, dx: Float, dy: Float, unit: Int) -> Bool = {
     true
   } else {
     let r = frame_rects[target]
-    let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)!
+    let handled = frame_views[target].on_wheel(x - r.x, y - r.y, dx * k, dy * k)
     if handled then invalidate() else ()
     handled
   }
@@ -549,7 +549,7 @@ effect fn frame(t: Float) -> Int = {
   if toast_text != "" and now >= toast_until then dirty = true else ()
   if hover_pending and now - hover_since >= TOOLTIP_DELAY_MS then { hover_pending = false; dirty = true } else ()
   if tip_key != "" and tip_until >= 0.0 and now >= tip_until then { tip_key = ""; dirty = true } else ()
-  fire_long_press()!
+  fire_long_press()
   if dirty or animating then {
     dirty = false
     render()
@@ -1178,7 +1178,7 @@ fn track_long_press(phase: Int, id: Int, x: Float, y: Float) -> Unit =
   else if id == lp_id and (phase == 2 or phase == 3) then lp_id = -1
   else ()
 
-effect fn fire_long_press() -> Unit =
+fn fire_long_press() -> Unit =
   if lp_id >= 0 and not lp_fired and sys.now_ms() - lp_t >= LONG_PRESS_MS then {
     let c = context_at(lp_x, lp_y)
     if c >= 0 then {
@@ -1186,7 +1186,7 @@ effect fn fire_long_press() -> Unit =
       pressed = -1
       pressed_key = ""
       context_touch = true
-      frame_views[c].on_context(lp_x, lp_y)!
+      frame_views[c].on_context(lp_x, lp_y)
       dirty = true
     } else lp_id = -1
   } else ()
@@ -1196,7 +1196,7 @@ effect fn pointer_target(phase: Int, id: Int, x: Float, y: Float, buttons: Int, 
   if id == 0 and phase == 0 and int.band(buttons, 2) != 0 and context_at(x, y) >= 0 then {
     right_swallow = true
     context_touch = false
-    frame_views[context_at(x, y)].on_context(x, y)!
+    frame_views[context_at(x, y)].on_context(x, y)
     invalidate()
     true
   } else if right_swallow and id == 0 and phase == 2 then { right_swallow = false; true }
