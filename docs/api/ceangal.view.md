@@ -76,10 +76,10 @@ type View = {
   clickable: Bool,
   on_pointer: effect (Pointer) -> Bool,
   pointer: Bool,
-  on_wheel: effect (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
+  on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
   wheel: Bool,
   // A right-click or a long press: (x, y) in window px.
-  on_context: effect (Float, Float) -> Unit,
+  on_context: (Float, Float) -> Unit,
   context: Bool,
   // A vertical scroll view (see scroll_y): children move up by the offset
   // ceangal keeps for `key`; wheel and touch drag scroll it.
@@ -564,7 +564,7 @@ return true to take it (drags, sliders). Positions are relative to the view.
 ### `on_wheel`
 
 ```almide
-pub fn on_wheel(v: View, f: effect (Float, Float, Float, Float) -> Bool) -> View
+pub fn on_wheel(v: View, f: (Float, Float, Float, Float) -> Bool) -> View
 ```
 
 Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
@@ -572,7 +572,7 @@ Scroll wheel / trackpad deltas over the view: f(x, y, dx, dy); true = taken.
 ### `on_context`
 
 ```almide
-pub fn on_context(v: View, f: effect (Float, Float) -> Unit) -> View
+pub fn on_context(v: View, f: (Float, Float) -> Unit) -> View
 ```
 
 A right-click on the view, or a long press on a touch screen (0.5 s

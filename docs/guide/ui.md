@@ -207,8 +207,8 @@ every pointer event over the view (`v.Pointer`: phase 0 down, 1 move,
 true to claim it (drags, sliders). `on_wheel(f)` receives scroll deltas.
 `cursor(kind)` sets the mouse cursor over the view.
 
-Handlers are `effect` slots (`on_click`, `on_pointer`, `on_wheel`,
-`on_context`, `on_key`, `on_text`, and the app's `on_key`, `on_text`,
+Handlers are `effect` slots (`on_click`, `on_pointer`, `on_key`,
+`on_text`, and the app's `on_key`, `on_text`,
 `on_frame`, `on_result`): a handler may read what the host fills in —
 `storage.get(k)!`, `ceangal.asset_text(path)!` — and `!` there propagates
 into the handler. `view()` stays pure: read host data in `main` or a

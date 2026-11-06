@@ -11,8 +11,8 @@ release. The release workflow takes the release notes from this file.
   `storage.secret_get`, `ceangal.asset` and `ceangal.asset_text` are
   `effect fn`s (call them with `!`), and so is `ceangal.dispatch` — an
   app's `ceangal_event` is now `effect fn … = ceangal.dispatch(…)!`.
-  Event handlers are `effect` slots (`on_click`, `on_pointer`, `on_wheel`,
-  `on_context`, `on_key`, `on_text`; the app's `on_key`, `on_text`,
+  Event handlers are `effect` slots (`on_click`, `on_pointer`, `on_key`,
+  `on_text`; the app's `on_key`, `on_text`,
   `on_frame`, `on_result`; the widgets' callbacks) so they can read host
   data; `view()` stays pure. Fonts load in the dispatcher before an event,
   not while text is measured.
