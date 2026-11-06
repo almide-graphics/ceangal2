@@ -4,6 +4,22 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ver="$(tr -d '[:space:]' < "$root/.almide-version")"
+# TEMPORARY (probe): `git:<sha>` builds almide from source at that commit.
+if [[ $ver == git:* ]]; then
+  sha="${ver#git:}"
+  dir="$root/.tools/git-$sha"
+  bin="$dir/bin/almide"; [[ -x "$bin" ]] || bin="$dir/bin/almide.exe"
+  if [[ ! -x "$bin" ]]; then
+    mkdir -p "$root/.tools"
+    until mkdir "$root/.tools/git-$sha.lock" 2>/dev/null; do sleep 5; done
+    if [[ ! -x "$dir/bin/almide" && ! -x "$dir/bin/almide.exe" ]]; then
+      cargo install --locked --git https://github.com/almide/almide --rev "$sha" almide --root "$dir" >&2
+    fi
+    rmdir "$root/.tools/git-$sha.lock"
+    bin="$dir/bin/almide"; [[ -x "$bin" ]] || bin="$dir/bin/almide.exe"
+  fi
+  exec "$bin" "$@"
+fi
 case "$(uname -s)-$(uname -m)" in
   Darwin-arm64) asset=almide-macos-aarch64 ;;
   Darwin-x86_64) asset=almide-macos-x86_64 ;;
