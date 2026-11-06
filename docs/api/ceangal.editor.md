@@ -54,6 +54,7 @@ type Editor = {
   redo: List[Snap],
   coalesce: Int,          // kind of the last edit (1 typing, 2 deleting), for undo grouping
   version: Int,           // bumps on every text change
+  edited_from: Int,       // the first line the last change touched (0 when it may be any)
   diags: List[Diag],
   font_size: Float,
   single_line: Bool,
@@ -375,6 +376,16 @@ pub fn light_theme() -> Theme
 Colours for a light background.
 
 ## Paint
+
+### `PaintMemo`
+
+```almide
+type PaintMemo = { version: Int, marks: List[syn.LexState] }
+```
+
+What painting an editor keeps between frames, per view key: the lexer
+state every LEX_STEP lines, so a frame lexes from the nearest checkpoint,
+not from line 0.
 
 ## View
 
