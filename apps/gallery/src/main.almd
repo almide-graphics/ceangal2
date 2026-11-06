@@ -131,7 +131,7 @@ fn languages(th: w.Theme) -> v.View =
     w.body(th, "বাংলা: আমার সোনার বাংলা"),
     w.body(th, "தமிழ்: வணக்கம் உலகம்"),
     w.body(th, "ਪੰਜਾਬੀ · ગુજરાતી · తెలుగు · ಕನ್ನಡ · മലയാളം"),
-    w.body(th, "Emoji 😀 👍🏽 🎉 ❤️ 👨‍👩‍👧 🇯🇵 #️⃣ 🏳️‍🌈"),
+    w.body(th, "Emoji 😀 👍🏽 🎉 ❤️ 👨\u{200D}👩\u{200D}👧 🇯🇵 #️⃣ 🏳️\u{200D}🌈"),
     // paragraphs wrap to the card's width
     w.body(th, "Body text wraps onto as many lines as the width needs, breaking after spaces and hyphens, never inside a word that fits."),
     w.body(th, "日本語の段落は空白がなくても文字の間で折り返され、句読点は行頭に来ません。"),

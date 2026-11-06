@@ -81,7 +81,7 @@ fn kv_get(k: String, secret: Bool) -> String = {
   if n <= 0 then ""
   else {
     var b = bytes.zeros(n)
-    let _ = if secret then storage.secret_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n) else storage.storage_read(ffi.region(kb), ffi.to_int(ffi.address(b)), n)
+    let _ = if secret then storage.secret_read(ffi.region(kb), ffi.region(b)) else storage.storage_read(ffi.region(kb), ffi.region(b))
     bytes.to_string_lossy(b)
   }
 }
@@ -330,7 +330,7 @@ fn endpoint(real: String) -> String = {
   if n <= 0 then real
   else {
     var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
+    let _ = sys.asset_read(ffi.region(k), ffi.region(b))
     let base = string.trim(bytes.to_string_lossy(b))
     match string.index_of(real, "/v1") { some(i) => base + string.drop(real, i), none => base }
   }
@@ -342,7 +342,7 @@ fn system_prompt() -> String = {
   if n <= 0 then "You write Almide (.almd) programs. Output only source code."
   else {
     var b = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(k), ffi.to_int(ffi.address(b)), n)
+    let _ = sys.asset_read(ffi.region(k), ffi.region(b))
     bytes.to_string_lossy(b)
   }
 }

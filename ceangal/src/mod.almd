@@ -465,7 +465,7 @@ pub fn asset(name: String) -> Bytes? = {
   if n < 0 then none
   else {
     var buf = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(buf)), n)
+    let _ = sys.asset_read(ffi.region(key), ffi.region(buf))
     some(buf)
   }
 }
@@ -516,7 +516,7 @@ pub fn copy_text(s: String) -> Unit = {
 fn event_bytes() -> Bytes = {
   let n = sys.event_len()
   var buf = bytes.zeros(n)
-  if n > 0 then { let _ = sys.event_read(ffi.to_int(ffi.address(buf)), n) } else ()
+  if n > 0 then { let _ = sys.event_read(ffi.region(buf)) } else ()
   buf
 }
 
@@ -686,7 +686,12 @@ fn to_node(view: v.View) -> lay.Node = {
   let height = if s.height != unset or s.height_pct != unset then s.height
     else if wrapping then (match map.get(wrap_heights, wrap_key(view)) { some(h) => h, none => intrinsic.h + s.pt + s.pb })
     else if is_text then intrinsic.h + s.pt + s.pb else unset
-  {
+  let padding = edges(s.pt, s.pr, s.pb, s.pl)
+  let margin = edges(s.mt, s.mr, s.mb, s.ml)
+  let kids = children_of(view)
+  // built in three steps: the wasm leg holds at most 8 Float fields of one
+  // record literal at a time (hold-depth-f64)
+  let flow = {
     ...base,
     id: id,
     direction: if view.kind == v.ROW then lay.ROW else lay.COLUMN,
@@ -698,23 +703,29 @@ fn to_node(view: v.View) -> lay.Node = {
     gap_main: s.gap,
     grow: s.grow,
     shrink: if wrapping and s.shrink == 0.0 then 1.0 else s.shrink,
-    padding: edges(s.pt, s.pr, s.pb, s.pl),
-    margin: edges(s.mt, s.mr, s.mb, s.ml),
+    padding: padding,
+    margin: margin,
+    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
+    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
+    children: kids,
+  }
+  let sized = {
+    ...flow,
     width: width,
     height: height,
     min_width: s.min_width,
     min_height: s.min_height,
     max_width: if wrapping and s.max_width == unset and width == unset then intrinsic.w + s.pl + s.pr else s.max_width,
     max_height: s.max_height,
+  }
+  {
+    ...sized,
     width_pct: s.width_pct,
     height_pct: s.height_pct,
-    overflow: if s.clip then lay.OVERFLOW_HIDDEN else lay.OVERFLOW_VISIBLE,
-    position: if s.absolute then lay.POSITION_ABSOLUTE else lay.POSITION_RELATIVE,
     pos_top: s.pos_top,
     pos_right: s.pos_right,
     pos_bottom: s.pos_bottom,
     pos_left: s.pos_left,
-    children: children_of(view),
   }
 }
 

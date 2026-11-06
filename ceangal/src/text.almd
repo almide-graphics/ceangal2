@@ -95,7 +95,7 @@ fn load_asset(name: String) -> Bytes = {
   if n <= 0 then bytes.zeros(0)
   else {
     var buf = bytes.zeros(n)
-    let _ = sys.asset_read(ffi.region(key), ffi.to_int(ffi.address(buf)), n)
+    let _ = sys.asset_read(ffi.region(key), ffi.region(buf))
     buf
   }
 }
