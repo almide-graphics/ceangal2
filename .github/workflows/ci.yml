@@ -23,7 +23,7 @@ jobs:
         what: [pr3-develop, main-0.67.1]
         rep: [1, 2, 3]
         include:
-          - { what: pr3-develop, ref: 7b93b54, almide: develop }
+          - { what: pr3-develop, ref: 7b93b54b097052700ca9b4056824b8a0c9bac9aa, almide: develop }
           - { what: main-0.67.1, ref: probe/main-tonode, almide: 0.67.1 }
     name: pixel ${{ matrix.what }} \#${{ matrix.rep }}
     steps:
