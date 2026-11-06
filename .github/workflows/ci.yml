@@ -23,8 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        step: [before, step4, step1, step2]
-        rep: [1, 2]
+        step: [step1, step2]
+        rep: [1, 2, 3, 4]
         include:
           - { step: before, ref: 7b93b54 }
           - { step: step4, ref: 7f670fc }
