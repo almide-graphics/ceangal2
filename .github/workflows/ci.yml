@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: base, rev: fc3bd3c51e05e3a2f8c2f47c3f5f1d1a8d6b0a1e }
+          - { name: base, rev: fc3bd3c51fe05b5c1a8af69d91aea74d243c2746 }
           - { name: pr, rev: cdfd3dc378554261ab28ff4246debf222f1476d8 }
     steps:
       - uses: dtolnay/rust-toolchain@stable
@@ -60,7 +60,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: base, rev: fc3bd3c51e05e3a2f8c2f47c3f5f1d1a8d6b0a1e }
+          - { name: base, rev: fc3bd3c51fe05b5c1a8af69d91aea74d243c2746 }
           - { name: pr, rev: cdfd3dc378554261ab28ff4246debf222f1476d8 }
     name: web E2E @ ${{ matrix.name }}
     steps:
