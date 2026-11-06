@@ -1,0 +1,14 @@
+// line_acc for the four edges of a 1024x1024 rectangle.
+import self.vec as vec
+
+effect fn main() -> Unit = {
+  let w = 1024
+  let h = 1024
+  let pxo = (w + 2) * h + 4
+  var buf = bytes.new((pxo + w * h * 4) * 4)
+  vec.line_acc(0.0, 0.0, 1024.0, 0.0, w, h, buf)
+  vec.line_acc(1024.0, 0.0, 1024.0, 1024.0, w, h, buf)
+  vec.line_acc(1024.0, 1024.0, 0.0, 1024.0, w, h, buf)
+  vec.line_acc(0.0, 1024.0, 0.0, 0.0, w, h, buf)
+  println("${bytes.read_f32_le(buf, 4)}")
+}

@@ -1,0 +1,7 @@
+// The whole rasterize_svg at 1024 px.
+import self.vec as vec
+
+effect fn main() -> Unit = {
+  let img = vec.rasterize_svg("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"200\"><rect width=\"200\" height=\"200\" fill=\"#7aa2f7\"/><circle cx=\"100\" cy=\"100\" r=\"60\" fill=\"#f7768e\"/></svg>", 1024)
+  println("${img.w}x${img.h}")
+}

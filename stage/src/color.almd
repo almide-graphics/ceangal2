@@ -1,0 +1,3 @@
+// The colour record every snaidhm module shares (straight alpha, 0..1).
+
+type Color = { r: Float, g: Float, b: Float, a: Float }
