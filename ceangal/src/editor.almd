@@ -39,6 +39,7 @@ type Editor = {
   redo: List[Snap],
   coalesce: Int,          // kind of the last edit (1 typing, 2 deleting), for undo grouping
   version: Int,           // bumps on every text change
+  edited_from: Int,       // the first line the last change touched (0 when it may be any)
   diags: List[Diag],
   font_size: Float,
   single_line: Bool,
@@ -108,6 +109,7 @@ pub fn from_string(s: String) -> Editor = {
   redo: [],
   coalesce: 0,
   version: 0,
+  edited_from: 0,
   diags: [],
   font_size: 13.0,
   single_line: false,
@@ -174,7 +176,7 @@ pub fn append_line(e: Editor, s: String, style: Int) -> Editor = {
   while list.len(styles) < (if empty_doc then 0 else n) { list.push(styles, 0) }
   list.push(styles, style)
   let last = list.len(lines) - 1
-  let e2 = { ...e, lines: lines, line_style: styles, version: e.version + 1 }
+  let e2 = { ...e, lines: lines, line_style: styles, version: e.version + 1, edited_from: if empty_doc then 0 else n }
   let e3 = with_rows(e2)
   let _ = last
   if follow then { ...e3, scroll_y: clamp_scroll(e3, float.from(total_rows(e3)) * line_h(e3) - e3.view_h + pad_y(e3) * 2.0) } else e3
@@ -185,7 +187,7 @@ pub fn clear(e: Editor) -> Editor = {
   let p = { line: 0, col: 0 }
   let none_lines: List[List[Int]] = [[]]
   let none_styles: List[Int] = []
-  { ...e, lines: none_lines, line_style: none_styles, cur: p, anchor: p, scroll_x: 0.0, scroll_y: 0.0, version: e.version + 1 }
+  { ...e, lines: none_lines, line_style: none_styles, cur: p, anchor: p, scroll_x: 0.0, scroll_y: 0.0, version: e.version + 1, edited_from: 0 }
 }
 
 fn cps_to_string(cps: List[Int]) -> String = {
@@ -309,7 +311,7 @@ fn replace_selection(e: Editor, ins: List[Int], kind: Int) -> Editor =
     let lines = list.take(e1.lines, a.line) + new_lines + list.drop(e1.lines, b.line + 1)
     let end_col = if k == 1 then a.col + list.len(ins_lines[0]) else list.len(ins_lines[k - 1])
     let p = { line: a.line + k - 1, col: end_col }
-    { ...e1, lines: lines, cur: p, anchor: p, want_x: -1.0, version: e1.version + 1, scroll_to_cursor: true }
+    { ...e1, lines: lines, cur: p, anchor: p, want_x: -1.0, version: e1.version + 1, edited_from: a.line, scroll_to_cursor: true }
   }
 
 // Insert `s` at the caret (replacing the selection), as typing would.
@@ -320,7 +322,7 @@ pub fn set_text(e: Editor, s: String) -> Editor = {
   let e1 = checkpoint(e, 0)
   let lines = split_lines(s)
   let p = { line: 0, col: 0 }
-  { ...e1, lines: lines, cur: p, anchor: p, version: e1.version + 1, scroll_x: 0.0, scroll_y: 0.0 }
+  { ...e1, lines: lines, cur: p, anchor: p, version: e1.version + 1, edited_from: 0, scroll_x: 0.0, scroll_y: 0.0 }
 }
 
 fn word_left(e: Editor, p: Pos) -> Pos =
@@ -441,7 +443,7 @@ fn indent_lines(e: Editor, out: Bool) -> Editor = {
   let na = { line: a.line, col: int.max(0, a.col + shift_a) }
   let nb = { line: b.line, col: int.max(0, b.col + shift_b) }
   let forward = before(e1.anchor, e1.cur)
-  { ...e1, lines: lines, anchor: if forward then na else nb, cur: if forward then nb else na, version: e1.version + 1 }
+  { ...e1, lines: lines, anchor: if forward then na else nb, cur: if forward then nb else na, version: e1.version + 1, edited_from: a.line }
 }
 
 // Undo the last edit.
@@ -450,7 +452,7 @@ pub fn undo(e: Editor) -> Editor = {
   if n == 0 then e
   else {
     let s = e.undo[n - 1]
-    { ...e, lines: s.lines, cur: s.cur, anchor: s.anchor, undo: list.take(e.undo, n - 1), redo: e.redo + [snapshot(e)], coalesce: 0, version: e.version + 1, scroll_to_cursor: true }
+    { ...e, lines: s.lines, cur: s.cur, anchor: s.anchor, undo: list.take(e.undo, n - 1), redo: e.redo + [snapshot(e)], coalesce: 0, version: e.version + 1, edited_from: 0, scroll_to_cursor: true }
   }
 }
 
@@ -460,7 +462,7 @@ pub fn redo(e: Editor) -> Editor = {
   if n == 0 then e
   else {
     let s = e.redo[n - 1]
-    { ...e, lines: s.lines, cur: s.cur, anchor: s.anchor, redo: list.take(e.redo, n - 1), undo: e.undo + [snapshot(e)], coalesce: 0, version: e.version + 1, scroll_to_cursor: true }
+    { ...e, lines: s.lines, cur: s.cur, anchor: s.anchor, redo: list.take(e.redo, n - 1), undo: e.undo + [snapshot(e)], coalesce: 0, version: e.version + 1, edited_from: 0, scroll_to_cursor: true }
   }
 }
 
@@ -842,22 +844,52 @@ pub fn light_theme() -> Theme = {
 
 // ── Paint ──
 
-// Lexer state at the start of `line`, computed from the top (cheap: only
-// comment depth and heredoc are carried).
-fn state_at(e: Editor, line: Int) -> syn.LexState = {
-  var st = syn.initial()
-  for l in 0..<line {
-    let ln = e.lines[l]
-    // fast path: a line without ( " or * cannot change the state
-    if st.comment > 0 or st.heredoc or list.contains(ln, 34) or list.contains(ln, 40) then {
-      let (_, next) = syn.lex(ln, st)
-      st = next
-    } else ()
-  }
-  st
+// What painting an editor keeps between frames, per view key: the lexer
+// state every LEX_STEP lines, so a frame lexes from the nearest checkpoint,
+// not from line 0.
+type PaintMemo = { version: Int, marks: List[syn.LexState] }
+
+let LEX_STEP = 64
+
+var paint_memos: Map[String, PaintMemo] = map.new()
+
+// The lexer state after `ln`, starting in `st` (a line without ( " or *
+// cannot change it).
+fn lex_over(ln: List[Int], st: syn.LexState) -> syn.LexState =
+  if st.comment > 0 or st.heredoc or list.contains(ln, 34) or list.contains(ln, 40) then {
+    let (_, next) = syn.lex(ln, st)
+    next
+  } else st
+
+// The memo for `key`, with its checkpoints still valid for `e`: a checkpoint
+// at line i * LEX_STEP depends only on the lines above it, so after one
+// change the ones at or before its first line stay; after several (or none
+// known), all but the first go.
+fn memo_for(key: String, e: Editor) -> PaintMemo = match map.get(paint_memos, key) {
+  some(m) => if m.version == e.version then m else {
+    let d = if m.version + 1 == e.version then e.edited_from else 0
+    { version: e.version, marks: list.take(m.marks, d / LEX_STEP + 1) }
+  },
+  none => { version: e.version, marks: [syn.initial()] },
 }
 
-fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: Float) -> Unit = {
+// Lexer state at the start of `line`, from the nearest checkpoint above it;
+// the checkpoints it passes are added to `m`.
+fn state_at(e: Editor, m: PaintMemo, line: Int) -> (syn.LexState, PaintMemo) = {
+  var marks = m.marks
+  let want = line / LEX_STEP
+  while list.len(marks) <= want {
+    let i = list.len(marks) - 1
+    var st = marks[i]
+    for l in i * LEX_STEP..<int.min(list.len(e.lines), (i + 1) * LEX_STEP) { st = lex_over(e.lines[l], st) }
+    list.push(marks, st)
+  }
+  var st = marks[want]
+  for l in want * LEX_STEP..<line { st = lex_over(e.lines[l], st) }
+  (st, { ...m, marks: marks })
+}
+
+fn paint(key: String, e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: Float) -> Unit = {
   let k = ui.pixel_scale()
   let lh = line_h(e)
   let gw = gutter_w(e)
@@ -887,7 +919,9 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   if e.single_line and list.len(e.lines) == 1 and list.len(e.lines[0]) == 0 and list.len(e.preedit) == 0 and e.placeholder != "" then
     tx.draw_style(e.placeholder, (x + px) * k, y * k, (w - px * 2.0) * k, h * k, size, false, false, th.placeholder)
   else ()
-  var st = if e.syntax then state_at(e, first) else syn.initial()
+  let memo0 = memo_for(key, e)
+  let (st0, memo) = if e.syntax then state_at(e, memo0, first) else (syn.initial(), memo0)
+  var st = st0
   let baseline_off = (lh - tx.line_height(fsize(e), mono)) * 0.5 + tx.ascent(fsize(e), mono)
   snaidhm.push_clip((x + gw) * k, y * k, (w - gw) * k, h * k)
   for l in first...last {
@@ -998,6 +1032,8 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
     }
   }
   snaidhm.pop_clip()
+  // keep the checkpoints
+  paint_memos = map.set(paint_memos, key, memo)
   // gutter: the number on a line's first row
   if not e.single_line and e.gutter then {
     snaidhm.fill(x * k, y * k, gw * k, h * k, 0.0, th.gutter_bg)
@@ -1068,7 +1104,7 @@ fn with_role(key: String, get: () -> Editor, set: (Editor) -> Unit, th: Theme, r
       set(e2)
       if moving then ui.invalidate() else ()
     } else ()
-    paint(get(), ui.is_focused(key), th, x, y, w, h)
+    paint(key, get(), ui.is_focused(key), th, x, y, w, h)
   })
     |> v.text_input(key)
     |> v.cursor(1)
