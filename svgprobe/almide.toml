@@ -1,0 +1,13 @@
+[package]
+name = "svgprobe"
+version = "0.1.0"
+
+[dependencies]
+snaidhm = { path = "../snaidhm" }
+
+[permissions]
+native = ["snaidhm"]
+
+[native-deps]
+wgpu = "30"
+pollster = "0.4"

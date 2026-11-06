@@ -1,0 +1,13 @@
+// The same buffer and loop, written through the `mut` helper only.
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
+
+fn pass(mut b: Bytes, n: Int) -> Unit = {
+  for i in 0..<n { setf(b, i, 1.0) }
+}
+
+effect fn main() -> Unit = {
+  let n = 1000000
+  var buf = bytes.zeros(n * 4 * 5)
+  pass(buf, n)
+  println("${bytes.get_f32_le(buf, (n - 1) * 4) ?? 0.0}")
+}
