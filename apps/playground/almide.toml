@@ -8,3 +8,17 @@ snaidhm = { path = "../../snaidhm" }
 
 [permissions]
 native = ["ceangal", "snaidhm"]
+
+[native-deps]
+# The framework's own [native-deps], repeated here: Almide v0.69.0 drops a
+# dependency package's [native-deps] from the generated Cargo.toml, so the
+# root package names them (remove once the compiler carries them again).
+winit = { version = "0.30", features = ["android-native-activity"] }
+png = "0.18"
+log = "0.4"
+ureq = "2"
+accesskit = "0.25"
+accesskit_winit = "0.34"
+ceangal_platform = { path = "src/ceangal_platform" }
+wgpu = "30"
+pollster = "0.4"
