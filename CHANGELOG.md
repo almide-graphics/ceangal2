@@ -6,7 +6,7 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
-- **Almide 0.69.0** (breaking): host fills are effects. The host writes
+- **Almide 0.69.1** (breaking): host fills are effects. The host writes
   straight into an `ffi.alloc` Region, so `storage.get`,
   `storage.secret_get`, `ceangal.asset` and `ceangal.asset_text` are
   `effect fn`s (call them with `!`), and so is `ceangal.dispatch` — an
