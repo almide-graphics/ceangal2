@@ -292,7 +292,11 @@ pub fn end(clear: Color) -> Bool = {
     bytes.put_f32_le(globals, 0, float.from(frame_w))
     bytes.put_f32_le(globals, 4, float.from(frame_h))
     gpu.write_buffer(globals_buf, 0, ffi.region(globals))
-    if count > 0 then gpu.write_buffer(inst_buf, 0, ffi.region(bytes.take(data, count * 80))) else ()
+    // the instances written this frame, as a view of the buffer: no copy
+    if count > 0 then match ffi.slice(ffi.region(data), 0, count * 80) {
+      ok(r) => gpu.write_buffer(inst_buf, 0, r),
+      err(_) => (),
+    } else ()
     let pass = gpu.pass_begin(target, gpu.LOAD_CLEAR, clear.r * clear.a, clear.g * clear.a, clear.b * clear.a, clear.a)
     gpu.pass_pipeline(pass, pipeline)
     gpu.pass_bind(pass, 0, group0)
