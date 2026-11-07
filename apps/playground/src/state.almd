@@ -689,8 +689,8 @@ pub effect fn load_logos() -> Unit = {
 
 fn logo_image(d: Bytes) -> Int =
   if bytes.len(d) > 4 then {
-    let w = bytes.get(d, 0) ?? 0 * 256 + bytes.get(d, 1) ?? 0
-    let h = bytes.get(d, 2) ?? 0 * 256 + bytes.get(d, 3) ?? 0
+    let w = (bytes.get(d, 0) ?? 0) * 256 + (bytes.get(d, 1) ?? 0)
+    let h = (bytes.get(d, 2) ?? 0) * 256 + (bytes.get(d, 3) ?? 0)
     snaidhm.create_image(w, h, bytes.slice(d, 4, bytes.len(d)))
   } else 0
 

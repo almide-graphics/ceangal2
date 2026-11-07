@@ -124,7 +124,7 @@ fn joining(cp: Int) -> Int = {
 // letter, for this one, and the next state, three digits each.
 let STATES = "000012011012000012011012000012721723000012521523"
 
-fn state_at(state: Int, jt: Int, k: Int) -> Int = bytes.get(bytes.from_string(STATES), state * 12 + jt * 3 + k) ?? 0 - 48
+fn state_at(state: Int, jt: Int, k: Int) -> Int = (bytes.get(bytes.from_string(STATES), state * 12 + jt * 3 + k) ?? 0) - 48
 
 // The form action of each character (NONE for transparent ones).
 fn actions(cps: List[Int]) -> List[Int] = {

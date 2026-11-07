@@ -22,8 +22,8 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "almide"
-version = "0.69.0"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+version = "0.69.1"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-codegen",
@@ -62,7 +62,7 @@ dependencies = [
 [[package]]
 name = "almide-base"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "lasso",
  "serde",
@@ -73,7 +73,7 @@ dependencies = [
 [[package]]
 name = "almide-codegen"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-egg-lab",
@@ -102,7 +102,7 @@ dependencies = [
 [[package]]
 name = "almide-dialect"
 version = "0.16.0"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",
@@ -112,7 +112,7 @@ dependencies = [
 [[package]]
 name = "almide-driver"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-frontend",
@@ -124,7 +124,7 @@ dependencies = [
 [[package]]
 name = "almide-egg-lab"
 version = "0.1.0"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",
@@ -135,7 +135,7 @@ dependencies = [
 [[package]]
 name = "almide-frontend"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",
@@ -147,7 +147,7 @@ dependencies = [
 [[package]]
 name = "almide-interp"
 version = "0.1.0"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-driver",
@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "almide-ir"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-lang",
@@ -172,7 +172,7 @@ dependencies = [
 [[package]]
 name = "almide-lang"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-syntax",
@@ -184,12 +184,12 @@ dependencies = [
 [[package]]
 name = "almide-layout"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 
 [[package]]
 name = "almide-mir"
 version = "0.1.0"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-codegen",
@@ -204,7 +204,7 @@ dependencies = [
 [[package]]
 name = "almide-optimize"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",
@@ -214,7 +214,7 @@ dependencies = [
 [[package]]
 name = "almide-rt-core"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "rustls",
  "rustls-native-certs",
@@ -224,12 +224,12 @@ dependencies = [
 [[package]]
 name = "almide-str"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 
 [[package]]
 name = "almide-syntax"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "serde",
@@ -243,7 +243,7 @@ dependencies = [
 [[package]]
 name = "almide-tools"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",
@@ -255,7 +255,7 @@ dependencies = [
 [[package]]
 name = "almide-types"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "serde",
@@ -265,7 +265,7 @@ dependencies = [
 [[package]]
 name = "almide-wasi"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-wasm",
@@ -278,7 +278,7 @@ dependencies = [
 [[package]]
 name = "almide-wasm"
 version = "0.12.2"
-source = "git+https://github.com/almide/almide.git?tag=v0.69.0#39f128a2d6af0cfc327d27913453e7af99c143fc"
+source = "git+https://github.com/almide/almide.git?tag=v0.69.1-rc1#20809e12fcdfae893b154e213d9677b90a2eec20"
 dependencies = [
  "almide-base",
  "almide-ir",

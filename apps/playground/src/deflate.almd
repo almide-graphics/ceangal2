@@ -51,7 +51,7 @@ pub fn raw(b: Bytes) -> Bytes = {
     var best_len = 0
     var best_dist = 0
     if i + 2 < n then {
-      let h = (bytes.get(b, i) ?? 0 * 409 + bytes.get(b, i + 1) ?? 0 * 31 + bytes.get(b, i + 2) ?? 0) % 4096
+      let h = ((bytes.get(b, i) ?? 0) * 409 + (bytes.get(b, i + 1) ?? 0) * 31 + (bytes.get(b, i + 2) ?? 0)) % 4096
       var cand = head[h]
       var tries = 0
       while cand >= 0 and i - cand <= 32768 and tries < 32 {
@@ -74,7 +74,7 @@ pub fn raw(b: Bytes) -> Bytes = {
       // index the skipped positions so later matches can find them
       for k in (i + 1)..<(i + best_len) {
         if k + 2 < n then {
-          let h2 = (bytes.get(b, k) ?? 0 * 409 + bytes.get(b, k + 1) ?? 0 * 31 + bytes.get(b, k + 2) ?? 0) % 4096
+          let h2 = ((bytes.get(b, k) ?? 0) * 409 + (bytes.get(b, k + 1) ?? 0) * 31 + (bytes.get(b, k + 2) ?? 0)) % 4096
           prev[k] = head[h2]
           head[h2] = k
         } else ()
