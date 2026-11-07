@@ -54,5 +54,5 @@ fn palette_color(b: Bytes, cpal: Int, index: Int) -> Int =
   else {
     let rec = cpal + u32(b, cpal + 8) + (u16(b, cpal + 12) + index) * 4
     // stored blue, green, red, alpha
-    ((bytes.get(b, rec + 2) ?? 0 * 256 + bytes.get(b, rec + 1) ?? 0) * 256 + bytes.get(b, rec) ?? 0) * 256 + bytes.get(b, rec + 3) ?? 0
+    (((bytes.get(b, rec + 2) ?? 0) * 256 + (bytes.get(b, rec + 1) ?? 0)) * 256 + (bytes.get(b, rec) ?? 0)) * 256 + (bytes.get(b, rec + 3) ?? 0)
   }
