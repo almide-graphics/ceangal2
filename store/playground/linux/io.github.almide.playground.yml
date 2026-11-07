@@ -43,7 +43,7 @@ modules:
       # (almide/almide#3361): unpack the matching source tree where
       # vendor/<crate>/../.. lands.
       - type: archive
-        url: https://github.com/almide/almide/archive/refs/tags/v0.66.0.tar.gz
-        sha256: 774e27032a2beb6c89e17361256c9c25f96563fee78649bf06adf5a4f129c426
+        url: https://github.com/almide/almide/archive/refs/tags/v0.69.1-rc1.tar.gz
+        sha256: eeffeb987a7e3d0efdab3e6ac3ca98c02311e2a1c1ad35f91bc50888971a7221
         dest: cargo
       - cargo-sources.json

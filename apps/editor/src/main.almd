@@ -32,7 +32,7 @@ fn big_doc() -> String = {
   for i in 0..<10000 {
     list.push(parts, "let value_" + int.to_string(i) + " = compute(" + int.to_string(i) + ", \"row\")  // line " + int.to_string(i + 1))
   }
-  string.join(parts, "\n")
+  list.join(parts, "\n")
 }
 
 fn view() -> v.View =
@@ -50,10 +50,10 @@ fn on_key(phase: Int, code: Int, mods: Int) -> Bool =
   if phase == 0 and code == 44 then { doc = ed.set_text(doc, big_doc()); true } else false
 
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 
 effect fn main() -> Unit = {
   ceangal.focus("main")
-  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)) |> ceangal.on_key(on_key))
+  ceangal.run(ceangal.app(view) |> ceangal.background(snaidhm.hex(0x1A1B26)) |> ceangal.on_key((phase, code, mods) => on_key(phase, code, mods)))
 }

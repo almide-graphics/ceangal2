@@ -58,6 +58,17 @@ pub fn font_generation() -> Int
 How many fonts have loaded: text measured before a fallback font arrived
 (the web fetches them on first use) is stale when this changes.
 
+### `load_fonts`
+
+```almide
+pub effect fn load_fonts() -> Unit
+```
+
+Load every font text asked for since the last call (and, the first time,
+the UI, bold and mono fonts, so the first frame has them). A missing asset
+may still be loading (the web fetches fallback fonts the first time they
+are needed): text that still lacks it asks again, as it draws.
+
 ## UTF-8
 
 ### `codepoints`

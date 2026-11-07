@@ -12,11 +12,11 @@ effect fn main() -> Unit = {
   }
   println("primes: " + int.to_string(count))
   var acc = 0.0
-  for k in 0..<3000000 { acc = acc + float.sqrt(int.to_float(k)) * 0.5 }
+  for k in 0..<3000000 { acc = acc + math.sqrt(float.from(k)) * 0.5 }
   println("acc: " + float.to_string(acc))
   var parts: List[String] = []
   for k in 0..<50000 { list.push(parts, int.to_string(k * 7)) }
-  println("len: " + int.to_string(string.len(string.join(parts, ","))))
+  println("len: " + int.to_string(string.len(list.join(parts, ","))))
   var m: Map[String, Int] = map.new()
   for k in 0..<50000 { m = map.set(m, "k" + int.to_string(k % 997), k) }
   println("keys: " + int.to_string(map.len(m)))

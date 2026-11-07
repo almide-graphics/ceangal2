@@ -72,9 +72,9 @@ type View = {
   content: String,
   style: Style,
   key: String,
-  on_click: () -> Unit,
+  on_click: effect () -> Unit,
   clickable: Bool,
-  on_pointer: (Pointer) -> Bool,
+  on_pointer: effect (Pointer) -> Bool,
   pointer: Bool,
   on_wheel: (Float, Float, Float, Float) -> Bool,   // (x, y, dx, dy) in node px
   wheel: Bool,
@@ -90,8 +90,8 @@ type View = {
   text_input: Bool,
   // Taps inside leave focus where it is (a key bar above the soft keyboard).
   keeps_focus: Bool,
-  on_key: (Int, Int, Int) -> Bool,           // (phase, key, mods)
-  on_text: (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
+  on_key: effect (Int, Int, Int) -> Bool,           // (phase, key, mods)
+  on_text: effect (Int, String, Int) -> Bool,       // (kind, text, preedit cursor)
   on_focus: (Bool) -> Unit,
   paint: Painter,
   label: String,
@@ -546,7 +546,7 @@ The semibold font.
 ### `on_click`
 
 ```almide
-pub fn on_click(v: View, f: () -> Unit) -> View
+pub fn on_click(v: View, f: effect () -> Unit) -> View
 ```
 
 Run `f` on a click or tap (press and release on the view); the pointer
@@ -555,7 +555,7 @@ becomes a hand over it. Give it a role and label for screen readers.
 ### `on_pointer`
 
 ```almide
-pub fn on_pointer(v: View, f: (Pointer) -> Bool) -> View
+pub fn on_pointer(v: View, f: effect (Pointer) -> Bool) -> View
 ```
 
 Every pointer event over the view (and, once pressed, until release):
@@ -617,7 +617,7 @@ Taps inside leave focus where it is (a key bar above the soft keyboard).
 ### `on_key`
 
 ```almide
-pub fn on_key(v: View, f: (Int, Int, Int) -> Bool) -> View
+pub fn on_key(v: View, f: effect (Int, Int, Int) -> Bool) -> View
 ```
 
 Keys while this view has focus: f(phase, code, mods), true = handled
@@ -626,7 +626,7 @@ Keys while this view has focus: f(phase, code, mods), true = handled
 ### `on_text`
 
 ```almide
-pub fn on_text(v: View, f: (Int, String, Int) -> Bool) -> View
+pub fn on_text(v: View, f: effect (Int, String, Int) -> Bool) -> View
 ```
 
 Text while this view has focus: f(kind, text, preedit cursor), true =

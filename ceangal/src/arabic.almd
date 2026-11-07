@@ -124,7 +124,7 @@ fn joining(cp: Int) -> Int = {
 // letter, for this one, and the next state, three digits each.
 let STATES = "000012011012000012011012000012721723000012521523"
 
-fn state_at(state: Int, jt: Int, k: Int) -> Int = bytes.read_u8(bytes.from_string(STATES), state * 12 + jt * 3 + k) - 48
+fn state_at(state: Int, jt: Int, k: Int) -> Int = (bytes.get(bytes.from_string(STATES), state * 12 + jt * 3 + k) ?? 0) - 48
 
 // The form action of each character (NONE for transparent ones).
 fn actions(cps: List[Int]) -> List[Int] = {
@@ -218,7 +218,7 @@ pub fn shape(f: font.Font, cps: List[Int]) -> List[Out] = {
   // marks take no width (HarfBuzz zeroes them by GDEF class after GPOS)
   var pos0: List[otl.Pos] = []
   for g in buf {
-    list.push(pos0, { xa: if g.cp == 0x200C or g.cp == 0x200D then 0 else float.to_int(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
+    list.push(pos0, { xa: if g.cp == 0x200C or g.cp == 0x200D then 0 else int.from_saturating(font.advance(f, g.gid)), ya: 0, xo: 0, yo: 0, attach: -1 })
   }
   var pos = otl.position(f, lay, pl.gpos, buf, pos0)
   for k in 0..<list.len(buf) { if buf[k].gclass == 3 then pos[k] = { ...pos[k], xa: 0 } else () }

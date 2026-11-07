@@ -44,7 +44,7 @@ version = "0.2.0"
 | `category` | `"public.app-category.utilities"` | The macOS App Store category ([values](https://developer.apple.com/documentation/bundleresources/information-property-list/lsapplicationcategorytype)). |
 | `languages` | `["en"]` | The languages the Windows package declares (`en-us`, `ja-jp`, …). |
 | `network` | `false` | The app talks to the network: Android's INTERNET permission, the macOS sandbox's network client entitlement. `ceangal.http` needs it. |
-| `assets` | `[]` | Directories bundled with the app, read with `ceangal.asset(path)` / `ceangal.asset_text(path)`. Merged over the framework's own (its fonts, under `fonts/`); a file of yours replaces the framework's file of the same name. |
+| `assets` | `[]` | Directories bundled with the app, read with `ceangal.asset(path)!` / `ceangal.asset_text(path)!` (effect fns: from `main` or a handler). Merged over the framework's own (its fonts, under `fonts/`); a file of yours replaces the framework's file of the same name. |
 
 ## `[framework]`
 

@@ -41,9 +41,9 @@ type App = {
 
 fn field(v: Value, path: List[String]) -> Value? = match list.get(path, 0) {
   none => some(v),
-  some(k) => match value.field(v, k) {
-    ok(x) => field(x, list.drop(path, 1)),
-    err(_) => none,
+  some(k) => match value.get(v, k) {
+    some(x) => field(x, list.drop(path, 1)),
+    none => none,
   },
 }
 
@@ -78,7 +78,7 @@ fn collapse(p: String) -> String = {
     else if part == ".." and list.len(kept) > 1 then kept = list.take(kept, list.len(kept) - 1)
     else list.push(kept, part)
   }
-  string.join(kept, "/")
+  list.join(kept, "/")
 }
 
 pub fn absolute(dir: String, p: String) -> String =
@@ -97,15 +97,15 @@ fn inline(dir: String, key: String, v: Value) -> String =
       err(_) => match value.as_int(v) {
         ok(n) => int.to_string(n),
         err(_) => match value.as_array(v) {
-          ok(xs) => "[" + string.join(list.map(xs, (x) => inline(dir, "", x)), ", ") + "]",
-          err(_) => "{ " + string.join(list.map(value.keys(v), (k) => k + " = " + (match value.field(v, k) { ok(x) => inline(dir, k, x), err(_) => "\"\"" })), ", ") + " }",
+          ok(xs) => "[" + list.join(list.map(xs, (x) => inline(dir, "", x)), ", ") + "]",
+          err(_) => "{ " + list.join(list.map(list.map(value.as_object(v) ?? [], (kv) => kv.0), (k) => k + " = " + (match value.get(v, k) { some(x) => inline(dir, k, x), none => "\"\"" })), ", ") + " }",
         },
       },
     },
   }
 
 fn deps(dir: String, v: Value) -> List[Dep] = match field(v, ["native", "deps"]) {
-  some(t) => list.map(value.keys(t), (k) => { name: k, spec: match value.field(t, k) { ok(x) => inline(dir, "", x), err(_) => "\"*\"" } }),
+  some(t) => list.map(list.map(value.as_object(t) ?? [], (kv) => kv.0), (k) => { name: k, spec: match value.get(t, k) { some(x) => inline(dir, "", x), none => "\"*\"" } }),
   none => [],
 }
 
@@ -114,8 +114,8 @@ pub fn key_of(id: String, given: String) -> String =
   if given != "" then given
   else {
     let last = match list.last(string.split(id, ".")) { some(s) => s, none => "app" }
-    let kept = list.filter(string.chars(string.to_lower(last)), (ch) => string.is_alphanumeric(ch))
-    if list.is_empty(kept) then "app" else string.join(kept, "")
+    let kept = list.filter(string.to_list(string.to_lower(last)), (ch) => string.is_alphanumeric(ch))
+    if list.is_empty(kept) then "app" else list.join(kept, "")
   }
 
 pub effect fn load(dir: String) -> Result[App, String] = {
@@ -130,7 +130,7 @@ pub effect fn load(dir: String) -> Result[App, String] = {
     for w in warnings { sh.warn("ceangal.toml: " + w) }
     if bad != "" then err(file + ": " + bad)
     else if id == "" then err(file + ": [app] id is required (reverse-DNS, e.g. dev.example.todo)")
-    else if not list.is_empty(problems) then err(file + ":\n  " + string.join(problems, "\n  "))
+    else if not list.is_empty(problems) then err(file + ":\n  " + list.join(problems, "\n  "))
     else {
     let out = absolute(dir, str(v, ["build", "out"], "build"))
     ok({

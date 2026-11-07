@@ -22,9 +22,9 @@ fn parse(text: String) -> List[HNode] = {
   var kids: List[List[HNode]] = [[]]
   var i = 0
   while i < n {
-    if bytes.read_u8(b, i) == 60 then {
+    if bytes.get(b, i) ?? 0 == 60 then {
       var j = i + 1
-      while j < n and bytes.read_u8(b, j) != 62 { j = j + 1 }
+      while j < n and (bytes.get(b, j) ?? 0) != 62 { j = j + 1 }
       let inner = bytes.to_string_lossy(bytes.slice(b, i + 1, j))
       let closing = string.starts_with(inner, "/")
       let raw = string.trim(if closing then string.drop(inner, 1) else inner)
@@ -53,7 +53,7 @@ fn parse(text: String) -> List[HNode] = {
       i = j + 1
     } else {
       var j = i
-      while j < n and bytes.read_u8(b, j) != 60 { j = j + 1 }
+      while j < n and (bytes.get(b, j) ?? 0) != 60 { j = j + 1 }
       let t = decode_entities(bytes.to_string_lossy(bytes.slice(b, i, j)))
       let top = list.len(tags) - 1
       if string.trim(t) != "" then kids[top] = kids[top] + [Text(t)] else ()

@@ -6,6 +6,16 @@ release. The release workflow takes the release notes from this file.
 
 ## Unreleased
 
+- **Almide 0.69.1** (breaking): host fills are effects. The host writes
+  straight into an `ffi.alloc` Region, so `storage.get`,
+  `storage.secret_get`, `ceangal.asset` and `ceangal.asset_text` are
+  `effect fn`s (call them with `!`), and so is `ceangal.dispatch` — an
+  app's `ceangal_event` is now `effect fn … = ceangal.dispatch(…)!`.
+  Event handlers are `effect` slots (`on_click`, `on_pointer`, `on_key`,
+  `on_text`; the app's `on_key`, `on_text`,
+  `on_frame`, `on_result`; the widgets' callbacks) so they can read host
+  data; `view()` stays pure. Fonts load in the dispatcher before an event,
+  not while text is measured.
 - **Colours**: `ceangal.color` parses CSS-style colour strings and
   lightens, darkens, saturates, turns the hue, mixes, and measures WCAG
   contrast. It behaves as tinycolor2 does, checked on 4808 recorded cases.

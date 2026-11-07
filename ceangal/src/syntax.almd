@@ -46,7 +46,7 @@ fn at(cps: List[Int], i: Int) -> Int = if i >= 0 and i < list.len(cps) then cps[
 fn word_of(cps: List[Int], a: Int, b: Int) -> String = {
   var bs: List[Int] = []
   for i in a..<b { list.push(bs, cps[i]) }
-  string.from_bytes(bs)
+  bytes.to_string_lossy(bytes.from_list(bs))
 }
 
 // Lex one line. Returns the spans and the state at the start of the next line.

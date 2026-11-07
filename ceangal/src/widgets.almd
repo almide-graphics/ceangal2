@@ -91,8 +91,8 @@ fn ring(view: v.View, th: Theme, key: String, idle: snaidhm.Color) -> v.View =
   view |> v.border(2.0, if ui.is_focused(key) then th.focus else idle)
 
 // Enter or Space while focused runs `f`.
-fn activates(view: v.View, f: () -> Unit) -> v.View =
-  view |> v.on_key((phase, code, mods) => if phase != 1 and (code == 1 or code == 60) then { f(); true } else false)
+fn activates(view: v.View, f: effect () -> Unit) -> v.View =
+  view |> v.on_key((phase, code, mods) => if phase != 1 and (code == 1 or code == 60) then { f()!; true } else false)
 
 // ── Text ──
 
@@ -141,7 +141,7 @@ pub fn link(th: Theme, s: String, url: String) -> v.View = {
 // ── Buttons ──
 
 // 0 primary, 1 secondary, 2 danger, 3 plain (text only)
-fn button_of(th: Theme, title: String, kind: Int, enabled: Bool, on: () -> Unit) -> v.View = {
+fn button_of(th: Theme, title: String, kind: Int, enabled: Bool, on: effect () -> Unit) -> v.View = {
   let key = "button:" + title
   let fill = if kind == 0 then th.accent else if kind == 2 then th.danger else if kind == 1 then th.surface else clear()
   let ink = if kind == 0 or kind == 2 then th.on_accent else if kind == 3 then th.accent else th.text
@@ -162,15 +162,15 @@ fn button_of(th: Theme, title: String, kind: Int, enabled: Bool, on: () -> Unit)
 }
 
 // The main action: filled with the accent colour.
-pub fn button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 0, true, on)
+pub fn button(th: Theme, title: String, on: effect () -> Unit) -> v.View = button_of(th, title, 0, true, on)
 // Another action: outlined.
-pub fn secondary_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 1, true, on)
+pub fn secondary_button(th: Theme, title: String, on: effect () -> Unit) -> v.View = button_of(th, title, 1, true, on)
 // A destructive action.
-pub fn danger_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 2, true, on)
+pub fn danger_button(th: Theme, title: String, on: effect () -> Unit) -> v.View = button_of(th, title, 2, true, on)
 // A light action: accent-coloured text.
-pub fn text_button(th: Theme, title: String, on: () -> Unit) -> v.View = button_of(th, title, 3, true, on)
+pub fn text_button(th: Theme, title: String, on: effect () -> Unit) -> v.View = button_of(th, title, 3, true, on)
 // A primary button that can be turned off (shown dimmed, announced as unavailable).
-pub fn button_enabled(th: Theme, title: String, enabled: Bool, on: () -> Unit) -> v.View = button_of(th, title, 0, enabled, on)
+pub fn button_enabled(th: Theme, title: String, enabled: Bool, on: effect () -> Unit) -> v.View = button_of(th, title, 0, enabled, on)
 
 // ── Choices ──
 
@@ -195,10 +195,10 @@ fn tick(c: snaidhm.Color) -> v.View =
 fn bar(x0: Float, y0: Float, x1: Float, y1: Float, t: Float, c: snaidhm.Color) -> Unit = {
   let dx = x1 - x0
   let dy = y1 - y0
-  let len = float.sqrt(dx * dx + dy * dy)
-  let steps = int.max(2, float.to_int(len / (t * 0.35)))
+  let len = math.sqrt(dx * dx + dy * dy)
+  let steps = int.max(2, int.from_saturating(len / (t * 0.35)))
   for i in 0..<steps + 1 {
-    let f = int.to_float(i) / int.to_float(steps)
+    let f = float.from(i) / float.from(steps)
     snaidhm.fill(x0 + dx * f - t / 2.0, y0 + dy * f - t / 2.0, t, t, t / 2.0, c)
   }
 }
@@ -207,9 +207,9 @@ fn bar(x0: Float, y0: Float, x1: Float, y1: Float, t: Float, c: snaidhm.Color) -
 let keep_bar = bar
 
 // A checkbox and its label; the whole row toggles it.
-pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: (Bool) -> Unit) -> v.View = {
+pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: effect (Bool) -> Unit) -> v.View = {
   let key = "checkbox:" + label
-  let flip = () => on_change(not checked)
+  let flip: effect () -> Unit = () => on_change(not checked)!
   let mark = v.box(if checked then tick(th.on_accent) else v.empty())
     |> v.size(20.0, 20.0) |> v.rounded(5.0)
     |> v.bg(if checked then live(th, th.accent, key) else live(th, th.surface, key))
@@ -221,9 +221,9 @@ pub fn checkbox(th: Theme, label: String, checked: Bool, on_change: (Bool) -> Un
 }
 
 // A switch: a setting that takes effect at once.
-pub fn switch(th: Theme, label: String, on: Bool, on_change: (Bool) -> Unit) -> v.View = {
+pub fn switch(th: Theme, label: String, on: Bool, on_change: effect (Bool) -> Unit) -> v.View = {
   let key = "switch:" + label
-  let flip = () => on_change(not on)
+  let flip: effect () -> Unit = () => on_change(not on)!
   let knob = v.empty() |> v.size(20.0, 20.0) |> v.rounded(10.0) |> v.bg(if on then th.on_accent else mix(th.surface, th.text, 0.4))
     |> v.absolute() |> v.top(3.0) |> v.left(if on then 23.0 else 3.0)
   let track = v.box(knob) |> v.size(46.0, 26.0) |> v.rounded(13.0)
@@ -236,13 +236,13 @@ pub fn switch(th: Theme, label: String, on: Bool, on_change: (Bool) -> Unit) -> 
 }
 
 // One choice out of a few, as a column of radio buttons.
-pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View = {
   var rows: List[v.View] = []
   for i in 0..<list.len(options) {
     let opt = options[i]
     let key = "radio:" + label + ":" + opt
     let picked = i == index
-    let pick = () => on_select(i)
+    let pick: effect () -> Unit = () => on_select(i)!
     let dot = v.box(if picked then v.empty() |> v.size(10.0, 10.0) |> v.rounded(5.0) |> v.bg(th.on_accent) else v.empty())
       |> v.size(20.0, 20.0) |> v.rounded(10.0) |> v.center()
       |> v.bg(if picked then live(th, th.accent, key) else live(th, th.surface, key))
@@ -252,8 +252,8 @@ pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, 
       |> v.focusable(key) |> v.on_click(pick) |> activates(pick)
       // arrows move the choice, as in a native radio group
       |> v.on_key((phase, code, mods) =>
-        if phase != 1 and (code == 13 or code == 11) and i + 1 < list.len(options) then { on_select(i + 1); ui.focus("radio:" + label + ":" + options[i + 1]); true }
-        else if phase != 1 and (code == 12 or code == 10) and i > 0 then { on_select(i - 1); ui.focus("radio:" + label + ":" + options[i - 1]); true }
+        if phase != 1 and (code == 13 or code == 11) and i + 1 < list.len(options) then { on_select(i + 1)!; ui.focus("radio:" + label + ":" + options[i + 1]); true }
+        else if phase != 1 and (code == 12 or code == 10) and i > 0 then { on_select(i - 1)!; ui.focus("radio:" + label + ":" + options[i - 1]); true }
         else false)
       |> v.role(18) |> v.label(opt) |> v.checked(picked))
   }
@@ -261,21 +261,21 @@ pub fn radio_group(th: Theme, label: String, options: List[String], index: Int, 
 }
 
 // One choice out of two to five, as joined buttons (a tab bar, a view switcher).
-pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+pub fn segmented(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View = {
   var segs: List[v.View] = []
   for i in 0..<list.len(options) {
     let opt = options[i]
     let key = "segment:" + label + ":" + opt
     let picked = i == index
-    let pick = () => on_select(i)
+    let pick: effect () -> Unit = () => on_select(i)!
     list.push(segs, v.text(opt) |> v.font(14.0) |> v.bold() |> v.color(if picked then th.on_accent else th.text)
       |> v.px(14.0) |> v.py(7.0) |> v.rounded(th.radius - 2.0) |> v.grow(1.0) |> v.center()
       |> v.bg(if picked then th.accent else live(th, th.surface, key))
       |> v.border(2.0, if ui.is_focused(key) then th.focus else if picked then th.accent else th.surface)
       |> v.focusable(key) |> v.on_click(pick) |> activates(pick)
       |> v.on_key((phase, code, mods) =>
-        if phase != 1 and code == 11 and i + 1 < list.len(options) then { on_select(i + 1); ui.focus("segment:" + label + ":" + options[i + 1]); true }
-        else if phase != 1 and code == 10 and i > 0 then { on_select(i - 1); ui.focus("segment:" + label + ":" + options[i - 1]); true }
+        if phase != 1 and code == 11 and i + 1 < list.len(options) then { on_select(i + 1)!; ui.focus("segment:" + label + ":" + options[i + 1]); true }
+        else if phase != 1 and code == 10 and i > 0 then { on_select(i - 1)!; ui.focus("segment:" + label + ":" + options[i - 1]); true }
         else false)
       |> v.role(8) |> v.label(opt) |> v.selected(picked))
   }
@@ -291,10 +291,10 @@ let TRIGGER_H = 40.0
 // The entries of a popup, floating under (or, near the bottom of the
 // window, over) its control: the highlighted one (keyboard) or the one under
 // the pointer filled, the chosen one ticked.
-fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
+fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: effect (Int) -> Unit) -> v.View = {
   // above the control when the list would run past the window's bottom
   let r = ui.rect_of(key)
-  let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
+  let tall = float.from(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
   let up = r.h > 0.0 and r.y + r.h + POPUP_GAP + tall > ui.viewport_height() and r.y - POPUP_GAP - tall >= 0.0
   let list_v = popup_list(th, key, name, items, chosen, list_role, item_role, on_pick)
   let placed = if up then v.bottom(list_v, fit(th, TRIGGER_H) + POPUP_GAP) else v.top(list_v, fit(th, TRIGGER_H) + POPUP_GAP)
@@ -302,12 +302,12 @@ fn popup(th: Theme, key: String, name: String, items: List[String], chosen: Int,
 }
 
 // A popup's entries in their floating card (placed by the caller).
-fn popup_list(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: (Int) -> Unit) -> v.View = {
+fn popup_list(th: Theme, key: String, name: String, items: List[String], chosen: Int, list_role: Int, item_role: Int, on_pick: effect (Int) -> Unit) -> v.View = {
   var rows: List[v.View] = []
   for i in 0..<list.len(items) {
     let ik = key + ":" + int.to_string(i)
     let lit = ui.popup_highlight() == i or ui.is_hovered(ik)
-    let pick = () => on_pick(i)
+    let pick: effect () -> Unit = () => on_pick(i)!
     list.push(rows, v.row([
         v.text(if i == chosen then "✓" else " ") |> v.font(13.0) |> v.color(if lit then th.on_accent else th.accent) |> v.w(14.0) |> v.a11y_hidden(),
         v.text(items[i]) |> v.font(th.font_size) |> v.color(if lit then th.on_accent else th.text) |> v.a11y_hidden(),
@@ -325,13 +325,13 @@ fn popup_list(th: Theme, key: String, name: String, items: List[String], chosen:
 
 // Keys while a popup is open: Up / Down move the highlight, Enter or Space
 // picks it, Escape closes (Tab moves focus, which closes it too).
-fn popup_keys(key: String, n: Int, code: Int, on_pick: (Int) -> Unit) -> Bool = {
+effect fn popup_keys(key: String, n: Int, code: Int, on_pick: effect (Int) -> Unit) -> Bool = {
   let hi = ui.popup_highlight()
   if code == 13 then { ui.set_popup_highlight(if hi < 0 then 0 else int.min(n - 1, hi + 1)); true }
   else if code == 12 then { ui.set_popup_highlight(int.max(0, hi - 1)); true }
   else if code == 14 then { ui.set_popup_highlight(0); true }
   else if code == 15 then { ui.set_popup_highlight(n - 1); true }
-  else if code == 1 or code == 60 then { if hi >= 0 and hi < n then on_pick(hi) else ui.close_popup(); true }
+  else if code == 1 or code == 60 then { if hi >= 0 and hi < n then on_pick(hi)! else ui.close_popup(); true }
   else if code == 5 then { ui.close_popup(); true }
   else false
 }
@@ -347,23 +347,23 @@ fn trigger_face(th: Theme, key: String, text: String) -> v.View =
 // One choice out of a list, shown as the current one; the list opens under
 // it. Keyboard: Enter, Space or Alt+Down opens it, Up / Down then move and
 // Enter picks; while it is closed, Up / Down change the choice directly.
-pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: (Int) -> Unit) -> v.View = {
+pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_select: effect (Int) -> Unit) -> v.View = {
   let key = "dropdown:" + label
   let n = list.len(options)
   let open = ui.popup_open(key)
   let current = if index >= 0 and index < n then options[index] else ""
-  let pick = (i: Int) => {
+  let pick: effect (Int) -> Unit = (i: Int) => {
     ui.close_popup()
-    on_select(i)
+    on_select(i)!
   }
-  let toggle = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, index)
+  let toggle: effect () -> Unit = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, index)
   let face = trigger_face(th, key, current) |> v.on_click(toggle)
     |> v.on_key((phase, code, mods) =>
       if phase == 1 then false
-      else if ui.popup_open(key) then popup_keys(key, n, code, pick)
+      else if ui.popup_open(key) then popup_keys(key, n, code, pick)!
       else if code == 1 or code == 60 or (code == 13 and ui.has_alt(mods)) then { ui.open_popup(key, index); true }
-      else if code == 13 and index + 1 < n then { on_select(index + 1); true }
-      else if code == 12 and index > 0 then { on_select(index - 1); true }
+      else if code == 13 and index + 1 < n then { on_select(index + 1)!; true }
+      else if code == 12 and index > 0 then { on_select(index - 1)!; true }
       else false)
     |> v.role(21) |> v.label(label) |> v.value(() => current) |> v.expanded(open)
   let anchor = if open then v.box(face |> v.grow(1.0)) |> v.with_child(popup(th, key, label, options, index, 22, 23, pick)) else v.box(face |> v.grow(1.0))
@@ -373,20 +373,20 @@ pub fn dropdown(th: Theme, label: String, options: List[String], index: Int, on_
 
 // A button that opens a menu of actions under it: each entry a title and
 // what it does. Keyboard as for a dropdown.
-pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) -> v.View = {
+pub fn menu_button(th: Theme, title: String, items: List[(String, effect () -> Unit)]) -> v.View = {
   let key = "menu:" + title
   let n = list.len(items)
   let open = ui.popup_open(key)
-  let run = (i: Int) => {
+  let run: effect (Int) -> Unit = (i: Int) => {
     ui.close_popup()
     let f = items[i].1
-    f()
+    f()!
   }
-  let toggle = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, -1)
+  let toggle: effect () -> Unit = () => if ui.popup_open(key) then ui.close_popup() else ui.open_popup(key, -1)
   let face = trigger_face(th, key, title) |> v.on_click(toggle)
     |> v.on_key((phase, code, mods) =>
       if phase == 1 then false
-      else if ui.popup_open(key) then popup_keys(key, n, code, run)
+      else if ui.popup_open(key) then popup_keys(key, n, code, run)!
       else if code == 1 or code == 60 or code == 13 then { ui.open_popup(key, 0); true }
       else false)
     |> v.role(3) |> v.label(title) |> v.expanded(open)
@@ -397,7 +397,7 @@ pub fn menu_button(th: Theme, title: String, items: List[(String, () -> Unit)]) 
 // screen) opens `items` at the pointer, each a title and what it does. An
 // entry is picked by a click or with the keys of a menu; a press outside
 // or Escape closes it. `key` names the menu (unique on the page).
-pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], view: v.View) -> v.View = {
+pub fn context_menu(th: Theme, key: String, items: List[(String, effect () -> Unit)], view: v.View) -> v.View = {
   let mkey = "context:" + key
   let area = v.box(view) |> v.key(mkey + ":area") |> v.on_context((x, y) => {
     // the menu takes the keyboard while it is open
@@ -406,21 +406,21 @@ pub fn context_menu(th: Theme, key: String, items: List[(String, () -> Unit)], v
   })
   if not ui.popup_open(mkey) then area
   else {
-    let run = (i: Int) => {
+    let run: effect (Int) -> Unit = (i: Int) => {
       ui.close_popup()
       let f = items[i].1
-      f()
+      f()!
     }
     let r = ui.rect_of(mkey + ":area")
     let (px, py) = ui.popup_point()
     // inside the window: a menu near the right or bottom edge opens leftward / upward
     let wide = 180.0
-    let tall = int.to_float(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
+    let tall = float.from(list.len(items)) * (th.font_size * ui.font_scale() * 1.3 + 16.0) + 10.0
     let x = if px + wide > ui.viewport_width() then float.max(0.0, px - wide) else px
     let y = if py + tall > ui.viewport_height() then float.max(0.0, py - tall) else py
     let menu = popup_list(th, mkey, key, list.map(items, (it) => it.0), -1, 24, 25, run)
       |> v.left(x - r.x) |> v.top(y - r.y) |> v.focusable(mkey) |> v.on_key((phase, code, mods) =>
-        if phase == 1 then false else popup_keys(mkey, list.len(items), code, run))
+        if phase == 1 then false else popup_keys(mkey, list.len(items), code, run)!)
     v.with_child(area, menu)
   }
 }
@@ -433,7 +433,7 @@ fn snap(x: Float, lo: Float, hi: Float, step: Float) -> Float =
   if step <= 0.0 then clamp(x, lo, hi) else clamp(lo + float.round((x - lo) / step) * step, lo, hi)
 
 // A number shown without a trailing ".0".
-fn num(x: Float) -> String = if float.round(x) == x then int.to_string(float.to_int(x)) else float.to_string(x)
+fn num(x: Float) -> String = if float.round(x) == x then int.to_string(int.from_saturating(x)) else float.to_string(x)
 
 let keep_snap = snap
 let keep_num = num
@@ -441,7 +441,7 @@ let keep_num = num
 // A value from `lo` to `hi` (in steps of `step`; 0 = any). Drag or tap the
 // track; with focus, Left / Right (and a screen reader's adjust gesture)
 // move it a step (a twentieth of the range when step is 0).
-pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step: Float, on_change: (Float) -> Unit) -> v.View = {
+pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step: Float, on_change: effect (Float) -> Unit) -> v.View = {
   let key = "slider:" + label
   let span = if hi > lo then hi - lo else 1.0
   let f = clamp((value - lo) / span, 0.0, 1.0)
@@ -469,15 +469,15 @@ pub fn slider(th: Theme, label: String, value: Float, lo: Float, hi: Float, step
       let row = ui.rect_of(key)
       let tx = p.x - (r.x - row.x)
       if p.phase == 0 or (p.phase == 1 and p.buttons > 0) or (p.phase == 1 and p.id >= 1) then {
-        on_change(snap(lo + clamp((tx - 10.0) / float.max(1.0, r.w - 20.0), 0.0, 1.0) * span, lo, hi, step))
+        on_change(snap(lo + clamp((tx - 10.0) / float.max(1.0, r.w - 20.0), 0.0, 1.0) * span, lo, hi, step))!
         true
       } else p.phase == 2
     })
     |> v.on_key((phase, code, mods) =>
-      if phase != 1 and code == 11 then { on_change(snap(value + nudge, lo, hi, step)); true }
-      else if phase != 1 and code == 10 then { on_change(snap(value - nudge, lo, hi, step)); true }
-      else if phase != 1 and code == 14 then { on_change(lo); true }
-      else if phase != 1 and code == 15 then { on_change(hi); true }
+      if phase != 1 and code == 11 then { on_change(snap(value + nudge, lo, hi, step))!; true }
+      else if phase != 1 and code == 10 then { on_change(snap(value - nudge, lo, hi, step))!; true }
+      else if phase != 1 and code == 14 then { on_change(lo)!; true }
+      else if phase != 1 and code == 15 then { on_change(hi)!; true }
       else false)
     |> v.role(16) |> v.label(label) |> v.value(() => num(value))
 }
@@ -487,7 +487,7 @@ pub fn progress(th: Theme, label: String, fraction: Float) -> v.View = {
   let f = clamp(fraction, 0.0, 1.0)
   v.box(v.empty() |> v.h_pct(100.0) |> v.w_pct(f * 100.0) |> v.rounded(4.0) |> v.bg(th.accent))
     |> v.h(8.0) |> v.rounded(4.0) |> v.bg(th.raised) |> v.clip()
-    |> v.role(20) |> v.label(label) |> v.value(() => int.to_string(float.to_int(f * 100.0)) + "%")
+    |> v.role(20) |> v.label(label) |> v.value(() => int.to_string(int.from_saturating(f * 100.0)) + "%")
 }
 
 // ── Text entry ──
@@ -516,10 +516,10 @@ fn lower(s: String) -> String = {
   let b = bytes.from_string(s)
   var out: List[Int] = []
   for i in 0..<bytes.len(b) {
-    let c = bytes.read_u8(b, i)
+    let c = bytes.get(b, i) ?? 0
     list.push(out, if c >= 65 and c <= 90 then c + 32 else c)
   }
-  string.from_bytes(out)
+  bytes.to_string_lossy(bytes.from_list(out))
 }
 
 // The options that contain `q` (ignoring the case of A–Z), those that
@@ -557,13 +557,13 @@ pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor,
   else ()
   let pick = (i: Int) => {
     // the option in the field, the caret after it
-    if i >= 0 and i < list.len(found) then set(ed.set_cursor(ed.set_text(get(), found[i]), 0, list.len(string.chars(found[i])))) else ()
+    if i >= 0 and i < list.len(found) then set(ed.set_cursor(ed.set_text(get(), found[i]), 0, list.len(string.to_list(found[i])))) else ()
     ui.close_popup()
   }
   let field = ed.field(key, get, set, { ...th.editor, bg: th.surface }) |> v.grow(1.0) |> v.label(label)
     |> v.role(21) |> v.expanded(show)
   let typed = field.on_key
-  let keyed = { ...field, on_key: (phase, code, mods) =>
+  let keyed = field |> v.on_key((phase, code, mods) =>
     if phase != 1 and ui.popup_open(key) and (code == 13 or code == 12 or (code == 1 and ui.popup_highlight() >= 0) or code == 5) then {
       let hi = ui.popup_highlight()
       let n = list.len(found)
@@ -575,7 +575,7 @@ pub fn autocomplete(th: Theme, key: String, label: String, get: () -> ed.Editor,
         ui.close_popup()
       }
       true
-    } else typed(phase, code, mods) }
+    } else typed(phase, code, mods)!)
   let box = v.box(keyed) |> v.h(fit(th, 42.0)) |> v.padding(2.0) |> v.rounded(th.radius) |> v.clip() |> v.bg(th.surface)
     |> v.border(2.0, if ui.is_focused(key) then th.focus else th.border)
   if show then v.box(box) |> v.with_child(popup(th, key, label, found, -1, 22, 23, pick)) else box
@@ -604,12 +604,12 @@ pub fn virtual_list(th: Theme, key: String, count: Int, row_h0: Float, row: (Int
   let off = ui.scroll_offset(key)
   let seen = ui.rect_of(key).h
   let height = if seen > 0.0 then seen else 800.0
-  let first = int.max(0, float.to_int(float.floor(off / row_h)) - 4)
-  let last = int.min(count, float.to_int(float.ceil((off + height) / row_h)) + 4)
-  var rows: List[v.View] = [v.empty() |> v.h(int.to_float(first) * row_h) |> v.a11y_hidden()]
-  let page = int.max(1, float.to_int(height / row_h) - 1)
+  let first = int.max(0, int.from_saturating(float.floor(off / row_h)) - 4)
+  let last = int.min(count, int.from_saturating(float.ceil((off + height) / row_h)) + 4)
+  var rows: List[v.View] = [v.empty() |> v.h(float.from(first) * row_h) |> v.a11y_hidden()]
+  let page = int.max(1, int.from_saturating(height / row_h) - 1)
   for i in first..<int.max(first, last) { list.push(rows, vrow(th, key, i, count, row_h, page, row(i) |> v.h(row_h))) }
-  list.push(rows, v.empty() |> v.h(int.to_float(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
+  list.push(rows, v.empty() |> v.h(float.from(count - int.max(first, last)) * row_h) |> v.a11y_hidden())
   v.col(rows) |> v.scroll_y(key) |> v.role(6) |> v.label(int.to_string(count) + " items")
 }
 
@@ -622,7 +622,7 @@ fn vrow(th: Theme, key: String, i: Int, count: Int, row_h: Float, page: Int, vie
     let clickable = view.clickable
     view |> v.focusable(k) |> ring(th, k, clear())
       |> v.on_key((phase, code, mods) =>
-        if phase != 1 and clickable and (code == 1 or code == 60) then { click(); true }
+        if phase != 1 and clickable and (code == 1 or code == 60) then { click()!; true }
         else vkey(key, i, count, row_h, page, phase, code))
   }
 
@@ -640,7 +640,7 @@ fn vkey(key: String, i: Int, count: Int, row_h: Float, page: Int, phase: Int, co
 fn vgo(key: String, j: Int, row_h: Float) -> Unit = {
   let off = ui.scroll_offset(key)
   let h = ui.rect_of(key).h
-  let top = int.to_float(j) * row_h
+  let top = float.from(j) * row_h
   if top < off then ui.scroll_to(key, top)
   else if top + row_h > off + h then ui.scroll_to(key, top + row_h - h)
   else ()
@@ -652,7 +652,7 @@ let keep_vkey = vkey
 let keep_scroll_to = ui.scroll_to
 
 // A row of a list: a title, an optional subtitle ("" = none), tapped as a whole.
-pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> v.View = {
+pub fn list_item(th: Theme, title: String, subtitle: String, on: effect () -> Unit) -> v.View = {
   let key = "item:" + title
   let texts = if subtitle == "" then [v.text(title) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden()]
     else [v.text(title) |> v.font(th.font_size) |> v.color(th.text) |> v.a11y_hidden(),
@@ -673,7 +673,7 @@ pub fn list_item(th: Theme, title: String, subtitle: String, on: () -> Unit) -> 
 //
 // Escape is the app's to handle (ceangal.on_key), as it may mean more than
 // closing the dialog.
-pub fn dialog(th: Theme, base: v.View, title: String, content: List[v.View], actions: List[v.View], on_dismiss: () -> Unit) -> v.View = {
+pub fn dialog(th: Theme, base: v.View, title: String, content: List[v.View], actions: List[v.View], on_dismiss: effect () -> Unit) -> v.View = {
   let card_view = v.col([heading(th, title)] + content + [v.row(actions) |> v.gap(10.0) |> v.justify(v.End)])
     |> v.gap(14.0) |> v.padding(22.0) |> v.rounded(th.radius + 6.0) |> v.bg(th.surface)
     |> v.border(1.0, th.border) |> v.shadow(30.0, 10.0, snaidhm.rgba(0.0, 0.0, 0.0, 0.35))

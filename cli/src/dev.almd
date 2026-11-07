@@ -41,7 +41,7 @@ fn runnable(exe: String, turn: Int) -> String = _
 pub fn watched(app: mf.App) -> List[String] = {
   let entry = mf.absolute(app.dir, app.entry)
   let parts = string.split(entry, "/")
-  let src = string.join(list.take(parts, list.len(parts) - 1), "/")
+  let src = list.join(list.take(parts, list.len(parts) - 1), "/")
   [src, app.dir + "/ceangal.toml"] + list.filter(app.assets + app.web_files + [app.web_boot, app.web_prebuild, app.native_dir], (p) => p != "")
 }
 

@@ -1,7 +1,10 @@
 [package]
 name = "editor"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 ceangal = { path = "../../ceangal" }
 snaidhm = { path = "../../snaidhm" }
+
+[permissions]
+native = ["ceangal", "snaidhm"]

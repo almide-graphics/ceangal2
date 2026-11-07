@@ -99,9 +99,9 @@ step("an SVG program shows in Visual", () => {
 
 step("Rust and AST views", () => {
   const s = session("native-rust", `wait; click ${at("Rust")}; wait`);
-  assert((find(s, "Generated Rust")?.value || "").includes("fn "), "rust");
+  assert((find(s, "Generated Rust")?.value || "").includes("fn "), `rust: ${(find(s, "Generated Rust")?.value || "(no view)").slice(0, 400)}`);
   const a = session("native-ast", `wait; click ${at("AST")}; wait`);
-  assert((find(a, "Syntax tree")?.value || "").length > 20, "ast");
+  assert((find(a, "Syntax tree")?.value || "").length > 20, `ast: ${(find(a, "Syntax tree")?.value || "(no view)").slice(0, 400)}`);
 });
 
 step("export writes a runnable project zip", () => {
@@ -129,7 +129,7 @@ step("user GUI: the Todo example is edited, runs as a window, takes input, stops
   const first = session("native-gui-start", base, { launch, env: { CEANGAL_GUI_A11Y: gui } });
   assert((find(first, "Code editor")?.value || "").includes(EDIT_TODO.trim()), "the edit is not in the editor");
   const win = find(first, "Program window");
-  assert(win, `no program window: ${texts(first)}`);
+  assert(win, `no program window: ${texts(first)}; output: ${(find(first, "Program output")?.value || "").slice(0, 600)}`);
   const g = () => readFileSync(gui, "utf8").split("\n").filter(Boolean).map((l) => { const [label, x, y, w, h] = l.split("\t"); return { label, x: +x + win.x, y: +y + win.y, w: +w, h: +h }; });
   assert(g().some((n) => n.label === "Edited") && g().some((n) => n.label === "2 tasks left"), `edited program: ${g().map((n) => n.label)}`);
   const field = g().find((n) => n.label === "New task");
