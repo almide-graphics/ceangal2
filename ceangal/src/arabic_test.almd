@@ -11,16 +11,16 @@ fn ours(f: font.Font, cps: List[Int]) -> String = {
     list.push(parts, "${g.gid}:${g.cluster}:${g.advance}:${g.x - pen}:${g.y}")
     pen = pen + g.advance
   }
-  string.join(parts, " ")
+  list.join(parts, " ")
 }
 
 effect fn check_all() -> Int = {
-  let f = font.parse(fs.read_bytes_raw("../assets/fonts/arabic.ttf")!)
+  let f = font.parse(fs.read_bytes("../assets/fonts/arabic.ttf")!)
   var failed = 0
   for line in string.split(fs.read_text("../tests/shaping/arabic.txt")!, "\n") {
     let cols = string.split(line, "\t")
     if list.len(cols) == 3 then {
-      let cps = list.map(string.chars(cols[1]), (c) => match string.codepoint(c) { some(v) => v, none => 0 })
+      let cps = list.map(string.to_list(cols[1]), (c) => match string.to_codepoint(c) { some(v) => v, none => 0 })
       let got = ours(f, cps)
       if got != cols[2] then {
         failed = failed + 1

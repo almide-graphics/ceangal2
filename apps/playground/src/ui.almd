@@ -134,7 +134,7 @@ pub fn code_theme() -> ed.Theme = if st.is_light() then {
   error: c(pal.stop), warning: c(pal.warn), placeholder: c(pal.faint),
 }
 
-fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
+fn button(s: String, on: Bool, f: effect () -> Unit) -> v.View =
   label(s, 12.5, if on then pal.on_accent else pal.button_text)
     |> v.px(14.0) |> v.py(6.0) |> v.rounded(6.0)
     |> v.bg(if on then c(pal.accent) else c(pal.button))
@@ -145,13 +145,13 @@ fn button(s: String, on: Bool, f: () -> Unit) -> v.View =
 fn icon(name: String, size: Float, rgb: Int) -> v.View =
   v.custom("icon-" + name, (x, y, w, h) => {
     let k = ceangal.pixel_scale()
-    let px = float.to_int(size * k + 0.999)
+    let px = int.from_saturating(size * k + 0.999)
     let tex = icons.texture(name, rgb, px)
     if tex != 0 then snaidhm.image(tex, (x + (w - size) / 2.0) * k, (y + (h - size) / 2.0) * k, size * k, size * k, 0.0, 1.0) else ()
   }) |> v.size(size, size)
 
 // A quiet header control: no fill until it is on (a menu open).
-fn ghost(content: List[v.View], on: Bool, name: String, f: () -> Unit) -> v.View =
+fn ghost(content: List[v.View], on: Bool, name: String, f: effect () -> Unit) -> v.View =
   v.row(content) |> v.gap(6.0) |> v.align(v.Middle) |> v.px(10.0) |> v.h(32.0) |> v.rounded(7.0)
     |> v.bg(if on then c(pal.raised) else snaidhm.rgba(0.0, 0.0, 0.0, 0.0))
     |> v.border(1.0, c(if on then pal.border else pal.header))
@@ -224,7 +224,7 @@ fn theme_button() -> v.View = {
       let r = 4.0 * k
       snaidhm.fill(cx - r, cy - r, r * 2.0, r * 2.0, r, fg)
       for i in 0..<8 {
-        let a = int.to_float(i) * 0.7854
+        let a = float.from(i) * 0.7854
         let px = cx + math.cos(a) * 7.5 * k
         let py = cy + math.sin(a) * 7.5 * k
         let d = 1.4 * k
@@ -247,23 +247,24 @@ fn ai_button() -> v.View = {
   v.row(parts) |> v.gap(6.0) |> v.align(v.Middle) |> v.px(12.0) |> v.h(32.0) |> v.rounded(7.0)
     |> v.bg(c(if on then pal.accent else pal.header))
     |> v.border(1.0, c(if on then pal.accent else pal.accent_light))
-    |> v.on_click(() => ai.toggle()) |> v.role(3) |> v.label("AI assistant")
+    |> v.on_click(() => ai.toggle()!) |> v.role(3) |> v.label("AI assistant")
 }
 
 // Phones: one pane at a time; the bar flips between them, opens the AI sheet
 // and runs (Run flips to the output by itself, loading an example flips
 // back to the code).
+fn bar_button(content: List[v.View], name: String, f: effect () -> Unit) -> v.View =
+  v.row(content) |> v.gap(6.0) |> v.align(v.Middle) |> v.justify(v.Center)
+    |> v.px(14.0) |> v.h(46.0) |> v.rounded(8.0)
+    |> v.bg(c(pal.raised)) |> v.border(1.0, c(pal.border))
+    |> v.on_click(f) |> v.role(3) |> v.label(name)
+
 fn mobile_bar() -> v.View = {
-  let bar_button = (content: List[v.View], name: String, f: () -> Unit) =>
-    v.row(content) |> v.gap(6.0) |> v.align(v.Middle) |> v.justify(v.Center)
-      |> v.px(14.0) |> v.h(46.0) |> v.rounded(8.0)
-      |> v.bg(c(pal.raised)) |> v.border(1.0, c(pal.border))
-      |> v.on_click(f) |> v.role(3) |> v.label(name)
   var items: List[v.View] = []
   if not st.embed then {
     var ai_parts: List[v.View] = [icon("sparkle", 15.0, pal.accent_light), label("AI", 14.0, pal.text) |> v.bold()]
     if ai.busy() then list.push(ai_parts, v.empty() |> v.size(6.0, 6.0) |> v.rounded(3.0) |> v.bg(c(pal.accent_light))) else ()
-    list.push(items, bar_button(ai_parts, "AI assistant", () => ai.toggle()))
+    list.push(items, bar_button(ai_parts, "AI assistant", () => ai.toggle()!))
   } else ()
   let pane = if st.mobile_output then "Code" else "Output"
   list.push(items, bar_button([label(pane, 14.0, pal.muted)], pane, () => st.toggle_mobile_output()) |> v.min_w(92.0))
@@ -288,7 +289,7 @@ fn menu_backdrop() -> v.View =
   v.empty() |> v.absolute() |> v.top(0.0) |> v.left(0.0) |> v.right(0.0) |> v.bottom(0.0)
     |> v.on_click(() => st.close_menus())
 
-fn menu_item(text: String, hint: String, name: String, f: () -> Unit) -> v.View =
+fn menu_item(text: String, hint: String, name: String, f: effect () -> Unit) -> v.View =
   v.col([
     label(text, 13.0, pal.text),
     label(hint, 11.5, pal.faint),
@@ -319,18 +320,18 @@ fn more_menu() -> v.View =
 // on a card that shows until a key is set, then behind ⚙. Wide screens put
 // the panel beside the editor; phones show it as a sheet from the bottom.
 
-fn chip(s: String, on: Bool, f: () -> Unit) -> v.View =
+fn chip(s: String, on: Bool, f: effect () -> Unit) -> v.View =
   label(s, 12.0, if on then pal.on_accent else pal.muted)
     |> v.px(10.0) |> v.py(5.0) |> v.rounded(12.0)
     |> v.bg(if on then c(pal.accent) else c(pal.panel))
     |> v.border(1.0, c(if on then pal.accent else pal.border))
     |> v.on_click(f) |> v.role(3) |> v.label(s)
 
-fn provider_chip(i: Int) -> v.View = chip(ai.PROVIDERS[i], ai.provider == i, () => ai.select_provider(i))
+fn provider_chip(i: Int) -> v.View = chip(ai.PROVIDERS[i], ai.provider == i, () => ai.select_provider(i)!)
 
 fn model_chip(i: Int, m: ai.Model) -> v.View = chip(m.label, ai.model_ix == i, () => ai.select_model(i))
 
-fn icon_button(name: String, rgb: Int, a11y: String, f: () -> Unit) -> v.View =
+fn icon_button(name: String, rgb: Int, a11y: String, f: effect () -> Unit) -> v.View =
   icon(name, 16.0, rgb) |> v.size(30.0, 30.0) |> v.rounded(6.0) |> v.center()
     |> v.on_click(f) |> v.role(3) |> v.label(a11y)
 
@@ -351,7 +352,7 @@ fn settings_card(width: Float) -> v.View = {
     key,
     para("Kept in this device's keychain. Requests go straight to " + ai.PROVIDERS[ai.provider] + "; nothing passes through Almide.", 11.5, pal.faint, width - 24.0),
   ]
-  if ai.has_key() then list.push(parts, button("Done", true, () => ai.toggle_settings()) |> v.align_self(v.Bottom)) else ()
+  if ai.has_key() then list.push(parts, button("Done", true, () => ai.toggle_settings()!) |> v.align_self(v.Bottom)) else ()
   v.col(parts) |> v.gap(7.0) |> v.padding(12.0) |> v.bg(c(pal.panel)) |> v.rounded(10.0)
     |> v.border(1.0, c(pal.border)) |> v.role(2) |> v.label("AI key and model")
 }
@@ -400,7 +401,7 @@ fn conversation(width: Float) -> v.View = {
     let tries = ["A maze generator that prints the maze", "Fireworks drawn as an SVG", "FizzBuzz with pattern matching"]
     for t in tries {
       list.push(items, label(t, 12.5, pal.text) |> v.px(12.0) |> v.py(8.0) |> v.rounded(8.0)
-        |> v.border(1.0, c(pal.border)) |> v.on_click(() => ai.suggest(t)) |> v.role(3) |> v.label(t))
+        |> v.border(1.0, c(pal.border)) |> v.on_click(() => ai.suggest(t)!) |> v.role(3) |> v.label(t))
     }
   } else {
     for i in 0..<list.len(ai.entries) { list.push(items, entry_view(i, ai.entries[i], width)) }
@@ -410,14 +411,15 @@ fn conversation(width: Float) -> v.View = {
 }
 
 // New program / edit: what the next request does, and what it sees.
+fn seg(text: String, on: Bool, f: effect () -> Unit) -> v.View =
+  label(text, 12.0, if on then pal.text else pal.faint)
+    |> v.px(10.0) |> v.h(26.0) |> v.center() |> v.rounded(6.0)
+    |> v.bg(if on then c(pal.bg) else snaidhm.rgba(0.0, 0.0, 0.0, 0.0))
+    |> v.border(1.0, c(if on then pal.border else pal.panel))
+    |> v.on_click(f) |> v.role(3) |> v.label(text)
+
 fn mode_switch() -> v.View = {
   let fresh = ai.writes_new()
-  let seg = (text: String, on: Bool, f: () -> Unit) =>
-    label(text, 12.0, if on then pal.text else pal.faint)
-      |> v.px(10.0) |> v.h(26.0) |> v.center() |> v.rounded(6.0)
-      |> v.bg(if on then c(pal.bg) else snaidhm.rgba(0.0, 0.0, 0.0, 0.0))
-      |> v.border(1.0, c(if on then pal.border else pal.panel))
-      |> v.on_click(f) |> v.role(3) |> v.label(text)
   v.row([
     seg("Edit project", not fresh, () => ai.set_mode(false)),
     seg("New program", fresh, () => ai.set_mode(true)),
@@ -428,11 +430,11 @@ fn prompt_box(width: Float) -> v.View = {
   let busy = ai.busy()
   let field = ed.field("ai-prompt", () => { ...ai.prompt_field, placeholder: ai.placeholder() }, (e) => ai.set_prompt_field(e), code_theme())
     |> v.h(38.0) |> v.grow(1.0) |> v.rounded(8.0) |> v.clip() |> v.label("Prompt")
-    |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { ai.generate(); true } else false)
+    |> v.on_key((phase, code, mods) => if phase != 1 and code == 1 then { ai.generate()!; true } else false)
   let send =
     icon(if busy then "stop" else "send", 16.0, pal.on_accent) |> v.size(38.0, 38.0) |> v.rounded(8.0) |> v.center()
       |> v.bg(c(if busy then pal.stop else pal.accent))
-      |> v.on_click(() => ai.generate()) |> v.role(3) |> v.label(if busy then "Stop AI" else "Generate")
+      |> v.on_click(() => ai.generate()!) |> v.role(3) |> v.label(if busy then "Stop AI" else "Generate")
   v.col([
     mode_switch(),
     v.row([field, send]) |> v.gap(8.0) |> v.align(v.Middle),
@@ -445,8 +447,8 @@ fn ai_panel(narrow: Bool, width: Float) -> v.View = {
     icon("sparkle", 16.0, pal.accent_light),
     label("AI", 14.0, pal.text) |> v.bold(),
     v.spacer(),
-    label(ai.model_label(), 12.0, pal.faint) |> v.px(6.0) |> v.on_click(() => ai.toggle_settings()) |> v.role(3) |> v.label("Model " + ai.model_label()),
-    icon_button("gear", pal.muted, "AI settings", () => ai.toggle_settings()),
+    label(ai.model_label(), 12.0, pal.faint) |> v.px(6.0) |> v.on_click(() => ai.toggle_settings()!) |> v.role(3) |> v.label("Model " + ai.model_label()),
+    icon_button("gear", pal.muted, "AI settings", () => ai.toggle_settings()!),
     v.row([icon("new", 13.0, pal.muted), label("New session", 12.0, pal.muted)]) |> v.gap(4.0) |> v.align(v.Middle)
       |> v.px(8.0) |> v.h(30.0) |> v.rounded(6.0) |> v.on_click(() => ai.new_chat()) |> v.role(3) |> v.label("New session"),
     icon_button("close", pal.muted, "Close AI", () => ai.close()),
@@ -523,7 +525,7 @@ fn put_text(s: String) -> Unit = st.set_current(ed.insert(st.current(), s))
 let keep_press_key = press_key
 let keep_put_text = put_text
 
-fn key_button(text: String, name: String, f: () -> Unit) -> v.View =
+fn key_button(text: String, name: String, f: effect () -> Unit) -> v.View =
   v.row([label(text, 16.0, pal.text)]) |> v.justify(v.Center) |> v.align(v.Middle) |> v.h(40.0) |> v.grow(1.0) |> v.rounded(6.0)
     |> v.bg(c(pal.raised)) |> v.border(1.0, c(pal.border))
     |> v.on_click(f) |> v.role(3) |> v.label(name)
@@ -589,9 +591,9 @@ fn gui_view() -> v.View =
   })
     |> v.grow(1.0) |> v.role(13) |> v.label("Program window")
     |> v.text_input("gui")
-    |> v.on_pointer((p) => { if p.phase == 0 then ceangal.focus("gui") else (); st.gui_event(4, p.phase, p.id, p.x, p.y, int.to_float(p.buttons), int.to_float(p.mods)) })
+    |> v.on_pointer((p) => { if p.phase == 0 then ceangal.focus("gui") else (); st.gui_event(4, p.phase, p.id, p.x, p.y, float.from(p.buttons), float.from(p.mods)) })
     |> v.on_wheel((x, y, dx, dy) => st.gui_event(5, 0, 1, x, y, dx, dy))
-    |> v.on_key((phase, code, mods) => st.gui_event(6, phase, code, int.to_float(mods), 0.0, 0.0, 0.0))
+    |> v.on_key((phase, code, mods) => st.gui_event(6, phase, code, float.from(mods), 0.0, 0.0, 0.0))
     |> v.on_text((kind, s, cur) => st.gui_text(kind, s, cur))
 
 fn picture_view() -> v.View = {
@@ -603,8 +605,8 @@ fn picture_view() -> v.View = {
   else v.custom("picture", (x, y, w, h) => {
     let tex = st.picture_texture()
     let k = ceangal.pixel_scale()
-    let pw = int.to_float(p.w)
-    let ph = int.to_float(p.h)
+    let pw = float.from(p.w)
+    let ph = float.from(p.h)
     let s = float.min((w - 24.0) / pw, (h - 24.0) / ph)
     let dw = pw * s
     let dh = ph * s
@@ -651,7 +653,7 @@ fn fix_button() -> v.View =
   if can_fix() then
     v.row([icon("sparkle", 12.0, pal.on_accent), label("Fix with AI", 12.0, pal.on_accent) |> v.bold()])
       |> v.gap(5.0) |> v.align(v.Middle) |> v.px(10.0) |> v.h(22.0) |> v.rounded(11.0) |> v.bg(c(pal.accent))
-      |> v.on_click(() => ai.fix_last_run()) |> v.role(3) |> v.label("Fix with AI")
+      |> v.on_click(() => ai.fix_last_run()!) |> v.role(3) |> v.label("Fix with AI")
   else v.empty()
 
 // ── Examples menu ──
@@ -663,7 +665,7 @@ fn examples_menu(narrow: Bool) -> v.View = {
     for e in cat.examples {
       let id = e.id
       list.push(rows, label(e.title, 13.0, pal.text) |> v.px(if narrow then 16.0 else 12.0) |> v.py(if narrow then 12.0 else 6.0) |> v.rounded(4.0)
-        |> v.on_click(() => { let _ = st.load_example(id) }) |> v.role(11) |> v.label(e.title))
+        |> v.on_click(() => { let _ = st.load_example(id)!; () }) |> v.role(11) |> v.label(e.title))
     }
   }
   // at most 70% of the screen tall, scrolling (wheel / finger) beyond that

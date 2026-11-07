@@ -24,9 +24,12 @@ fn create_buffer(size: Int, usage: Int) -> Int = _
   hosts identical and independent of the compiler's heap layout.
 * **Handles** are `Int`. `0` is the null handle and is never a live object.
   A handle is valid only inside the context that created it (§3).
-* **Byte ranges** are `(ptr: Int, len: Int)` where `ptr = bytes.data_ptr(b)`.
-  On wasm `ptr` is an offset into the guest's linear memory; natively it is a
-  real address. The host reads exactly `len` bytes and never retains `ptr`
+* **Byte ranges** are `(ptr: Int, len: Int)` on the wire. The Almide binding
+  takes one `ffi.Region` per pair (`ffi.region(b)`, ADR-0031), which crosses
+  a wasm import as exactly that pair, the length the runtime holds; natively
+  the package's generated `<pkg>_abi.rs` adapter hands the same pair to the
+  host module. On wasm `ptr` is an offset into the guest's linear memory;
+  natively it is a real address. The host reads exactly `len` bytes and never retains `ptr`
   past the call.
 * **Strings** are UTF-8 byte ranges (`bytes.from_string(s)`).
 * **Host → guest data uses pull, never host allocation.** The host exposes
@@ -44,8 +47,8 @@ single line every app carries (wasm exports only root-module functions):
 
 ```almide
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 ```
 
 Natively the host calls `ceangal.dispatch` directly (the generated Rust name,

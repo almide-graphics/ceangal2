@@ -26,16 +26,16 @@ type Font = {
 // A function, not a `let`: a constant holding Bytes does not build natively
 // (almide/almide#3287).
 pub fn empty_font() -> Font = {
-  data: bytes.new(0), ok: false, units_per_em: 1000.0, ascender: 800.0, descender: -200.0, line_gap: 0.0,
+  data: bytes.zeros(0), ok: false, units_per_em: 1000.0, ascender: 800.0, descender: -200.0, line_gap: 0.0,
   num_glyphs: 0, num_hmetrics: 0, index_to_loc: 0, cmap4: 0, cmap12: 0, loca: 0, glyf: 0, hmtx: 0,
 }
 
-fn u8(b: Bytes, p: Int) -> Int = bytes.read_u8(b, p)
-fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
-fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.read_u16_be(b, p); if v >= 32768 then v - 65536 else v }
-fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
-fn i8(b: Bytes, p: Int) -> Int = { let v = bytes.read_u8(b, p); if v >= 128 then v - 256 else v }
-fn f2dot14(b: Bytes, p: Int) -> Float = int.to_float(i16(b, p)) / 16384.0
+fn u8(b: Bytes, p: Int) -> Int = bytes.get(b, p) ?? 0
+fn u16(b: Bytes, p: Int) -> Int = bytes.get_u16_be(b, p) ?? 0
+fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.get_u16_be(b, p) ?? 0; if v >= 32768 then v - 65536 else v }
+fn u32(b: Bytes, p: Int) -> Int = bytes.get_u32_be(b, p) ?? 0
+fn i8(b: Bytes, p: Int) -> Int = { let v = bytes.get(b, p) ?? 0; if v >= 128 then v - 256 else v }
+fn f2dot14(b: Bytes, p: Int) -> Float = float.from(i16(b, p)) / 16384.0
 
 fn tag(b: Bytes, p: Int) -> Int = u32(b, p)
 
@@ -90,10 +90,10 @@ pub fn parse(b: Bytes) -> Font =
       {
         data: b,
         ok: true,
-        units_per_em: int.to_float(u16(b, head + 18)),
-        ascender: int.to_float(i16(b, hhea + 4)),
-        descender: int.to_float(i16(b, hhea + 6)),
-        line_gap: int.to_float(i16(b, hhea + 8)),
+        units_per_em: float.from(u16(b, head + 18)),
+        ascender: float.from(i16(b, hhea + 4)),
+        descender: float.from(i16(b, hhea + 6)),
+        line_gap: float.from(i16(b, hhea + 8)),
         num_glyphs: u16(b, maxp + 4),
         num_hmetrics: u16(b, hhea + 34),
         index_to_loc: i16(b, head + 50),
@@ -168,7 +168,7 @@ pub fn advance(f: Font, gid: Int) -> Float =
   if not f.ok then 0.0
   else {
     let i = if gid < f.num_hmetrics then gid else f.num_hmetrics - 1
-    int.to_float(u16(f.data, f.hmtx + i * 4))
+    float.from(u16(f.data, f.hmtx + i * 4))
   }
 
 // ── Outlines ──
@@ -241,8 +241,8 @@ fn append_simple(data: Bytes, p: Int, nc: Int, a: Float, b: Float, c: Float, d: 
         v = v + i16(data, pos)
         pos = pos + 2
       } else ()
-      let x = int.to_float(xs[i])
-      let y = int.to_float(v)
+      let x = float.from(xs[i])
+      let y = float.from(v)
       list.push(o.xs, a * x + c * y + dx)
       list.push(o.ys, b * x + d * y + dy)
       list.push(o.on, int.band(flags[i], 1) != 0)
@@ -263,12 +263,12 @@ fn append_composite(f: Font, p: Int, a: Float, b: Float, c: Float, d: Float, dx:
     var ox = 0.0
     var oy = 0.0
     if int.band(flags, 1) != 0 then {
-      ox = int.to_float(i16(f.data, pos))
-      oy = int.to_float(i16(f.data, pos + 2))
+      ox = float.from(i16(f.data, pos))
+      oy = float.from(i16(f.data, pos + 2))
       pos = pos + 4
     } else {
-      ox = int.to_float(i8(f.data, pos))
-      oy = int.to_float(i8(f.data, pos + 1))
+      ox = float.from(i8(f.data, pos))
+      oy = float.from(i8(f.data, pos + 1))
       pos = pos + 2
     }
     var ca = 1.0
@@ -306,7 +306,7 @@ fn append_composite(f: Font, p: Int, a: Float, b: Float, c: Float, d: Float, dx:
 
 type Bitmap = { w: Int, h: Int, left: Int, top: Int, pixels: Bytes }
 
-fn empty_bitmap() -> Bitmap = { w: 0, h: 0, left: 0, top: 0, pixels: bytes.new(0) }
+fn empty_bitmap() -> Bitmap = { w: 0, h: 0, left: 0, top: 0, pixels: bytes.zeros(0) }
 
 // Rasterise glyph `gid` at `size_px` pixels per em. `left`/`top` place the
 // bitmap relative to the pen position on the baseline (top is distance above
@@ -327,10 +327,10 @@ pub fn rasterize(f: Font, gid: Int, size_px: Float) -> Bitmap = {
       miny = float.min(miny, o.ys[i])
       maxy = float.max(maxy, o.ys[i])
     }
-    let left = float.to_int(float.floor(minx * s))
-    let right = float.to_int(float.ceil(maxx * s))
-    let top = float.to_int(float.ceil(maxy * s))
-    let bottom = float.to_int(float.floor(miny * s))
+    let left = int.from_saturating(float.floor(minx * s))
+    let right = int.from_saturating(float.ceil(maxx * s))
+    let top = int.from_saturating(float.ceil(maxy * s))
+    let bottom = int.from_saturating(float.floor(miny * s))
     let w = right - left + 1
     let h = top - bottom + 1
     if w <= 0 or h <= 0 or w > 1024 or h > 1024 then empty_bitmap()
@@ -338,21 +338,21 @@ pub fn rasterize(f: Font, gid: Int, size_px: Float) -> Bitmap = {
       let stride = w + 2
       var acc: List[Float] = list.repeat(0.0, stride * h + 4)
       // pixel space: x' = x*s - left, y' = top - y*s (y down)
-      let ox = int.to_float(left)
-      let oy = int.to_float(top)
+      let ox = float.from(left)
+      let oy = float.from(top)
       var start = 0
       for e in o.ends {
         if e - start >= 2 then contour(o, start, e, s, ox, oy, stride, h, acc) else ()
         start = e
       }
-      var out = bytes.new(w * h)
+      var out = bytes.zeros(w * h)
       for y in 0..<h {
         var sum = 0.0
         for x in 0..<stride {
           sum = sum + acc[y * stride + x]
           if x < w then {
             let cov = float.min(1.0, float.abs(sum))
-            bytes.set_at(out, y * w + x, float.to_int(cov * 255.0 + 0.5))
+            out = bytes.set(out, y * w + x, int.from_saturating(cov * 255.0 + 0.5))
           } else ()
         }
       }
@@ -419,13 +419,13 @@ fn contour(o: Outline, start: Int, stop: Int, s: Float, ox: Float, oy: Float, st
 fn quad(x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, stride: Int, h: Int, mut acc: List[Float]) -> Unit = {
   let ddx = x0 - 2.0 * x1 + x2
   let ddy = y0 - 2.0 * y1 + y2
-  let dd = float.sqrt(ddx * ddx + ddy * ddy)
-  let n = int.max(1, int.min(32, float.to_int(float.ceil(float.sqrt(dd * 4.0)))))
-  let step = 1.0 / int.to_float(n)
+  let dd = math.sqrt(ddx * ddx + ddy * ddy)
+  let n = int.max(1, int.min(32, int.from_saturating(float.ceil(math.sqrt(dd * 4.0)))))
+  let step = 1.0 / float.from(n)
   var lx = x0
   var ly = y0
   for j in 1...n {
-    let t = int.to_float(j) * step
+    let t = float.from(j) * step
     let mt = 1.0 - t
     let x = mt * mt * x0 + 2.0 * mt * t * x1 + t * t * x2
     let y = mt * mt * y0 + 2.0 * mt * t * y1 + t * t * y2
@@ -445,21 +445,21 @@ fn line(ax: Float, ay: Float, bx: Float, by: Float, stride: Int, h: Int, mut acc
     let y1 = if down then by else ay
     let dxdy = (x1 - x0) / (y1 - y0)
     var x = x0
-    let ystart = int.max(0, float.to_int(float.floor(y0)))
+    let ystart = int.max(0, int.from_saturating(float.floor(y0)))
     if y0 < 0.0 then x = x - y0 * dxdy else ()
-    let yend = int.min(h, float.to_int(float.ceil(y1)))
+    let yend = int.min(h, int.from_saturating(float.ceil(y1)))
     for yi in ystart..<yend {
       let row = yi * stride
-      let fy = int.to_float(yi)
+      let fy = float.from(yi)
       let dy = float.min(fy + 1.0, y1) - float.max(fy, y0)
       let xnext = x + dxdy * dy
       let d = dy * dir
       let xa = float.min(x, xnext)
       let xb = float.max(x, xnext)
       let xaf = float.floor(xa)
-      let xai = int.max(0, float.to_int(xaf))
+      let xai = int.max(0, int.from_saturating(xaf))
       let xbc = float.ceil(xb)
-      let xbi = int.min(stride - 2, float.to_int(xbc))
+      let xbi = int.min(stride - 2, int.from_saturating(xbc))
       if xbi <= xai + 1 then {
         let xmf = 0.5 * (x + xnext) - xaf
         acc[row + xai] = acc[row + xai] + d - d * xmf
@@ -479,7 +479,7 @@ fn line(ax: Float, ay: Float, bx: Float, by: Float, stride: Int, h: Int, mut acc
           for xi in (xai + 2)..<(xbi - 1) {
             acc[row + xi] = acc[row + xi] + d * sl
           }
-          let a2 = a1 + int.to_float(xbi - xai - 3) * sl
+          let a2 = a1 + float.from(xbi - xai - 3) * sl
           acc[row + xbi - 1] = acc[row + xbi - 1] + d * (1.0 - a2 - am)
         }
         acc[row + xbi] = acc[row + xbi] + d * am

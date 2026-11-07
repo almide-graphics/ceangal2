@@ -14,6 +14,7 @@
 // atlas (shelf-packed); a full atlas is cleared at the start of the next
 // frame and refilled lazily.
 
+import ffi
 import snaidhm
 import snaidhm.font as font
 import snaidhm.otl as otl
@@ -88,14 +89,16 @@ fn invisible(cp: Int) -> Bool =
     or (cp >= 0xFE00 and cp <= 0xFE0F) or (cp >= 0x1F3FB and cp <= 0x1F3FF) or cp == 0xFEFF
     or (cp >= 0xE0100 and cp <= 0xE01EF)
 
-fn load_asset(name: String) -> Bytes = {
+// The host fills a writable ffi.alloc Region with the asset: an effect, so
+// fonts load in `load_fonts` (run by the dispatcher), never while measuring.
+effect fn load_asset(name: String) -> Bytes = {
   let key = bytes.from_string(name)
-  let n = sys.asset_len(bytes.data_ptr(key), bytes.len(key))
-  if n <= 0 then bytes.new(0)
+  let n = sys.asset_len(ffi.region(key))
+  if n <= 0 then bytes.new()
   else {
-    var buf = bytes.new(n)
-    let _ = sys.asset_read(bytes.data_ptr(key), bytes.len(key), bytes.data_ptr(buf), n)
-    buf
+    let dst = ffi.alloc(n)!
+    let _ = sys.asset_read(ffi.region(key), dst)
+    ffi.to_bytes(dst)!
   }
 }
 
@@ -105,16 +108,40 @@ var generation = 0
 // (the web fetches them on first use) is stale when this changes.
 pub fn font_generation() -> Int = generation
 
+// Slots measured before their font loaded: `load_fonts` loads them.
+var font_wanted: List[Bool] = list.repeat(false, 17)
+
 fn font_at(slot: Int) -> font.Font = {
   if list.len(fonts) == 0 then fonts = list.repeat(font.empty_font(), list.len(FONT_FILES)) else ()
   if not font_tried[slot] then {
-    let f = font.parse(load_asset(FONT_FILES[slot]))
-    fonts[slot] = f
-    // A missing asset may still be loading (the web fetches fallback fonts
-    // the first time they are needed): draw again on the next frame.
-    if f.ok then { font_tried[slot] = true; generation = generation + 1 } else { waiting = true; sys.request_frame() }
-    f
+    // Not loaded yet: the dispatcher loads it before the next event, and
+    // the frame after that draws with it.
+    font_wanted[slot] = true
+    waiting = true
+    sys.request_frame()
+    fonts[slot]
   } else fonts[slot]
+}
+
+// Load every font text asked for since the last call (and, the first time,
+// the UI, bold and mono fonts, so the first frame has them). A missing asset
+// may still be loading (the web fetches fallback fonts the first time they
+// are needed): text that still lacks it asks again, as it draws.
+pub effect fn load_fonts() -> Unit = {
+  if list.len(fonts) == 0 then {
+    fonts = list.repeat(font.empty_font(), list.len(FONT_FILES))
+    font_wanted[FONT_UI] = true
+    font_wanted[FONT_UI_BOLD] = true
+    font_wanted[FONT_MONO] = true
+  } else ()
+  for slot in 0..<list.len(FONT_FILES) {
+    if font_wanted[slot] and not font_tried[slot] then {
+      let f = font.parse(load_asset(FONT_FILES[slot])!)
+      fonts[slot] = f
+      font_wanted[slot] = false
+      if f.ok then { font_tried[slot] = true; generation = generation + 1 } else ()
+    } else ()
+  }
 }
 
 fn chain(mono: Bool, bold: Bool) -> List[Int] =
@@ -131,16 +158,16 @@ pub fn codepoints(s: String) -> List[Int] = {
   var out: List[Int] = []
   var i = 0
   while i < n {
-    let c = bytes.read_u8(b, i)
+    let c = bytes.get(b, i) ?? 0
     if c < 128 then { list.push(out, c); i = i + 1 }
     else if c < 224 and i + 1 < n then {
-      list.push(out, (c % 32) * 64 + bytes.read_u8(b, i + 1) % 64)
+      list.push(out, (c % 32) * 64 + (bytes.get(b, i + 1) ?? 0) % 64)
       i = i + 2
     } else if c < 240 and i + 2 < n then {
-      list.push(out, (c % 16) * 4096 + (bytes.read_u8(b, i + 1) % 64) * 64 + bytes.read_u8(b, i + 2) % 64)
+      list.push(out, (c % 16) * 4096 + ((bytes.get(b, i + 1) ?? 0) % 64) * 64 + (bytes.get(b, i + 2) ?? 0) % 64)
       i = i + 3
     } else if i + 3 < n then {
-      list.push(out, (c % 8) * 262144 + (bytes.read_u8(b, i + 1) % 64) * 4096 + (bytes.read_u8(b, i + 2) % 64) * 64 + bytes.read_u8(b, i + 3) % 64)
+      list.push(out, (c % 8) * 262144 + ((bytes.get(b, i + 1) ?? 0) % 64) * 4096 + ((bytes.get(b, i + 2) ?? 0) % 64) * 64 + (bytes.get(b, i + 3) ?? 0) % 64)
       i = i + 4
     } else { list.push(out, 0xFFFD); i = i + 1 }
   }
@@ -276,7 +303,7 @@ fn shape_indic(slot: Int, script: Int, cps: List[Int]) -> List[indic.Out] = {
     none => {
       let gs = indic.shape(font_at(slot), script, cps)
       if map.len(indic_cache) > 1000 then indic_cache = map.new() else ()
-      map.insert(indic_cache, key, gs)
+      indic_cache = map.set(indic_cache, key, gs)
       gs
     },
   }
@@ -307,7 +334,7 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
         none => {
           let gs = emoji_glyphs(f, seq)
           if map.len(emoji_cache) > 1000 then emoji_cache = map.new() else ()
-          map.insert(emoji_cache, key, gs)
+          emoji_cache = map.set(emoji_cache, key, gs)
           gs
         },
       }
@@ -329,9 +356,9 @@ pub fn shape(cps: List[Int], size: Float, mono: Bool, bold: Bool) -> List[Glyph]
       let k = size / f.units_per_em
       var adv = 0.0
       for g in shape_indic(slot_i, sc, list.slice(cps, i, j)) {
-        list.push(out, { slot: slot_i, gid: g.gid, x: x + int.to_float(g.x) * k, y: int.to_float(g.y) * k,
-                         advance: int.to_float(g.advance) * k, cluster: i + g.cluster, color: -1 })
-        adv = adv + int.to_float(g.advance) * k
+        list.push(out, { slot: slot_i, gid: g.gid, x: x + float.from(g.x) * k, y: float.from(g.y) * k,
+                         advance: float.from(g.advance) * k, cluster: i + g.cluster, color: -1 })
+        adv = adv + float.from(g.advance) * k
       }
       x = x + adv
       i = j
@@ -389,7 +416,7 @@ pub fn edges(gs: List[Glyph], n: Int) -> List[Float] = {
     let span = int.max(1, c2 - c)
     var k = c
     while k < c2 {
-      list.push(out, s1 + (e - s1) * int.to_float(k - c) / int.to_float(span))
+      list.push(out, s1 + (e - s1) * float.from(k - c) / float.from(span))
       k = k + 1
     }
     x = e
@@ -436,7 +463,7 @@ fn shape_arabic(cps: List[Int]) -> List[arabic.Out] = {
     none => {
       let gs = arabic.shape(font_at(FONT_ARABIC), cps)
       if map.len(arabic_cache) > 1000 then arabic_cache = map.new() else ()
-      map.insert(arabic_cache, key, gs)
+      arabic_cache = map.set(arabic_cache, key, gs)
       gs
     },
   }
@@ -483,9 +510,9 @@ pub fn shape_line(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int
         let f = font_at(FONT_ARABIC)
         let sc = size / f.units_per_em
         for g in shape_arabic(list.slice(cps, lo, hi)) {
-          list.push(out, { slot: FONT_ARABIC, gid: g.gid, x: x + int.to_float(g.x) * sc, y: int.to_float(g.y) * sc,
-                           advance: int.to_float(g.advance) * sc, cluster: lo + g.cluster, color: -1 })
-          adv = adv + int.to_float(g.advance) * sc
+          list.push(out, { slot: FONT_ARABIC, gid: g.gid, x: x + float.from(g.x) * sc, y: float.from(g.y) * sc,
+                           advance: float.from(g.advance) * sc, cluster: lo + g.cluster, color: -1 })
+          adv = adv + float.from(g.advance) * sc
         }
       } else {
         // shaped in logical order; right to left, the clusters are then laid
@@ -553,10 +580,10 @@ pub fn line_geo(cps: List[Int], size: Float, mono: Bool, bold: Bool, base: Int) 
       while e < n and x1[e] < 0.0 { e = e + 1 }
       let s0 = if x0[c] >= 0.0 then x0[c] else (if c > 0 then right[c - 1] else 0.0)
       let s1 = if x1[c] >= 0.0 then x1[c] else s0
-      let m = int.to_float(e - c)
+      let m = float.from(e - c)
       for j in c..<e {
-        let t0 = int.to_float(j - c) / m
-        let t1 = int.to_float(j - c + 1) / m
+        let t0 = float.from(j - c) / m
+        let t1 = float.from(j - c + 1) / m
         if lv[c] % 2 == 1 then { left[j] = s1 - (s1 - s0) * t1; right[j] = s1 - (s1 - s0) * t0 }
         else { left[j] = s0 + (s1 - s0) * t0; right[j] = s0 + (s1 - s0) * t1 }
       }
@@ -732,7 +759,7 @@ pub fn wrap_rows(s: String, max_w: Float, size: Float, mono: Bool, bold: Bool) -
       let cps = codepoints(s)
       let bs = wrap_breaks(widths_of(line_geo(cps, size, mono, bold, -1)), cps, max_w)
       if map.len(rows_cache) > 500 then rows_cache = map.new() else ()
-      map.insert(rows_cache, key, bs)
+      rows_cache = map.set(rows_cache, key, bs)
       bs
     },
   }
@@ -750,7 +777,7 @@ pub fn draw_rows(s: String, bs: List[Int], x: Float, y: Float, w: Float, lh: Flo
     var rw = 0.0
     for g in gs { rw = float.max(rw, g.x + g.advance) }
     let rx = if base == 1 then x + float.max(0.0, w - rw) else x
-    draw_run(gs, rx, float.round(y + int.to_float(j) * lh + ascent(size, mono)), size, c)
+    draw_run(gs, rx, float.round(y + float.from(j) * lh + ascent(size, mono)), size, c)
   }
 }
 
@@ -765,7 +792,7 @@ var shelf_h = 0
 var atlas_full = false
 
 fn cache_key(slot: Int, gid: Int, px: Float) -> Int =
-  (slot * 65536 + gid) * 4096 + int.min(4095, float.to_int(px * 4.0 + 0.5))
+  (slot * 65536 + gid) * 4096 + int.min(4095, int.from_saturating(px * 4.0 + 0.5))
 
 // Call at the start of a frame: drops the atlas if it filled up last frame.
 pub fn begin_frame() -> Unit =
@@ -786,7 +813,7 @@ fn glyph_entry(slot: Int, gid: Int, px: Float) -> Cached? = {
       let size = snaidhm.atlas_size()
       if bm.w == 0 then {
         let c = { ax: 0, ay: 0, w: 0, h: 0, left: 0, top: 0 }
-        map.insert(cache, key, c)
+        cache = map.set(cache, key, c)
         some(c)
       } else {
         if shelf_x + bm.w + 1 >= size then {
@@ -803,7 +830,7 @@ fn glyph_entry(slot: Int, gid: Int, px: Float) -> Cached? = {
           snaidhm.upload_coverage(shelf_x, shelf_y, bm.w, bm.h, bm.pixels)
           shelf_x = shelf_x + bm.w + 1
           shelf_h = int.max(shelf_h, bm.h)
-          map.insert(cache, key, c)
+          cache = map.set(cache, key, c)
           some(c)
         }
       }
@@ -832,13 +859,13 @@ pub fn draw_run(gs: List[Glyph], x: Float, baseline: Float, size: Float, c: snai
       match glyph_entry(g.slot, g.gid, size) {
         some(e) => {
           if e.w > 0 then {
-            let gx = float.round(x + g.x) + int.to_float(e.left)
-            let gy = float.round(baseline - g.y) - int.to_float(e.top)
+            let gx = float.round(x + g.x) + float.from(e.left)
+            let gy = float.round(baseline - g.y) - float.from(e.top)
             // a colour layer keeps its colour, faded with the text's alpha
             let col = if g.color < 0 then c
-              else snaidhm.rgba(int.to_float(int.bshr(g.color, 24) % 256) / 255.0, int.to_float(int.bshr(g.color, 16) % 256) / 255.0,
-                                int.to_float(int.bshr(g.color, 8) % 256) / 255.0, int.to_float(g.color % 256) / 255.0 * c.a)
-            snaidhm.glyph(gx, gy, int.to_float(e.w), int.to_float(e.h), e.ax, e.ay, e.w, e.h, col)
+              else snaidhm.rgba(float.from(int.bshr(g.color, 24) % 256) / 255.0, float.from(int.bshr(g.color, 16) % 256) / 255.0,
+                                float.from(int.bshr(g.color, 8) % 256) / 255.0, float.from(g.color % 256) / 255.0 * c.a)
+            snaidhm.glyph(gx, gy, float.from(e.w), float.from(e.h), e.ax, e.ay, e.w, e.h, col)
           } else ()
         },
         none => (),

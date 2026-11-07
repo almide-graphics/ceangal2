@@ -6,9 +6,9 @@ test "crc32 of a known string" {
 
 test "zip layout" {
   let z = zip.build([("a/b.txt", "hi"), ("c.almd", "日本")])
-  assert_eq(bytes.read_u8(z, 0), 80)
-  assert_eq(bytes.read_u8(z, 1), 75)
+  assert_eq(bytes.get(z, 0) ?? 0, 80)
+  assert_eq(bytes.get(z, 1) ?? 0, 75)
   // EOCD at the end: 22 bytes, signature PK\5\6
-  assert_eq(bytes.read_u8(z, bytes.len(z) - 22), 80)
-  assert_eq(bytes.read_u8(z, bytes.len(z) - 19), 6)
+  assert_eq(bytes.get(z, bytes.len(z) - 22) ?? 0, 80)
+  assert_eq(bytes.get(z, bytes.len(z) - 19) ?? 0, 6)
 }

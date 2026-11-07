@@ -38,7 +38,7 @@ function native(p) {
   const dir = join(scratch, p.id.replace(/\W+/g, "_"));
   mkdirSync(join(dir, "src"), { recursive: true });
   // GUI programs build against this repo's packages (what the playground bundles).
-  const deps = p.gui ? `\n[dependencies]\nceangal = { path = "${join(root, "ceangal")}" }\nsnaidhm = { path = "${join(root, "snaidhm")}" }\n` : "";
+  const deps = p.gui ? `\n[dependencies]\nceangal = { path = "${join(root, "ceangal")}" }\nsnaidhm = { path = "${join(root, "snaidhm")}" }\n\n[permissions]\nnative = ["ceangal", "snaidhm"]\n` : "";
   writeFileSync(join(dir, "almide.toml"), `[package]\nname = "fixture"\nversion = "0.1.0"\n${deps}`);
   for (const [name, content] of Object.entries(p.files)) writeFileSync(name.endsWith(".almd") ? join(dir, "src", name) : join(dir, name), content);
   if (p.gui) {

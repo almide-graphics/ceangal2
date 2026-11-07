@@ -21,10 +21,10 @@ import ceangal
 type App = {
   view: () -> v.View,
   background: snaidhm.Color,
-  on_key: (Int, Int, Int) -> Bool,     // (phase, key, mods) -> handled
-  on_text: (Int, String) -> Bool,      // (kind, text) -> handled
-  on_frame: (Float) -> Bool,           // (time ms) -> wants another frame
-  on_result: (Int, Int, Bytes) -> Unit, // async request (id, status, body)
+  on_key: effect (Int, Int, Int) -> Bool,     // (phase, key, mods) -> handled
+  on_text: effect (Int, String) -> Bool,      // (kind, text) -> handled
+  on_frame: effect (Float) -> Bool,           // (time ms) -> wants another frame
+  on_result: effect (Int, Int, Bytes) -> Unit, // async request (id, status, body)
 }
 ```
 
@@ -54,7 +54,7 @@ The colour behind the views (and under the safe-area insets).
 ### `on_key`
 
 ```almide
-pub fn on_key(a: App, f: (Int, Int, Int) -> Bool) -> App
+pub fn on_key(a: App, f: effect (Int, Int, Int) -> Bool) -> App
 ```
 
 Keys: f(phase, key, mods), true = handled. Phase 0 down, 1 up, 2 repeat;
@@ -66,7 +66,7 @@ the focused view did not take them.
 ### `on_text`
 
 ```almide
-pub fn on_text(a: App, f: (Int, String) -> Bool) -> App
+pub fn on_text(a: App, f: effect (Int, String) -> Bool) -> App
 ```
 
 Text the focused view did not take: f(kind, text), true = handled. Kind
@@ -75,7 +75,7 @@ Text the focused view did not take: f(kind, text), true = handled. Kind
 ### `on_frame`
 
 ```almide
-pub fn on_frame(a: App, f: (Float) -> Bool) -> App
+pub fn on_frame(a: App, f: effect (Float) -> Bool) -> App
 ```
 
 Called every frame with the clock (ms) while it returns true: animations.
@@ -83,7 +83,7 @@ Called every frame with the clock (ms) while it returns true: animations.
 ### `on_result`
 
 ```almide
-pub fn on_result(a: App, f: (Int, Int, Bytes) -> Unit) -> App
+pub fn on_result(a: App, f: effect (Int, Int, Bytes) -> Unit) -> App
 ```
 
 The answer to an asynchronous host request (an HTTP fetch, a file picker):
@@ -329,26 +329,30 @@ A monotonic clock in ms.
 ### `dispatch`
 
 ```almide
-pub fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int
+pub effect fn dispatch(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int
 ```
 
 The host's entry point: every event comes through here (docs/abi.md §2).
-Apps do not call it; tests can, to drive an app without a host.
+Apps do not call it; tests can, to drive an app without a host. It is an
+effect fn: the host fills event payloads and assets into Regions, and the
+handlers it runs may read storage and assets too.
 
 ### `asset`
 
 ```almide
-pub fn asset(name: String) -> Bytes?
+pub effect fn asset(name: String) -> Bytes?
 ```
 
 A file bundled with the app (ceangal.toml `assets`): `name` is its path
 inside an assets directory ("data/words.txt"). None when there is no
 such file.
+The host writes the file straight into a writable ffi.alloc Region, so
+this is an effect fn: call it with `!` from main or an event handler.
 
 ### `asset_text`
 
 ```almide
-pub fn asset_text(name: String) -> String?
+pub effect fn asset_text(name: String) -> String?
 ```
 
 A bundled text file (UTF-8), none when there is none.

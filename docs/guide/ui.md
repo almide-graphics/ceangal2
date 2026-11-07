@@ -7,10 +7,12 @@ An app is a `view()` function from its state to a tree of views:
 ```almide
 var count = 0
 
+fn add() -> Unit = { count = count + 1 }
+
 fn view() -> v.View =
   v.col([
     v.text(int.to_string(count)),
-    v.text("Add") |> v.on_click(() => { count = count + 1 }),
+    v.text("Add") |> v.on_click(() => add()),
   ])
 ```
 
@@ -33,8 +35,8 @@ let keep_add = add
 
 // The web host calls into the app through this export:
 @export(wasm, "ceangal_event")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 ```
 
 ## Views
@@ -63,7 +65,7 @@ Build views with ordinary functions; a component is a function that
 returns a view:
 
 ```almide
-fn button(title: String, on: () -> Unit) -> v.View =
+fn button(title: String, on: effect () -> Unit) -> v.View =
   v.text(title) |> v.px(16.0) |> v.py(8.0) |> v.rounded(8.0) |> v.bg(ACCENT)
     |> v.on_click(on) |> v.role(3) |> v.label(title)
 ```
@@ -205,6 +207,13 @@ every pointer event over the view (`v.Pointer`: phase 0 down, 1 move,
 true to claim it (drags, sliders). `on_wheel(f)` receives scroll deltas.
 `cursor(kind)` sets the mouse cursor over the view.
 
+Handlers are `effect` slots (`on_click`, `on_pointer`, `on_key`,
+`on_text`, and the app's `on_key`, `on_text`,
+`on_frame`, `on_result`): a handler may read what the host fills in —
+`storage.get(k)!`, `ceangal.asset_text(path)!` — and `!` there propagates
+into the handler. `view()` stays pure: read host data in `main` or a
+handler and keep it in state.
+
 ### Text fields
 
 Text entry is an editor from `ceangal.editor`: its state is an
@@ -335,7 +344,7 @@ call `ceangal.invalidate()`.
 |---|---|
 | [`ceangal.storage`](../api/ceangal.storage.md) | `get` / `set` / `remove` small strings that survive restarts; `secret_*` for tokens and keys (Keychain, Keystore, Credential Manager, libsecret) |
 | [`ceangal.http`](../api/ceangal.http.md) | `get`, `post_json`, `request`: the answer arrives in `on_result` (set `network = true`) |
-| `ceangal.asset(path)`, `asset_text(path)` | files bundled with the app (`[app] assets`) |
+| `ceangal.asset(path)!`, `asset_text(path)!` | files bundled with the app (`[app] assets`) |
 | `ceangal.copy_text(s)` | the system clipboard, on every platform (paste arrives as text in the focused field) |
 | `ceangal.open_url(url)` | the system browser |
 | `ceangal.save_file(name, bytes)`, `open_text_file()` | save and open: the save / open panels on the desktop, a download and a file picker on the web, the share sheet and the document picker on iOS, the shared Downloads folder and the system file picker on Android; the result arrives in `on_result` |

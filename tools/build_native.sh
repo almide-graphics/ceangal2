@@ -19,11 +19,6 @@ mkdir -p "$(dirname "$out")"
 # Baked into the binary: data directory and keychain entries live under it.
 export CEANGAL_APP_ID="${CEANGAL_APP_ID:-$APP_ID}"
 export CEANGAL_APP_NAME="${CEANGAL_APP_NAME:-$APP_NAME}"
-if [[ " $* " == *" --cdylib "* ]]; then
-  # almide names a cdylib's crate after -o and writes lib<name>.so here.
-  (cd "$build" && "$root/tools/almide" build "$APP_ENTRY" --release -o "$APP_KEY" "$@")
-  mv "$build"/lib"$APP_KEY".* "$out"
-else
-  (cd "$build" && "$root/tools/almide" build "$APP_ENTRY" --release -o "$out" "$@")
-fi
+# With --cdylib, -o is the library file itself, as for a binary (almide/almide#3349).
+(cd "$build" && "$root/tools/almide" build "$APP_ENTRY" --release -o "$out" "$@")
 echo "built $out"

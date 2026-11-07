@@ -20,15 +20,20 @@ case "$dst" in /*) ;; *) dst="$PWD/$dst" ;; esac
 tmp="$root/out/export-tmp"
 rm -rf "$tmp" "$dst"; mkdir -p "$tmp" "$dst"
 
-# Build once with a private temp dir, so the generated project is ours alone.
-TMPDIR="$tmp" CEANGAL_BUILD_TAG=export "$root/tools/build_native.sh" -o "$tmp/$APP_KEY"
+# Build once in a private project dir, so the generated project is ours alone.
 gen="$tmp/almide-run"
+ALMIDE_RUN_PROJECT_DIR="$gen" TMPDIR="$tmp" CEANGAL_BUILD_TAG=export "$root/tools/build_native.sh" -o "$tmp/$APP_KEY"
 [ -f "$gen/Cargo.lock" ] || { echo "no generated project in $gen" >&2; exit 1; }
 
-# the generated crate: main.rs, the native modules it declares, their folders
+# the generated crate: its sources (main.rs and the per-module files beside
+# it), the runtime crate it may be split into, the native modules it
+# declares and their folders
 mkdir -p "$dst/app/src"
 cp "$gen/Cargo.toml" "$gen/Cargo.lock" "$dst/app/"
-cp "$gen/src/main.rs" "$dst/app/src/"
+cp -R "$gen/src/." "$dst/app/src/"
+for d in "$gen"/*/; do
+  [ -f "$d/Cargo.toml" ] && cp -R "$d" "$dst/app/"
+done
 for d in "$root/ceangal/native" "$root/snaidhm/native" ${APP_NATIVE_DIR:+"$APP_NATIVE_DIR"}; do
   for f in "$d"/*; do
     [ -e "$f" ] || continue

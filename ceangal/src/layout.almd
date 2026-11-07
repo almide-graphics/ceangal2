@@ -449,7 +449,7 @@ fn compute_size(node: Node, avail_w: Float, avail_h: Float) -> Size =
     if found >= 0 then { w: seen[found + 4], h: seen[found + 5] }
     else {
       let s = measure_node(node, avail_w, avail_h)
-      map.insert(size_memo, node.id, seen + [avail_w, avail_h, node.width, node.height, s.w, s.h])
+      size_memo = map.set(size_memo, node.id, seen + [avail_w, avail_h, node.width, node.height, s.w, s.h])
       s
     }
   }
@@ -515,11 +515,11 @@ fn measure_node(node: Node, avail_w: Float, avail_h: Float) -> Size = {
         for item in ln.items {
           line_main = line_main + item.main + mar_main(node.children[item.idx], dir)
         }
-        line_main = line_main + node.gap_main * int.to_float(int.max(0, n_items - 1))
+        line_main = line_main + node.gap_main * float.from(int.max(0, n_items - 1))
         max_line_main = float.max(max_line_main, line_main)
         total_cross = total_cross + ln.cross_size
       }
-      let cross_gaps = node.gap_cross * int.to_float(int.max(0, n_lines - 1))
+      let cross_gaps = node.gap_cross * float.from(int.max(0, n_lines - 1))
       total_cross = total_cross + cross_gaps
 
       let rm = if is_defined(node_main(node)) then node_main(node)
@@ -641,7 +641,7 @@ fn resolve_line_flex(node: Node, line: FlexLine, inner_main: Float) -> FlexLine 
     margin_total = margin_total + mar_main(node.children[item.idx], dir)
     basis_total = basis_total + item.basis
   }
-  let gap_total = node.gap_main * int.to_float(int.max(0, n_items - 1))
+  let gap_total = node.gap_main * float.from(int.max(0, n_items - 1))
   let rem1 = inner_main - basis_total - margin_total - gap_total
 
   for ii in 0..<n_items {
@@ -721,7 +721,7 @@ fn layout_line(node: Node, line: FlexLine, inner_main: Float, inner_cross: Float
                clip_x: Float, clip_y: Float, clip_w: Float, clip_h: Float) -> List[LayoutRect] = {
   let dir = node.direction
   let n_items = list.len(line.items)
-  let gap_total = node.gap_main * int.to_float(int.max(0, n_items - 1))
+  let gap_total = node.gap_main * float.from(int.max(0, n_items - 1))
 
   // Compute used main for justify
   var used = gap_total
@@ -729,14 +729,14 @@ fn layout_line(node: Node, line: FlexLine, inner_main: Float, inner_cross: Float
     used = used + item.main + mar_main(node.children[item.idx], dir)
   }
   let free = float.max(0.0, inner_main - used)
-  let nf = int.to_float(n_items)
+  let nf = float.from(n_items)
 
   var off = 0.0
   var spacing = node.gap_main
   if node.justify == JUSTIFY_END then { off = free }
   else if node.justify == JUSTIFY_CENTER then { off = free / 2.0 }
   else if node.justify == JUSTIFY_BETWEEN then {
-    spacing = if n_items > 1 then node.gap_main + free / int.to_float(n_items - 1) else node.gap_main
+    spacing = if n_items > 1 then node.gap_main + free / float.from(n_items - 1) else node.gap_main
   } else if node.justify == JUSTIFY_AROUND then {
     let s = free / nf
     off = s / 2.0
@@ -756,7 +756,7 @@ fn layout_line(node: Node, line: FlexLine, inner_main: Float, inner_cross: Float
     if mms < -1.5 then { n_auto_margins = n_auto_margins + 1 } else ()
     if mme < -1.5 then { n_auto_margins = n_auto_margins + 1 } else ()
   }
-  let auto_margin_size = if n_auto_margins > 0 then free / int.to_float(n_auto_margins) else 0.0
+  let auto_margin_size = if n_auto_margins > 0 then free / float.from(n_auto_margins) else 0.0
   // If auto margins exist, override justify offset/spacing
   if n_auto_margins > 0 then { off = 0.0; spacing = node.gap_main } else ()
 
@@ -859,9 +859,9 @@ fn do_layout(node: Node, x: Float, y: Float, w: Float, h: Float,
       } else if n_lines > 1 then {
         var total_line_cross = 0.0
         for ln in lines { total_line_cross = total_line_cross + ln.cross_size }
-        let cross_gaps = node.gap_cross * int.to_float(n_lines - 1)
+        let cross_gaps = node.gap_cross * float.from(n_lines - 1)
         let free_cross = float.max(0.0, inner_cross - total_line_cross - cross_gaps)
-        let nlf = int.to_float(n_lines)
+        let nlf = float.from(n_lines)
 
         var line_offset = 0.0
         var line_spacing = node.gap_cross
@@ -871,7 +871,7 @@ fn do_layout(node: Node, x: Float, y: Float, w: Float, h: Float,
         else if node.align_content == ALIGN_STRETCH then {
           line_stretch = free_cross / nlf
         } else if node.align_content == JUSTIFY_BETWEEN then {
-          line_spacing = if n_lines > 1 then node.gap_cross + free_cross / int.to_float(n_lines - 1) else node.gap_cross
+          line_spacing = if n_lines > 1 then node.gap_cross + free_cross / float.from(n_lines - 1) else node.gap_cross
         } else if node.align_content == JUSTIFY_AROUND then {
           let s = free_cross / nlf
           line_offset = s / 2.0

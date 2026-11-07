@@ -39,14 +39,14 @@ type Feature = { tag: Int, mask: Int, manual: Bool, per_syllable: Bool }
 // One lookup of a stage, with the mask of the features that use it.
 type Entry = { lookup: Int, mask: Int, auto_zwj: Bool, auto_zwnj: Bool, per_syllable: Bool }
 
-fn u16(b: Bytes, p: Int) -> Int = bytes.read_u16_be(b, p)
-fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.read_u16_be(b, p); if v >= 32768 then v - 65536 else v }
-fn u32(b: Bytes, p: Int) -> Int = bytes.read_u32_be(b, p)
+fn u16(b: Bytes, p: Int) -> Int = bytes.get_u16_be(b, p) ?? 0
+fn i16(b: Bytes, p: Int) -> Int = { let v = bytes.get_u16_be(b, p) ?? 0; if v >= 32768 then v - 65536 else v }
+fn u32(b: Bytes, p: Int) -> Int = bytes.get_u32_be(b, p) ?? 0
 
 // A four-letter tag as a big-endian u32 ('GSUB', 'dev2'…).
 pub fn tag(s: String) -> Int = {
   let b = bytes.from_string(s)
-  bytes.read_u32_be(b, 0)
+  bytes.get_u32_be(b, 0) ?? 0
 }
 
 // ── Coverage and class tables ──

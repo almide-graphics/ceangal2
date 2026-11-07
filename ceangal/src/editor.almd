@@ -161,7 +161,7 @@ fn shown(e: Editor, cps: List[Int]) -> List[Int] = if e.secret then list.repeat(
 pub fn log() -> Editor = { ...from_string(""), syntax: false, read_only: true, gutter: false, font_size: 12.5 }
 
 fn at_bottom(e: Editor) -> Bool =
-  e.view_h <= 0.0 or e.scroll_y + e.view_h >= int.to_float(total_rows(e)) * line_h(e)
+  e.view_h <= 0.0 or e.scroll_y + e.view_h >= float.from(total_rows(e)) * line_h(e)
 
 // Append one line with a style (0 normal, 1 error, 2 dim, 3 success);
 // follows the tail while the view is scrolled to the bottom.
@@ -177,7 +177,7 @@ pub fn append_line(e: Editor, s: String, style: Int) -> Editor = {
   let e2 = { ...e, lines: lines, line_style: styles, version: e.version + 1 }
   let e3 = with_rows(e2)
   let _ = last
-  if follow then { ...e3, scroll_y: clamp_scroll(e3, int.to_float(total_rows(e3)) * line_h(e3) - e3.view_h + pad_y(e3) * 2.0) } else e3
+  if follow then { ...e3, scroll_y: clamp_scroll(e3, float.from(total_rows(e3)) * line_h(e3) - e3.view_h + pad_y(e3) * 2.0) } else e3
 }
 
 // Empty the text (undo history and settings kept).
@@ -189,7 +189,7 @@ pub fn clear(e: Editor) -> Editor = {
 }
 
 fn cps_to_string(cps: List[Int]) -> String = {
-  var b = bytes.new(0)
+  var b = bytes.zeros(0)
   for c in cps {
     if c < 128 then bytes.append_u8(b, c)
     else if c < 2048 then { bytes.append_u8(b, 192 + c / 64); bytes.append_u8(b, 128 + c % 64) }
@@ -203,18 +203,18 @@ fn cps_to_string(cps: List[Int]) -> String = {
 pub fn to_string(e: Editor) -> String = {
   var parts: List[String] = []
   for l in e.lines { list.push(parts, cps_to_string(l)) }
-  string.join(parts, "\n")
+  list.join(parts, "\n")
 }
 
 // The lines on screen (plus a few around them), for assistive technology:
 // a 10k-line buffer must not be re-joined every frame.
 pub fn visible_text(e: Editor) -> String = if e.secret then "" else {
   let lh = line_h(e)
-  let first = int.max(0, float.to_int(float.floor(e.scroll_y / lh)) - 5)
-  let last = int.min(list.len(e.lines) - 1, float.to_int(float.ceil((e.scroll_y + float.max(e.view_h, lh * 40.0)) / lh)) + 5)
+  let first = int.max(0, int.from_saturating(float.floor(e.scroll_y / lh)) - 5)
+  let last = int.min(list.len(e.lines) - 1, int.from_saturating(float.ceil((e.scroll_y + float.max(e.view_h, lh * 40.0)) / lh)) + 5)
   var parts: List[String] = []
   for i in first..<(last + 1) { list.push(parts, cps_to_string(e.lines[i])) }
-  string.join(parts, "\n")
+  list.join(parts, "\n")
 }
 
 // The number of lines.
@@ -247,7 +247,7 @@ pub fn selected_text(e: Editor) -> String = {
     var parts: List[String] = [cps_to_string(list.drop(e.lines[a.line], a.col))]
     for l in (a.line + 1)..<b.line { list.push(parts, cps_to_string(e.lines[l])) }
     list.push(parts, cps_to_string(list.take(e.lines[b.line], b.col)))
-    string.join(parts, "\n")
+    list.join(parts, "\n")
   }
 }
 
@@ -475,7 +475,7 @@ fn gutter_w(e: Editor) -> Float =
   if e.single_line or not e.gutter then 0.0
   else {
     let digits = string.len(int.to_string(list.len(e.lines)))
-    float.ceil(int.to_float(int.max(2, digits)) * tx.width("0", fsize(e), true, false)) + GUTTER_PAD * 2.0
+    float.ceil(float.from(int.max(2, digits)) * tx.width("0", fsize(e), true, false)) + GUTTER_PAD * 2.0
   }
 
 fn pad_x(e: Editor) -> Float = if e.single_line then 10.0 else TEXT_PAD
@@ -583,7 +583,7 @@ fn line_breaks(e: Editor, l: Int) -> List[Int] =
 
 // What text measures depend on besides the text: the fonts loaded and the
 // system's font scale.
-fn layout_stamp() -> Int = tx.font_generation() * 1000 + float.to_int(ui.font_scale() * 100.0)
+fn layout_stamp() -> Int = tx.font_generation() * 1000 + int.from_saturating(ui.font_scale() * 100.0)
 
 fn rows_fresh(e: Editor) -> Bool =
   e.rows_ver == e.version and e.rows_w == wrap_avail(e) and e.rows_fonts == layout_stamp()
@@ -636,7 +636,7 @@ fn ensure_visible(e0: Editor) -> Editor =
   else {
     let e = with_rows(e0)
     let lh = line_h(e)
-    let top = int.to_float(row_of_pos(e, e.cur)) * lh
+    let top = float.from(row_of_pos(e, e.cur)) * lh
     let sy = if top < e.scroll_y then top
       else if top + lh > e.scroll_y + e.view_h - pad_y(e) * 2.0 then top + lh - e.view_h + pad_y(e) * 2.0
       else e.scroll_y
@@ -654,7 +654,7 @@ fn pad_y(e: Editor) -> Float = if e.single_line then 0.0 else 8.0
 // Scrolling stops at the content's edges (as CodeMirror does): the last
 // line at the bottom, the end of the longest line at the right.
 fn clamp_scroll(e: Editor, sy: Float) -> Float = {
-  let content = int.to_float(total_rows(e)) * line_h(e) + pad_y(e) * 2.0
+  let content = float.from(total_rows(e)) * line_h(e) + pad_y(e) * 2.0
   float.max(0.0, float.min(sy, content - e.view_h))
 }
 
@@ -686,7 +686,7 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool) =
     let shift = ui.has_shift(mods)
     let alt = ui.has_alt(mods)
     let lh = line_h(e)
-    let page = int.max(1, float.to_int(e.view_h / lh) - 1)
+    let page = int.max(1, int.from_saturating(e.view_h / lh) - 1)
     let r: Editor? =
       if code == 10 then some(if has_selection(e) and not shift then move_to(e, sel_start(e), false) else if sc then move_to(e, { line: e.cur.line, col: 0 }, shift) else if alt then move_to(e, word_left(e, e.cur), shift) else move_to(e, arrow(e, e.cur, true), shift))
       else if code == 11 then some(if has_selection(e) and not shift then move_to(e, sel_end(e), false) else if sc then move_to(e, { line: e.cur.line, col: line_len(e, e.cur.line) }, shift) else if alt then move_to(e, word_right(e, e.cur), shift) else move_to(e, arrow(e, e.cur, false), shift))
@@ -698,8 +698,8 @@ pub fn key(e: Editor, phase: Int, code: Int, mods: Int) -> (Editor, Bool) =
         some(move_to(e, { line: if sc then 0 else e.cur.line, col: if e.cur.col == ind or sc then 0 else ind }, shift))
       }
       else if code == 15 then some(move_to(e, if sc then { line: list.len(e.lines) - 1, col: line_len(e, list.len(e.lines) - 1) } else { line: e.cur.line, col: line_len(e, e.cur.line) }, shift))
-      else if code == 16 and not e.single_line then some(vertical({ ...e, scroll_y: clamp_scroll(e, e.scroll_y - int.to_float(page) * lh) }, 0 - page, shift))
-      else if code == 17 and not e.single_line then some(vertical({ ...e, scroll_y: clamp_scroll(e, e.scroll_y + int.to_float(page) * lh) }, page, shift))
+      else if code == 16 and not e.single_line then some(vertical({ ...e, scroll_y: clamp_scroll(e, e.scroll_y - float.from(page) * lh) }, 0 - page, shift))
+      else if code == 17 and not e.single_line then some(vertical({ ...e, scroll_y: clamp_scroll(e, e.scroll_y + float.from(page) * lh) }, page, shift))
       else if code == 3 then some(delete_back(e, alt or sc))
       else if code == 4 then some(delete_forward(e, alt))
       else if code == 1 and not e.single_line then some(newline(e))
@@ -740,10 +740,10 @@ pub fn text(e: Editor, kind: Int, s: String, cursor: Int) -> Editor =
 
 // The text position under a point of the view.
 fn pos_at(e: Editor, x: Float, y: Float) -> Pos = if wrapping(e) then {
-  let row = int.max(0, float.to_int(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e))))
+  let row = int.max(0, int.from_saturating(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e))))
   pos_in_row(e, int.min(row, total_rows(e) - 1), x - gutter_w(e) - pad_x(e))
 } else {
-  let line = int.max(0, int.min(list.len(e.lines) - 1, float.to_int(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e)))))
+  let line = int.max(0, int.min(list.len(e.lines) - 1, int.from_saturating(float.floor((y + e.scroll_y - pad_y(e)) / line_h(e)))))
   { line: line, col: col_at_x(e, line, x - gutter_w(e) - pad_x(e) + e.scroll_x) }
 }
 
@@ -867,21 +867,21 @@ fn paint(e: Editor, focused: Bool, th: Theme, x: Float, y: Float, w: Float, h: F
   let size = fsize(e) * k
   snaidhm.fill(x * k, y * k, w * k, h * k, 0.0, th.bg)
   // visible rows, and the lines they belong to
-  let first_row = int.max(0, float.to_int(float.floor((e.scroll_y - py) / lh)))
-  let last_row = float.to_int(float.ceil((e.scroll_y + h) / lh))
+  let first_row = int.max(0, int.from_saturating(float.floor((e.scroll_y - py) / lh)))
+  let last_row = int.from_saturating(float.ceil((e.scroll_y + h) / lh))
   let first = line_of_row(e, first_row)
   let last = int.min(list.len(e.lines) - 1, line_of_row(e, last_row))
   let text_x = x + gw + px - e.scroll_x
   let a = sel_start(e)
   let b = sel_end(e)
   let sel = has_selection(e)
-  let row_y = (r: Int) => y + py + int.to_float(r) * lh - e.scroll_y
+  let row_y = (r: Int) => y + py + float.from(r) * lh - e.scroll_y
   snaidhm.push_clip(x * k, y * k, w * k, h * k)
   // active line (all of its rows)
   if focused and not sel and not e.single_line then {
     let r0 = row_start(e, e.cur.line)
     let r1 = row_start(e, e.cur.line) + list.len(line_breaks(e, e.cur.line))
-    snaidhm.fill(x * k, row_y(r0) * k, w * k, int.to_float(r1 - r0) * lh * k, 0.0, th.active_line)
+    snaidhm.fill(x * k, row_y(r0) * k, w * k, float.from(r1 - r0) * lh * k, 0.0, th.active_line)
   } else ()
   // placeholder
   if e.single_line and list.len(e.lines) == 1 and list.len(e.lines[0]) == 0 and list.len(e.preedit) == 0 and e.placeholder != "" then

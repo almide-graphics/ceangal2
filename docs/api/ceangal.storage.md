@@ -10,7 +10,10 @@ credential store — Keychain, Android Keystore, Windows Credential Manager,
 libsecret; the browser's localStorage on the web (docs/abi.md §4.6).
 
   storage.set("theme", "dark")
-  let theme = storage.get("theme") ?? "light"
+  let theme = storage.get("theme")! ?? "light"
+
+A read is an effect fn: the host fills a writable ffi.alloc Region in
+place, so call it with `!` from main or an event handler.
 
 ```almide
 import ceangal.storage
@@ -19,7 +22,7 @@ import ceangal.storage
 ### `get`
 
 ```almide
-pub fn get(key: String) -> String?
+pub effect fn get(key: String) -> String?
 ```
 
 The value saved under `key`, none when there is none.
@@ -43,7 +46,7 @@ Delete the value under `key`.
 ### `secret_get`
 
 ```almide
-pub fn secret_get(key: String) -> String?
+pub effect fn secret_get(key: String) -> String?
 ```
 
 A secret saved under `key` (in the credential store), none when there is none.

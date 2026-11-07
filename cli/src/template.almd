@@ -30,8 +30,8 @@ fn view() -> v.View = {
 }
 
 @export(wasm, \"ceangal_event\")
-fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
-  ceangal.dispatch(kind, a, b, x, y, z, w)
+effect fn ceangal_event(kind: Int, a: Int, b: Int, x: Float, y: Float, z: Float, w: Float) -> Int =
+  ceangal.dispatch(kind, a, b, x, y, z, w)!
 
 effect fn main() -> Unit = ceangal.run(ceangal.app(view))
 "
@@ -105,7 +105,7 @@ fn title_of(base: String) -> String = {
   let words = string.split(string.replace(string.replace(base, "-", " "), "_", " "), " ")
     |> list.filter((w) => w != "")
     |> list.map((w) => string.to_upper(string.slice(w, 0, 1)) + string.slice(w, 1, string.len(w)))
-  if list.is_empty(words) then "App" else string.join(words, " ")
+  if list.is_empty(words) then "App" else list.join(words, " ")
 }
 
 // Creates `dir`; `id` and `name` default from its last path segment. A
@@ -127,13 +127,13 @@ pub effect fn create(dir: String, id_given: String, name_given: String, version:
     }
     fs.mkdir_p(dir + "/src")!
     fs.mkdir_p(dir + "/.github/workflows")!
-    fs.write(dir + "/ceangal.toml", fill(MANIFEST, id, name, key, framework))!
-    fs.write(dir + "/src/main.almd", fill(MAIN, id, name, key, framework))!
-    fs.write(dir + "/.github/workflows/app.yml", string.replace(WORKFLOW, "__VERSION__", version))!
-    fs.write(dir + "/README.md", fill(README, id, name, key, framework))!
+    fs.write_text(dir + "/ceangal.toml", fill(MANIFEST, id, name, key, framework))!
+    fs.write_text(dir + "/src/main.almd", fill(MAIN, id, name, key, framework))!
+    fs.write_text(dir + "/.github/workflows/app.yml", string.replace(WORKFLOW, "__VERSION__", version))!
+    fs.write_text(dir + "/README.md", fill(README, id, name, key, framework))!
     fs.mkdir_p(dir + "/tests")!
-    fs.write(dir + "/tests/count.test", TEST)!
-    fs.write(dir + "/.gitignore", GITIGNORE)!
+    fs.write_text(dir + "/tests/count.test", TEST)!
+    fs.write_text(dir + "/.gitignore", GITIGNORE)!
     ok("Created " + name + " (" + id + ") in " + dir + "\n\n  cd " + dir + "\n  ceangal dev           # http://localhost:8000, rebuilt and reloaded on save\n  ceangal run macos     # or web, linux, windows, ios, android")
   }
 }

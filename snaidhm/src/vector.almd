@@ -39,48 +39,48 @@ fn parse_tags(text: String) -> List[Tag] = {
   var tags: List[Tag] = []
   var i = 0
   while i < n {
-    if bytes.read_u8(b, i) != 60 then i = i + 1
-    else if i + 3 < n and bytes.read_u8(b, i + 1) == 33 and bytes.read_u8(b, i + 2) == 45 then {
+    if (bytes.get(b, i) ?? 0) != 60 then i = i + 1
+    else if i + 3 < n and bytes.get(b, i + 1) ?? 0 == 33 and bytes.get(b, i + 2) ?? 0 == 45 then {
       // <!-- comment -->
       i = i + 4
-      while i + 2 < n and not (bytes.read_u8(b, i) == 45 and bytes.read_u8(b, i + 1) == 45 and bytes.read_u8(b, i + 2) == 62) { i = i + 1 }
+      while i + 2 < n and not (bytes.get(b, i) ?? 0 == 45 and bytes.get(b, i + 1) ?? 0 == 45 and bytes.get(b, i + 2) ?? 0 == 62) { i = i + 1 }
       i = i + 3
-    } else if i + 1 < n and (bytes.read_u8(b, i + 1) == 63 or bytes.read_u8(b, i + 1) == 33) then {
-      while i < n and bytes.read_u8(b, i) != 62 { i = i + 1 }
+    } else if i + 1 < n and (bytes.get(b, i + 1) ?? 0 == 63 or bytes.get(b, i + 1) ?? 0 == 33) then {
+      while i < n and (bytes.get(b, i) ?? 0) != 62 { i = i + 1 }
       i = i + 1
     } else {
       i = i + 1
       var closing = false
-      if i < n and bytes.read_u8(b, i) == 47 then { closing = true; i = i + 1 } else ()
+      if i < n and bytes.get(b, i) ?? 0 == 47 then { closing = true; i = i + 1 } else ()
       let ns = i
-      while i < n and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 and bytes.read_u8(b, i) != 47 { i = i + 1 }
+      while i < n and not is_ws(bytes.get(b, i) ?? 0) and (bytes.get(b, i) ?? 0) != 62 and (bytes.get(b, i) ?? 0) != 47 { i = i + 1 }
       let name = sub(b, ns, i)
       var attrs: List[Attr] = []
       var self_closing = false
       var done = false
       while i < n and not done {
-        let c = bytes.read_u8(b, i)
+        let c = bytes.get(b, i) ?? 0
         if c == 62 then { done = true; i = i + 1 }
         else if c == 47 then { self_closing = true; i = i + 1 }
         else if is_ws(c) then i = i + 1
         else {
           let as = i
-          while i < n and bytes.read_u8(b, i) != 61 and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 { i = i + 1 }
+          while i < n and (bytes.get(b, i) ?? 0) != 61 and not is_ws(bytes.get(b, i) ?? 0) and (bytes.get(b, i) ?? 0) != 62 { i = i + 1 }
           let an = sub(b, as, i)
-          while i < n and is_ws(bytes.read_u8(b, i)) { i = i + 1 }
-          if i < n and bytes.read_u8(b, i) == 61 then {
+          while i < n and is_ws(bytes.get(b, i) ?? 0) { i = i + 1 }
+          if i < n and bytes.get(b, i) ?? 0 == 61 then {
             i = i + 1
-            while i < n and is_ws(bytes.read_u8(b, i)) { i = i + 1 }
-            let q = if i < n then bytes.read_u8(b, i) else 0
+            while i < n and is_ws(bytes.get(b, i) ?? 0) { i = i + 1 }
+            let q = if i < n then bytes.get(b, i) ?? 0 else 0
             if q == 34 or q == 39 then {
               i = i + 1
               let vs = i
-              while i < n and bytes.read_u8(b, i) != q { i = i + 1 }
+              while i < n and (bytes.get(b, i) ?? 0) != q { i = i + 1 }
               list.push(attrs, { name: an, value: sub(b, vs, i) })
               i = i + 1
             } else {
               let vs = i
-              while i < n and not is_ws(bytes.read_u8(b, i)) and bytes.read_u8(b, i) != 62 { i = i + 1 }
+              while i < n and not is_ws(bytes.get(b, i) ?? 0) and (bytes.get(b, i) ?? 0) != 62 { i = i + 1 }
               list.push(attrs, { name: an, value: sub(b, vs, i) })
             }
           } else list.push(attrs, { name: an, value: "" })
@@ -107,7 +107,7 @@ fn numbers(s: String) -> List[Float] = {
   var out: List[Float] = []
   var i = 0
   while i < n {
-    let c = bytes.read_u8(b, i)
+    let c = bytes.get(b, i) ?? 0
     let starts = (c >= 48 and c <= 57) or c == 45 or c == 43 or c == 46
     if not starts then i = i + 1
     else {
@@ -117,13 +117,13 @@ fn numbers(s: String) -> List[Float] = {
       var seen_e = false
       var go = true
       while i < n and go {
-        let d = bytes.read_u8(b, i)
+        let d = bytes.get(b, i) ?? 0
         if d >= 48 and d <= 57 then i = i + 1
         else if d == 46 and not seen_dot and not seen_e then { seen_dot = true; i = i + 1 }
         else if (d == 101 or d == 69) and not seen_e then {
           seen_e = true
           i = i + 1
-          if i < n and (bytes.read_u8(b, i) == 45 or bytes.read_u8(b, i) == 43) then i = i + 1 else ()
+          if i < n and (bytes.get(b, i) ?? 0 == 45 or bytes.get(b, i) ?? 0 == 43) then i = i + 1 else ()
         } else go = false
       }
       match float.parse(sub(b, st, i)) {
@@ -174,7 +174,7 @@ let NAMED = [("black", 0x000000), ("white", 0xFFFFFF), ("red", 0xFF0000), ("gree
   ("steelblue", 0x4682B4), ("tan", 0xD2B48C), ("khaki", 0xF0E68C), ("lightgray", 0xD3D3D3), ("darkgray", 0xA9A9A9),
   ("darkgreen", 0x006400), ("darkblue", 0x00008B), ("darkred", 0x8B0000), ("beige", 0xF5F5DC), ("ivory", 0xFFFFF0)]
 
-fn rgb_int(n: Int) -> Rgba = { r: int.to_float((n / 65536) % 256) / 255.0, g: int.to_float((n / 256) % 256) / 255.0, b: int.to_float(n % 256) / 255.0, a: 1.0 }
+fn rgb_int(n: Int) -> Rgba = { r: float.from((n / 65536) % 256) / 255.0, g: float.from((n / 256) % 256) / 255.0, b: float.from(n % 256) / 255.0, a: 1.0 }
 
 // A paint: a colour, a gradient reference (url(#id)), or none.
 type Paint = | NoPaint | Solid(Rgba) | GradientRef(String) | Inherit
@@ -191,15 +191,15 @@ fn parse_paint(s0: String) -> Paint = {
     let b = bytes.from_string(s)
     let n = bytes.len(b)
     if n == 4 or n == 5 then {
-      let r = hex_digit(bytes.read_u8(b, 1)) * 17
-      let g = hex_digit(bytes.read_u8(b, 2)) * 17
-      let bl = hex_digit(bytes.read_u8(b, 3)) * 17
-      let a = if n == 5 then int.to_float(hex_digit(bytes.read_u8(b, 4)) * 17) / 255.0 else 1.0
-      Solid({ r: int.to_float(r) / 255.0, g: int.to_float(g) / 255.0, b: int.to_float(bl) / 255.0, a: a })
+      let r = hex_digit(bytes.get(b, 1) ?? 0) * 17
+      let g = hex_digit(bytes.get(b, 2) ?? 0) * 17
+      let bl = hex_digit(bytes.get(b, 3) ?? 0) * 17
+      let a = if n == 5 then float.from(hex_digit(bytes.get(b, 4) ?? 0) * 17) / 255.0 else 1.0
+      Solid({ r: float.from(r) / 255.0, g: float.from(g) / 255.0, b: float.from(bl) / 255.0, a: a })
     } else if n >= 7 then {
-      let v = (i: Int) => hex_digit(bytes.read_u8(b, i)) * 16 + hex_digit(bytes.read_u8(b, i + 1))
-      let a = if n >= 9 then int.to_float(v(7)) / 255.0 else 1.0
-      Solid({ r: int.to_float(v(1)) / 255.0, g: int.to_float(v(3)) / 255.0, b: int.to_float(v(5)) / 255.0, a: a })
+      let v = (i: Int) => hex_digit(bytes.get(b, i) ?? 0) * 16 + hex_digit(bytes.get(b, i + 1) ?? 0)
+      let a = if n >= 9 then float.from(v(7)) / 255.0 else 1.0
+      Solid({ r: float.from(v(1)) / 255.0, g: float.from(v(3)) / 255.0, b: float.from(v(5)) / 255.0, a: a })
     } else Solid(black)
   } else if string.starts_with(low, "rgb") then {
     let ns = numbers(s)
@@ -310,11 +310,11 @@ fn styled(parent: Style, t: Tag) -> Style = {
 type Sub = { xs: List[Float], ys: List[Float], closed: Bool }
 
 fn ellipse_sub(cx: Float, cy: Float, rx: Float, ry: Float) -> Sub = {
-  let n = int.max(16, int.min(256, float.to_int(float.sqrt(float.max(rx, ry)) * 12.0)))
+  let n = int.max(16, int.min(256, int.from_saturating(math.sqrt(float.max(rx, ry)) * 12.0)))
   var xs: List[Float] = []
   var ys: List[Float] = []
   for i in 0..<n {
-    let t = int.to_float(i) / int.to_float(n) * 6.283185307179586
+    let t = float.from(i) / float.from(n) * 6.283185307179586
     list.push(xs, cx + rx * math.cos(t))
     list.push(ys, cy + ry * math.sin(t))
   }
@@ -331,7 +331,7 @@ fn rect_subs(x: Float, y: Float, w: Float, h: Float, rx0: Float, ry0: Float) -> 
     let centers = [(x + w - rx, y + ry, 0.0 - 1.5707963267948966), (x + w - rx, y + h - ry, 0.0), (x + rx, y + h - ry, 1.5707963267948966), (x + rx, y + ry, 3.141592653589793)]
     for (ccx, ccy, a0) in centers {
       for i in 0...8 {
-        let t = a0 + int.to_float(i) / 8.0 * 1.5707963267948966
+        let t = a0 + float.from(i) / 8.0 * 1.5707963267948966
         list.push(xs, ccx + rx * math.cos(t))
         list.push(ys, ccy + ry * math.sin(t))
       }
@@ -368,17 +368,17 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
   var lcy = 0.0
   var last_cmd = 0
   var i = 0
-  let seg_count = (len: Float) => int.max(2, int.min(64, float.to_int(len * scale / 3.0) + 2))
+  let seg_count = (len: Float) => int.max(2, int.min(64, int.from_saturating(len * scale / 3.0) + 2))
   while i < n {
     // read command letter
-    while i < n and not is_cmd(bytes.read_u8(b, i)) and not ((bytes.read_u8(b, i) >= 48 and bytes.read_u8(b, i) <= 57) or bytes.read_u8(b, i) == 45 or bytes.read_u8(b, i) == 46) { i = i + 1 }
+    while i < n and not is_cmd(bytes.get(b, i) ?? 0) and not ((bytes.get(b, i) ?? 0 >= 48 and bytes.get(b, i) ?? 0 <= 57) or bytes.get(b, i) ?? 0 == 45 or bytes.get(b, i) ?? 0 == 46) { i = i + 1 }
     if i >= n then ()
     else {
       var cmd = last_cmd
-      if is_cmd(bytes.read_u8(b, i)) then { cmd = bytes.read_u8(b, i); i = i + 1 } else ()
+      if is_cmd(bytes.get(b, i) ?? 0) then { cmd = bytes.get(b, i) ?? 0; i = i + 1 } else ()
       // collect this command's numbers (until the next command letter)
       let st = i
-      while i < n and not is_cmd(bytes.read_u8(b, i)) { i = i + 1 }
+      while i < n and not is_cmd(bytes.get(b, i) ?? 0) { i = i + 1 }
       let args = numbers(sub(b, st, i))
       let rel = cmd >= 97
       let up = if rel then cmd - 32 else cmd
@@ -449,11 +449,11 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
               (qx, qy, 0.0, 0.0, o.0 + args[k], o.1 + args[k + 1])
             }
           if list.len(xs) == 0 then { list.push(xs, cx); list.push(ys, cy) } else ()
-          let len = float.sqrt((x1 - cx) * (x1 - cx) + (y1 - cy) * (y1 - cy)) + float.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1))
+          let len = math.sqrt((x1 - cx) * (x1 - cx) + (y1 - cy) * (y1 - cy)) + math.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1))
           let segs = seg_count(len)
           let cubic = up == 67 or up == 83
           for j in 1...segs {
-            let t = int.to_float(j) / int.to_float(segs)
+            let t = float.from(j) / float.from(segs)
             let mt = 1.0 - t
             if cubic then {
               list.push(xs, mt * mt * mt * cx + 3.0 * mt * mt * t * x1 + 3.0 * mt * t * t * x2 + t * t * t * x)
@@ -491,11 +491,11 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
             let x1p = cp * dx2 + sp * dy2
             let y1p = 0.0 - sp * dx2 + cp * dy2
             let lam = (x1p * x1p) / (rx0 * rx0) + (y1p * y1p) / (ry0 * ry0)
-            let rx = if lam > 1.0 then rx0 * float.sqrt(lam) else rx0
-            let ry = if lam > 1.0 then ry0 * float.sqrt(lam) else ry0
+            let rx = if lam > 1.0 then rx0 * math.sqrt(lam) else rx0
+            let ry = if lam > 1.0 then ry0 * math.sqrt(lam) else ry0
             let num0 = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p
             let den = rx * rx * y1p * y1p + ry * ry * x1p * x1p
-            let co0 = if den == 0.0 then 0.0 else float.sqrt(float.max(0.0, num0 / den))
+            let co0 = if den == 0.0 then 0.0 else math.sqrt(float.max(0.0, num0 / den))
             let co = if large == sweep then 0.0 - co0 else co0
             let cxp = co * rx * y1p / ry
             let cyp = 0.0 - co * ry * x1p / rx
@@ -507,7 +507,7 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
             if sweep and dth < 0.0 then dth = dth + 6.283185307179586 else ()
             let segs = seg_count(float.abs(dth) * float.max(rx, ry))
             for j in 1...segs {
-              let t = th1 + dth * int.to_float(j) / int.to_float(segs)
+              let t = th1 + dth * float.from(j) / float.from(segs)
               list.push(xs, cp * rx * math.cos(t) - sp * ry * math.sin(t) + ccx)
               list.push(ys, sp * rx * math.cos(t) + cp * ry * math.sin(t) + ccy)
             }
@@ -530,8 +530,8 @@ fn path_subs(d: String, scale: Float) -> List[Sub] = {
 
 // f32 buffers in Bytes: a `mut List[Float]` parameter is copied on every
 // call on the wasm leg (almide/almide#3337); a single mut Bytes is not.
-fn getf(b: Bytes, i: Int) -> Float = bytes.read_f32_le(b, i * 4)
-fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.set_f32_le(b, i * 4, v)
+fn getf(b: Bytes, i: Int) -> Float = bytes.get_f32_le(b, i * 4) ?? 0.0
+fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.put_f32_le(b, i * 4, v)
 
 // The canvas: device-space polygon edges are accumulated into `acc`
 // (stride w+2); coverage is then composited into `px` and cleared. Both are
@@ -541,8 +541,8 @@ fn setf(mut b: Bytes, i: Int, v: Float) -> Unit = bytes.set_f32_le(b, i * 4, v)
 
 // The accumulator columns an edge from x=a to x=b can touch (clamped like
 // line_acc clamps), so per-shape passes only visit those.
-fn col_lo(a: Float, b: Float, w: Int) -> Int = int.min(w, int.max(0, float.to_int(float.floor(float.min(a, b))) - 1))
-fn col_hi(a: Float, b: Float, w: Int) -> Int = int.min(w + 2, int.max(2, float.to_int(float.ceil(float.max(a, b))) + 3))
+fn col_lo(a: Float, b: Float, w: Int) -> Int = int.min(w, int.max(0, int.from_saturating(float.floor(float.min(a, b))) - 1))
+fn col_hi(a: Float, b: Float, w: Int) -> Int = int.min(w + 2, int.max(2, int.from_saturating(float.ceil(float.max(a, b))) + 3))
 
 fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf: Bytes) -> Unit = {
   if ay != by then {
@@ -555,12 +555,12 @@ fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf:
     let y1 = if down then by else ay
     let dxdy = (x1 - x0) / (y1 - y0)
     var x = x0
-    let ystart = int.max(0, float.to_int(float.floor(y0)))
+    let ystart = int.max(0, int.from_saturating(float.floor(y0)))
     if y0 < 0.0 then x = x - y0 * dxdy else ()
-    let yend = int.min(h, float.to_int(float.ceil(y1)))
+    let yend = int.min(h, int.from_saturating(float.ceil(y1)))
     for yi in ystart..<yend {
       let row = yi * stride
-      let fy = int.to_float(yi)
+      let fy = float.from(yi)
       let dy = float.min(fy + 1.0, y1) - float.max(fy, y0)
       let xnext = x + dxdy * dy
       let d = dy * dir
@@ -568,9 +568,9 @@ fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf:
       let xa = float.max(0.0, float.min(x, xnext))
       let xb = float.max(0.0, float.max(x, xnext))
       let xaf = float.floor(xa)
-      let xai = int.min(w, float.to_int(xaf))
+      let xai = int.min(w, int.from_saturating(xaf))
       let xbc = float.ceil(xb)
-      let xbi = int.min(w, float.to_int(xbc))
+      let xbi = int.min(w, int.from_saturating(xbc))
       if xbi <= xai + 1 then {
         let xmf = float.min(1.0, 0.5 * (xa + xb) - xaf)
         setf(buf, row + xai, getf(buf, row + xai) + d - d * xmf)
@@ -587,7 +587,7 @@ fn line_acc(ax: Float, ay: Float, bx: Float, by: Float, w: Int, h: Int, mut buf:
           let a1 = sl * (1.5 - x0f)
           setf(buf, row + xai + 1, getf(buf, row + xai + 1) + d * (a1 - a0))
           for xi in (xai + 2)..<(xbi - 1) { setf(buf, row + xi, getf(buf, row + xi) + d * sl) }
-          let a2 = a1 + int.to_float(xbi - xai - 3) * sl
+          let a2 = a1 + float.from(xbi - xai - 3) * sl
           setf(buf, row + xbi - 1, getf(buf, row + xbi - 1) + d * (1.0 - a2 - am))
         }
         setf(buf, row + xbi, getf(buf, row + xbi) + d * am)
@@ -638,8 +638,8 @@ fn composite(w: Int, h: Int, mut buf: Bytes, pxo: Int, x0: Int, x1: Int, y0: Int
         if cov0 > 0.002 then {
           let col = match grad {
             some(g) => {
-              let qx = int.to_float(x) + 0.5
-              let qy = int.to_float(y) + 0.5
+              let qx = float.from(x) + 0.5
+              let qy = float.from(y) + 0.5
               let ux0 = apply_x(inv, qx, qy)
               let uy0 = apply_y(inv, qx, qy)
               let ux = if g.user then ux0 else (ux0 - bx) / float.max(0.000001, bw)
@@ -649,7 +649,7 @@ fn composite(w: Int, h: Int, mut buf: Bytes, pxo: Int, x0: Int, x1: Int, y0: Int
                 let dy = g.y2 - g.y1
                 let l2 = float.max(0.000001, dx * dx + dy * dy)
                 grad_color(g, ((ux - g.x1) * dx + (uy - g.y1) * dy) / l2)
-              } else grad_color(g, float.sqrt((ux - g.x1) * (ux - g.x1) + (uy - g.y1) * (uy - g.y1)) / float.max(0.000001, g.r))
+              } else grad_color(g, math.sqrt((ux - g.x1) * (ux - g.x1) + (uy - g.y1) * (uy - g.y1)) / float.max(0.000001, g.r))
             },
             none => color,
           }
@@ -727,8 +727,8 @@ fn fill_subs(w: Int, h: Int, mut buf: Bytes, pxo: Int, subs: List[Sub], m: Mat, 
           let bx = apply_x(m, s.xs[j], s.ys[j])
           let by = apply_y(m, s.xs[j], s.ys[j])
           line_acc(ax, ay, bx, by, w, h, buf)
-          ymin = int.min(ymin, float.to_int(float.floor(float.min(ay, by))))
-          ymax = int.max(ymax, float.to_int(float.ceil(float.max(ay, by))) + 1)
+          ymin = int.min(ymin, int.from_saturating(float.floor(float.min(ay, by))))
+          ymax = int.max(ymax, int.from_saturating(float.ceil(float.max(ay, by))) + 1)
           xmin = int.min(xmin, col_lo(ax, bx, w))
           xmax = int.max(xmax, col_hi(ax, bx, w))
         }
@@ -756,7 +756,7 @@ fn stroke_subs(subs: List[Sub], width: Float, round: Bool) -> List[Sub] = {
       let by = s.ys[j]
       let dx = bx - ax
       let dy = by - ay
-      let len = float.sqrt(dx * dx + dy * dy)
+      let len = math.sqrt(dx * dx + dy * dy)
       if len > 0.0 then {
         let nx = 0.0 - dy / len * hw
         let ny = dx / len * hw
@@ -776,7 +776,7 @@ fn stroke_subs(subs: List[Sub], width: Float, round: Bool) -> List[Sub] = {
 fn stroke_union(w: Int, h: Int, mut buf: Bytes, pxo: Int, pieces: List[Sub], m: Mat, paint: Paint, alpha: Float, grads: List[(String, Grad)]) -> Unit = {
   // Each piece is accumulated on its own and merged with max, so pieces do
   // not need consistent winding.
-  var cov = bytes.new(w * h * 4)
+  var cov = bytes.zeros(w * h * 4)
   var any = false
   var ymin = h
   var ymax = 0
@@ -796,8 +796,8 @@ fn stroke_union(w: Int, h: Int, mut buf: Bytes, pxo: Int, pieces: List[Sub], m: 
       let bx = apply_x(m, p.xs[j], p.ys[j])
       let by = apply_y(m, p.xs[j], p.ys[j])
       line_acc(ax, ay, bx, by, w, h, buf)
-      py0 = int.min(py0, float.to_int(float.floor(float.min(ay, by))))
-      py1 = int.max(py1, float.to_int(float.ceil(float.max(ay, by))) + 1)
+      py0 = int.min(py0, int.from_saturating(float.floor(float.min(ay, by))))
+      py1 = int.max(py1, int.from_saturating(float.ceil(float.max(ay, by))) + 1)
       px0 = int.min(px0, col_lo(ax, bx, w))
       px1 = int.max(px1, col_hi(ax, bx, w))
     }
@@ -882,14 +882,14 @@ pub fn rasterize_svg(text: String, max_px: Int) -> Image = {
   let vw = if list.len(vb) == 4 then vb[2] else w0
   let vh = if list.len(vb) == 4 then vb[3] else h0
   let aspect = if vh > 0.0 then vw / vh else 1.0
-  let w = if aspect >= 1.0 then max_px else int.max(1, float.to_int(int.to_float(max_px) * aspect))
-  let h = if aspect >= 1.0 then int.max(1, float.to_int(int.to_float(max_px) / aspect)) else max_px
-  let s = int.to_float(w) / float.max(0.000001, vw)
+  let w = if aspect >= 1.0 then max_px else int.max(1, int.from_saturating(float.from(max_px) * aspect))
+  let h = if aspect >= 1.0 then int.max(1, int.from_saturating(float.from(max_px) / aspect)) else max_px
+  let s = float.from(w) / float.max(0.000001, vw)
   // One buffer, one `mut` parameter everywhere: coverage accumulator first,
   // then RGBA pixels at `pxo` (two mut params are copied per call on the
   // wasm leg, almide/almide#3337).
   let pxo = (w + 2) * h + 4
-  var buf = bytes.new((pxo + w * h * 4) * 4)
+  var buf = bytes.zeros((pxo + w * h * 4) * 4)
   let base = { ...root_style, m: { a: s, b: 0.0, c: 0.0, d: s, e: 0.0 - vx * s, f: 0.0 - vy * s } }
   // gradients (first pass)
   var grads: List[(String, Grad)] = []
@@ -939,13 +939,13 @@ pub fn rasterize_svg(text: String, max_px: Int) -> Image = {
       else ()
     } else if not t.closing then {
       let st = styled(top, t)
-      let scale = s * float.sqrt(float.abs(st.m.a * st.m.d - st.m.b * st.m.c)) / s
+      let scale = s * math.sqrt(float.abs(st.m.a * st.m.d - st.m.b * st.m.c)) / s
       draw_shape(w, h, buf, pxo, shape_subs(t, scale), st, grads)
     } else ()
   }
-  var out = bytes.new(w * h * 4)
+  var out = bytes.zeros(w * h * 4)
   for i in 0..<(w * h * 4) {
-    bytes.set_at(out, i, float.to_int(clamp01(getf(buf, pxo + i)) * 255.0 + 0.5))
+    out = bytes.set(out, i, int.from_saturating(clamp01(getf(buf, pxo + i)) * 255.0 + 0.5))
   }
   { w: w, h: h, rgba: out }
 }
